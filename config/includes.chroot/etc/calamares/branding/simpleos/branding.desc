@@ -14,10 +14,12 @@ strings:
     versionedName:       "Simple OS 1.0"
     shortVersionedName:  "Simple OS 1.0"
     bootloaderEntryName: "Simple OS"
-    productUrl:          ""
-    supportUrl:          ""
-    knownIssuesUrl:      ""
-    releaseNotesUrl:     ""
+    # Knöpfe auf der Willkommensseite des Installers (welcome.conf: showSupportUrl …); dieselbe Adresse wie
+    # HOME_URL/BUG_REPORT_URL in /usr/lib/os-release
+    productUrl:          "https://github.com/FreakySneaky787/simple-os"
+    supportUrl:          "https://github.com/FreakySneaky787/simple-os/issues"
+    knownIssuesUrl:      "https://github.com/FreakySneaky787/simple-os/blob/main/RELEASE_NOTES.md#known-issues"
+    releaseNotesUrl:     "https://github.com/FreakySneaky787/simple-os/releases"
     donateUrl:           ""
 
 # Grafiken werden von gen_branding.py erzeugt

@@ -1,0 +1,24 @@
+#!/bin/sh
+# Simple OS – root-Teil von simpleos-report (Aufruf per pkexec; Polkit-Aktion org.simpleos.report).
+# Gibt nur Protokolle aus, die ein normaler Benutzer nicht lesen darf; bereinigt (Namen, Adressen) wird
+# danach in simpleos-report, bevor etwas gespeichert wird. Keine Argumente, keine Änderungen am System.
+#   Systemprotokoll dieses Starts (Fehler), des vorigen Starts (Fehler – nach Absturz/Einfrieren das Wichtigste),
+#   Kernel-Warnungen, die letzten apt-Vorgänge
+# Exit 0, außer bei falschem Aufruf (2) oder ohne root (1).
+set -u
+export LC_ALL=C
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+[ $# -eq 0 ] || { echo "Aufruf: $0 (ohne Argumente)" >&2; exit 2; }
+[ "$(id -u)" -eq 0 ] || { echo "simpleos-report-helper: muss als root laufen (pkexec)" >&2; exit 1; }
+
+echo "--- Errors, this boot:"
+timeout 20 journalctl -b 0 -p err -n 200 --no-pager -o short-monotonic 2>&1
+echo "--- Errors, previous boot (last 80):"
+timeout 20 journalctl -b -1 -p err -n 80 --no-pager -o short-monotonic 2>&1
+echo "--- How the previous boot ended (last 15 lines):"
+timeout 20 journalctl -b -1 -n 15 --no-pager -o short-monotonic 2>&1
+echo "--- Kernel warnings and errors (last 120):"
+timeout 20 dmesg --level=emerg,alert,crit,err,warn 2>&1 | tail -n 120
+echo "--- Recent package changes:"
+tail -n 40 /var/log/apt/history.log 2>/dev/null || echo "(none)"
+exit 0

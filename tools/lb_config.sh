@@ -29,8 +29,8 @@ lb config \
     --bootappend-live "boot=live components locales=en_US.UTF-8 keyboard-layouts=us quiet splash hostname=simple-os username=simple" \
     --bootappend-live-failsafe "boot=live components memtest noapic noapm nodma nomce nolapic nosmp nosplash vga=788 locales=en_US.UTF-8 keyboard-layouts=us hostname=simple-os username=simple"
 
-# Branding-Grafiken (Calamares, Wallpaper, Wizard-Logo, Plymouth) im Catppuccin-Look erzeugen
-python3 "$TOOLS/gen_branding.py" config/includes.chroot
+# Branding-Grafiken (Calamares, Wallpaper, Wizard-Logo, Plymouth, Bootmenü der ISO) im Catppuccin-Look erzeugen
+python3 "$TOOLS/gen_branding.py" config/includes.chroot config/bootloaders/isolinux
 
 # fastfetch: nicht in bookworm/-backports -> offizielles Upstream-.deb (Version + SHA256 fest).
 # Zwischengespeichert in build/downloads, damit nicht jeder Build neu lädt.

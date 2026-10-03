@@ -1,0 +1,11 @@
+#!/bin/sh
+# Simple OS – /usr/lib/os-release (aus includes.chroot) vor Debian-Updates schützen.
+# Die Datei gehört zu base-files und ist keine conffile: jedes Punkt-Release (12.x) hätte sie samt /etc/os-release
+# durch "Debian GNU/Linux 12" ersetzt – Name, Version und BUG_REPORT_URL (simpleos-report) wären weg.
+# Mit der Umleitung legt dpkg Debians Fassung künftig als /usr/lib/os-release.debian ab. /etc/os-release bleibt
+# wie bei Debian ein Link darauf (den base-files bei Updates unverändert neu anlegt).
+set -e
+OSR=/usr/lib/os-release
+grep -q '^ID=simpleos$' "$OSR"
+dpkg-divert --local --no-rename --divert "$OSR.debian" --add "$OSR"
+ln -sfn ../usr/lib/os-release /etc/os-release

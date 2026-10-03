@@ -14,7 +14,7 @@ Ein Fenster für alle Einstellungen, links die Bereiche, rechts die Seite:
                Hardware & Drivers (simpleos-drivers: Grafik, WLAN, CPU-Microcode; "Install Recommended Drivers"),
                Backups (simpleos-backup: Wiederherstellungspunkte), Speicher (freier Platz, simpleos-cleaner),
                Drucker & Scanner (system-config-printer, simple-scan), Firewall (ufw über den Root-Helfer),
-               Laufwerke (gnome-disks: USB-Sticks formatieren, ISO schreiben)
+               Laufwerke (gnome-disks: USB-Sticks formatieren, ISO schreiben), Fehler melden (simpleos-report)
 
   simpleos-control-center [sound|display|wifi|bluetooth|appearance|power|system]   Fenster (auf dieser Seite)
 Läuft nur einmal (Gtk.Application); ein zweiter Aufruf holt das Fenster nach vorn.
@@ -928,7 +928,9 @@ def main(argv):
             bg(drivers_report, lambda rep: self.show_drivers(hw, rep))
             self.put(card([("Software Updates", None, button("Open", lambda: spawn("simpleos-update"))),
                            ("Task Manager", "Ctrl+Shift+Esc",
-                            button("Open", lambda: spawn("simpleos-taskmanager")))]))
+                            button("Open", lambda: spawn("simpleos-taskmanager"))),
+                           ("Report a problem", "Saves details about this computer for a bug report",
+                            button("Report", lambda: spawn("simpleos-report")))]))
             self.show_all_now()
 
         def set_firewall(self, sw, _p):

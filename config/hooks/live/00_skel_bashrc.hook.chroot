@@ -5,3 +5,10 @@ grep -q fastfetch /etc/skel/.bashrc || cat >> /etc/skel/.bashrc <<'BASHRC'
 # Simple OS: Logo + Systeminfos
 command -v fastfetch >/dev/null && fastfetch
 BASHRC
+
+# Standardordner neuer Benutzer (passend zu /etc/skel/.config/user-dirs.dirs). Hier angelegt statt nur als leere
+# Ordner in includes.chroot: git speichert keine leeren Ordner – ein frischer Klon hätte sie sonst nicht.
+# Muss vor 01_user_setup laufen (kopiert /etc/skel ins Live-Home).
+for d in Desktop Documents Downloads Music Pictures/Screenshots Videos Templates; do
+    mkdir -p "/etc/skel/$d"
+done

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Erzeugt die Simple-OS-Branding-Grafiken (Catppuccin Mocha).
 
-Aufruf: gen_branding.py <includes.chroot-Ordner>
+Aufruf: gen_branding.py <includes.chroot-Ordner> [<bootloaders/isolinux-Ordner>]
 Erzeugt darin:
   etc/calamares/branding/simpleos/{logo,icon,welcome,slide1}.png
   usr/share/simpleos/logo.png
   usr/share/backgrounds/simpleos/wallpaper.png (2560x1440)
   usr/share/plymouth/themes/spinner/watermark.png
+und im zweiten Ordner das Bootmenü-Bild der ISO (statt live-builds Debian-Helm mit "Debian GNU/Linux"):
+  splash.png (640x480, isolinux/BIOS) und splash800x600.png (GRUB/UEFI nutzt es, solange es kein eigenes hat)
 """
 import sys
 from pathlib import Path
@@ -192,6 +194,21 @@ def make_watermark(scale=1.0):
     return img.resize((img.width // SS, img.height // SS), Image.LANCZOS)
 
 
+def make_boot_splash(size, logo_y):
+    """Hintergrund der Bootmenüs: dunkler Verlauf, Logo + Schriftzug oben (Mitte bei logo_y, Anteil der Höhe).
+    Darunter bleibt alles frei – GRUB zeichnet sein Menü ab 52 % der Höhe, isolinux ab etwa 40 %."""
+    w, h = size
+    img = gradient(size, CRUST, BASE, horizontal=False)
+    mark = make_watermark(scale=w / 800)
+    img.paste(mark, ((w - mark.width) // 2, round(h * logo_y) - mark.height // 2), mark)
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.truetype(FONT, max(11, round(14 * w / 800)))
+    draw.text((w / 2, round(h * logo_y) + mark.height // 2 + round(18 * w / 800)), "Version 1.0",
+              font=font, fill=SUBTEXT, anchor="mt")
+    # vesamenu (isolinux) und GRUB lesen nur einfache PNGs: RGB, 8 Bit, ohne Interlacing
+    return img.convert("RGB")
+
+
 def main():
     root = Path(sys.argv[1] if len(sys.argv) > 1 else ".")
 
@@ -216,6 +233,12 @@ def main():
     ply = root / "usr/share/plymouth/themes/spinner"
     ply.mkdir(parents=True, exist_ok=True)
     make_watermark().save(ply / "watermark.png")
+
+    if len(sys.argv) > 2:
+        boot = Path(sys.argv[2])
+        boot.mkdir(parents=True, exist_ok=True)
+        make_boot_splash((640, 480), 0.20).save(boot / "splash.png")
+        make_boot_splash((800, 600), 0.27).save(boot / "splash800x600.png")
 
 
 if __name__ == "__main__":

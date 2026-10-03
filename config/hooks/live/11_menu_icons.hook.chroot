@@ -40,6 +40,7 @@ wizard       actions/system-run-symbolic.svg                    #bac2de
 help         apps/help-browser-symbolic.svg                     #bac2de
 welcome      actions/help-about-symbolic.svg                    #bac2de
 keys         devices/input-keyboard-symbolic.svg                #bac2de
+report       actions/mail-flag-symbolic.svg                     #bac2de
 power        actions/system-shutdown-symbolic.svg               #bac2de
 system       devices/computer-symbolic.svg                      #bac2de
 backup       apps/deja-dup-symbolic.svg                         #bac2de

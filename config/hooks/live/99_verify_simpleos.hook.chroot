@@ -3109,5 +3109,129 @@ for pkg in grub-pc grub-efi-amd64; do
 done
 check "simpleos-post-install räumt $DEBS nicht auf" "grep -q 'rm -rf $DEBS' /usr/local/sbin/simpleos-post-install"
 
+# ==== Release: os-release (Hook 13), Fehlerberichte (simpleos-report), Installer-Links ====
+# os-release: Simple-OS-Fassung, vor base-files-Updates per dpkg-divert geschützt, /etc/os-release als Link
+check "os-release: /etc/os-release ist nicht Simple OS" "grep -qx 'ID=simpleos' /etc/os-release && grep -qx 'NAME=\"Simple OS\"' /etc/os-release"
+check "os-release: /etc/os-release ist kein Link auf /usr/lib/os-release" "[ \"\$(readlink /etc/os-release)\" = ../usr/lib/os-release ]"
+check "os-release: keine Umleitung (base-files-Update würde Debian zurückbringen)" \
+      "[ \"\$(dpkg-divert --truename /usr/lib/os-release)\" = /usr/lib/os-release.debian ]"
+check "os-release: VERSION_CODENAME fehlt (Installationsskripte von Drittanbietern)" "grep -qx 'VERSION_CODENAME=bookworm' /etc/os-release"
+check "os-release: BUG_REPORT_URL fehlt" "grep -qE '^BUG_REPORT_URL=\"https://[^\"]+/issues\"\$' /etc/os-release"
+check "os-release: HOME_URL fehlt" "grep -qE '^HOME_URL=\"https://' /etc/os-release"
+for k in productUrl supportUrl knownIssuesUrl releaseNotesUrl; do
+    check "Calamares-Branding: $k leer" "grep -qE '^ +$k: +\"https://' /etc/calamares/branding/simpleos/branding.desc"
+done
+check "Calamares: supportUrl passt nicht zu BUG_REPORT_URL" \
+      "[ \"\$(sed -n 's/^ *supportUrl: *\"\\(.*\\)\"/\\1/p' /etc/calamares/branding/simpleos/branding.desc)\" = \"\$(sed -n 's/^BUG_REPORT_URL=\"\\(.*\\)\"/\\1/p' /etc/os-release)\" ]"
+
+# Lizenz: Hinweis mit Quellcode-Adresse, GPL-Text liefert base-files
+check "Lizenzhinweis /usr/share/doc/simpleos/copyright fehlt" \
+      "grep -q 'GNU General Public License' /usr/share/doc/simpleos/copyright && grep -q 'https://github.com/' /usr/share/doc/simpleos/copyright"
+check "GPL-3-Text fehlt (/usr/share/common-licenses/GPL-3)" "[ -s /usr/share/common-licenses/GPL-3 ]"
+
+RP=/usr/local/bin/simpleos-report
+RPH=/usr/local/sbin/simpleos-report-helper
+for f in $RP $RPH; do
+    chmod 0755 "$f" 2>/dev/null || true
+    check "$f fehlt oder ist nicht ausführbar" "[ -x $f ]"
+    check "$f: Shell-Syntaxfehler" "sh -n $f"
+done
+check "Polkit: Aktion org.simpleos.report fehlt" \
+      "grep -A12 'action id=\"org.simpleos.report\"' /usr/share/polkit-1/actions/org.simpleos.power-tools.policy | grep -q 'exec.path\">$RPH<'"
+check "Report-Helfer: als root kein Exit 0 oder Abschnitte fehlen" "out=\$($RPH 2>&1) && echo \"\$out\" | grep -q '^--- Errors, this boot:' && echo \"\$out\" | grep -q '^--- Recent package changes:'"
+check "Report-Helfer: nimmt Argumente an" "$RPH --x >/dev/null 2>&1; [ \$? -eq 2 ]"
+check "Starter simpleos-report.desktop fehlt" "grep -qx 'Exec=$RP' /usr/share/applications/simpleos-report.desktop"
+check "Menüsymbol Report fehlt" "[ -s /usr/share/simpleos/menu-icons/report.svg ]"
+check "Control Center: Report a problem fehlt" "grep -q 'spawn(\"simpleos-report\")' /usr/local/bin/simpleos-control-center"
+for home in /etc/skel /home/simple; do
+    [ -f "$home/.config/openbox/menu.xml" ] || continue
+    check "menu.xml: Help → Report a Problem fehlt in $home" \
+          "grep -A1 '<item label=\"Report a Problem\"' '$home/.config/openbox/menu.xml' | grep -qF '<command>$RP</command>'"
+done
+
+rt=$(mktemp -d)
+mkdir -p "$rt/mock" "$rt/home/.cache" "$rt/desk"
+# Adresse: GitHub -> …/issues/new mit Vorlage; keine Adresse -> Exit 1; andere Seite unverändert
+printf 'NAME="Simple OS"\nPRETTY_NAME="Simple OS v1.0"\nBUG_REPORT_URL="https://github.com/example/simple-os/issues"\n' > "$rt/osr-gh"
+printf 'NAME="Simple OS"\n' > "$rt/osr-none"
+printf 'BUG_REPORT_URL="https://bugs.example.org/simpleos"\n' > "$rt/osr-other"
+u=$(HOME="$rt/home" SIMPLEOS_REPORT_OSRELEASE="$rt/osr-gh" $RP --url 2>/dev/null)
+check "Report: GitHub-Adresse ohne /new und Vorlage ($u)" \
+      "case '$u' in 'https://github.com/example/simple-os/issues/new?body='*'What%20happened'*'Simple%20OS%20v1.0'*) true ;; *) false ;; esac"
+check "Report: ohne BUG_REPORT_URL nicht Exit 1" "HOME=$rt/home SIMPLEOS_REPORT_OSRELEASE=$rt/osr-none $RP --url >/dev/null 2>&1; [ \$? -eq 1 ]"
+check "Report: andere Seite verändert" "[ \"\$(HOME=$rt/home SIMPLEOS_REPORT_OSRELEASE=$rt/osr-other $RP --url)\" = https://bugs.example.org/simpleos ]"
+
+# Bereinigung: Namen, Rechner, WLAN, Adressen, Seriennummern weg – Versionsnummern, Zeiten, PCI-IDs bleiben
+cat > "$rt/mock/id" <<'MOCK'
+#!/bin/sh
+[ "$1" = -un ] && { echo aaron; exit 0; }
+exec /usr/bin/id "$@"
+MOCK
+printf '#!/bin/sh\necho aarons-thinkbook\n' > "$rt/mock/hostname"
+printf '#!/bin/sh\necho "aaron:x:1000:1000:Aaron Example,,,:/home/aaron:/bin/bash"\n' > "$rt/mock/getent"
+printf '#!/bin/sh\nprintf "FRITZ!Box 7590 XY\\nWired connection 1\\nlo\\n"\n' > "$rt/mock/nmcli"
+chmod 0755 "$rt/mock/"*
+cat > "$rt/in" <<'IN'
+log: /home/aaron/.cache/simpleos-wifi.log user aaron logged in (Aaron Example) on aarons-thinkbook
+connected to FRITZ!Box 7590 XY via wlp0s20f3 a4:5E:60:12:34:56 bt 00-1A-7D-DA-71-13
+inet 192.168.178.23/24 gw 10.0.0.1 DHCPACK from 192.168.1.1.
+inet6 fe80::1c2d:3eff:fe4f:5a6b%wlp0s20f3 and 2a02:8106:21:4f00::1/64
+usb 1-2: SerialNumber: 4C530001230817116183 mail aaron.example@example.org
+keep: Simple OS v1.0 simple-os /home/simple alsa-topology-conf 1.2.5.1-2 v1.2.3.4 127.0.0.1 ::1
+keep: 12:34:56 00:02.0 VGA [8086:a7a0] Mesa 22.3.6 Wired connection 1 aaronson firmware 1.2.3.4.5
+IN
+HOME=/home/aaron PATH="$rt/mock:/usr/bin:/bin" $RP --redact < "$rt/in" > "$rt/out" 2>/dev/null
+for bad in aaron Aaron aarons-thinkbook FRITZ a4:5E 00-1A-7D 192.168.178.23 10.0.0.1 192.168.1.1 fe80:: 2a02:8106 \
+           4C530001230817116183 example.org; do
+    check "Report-Bereinigung: '$bad' noch drin" "! grep -v '^keep:' $rt/out | grep -qF '$bad'"
+done
+for good in 'Simple OS v1.0' 'simple-os' '/home/simple ' '1.2.5.1-2' 'v1.2.3.4' '127.0.0.1' ' ::1' '12:34:56' '00:02.0 VGA' \
+            '[8086:a7a0]' 'Mesa 22.3.6' 'Wired connection 1' 'aaronson' '1.2.3.4.5' 'DHCPACK from <ip>.' '/home/<user>/.cache' \
+            'user <user> logged in (<name>) on <hostname>' 'connected to <network> via'; do
+    check "Report-Bereinigung: '$good' verändert" "grep -qF -- '$good' $rt/out"
+done
+
+# Fenster: Rofi, Browser, pkexec, Meldungen nachgebaut. PICK = gewählte Zeile ("-" = Esc)
+cat > "$rt/mock/rofi" <<'MOCK'
+#!/bin/sh
+cat > "$RT/rofi.rows"
+[ "$PICK" = - ] && exit 1
+echo "$PICK"
+MOCK
+printf '#!/bin/sh\necho "$*" >> "$RT/browser"\n' > "$rt/mock/simpleos-browser"
+printf '#!/bin/sh\necho "$*" >> "$RT/notify"\n' > "$rt/mock/notify-send"
+printf '#!/bin/sh\necho "$*" >> "$RT/pkexec"\n[ -n "$PKEXEC_RC" ] && exit "$PKEXEC_RC"\necho "Errors, this boot: kernel oops at 192.168.0.9"\n' > "$rt/mock/pkexec"
+printf '#!/bin/sh\ntouch "$RT/thunar"\n' > "$rt/mock/thunar"
+chmod 0755 "$rt/mock/"*
+# rcase Beschreibung PICK os-release "Variablen" "Bedingung"
+rcase() {
+    rm -rf "${rt:?}/st" "$rt/desk"; mkdir -p "$rt/st" "$rt/desk"
+    # shellcheck disable=SC2086
+    env -i HOME="$rt/home" RT="$rt/st" PICK="$2" SIMPLEOS_REPORT_OSRELEASE="$rt/$3" SIMPLEOS_REPORT_DIR="$rt/desk" \
+        PATH="$rt/mock:/usr/local/bin:/usr/bin:/bin" $4 sh $RP >"$rt/st/out" 2>&1
+    rc=$?
+    # Browser und Dateimanager starten im Hintergrund (setsid)
+    rw=0; while [ $rw -lt 20 ] && [ ! -e "$rt/st/browser" ] && [ ! -e "$rt/st/thunar" ]; do sleep 0.2; rw=$((rw + 1)); done
+    check "simpleos-report [$1]: Exit-Code $rc statt 0" "[ $rc -eq 0 ]"
+    check "simpleos-report [$1]" "$5"
+}
+rcase "Menü" - osr-gh "" \
+      'grep -q "Create report" $rt/st/rofi.rows && grep -q "without system logs" $rt/st/rofi.rows &&
+       grep -q "issue page only" $rt/st/rofi.rows && [ $(grep -c . $rt/st/rofi.rows) -eq 4 ] && [ -z "$(ls $rt/desk)" ]'
+rcase "Menü ohne Adresse: kein Seiten-Eintrag" - osr-none "" '! grep -q "issue page" $rt/st/rofi.rows && [ $(grep -c . $rt/st/rofi.rows) -eq 3 ]'
+rcase "Mit Systemprotokoll" 0 osr-gh "" \
+      'f=$(ls $rt/desk/simpleos-report-*.txt) && grep -q "==== Simple OS ====" $f && grep -q "kernel oops at <ip>" $f &&
+       grep -qx "/usr/local/sbin/simpleos-report-helper" $rt/st/pkexec && grep -q "^https://github.com/example/simple-os/issues/new?body=" $rt/st/browser &&
+       grep -q "Saved to your Desktop: simpleos-report-" $rt/st/notify && grep -q "Drag this file" $rt/st/notify'
+rcase "Passwort abgebrochen" 0 osr-gh "PKEXEC_RC=126" \
+      'f=$(ls $rt/desk/simpleos-report-*.txt) && grep -q "no password entered" $f && grep -q "without system logs" $rt/st/notify'
+rcase "Ohne Systemprotokoll" 1 osr-gh "" \
+      'f=$(ls $rt/desk/simpleos-report-*.txt) && grep -q "==== Computer ====" $f && [ ! -e $rt/st/pkexec ] && [ -s $rt/st/browser ]'
+rcase "Ohne Adresse: nur speichern, Ordner öffnen" 1 osr-none "" \
+      '[ -n "$(ls $rt/desk/simpleos-report-*.txt)" ] && [ ! -e $rt/st/browser ] && [ -e $rt/st/thunar ] && grep -q "Saved to your Desktop" $rt/st/notify'
+rcase "Nur die Seite" 2 osr-gh "" '[ -z "$(ls $rt/desk)" ] && grep -q "^https://github.com/example/simple-os/issues/new" $rt/st/browser'
+rcase "Abbrechen" 3 osr-gh "" '[ -z "$(ls $rt/desk)" ] && [ ! -e $rt/st/browser ] && [ ! -e $rt/st/pkexec ]'
+rm -rf "${rt:?}"
+
 [ "$fail" -eq 0 ]
 echo "Simple OS verify: OK"

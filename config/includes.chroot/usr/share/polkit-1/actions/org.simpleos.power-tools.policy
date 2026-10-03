@@ -4,7 +4,8 @@
 <!-- Simple OS – root-Helfer der Power-Werkzeuge (Aufruf per pkexec):
        Backups     Wiederherstellungspunkte (timeshift) anlegen/zurückspielen/löschen: Passwort
        Cleaner     Paket-Cache, alte Pakete/Runtimes, alte Protokolle löschen: Passwort
-       Task-Manager  Prozess eines anderen Benutzers (z.B. root) beenden: Passwort -->
+       Task-Manager  Prozess eines anderen Benutzers (z.B. root) beenden: Passwort
+       Fehlerbericht Systemprotokoll für "Report a Problem" lesen (nur lesen): Passwort -->
 <policyconfig>
   <vendor>Simple OS</vendor>
   <action id="org.simpleos.backup">
@@ -39,5 +40,16 @@
       <allow_active>auth_admin_keep</allow_active>
     </defaults>
     <annotate key="org.freedesktop.policykit.exec.path">/usr/local/sbin/simpleos-taskmanager-helper</annotate>
+  </action>
+  <action id="org.simpleos.report">
+    <description>Read the system log for a problem report</description>
+    <message>Simple OS needs your password to add the system log to your problem report.</message>
+    <icon_name>dialog-warning</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/local/sbin/simpleos-report-helper</annotate>
   </action>
 </policyconfig>

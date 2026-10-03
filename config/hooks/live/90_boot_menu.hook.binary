@@ -1,0 +1,13 @@
+#!/bin/sh
+# Simple OS – Beschriftung des UEFI-Bootmenüs (GRUB) der ISO. live-build schreibt fest "Live system (amd64)";
+# das BIOS-Menü (isolinux) kommt aus config/bootloaders/isolinux/live.cfg.in, das Hintergrundbild beider Menüs
+# aus tools/gen_branding.py. Läuft in binary/ nach dem Erzeugen der Menüs, vor Prüfsummen und ISO.
+# Findet der Hook die Einträge nicht (neues live-build), bricht der Build ab, statt still "Live system" zu zeigen.
+set -e
+CFG=boot/grub/grub.cfg
+grep -q '^menuentry "Live system (amd64)"' "$CFG"
+grep -q '^menuentry "Live system (amd64 fail-safe mode)"' "$CFG"
+sed -i -e 's/^menuentry "Live system (amd64)"/menuentry "Simple OS Live"/' \
+       -e 's/^menuentry "Live system (amd64 fail-safe mode)"/menuentry "Simple OS Live (safe mode)"/' "$CFG"
+grep -q '^menuentry "Simple OS Live" --hotkey=l {' "$CFG"
+! grep -q 'Live system' "$CFG"

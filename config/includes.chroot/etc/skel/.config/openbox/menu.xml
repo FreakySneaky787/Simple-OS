@@ -118,6 +118,9 @@
       <item label="Keyboard Shortcuts (Super+H)" icon="/usr/share/simpleos/menu-icons/keys.svg">
         <action name="Execute"><command>/usr/local/bin/simpleos-help</command></action>
       </item>
+      <item label="Report a Problem" icon="/usr/share/simpleos/menu-icons/report.svg">
+        <action name="Execute"><command>/usr/local/bin/simpleos-report</command></action>
+      </item>
     </menu>
     <separator />
     <item label="Power (Super+X)" icon="/usr/share/simpleos/menu-icons/power.svg">

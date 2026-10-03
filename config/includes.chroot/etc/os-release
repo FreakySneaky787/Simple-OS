@@ -1,6 +1,0 @@
-NAME="Simple OS"
-ID=simpleos
-ID_LIKE=debian
-PRETTY_NAME="Simple OS v1.0"
-VERSION="1.0"
-VERSION_ID="1.0"

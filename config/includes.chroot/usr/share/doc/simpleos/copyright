@@ -1,0 +1,17 @@
+Simple OS
+Source code: https://github.com/FreakySneaky787/simple-os
+
+Copyright (C) 2026 FreakySneaky787 and the Simple OS contributors
+
+The Simple OS scripts, settings and artwork (everything under /usr/local, /usr/share/simpleos,
+/etc/skel and the Simple OS files in /etc) are free software: you can redistribute them and/or
+modify them under the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later version.
+The full license text is in /usr/share/common-licenses/GPL-3.
+
+Simple OS is built on Debian GNU/Linux 12 (bookworm). Every Debian package keeps its own license in
+/usr/share/doc/<package>/copyright. The exact package versions of each release are listed in
+Simple-OS.packages.txt next to the ISO; their source code is available from https://snapshot.debian.org
+and https://sources.debian.org.
+Third-party parts: fastfetch (MIT, https://github.com/fastfetch-cli/fastfetch), Catppuccin colors (MIT),
+Papirus icons (GPL-3.0), Inter font (OFL-1.1).

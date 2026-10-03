@@ -6,28 +6,36 @@ Minimaler Desktop auf Basis von Debian 12 „Bookworm“ mit Openbox, gebaut mit
 
 | Befehl | Zweck |
 |---|---|
-| `./build_iso.sh` | ISO bauen → `output/Simple-OS.iso` (braucht `sudo`, Log in `build/build.log`) |
+| `./build_iso.sh` | ISO bauen → `output/Simple-OS.iso` + `.sha256` + `Simple-OS.packages.txt` (braucht `sudo`, Log in `build/build.log`) |
 | `./build_iso.sh --config-only` | nur die live-build-Konfiguration nach `build/config` erzeugen (ohne `sudo`) |
-| `./test_vm.sh` | ISO in QEMU starten und auf `output/disk.qcow2` installieren |
-| `./test_installed_vm.sh` | installiertes System von `output/disk.qcow2` starten |
+| `./test_vm.sh [--uefi\|--secureboot]` | ISO in QEMU starten und installieren: BIOS (`output/disk.qcow2`), UEFI oder UEFI mit Secure Boot und Microsoft-Schlüsseln (OVMF, `output/disk-<modus>.qcow2`, NVRAM in `output/ovmf-vars-<modus>.fd`) |
+| `./test_installed_vm.sh [--uefi\|--secureboot]` | installiertes System von der Platte des Modus starten |
+
+Release: Testliste in `TESTING.md`, Text für die Download-Seite in `RELEASE_NOTES.md` (Englisch, Abschnitt
+`#known-issues` ist das Ziel des Installer-Knopfs „Known issues“).
 
 ## Struktur
 
 ```
 simple-os/
 ├── build_iso.sh, test_vm.sh, test_installed_vm.sh   Einstiegspunkte
+├── LICENSE, RELEASE_NOTES.md, TESTING.md            GPL-3.0, Download-Text, Release-Testliste
 ├── Containerfile                                   Build-Umgebung (Debian bookworm + live-build)
 ├── tools/
 │   ├── lb_config.sh      lb config + Build-Zeit-Teile (Branding, fastfetch-Download)
-│   └── gen_branding.py   erzeugt Wallpaper, Logos, Calamares- und Plymouth-Grafiken
+│   └── gen_branding.py   erzeugt Wallpaper, Logos, Calamares- und Plymouth-Grafiken, Bootmenü-Bild der ISO
 ├── config/               Quelle der live-build-Konfiguration (nur eigene Dateien)
 │   ├── package-lists/    10-base, 12-userdirs, 15-system, 20-desktop, 30-apps, 40-hardware, 45-printing, 50-installer, 55-bootloader
-│   ├── hooks/live/       Chroot-Hooks (00–09) und 99_verify_simpleos (bricht den Build bei Fehlern ab)
-│   ├── bootloaders/      Boot-Menü (isolinux)
+│   ├── hooks/live/       Chroot-Hooks (00–13), 99_verify_simpleos (bricht den Build bei Fehlern ab),
+│   │                     Binär-Hook 90_boot_menu (GRUB-Einträge „Simple OS Live“)
+│   ├── bootloaders/      Boot-Menü (isolinux; Hintergrund splash.png/splash800x600.png erzeugt gen_branding.py)
 │   └── includes.chroot/  Dateien im Image, 1:1 wie im Zielsystem
 ├── build/                Arbeitsverzeichnis von live-build (wird bei jedem Build neu befüllt)
-└── output/               Simple-OS.iso, disk.qcow2
+└── output/               Simple-OS.iso (+ .sha256, .packages.txt), VM-Platten
 ```
+
+git: `build/` und `output/` sind ausgeschlossen (`.gitignore`). Leere Ordner speichert git nicht – Ordner, die
+leer ins Image sollen, legt ein Hook an (z.B. die Standardordner in `00_skel_bashrc`).
 
 `config/` wird beim Build nie verändert: `build_iso.sh` kopiert es nach `build/config`, dort ergänzt
 `tools/lb_config.sh` die lb-Standarddateien, die generierten Grafiken und das fastfetch-Paket.
@@ -56,7 +64,9 @@ simple-os/
 | `usr/share/simpleos/` | Welcome-Seite, fastfetch-Logo (Wizard-Logo wird generiert) |
 | `usr/share/themes/SimpleOS/` | Openbox-Theme (Catppuccin Mocha) |
 | `etc/lightdm/` | Login-Manager: Greeter-Theme, Openbox als Standard-Session, Live-Autologin |
-| `etc/calamares/` | Installer-Branding und Zusatzmodule |
+| `etc/calamares/` | Installer-Branding (Links zu GitHub: Projekt, Fehler, bekannte Probleme, Releases) und Zusatzmodule |
+| `usr/lib/os-release` | Name, Version, `VERSION_CODENAME`, `HOME_URL`, `BUG_REPORT_URL` – Quelle der Fehler-Adresse für `simpleos-report` (die Installer-Links müssen dazu passen, prüft 99_verify). Hook 13 schützt die Datei per `dpkg-divert` vor base-files-Updates (sonst „Debian GNU/Linux 12“ nach jedem Punkt-Release); `/etc/os-release` bleibt ein Link darauf |
+| `usr/share/doc/simpleos/copyright` | Lizenzhinweis (GPL-3.0-or-later) mit Quellcode-Adresse |
 | `etc/X11/` | libinput-Profile, Session-Umgebung (Flatpak, Smooth Scrolling, `NO_PROXY` für localhost) |
 
 ## Nutzer-Werkzeuge
@@ -195,6 +205,13 @@ simple-os/
   das übrige Update nicht ungültig.
 - Laufwerke (gnome-disk-utility, Control Center → System → Storage, Menü → System → Disks & USB Sticks):
   USB-Sticks formatieren, ISO-Abbilder schreiben, SMART-Werte.
+- Fehler melden (`simpleos-report`, Menü → Help → Report a Problem, Control Center → System): Rofi-Fenster →
+  Bericht als `~/Desktop/simpleos-report-JJJJMMTT-HHMM.txt` (System, Hardware, Grafik, Netz, Ton, Speicher, Akku,
+  fehlgeschlagene Dienste, Simple-OS-Protokolle, Sitzungsfehler; mit Passwort zusätzlich Systemprotokoll dieses
+  und des vorigen Starts, Kernel-Warnungen, apt-Verlauf über `pkexec simpleos-report-helper`). Vor dem Speichern
+  ersetzt `redact()` Benutzer-, Klar- und Rechnernamen, gespeicherte Verbindungen (WLAN-Namen), IPv4/IPv6, MAC,
+  Seriennummern, E-Mails. Danach öffnet sich `BUG_REPORT_URL` (GitHub: `…/issues/new` mit Vorlage); ohne Adresse
+  nur speichern. `--collect [--system]` / `--redact` / `--url` ohne Fenster (Tests im Verify-Hook).
 - Drucken & Scannen (`45-printing`, Control Center → System, Menü → Settings → Printers & Scanners): CUPS +
   Avahi/libnss-mdns (Netzwerkdrucker ohne Treiber, IPP Everywhere/AirPrint), ipp-usb (USB), printer-driver-all
   und Foomatic-PPDs für ältere Geräte, system-config-printer (+ -udev, cups-pk-helper: Passwortdialog statt

@@ -16,7 +16,7 @@ Erkennung (lspci -nnk, lsusb, lscpu, /sys/class/net/*/wireless, dpkg-query, syst
            NVIDIA ab Maxwell -> nvidia-driver; Kepler -> nvidia-tesla-470-driver (Bookworm: 525/535 können
            Kepler nicht mehr); ältere -> bleibt beim freien nouveau. AMD -> firmware-amd-graphics. Virtuelle
            Grafik (VM) -> nichts. Proprietäre NVIDIA-Module brauchen linux-headers-amd64 (DKMS); bei aktivem
-           Secure Boot kommt ein Hinweis (Modul ist unsigniert).
+           Secure Boot kommt ein Hinweis (dkms signiert mit einem eigenen Schlüssel, den die Firmware nicht kennt).
   WLAN     Gerät ohne gebundenen Treiber bzw. ohne WLAN-Schnittstelle -> Firmware des Herstellers
            (Intel firmware-iwlwifi, Realtek firmware-realtek, Atheros/Qualcomm firmware-atheros, MediaTek/Ralink
            firmware-misc-nonfree, Broadcom firmware-brcm80211 bzw. broadcom-sta-dkms für die "wl"-Chips).
@@ -208,8 +208,10 @@ def scan(raw):
             else:
                 g["status"] = "Open-source driver (nouveau) – no newer NVIDIA driver supports this card"
             if g["packages"] and (raw.get("secureboot") or "").strip() == "1":
-                notes.append("Secure Boot is on: the NVIDIA driver only loads after you turn Secure Boot off "
-                             "or enroll its key (you are asked during installation).")
+                # Debians dkms signiert das Modul mit /var/lib/dkms/mok.key, registriert den Schlüssel aber nicht
+                # (die Abfrage per update-secureboot-policy gibt es nur unter Ubuntu) -> ohne Hinweis bliebe es still
+                notes.append("Secure Boot is on: the NVIDIA driver only works after you turn Secure Boot off "
+                             "in your computer's firmware settings (BIOS/UEFI).")
         elif ven == "8086" and intel_gen12(dev):
             fam, prefixes = intel_gen12(dev)
             g["name"] = g["name"] if fam.split()[0] in g["name"] else f"{g['name']} ({fam})"

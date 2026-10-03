@@ -46,4 +46,11 @@ if [[ -z "$ISO" ]]; then
 fi
 sudo mv "$ISO" output/Simple-OS.iso
 
+# Für den Download: Prüfsumme (nur der Dateiname drin, damit "sha256sum -c" im Download-Ordner klappt) und die
+# Paketliste mit genauen Versionen – darüber findet man den Quellcode jedes Pakets (snapshot.debian.org, GPL).
+(cd output && sha256sum Simple-OS.iso) | sudo tee output/Simple-OS.iso.sha256 >/dev/null
+sudo cp build/live-image-amd64.packages output/Simple-OS.packages.txt
+
 echo "Fertig: output/Simple-OS.iso (Log: build/build.log)"
+echo "  Prüfsumme:  output/Simple-OS.iso.sha256  ($(cut -d' ' -f1 output/Simple-OS.iso.sha256))"
+echo "  Paketliste: output/Simple-OS.packages.txt"
