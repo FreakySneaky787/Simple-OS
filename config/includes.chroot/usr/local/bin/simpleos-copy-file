@@ -1,0 +1,26 @@
+#!/bin/sh
+# Simple OS – "Copy to Clipboard" (Thunar: Rechtsklick auf Dateien)
+#   Bild (eine Datei)       -> das Bild selbst (zum Einfügen in Chat, Mail, Office)
+#   Textdatei (eine Datei)  -> der Inhalt (bis 1 MB)
+#   sonst / mehrere Dateien -> die Pfade, eine Zeile pro Datei
+# Über xclip; Meldung, was kopiert wurde.
+note() { notify-send -c x-simpleos -i edit-copy "Clipboard" "$1" 2>/dev/null; }
+[ $# -gt 0 ] || { echo "Aufruf: simpleos-copy-file DATEI…" >&2; exit 2; }
+command -v xclip >/dev/null || { note "Copying is not available (xclip missing)."; exit 0; }
+if [ $# -eq 1 ] && [ -f "$1" ]; then
+    mime=$(file -b --mime-type "$1" 2>/dev/null)
+    case "$mime" in
+        image/png|image/jpeg|image/gif|image/webp|image/bmp|image/svg+xml)
+            xclip -selection clipboard -t "$mime" -i "$1" >/dev/null 2>&1 </dev/null &&
+                { note "Picture copied: ${1##*/}"; exit 0; } ;;
+        text/*|application/json|application/xml|application/x-shellscript)
+            if [ "$(wc -c < "$1")" -le 1048576 ]; then
+                xclip -selection clipboard -i "$1" >/dev/null 2>&1 </dev/null &&
+                    { note "Text copied: ${1##*/}"; exit 0; }
+            fi ;;
+    esac
+fi
+printf '%s\n' "$@" | xclip -selection clipboard >/dev/null 2>&1 &&
+    { if [ $# -eq 1 ]; then note "Path copied: $1"; else note "$# paths copied."; fi; exit 0; }
+note "Nothing could be copied."
+exit 0

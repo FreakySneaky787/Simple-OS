@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Taskbar & Panel
+Comment=Position, layout and look of the taskbar
+Exec=simpleos-taskbar-select
+Icon=preferences-desktop
+Categories=Settings;DesktopSettings;

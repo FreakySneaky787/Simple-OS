@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Hardware & Drivers
+Comment=Check graphics, Wi-Fi and CPU drivers and install missing ones
+Exec=/usr/local/bin/simpleos-drivers
+Icon=preferences-system
+Categories=Settings;HardwareSettings;
+Keywords=driver;drivers;nvidia;firmware;wifi;wlan;microcode;hardware;treiber;

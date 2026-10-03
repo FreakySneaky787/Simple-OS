@@ -1,0 +1,370 @@
+#!/usr/bin/python3
+"""Simple OS – Treiber- & Hardware-Assistent (Control Center → System → Hardware & Drivers).
+
+    simpleos-drivers                 Control Center auf der Seite System öffnen
+    simpleos-drivers --json          Bericht als JSON (das Control Center liest ihn)
+    simpleos-drivers --summary       Bericht als Text
+    simpleos-drivers --install       empfohlene Pakete installieren (pkexec simpleos-system-setup --drivers …,
+                                     Fortschritt in simpleos-progress, danach EINE Meldung)
+
+Erkennung (lspci -nnk, lsusb, lscpu, /sys/class/net/*/wireless, dpkg-query, systemd-detect-virt):
+  Grafik   Intel ab Gen 12 (Tiger/Alder/Raptor/Meteor Lake …): GuC/HuC/DMC-Firmware muss da sein (Paket
+           firmware-misc-nonfree, seit firmware-nonfree 2025 aus Backports zusätzlich firmware-intel-graphics);
+           geprüft werden die Dateien selbst. Bindet gar kein Treiber (Chip neuer als der Kernel, z.B. Raptor Lake
+           0xA7AA mit Kernel 6.1 -> 800x600), wird der aktuelle Kernel aus Backports empfohlen (linux-image-amd64,
+           Pinning in /etc/apt/preferences.d/simpleos-backports.pref).
+           NVIDIA ab Maxwell -> nvidia-driver; Kepler -> nvidia-tesla-470-driver (Bookworm: 525/535 können
+           Kepler nicht mehr); ältere -> bleibt beim freien nouveau. AMD -> firmware-amd-graphics. Virtuelle
+           Grafik (VM) -> nichts. Proprietäre NVIDIA-Module brauchen linux-headers-amd64 (DKMS); bei aktivem
+           Secure Boot kommt ein Hinweis (Modul ist unsigniert).
+  WLAN     Gerät ohne gebundenen Treiber bzw. ohne WLAN-Schnittstelle -> Firmware des Herstellers
+           (Intel firmware-iwlwifi, Realtek firmware-realtek, Atheros/Qualcomm firmware-atheros, MediaTek/Ralink
+           firmware-misc-nonfree, Broadcom firmware-brcm80211 bzw. broadcom-sta-dkms für die "wl"-Chips).
+  CPU      intel-microcode / amd64-microcode (Image baut ohne Recommends, daher oft nicht installiert);
+           in einer VM kümmert sich der Gastgeber darum.
+  Basis    firmware-linux-nonfree.
+Bereits installierte Pakete werden nie empfohlen. Die Erkennung ist eine reine Funktion (scan) – Tests:
+SIMPLEOS_HW_ROOT=DIR liest lspci.txt, lsusb.txt, lscpu.txt, installed.txt (Paketnamen), virt.txt,
+wireless.txt ("wlan0 iwlwifi" je Zeile), secureboot.txt ("1"), firmware.txt (Dateien unter /lib/firmware, z.B.
+"i915/adlp_dmc.bin") und kernel.txt (uname -r) statt der echten Befehle.
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+
+PCI_HEAD = re.compile(r"^(\S+) (.+?) \[([0-9a-f]{4})\]: (.+?) \[([0-9a-f]{4}):([0-9a-f]{4})\](?: \(rev \w+\))?$")
+USB_LINE = re.compile(r"^Bus \d+ Device \d+: ID ([0-9a-f]{4}):([0-9a-f]{4}) ?(.*)$")
+KEPLER = ((0x0FC0, 0x0FFF), (0x1000, 0x103F), (0x1180, 0x11FF), (0x1280, 0x12BF))
+MAXWELL_FIRST = 0x1340
+# Broadcom-Chips, die nur der proprietäre "wl"-Treiber (broadcom-sta-dkms) kann
+BROADCOM_WL = {0x4311, 0x4312, 0x4313, 0x4315, 0x4328, 0x4329, 0x432A, 0x432B, 0x432C, 0x432D, 0x4331,
+               0x4358, 0x4359, 0x4360, 0x4365, 0x43A0, 0x43B1}
+VIRTUAL_GPU_VENDORS = {"1af4", "1b36", "15ad", "80ee", "1234", "1414"}
+WIFI_FIRMWARE = {"8086": "firmware-iwlwifi", "10ec": "firmware-realtek", "168c": "firmware-atheros",
+                 "17cb": "firmware-atheros", "14c3": "firmware-misc-nonfree", "1814": "firmware-misc-nonfree"}
+USB_WIFI_FIRMWARE = {"0bda": "firmware-realtek", "0cf3": "firmware-atheros", "148f": "firmware-misc-nonfree",
+                     "0e8d": "firmware-misc-nonfree", "8087": "firmware-iwlwifi", "0a5c": "firmware-brcm80211"}
+HEADERS = "linux-headers-amd64"
+KERNEL = "linux-image-amd64"
+# Intel-Grafik ab Gen 12: PCI-Geräte-ID-Bereich -> (Name, Präfixe der Firmware-Dateien, von denen eine da sein muss)
+INTEL_GEN12 = (
+    ((0x9A40, 0x9AFF), "Tiger Lake", ("i915/tgl_",)),
+    ((0x4C80, 0x4CFF), "Rocket Lake", ("i915/rkl_", "i915/tgl_")),
+    ((0x4900, 0x49FF), "DG1", ("i915/dg1_",)),
+    ((0x4680, 0x469F), "Alder Lake-S", ("i915/adls_", "i915/tgl_")),
+    ((0xA780, 0xA78F), "Raptor Lake-S", ("i915/adls_", "i915/tgl_")),
+    ((0x4600, 0x46FF), "Alder Lake", ("i915/adlp_",)),
+    ((0xA700, 0xA7FF), "Raptor Lake", ("i915/adlp_",)),
+    ((0x5690, 0x56FF), "Arc (DG2)", ("i915/dg2_",)),
+    ((0x7D00, 0x7DFF), "Meteor/Arrow Lake", ("i915/mtl_",)),
+    ((0x6420, 0x64FF), "Lunar Lake", ("xe/lnl_",)),
+    ((0xB080, 0xB0FF), "Panther Lake", ("xe/ptl_",)),
+    ((0xE200, 0xE2FF), "Arc B-Series", ("xe/bmg_",)),
+)
+# Alles, was --install anbieten darf (simpleos-system-setup prüft dieselbe Liste noch einmal als root)
+ALLOWED = {"firmware-linux-nonfree", "firmware-misc-nonfree", "firmware-intel-graphics", KERNEL,
+           "firmware-amd-graphics", "firmware-realtek",
+           "firmware-iwlwifi", "firmware-atheros", "firmware-brcm80211", "broadcom-sta-dkms", "nvidia-driver",
+           "nvidia-tesla-470-driver", HEADERS, "intel-microcode", "amd64-microcode"}
+
+
+# ---------------------------------------------------------------- Rohdaten
+def _hw_file(name):
+    root = os.environ.get("SIMPLEOS_HW_ROOT")
+    if not root:
+        return None
+    try:
+        with open(os.path.join(root, name)) as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
+def _run(*cmd):
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=15).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def raw_inputs():
+    """Texte der Hardware-Abfragen (oder der Test-Dateien)."""
+    if os.environ.get("SIMPLEOS_HW_ROOT"):
+        return {k: _hw_file(k + ".txt") for k in ("lspci", "lsusb", "lscpu", "installed", "virt", "wireless",
+                                                    "secureboot", "firmware", "kernel")}
+    wireless = []
+    for iface in sorted(os.listdir("/sys/class/net")) if os.path.isdir("/sys/class/net") else []:
+        if os.path.isdir(f"/sys/class/net/{iface}/wireless") or os.path.isdir(f"/sys/class/net/{iface}/phy80211"):
+            drv = os.path.basename(os.path.realpath(f"/sys/class/net/{iface}/device/driver")) \
+                if os.path.exists(f"/sys/class/net/{iface}/device/driver") else ""
+            wireless.append(f"{iface} {drv}".strip())
+    sb = ""
+    efivars = "/sys/firmware/efi/efivars"
+    if os.path.isdir(efivars):
+        for n in os.listdir(efivars):
+            if n.startswith("SecureBoot-"):
+                try:
+                    with open(os.path.join(efivars, n), "rb") as f:
+                        data = f.read()
+                    sb = "1" if data[-1:] == b"\x01" else "0"
+                except OSError:
+                    pass
+    pkgs = " ".join(sorted(ALLOWED | {"firmware-linux"}))
+    installed = _run("sh", "-c", "dpkg-query -W -f='${Package} ${Status}\\n' " + pkgs + " 2>/dev/null")
+    installed = "\n".join(l.split()[0] for l in installed.splitlines() if l.endswith("install ok installed"))
+    virt = _run("systemd-detect-virt", "--vm").strip() or "none"
+    fw = []
+    for sub in ("i915", "xe"):
+        d = os.path.join("/lib/firmware", sub)
+        if os.path.isdir(d):
+            fw += [f"{sub}/{n}" for n in sorted(os.listdir(d))]
+    return {"lspci": _run("lspci", "-nnk"), "lsusb": _run("lsusb"), "lscpu": _run("lscpu"), "installed": installed,
+            "virt": virt, "wireless": "\n".join(wireless), "secureboot": sb, "firmware": "\n".join(fw),
+            "kernel": os.uname().release}
+
+
+def parse_lspci(text):
+    devices, cur = [], None
+    for line in (text or "").splitlines():
+        m = PCI_HEAD.match(line)
+        if m:
+            cur = {"slot": m.group(1), "class": m.group(2), "class_id": m.group(3), "name": m.group(4),
+                   "vendor": m.group(5), "device": m.group(6), "driver": "", "modules": ""}
+            devices.append(cur)
+        elif cur and line.startswith("\t"):
+            key, _, val = line.strip().partition(": ")
+            if key == "Kernel driver in use":
+                cur["driver"] = val.strip()
+            elif key == "Kernel modules":
+                cur["modules"] = val.strip()
+    return devices
+
+
+def intel_gen12(dev):
+    """(Familie, Firmware-Präfixe) für Intel-Grafik ab Gen 12, sonst None."""
+    for (a, b), fam, prefixes in INTEL_GEN12:
+        if a <= dev <= b:
+            return fam, prefixes
+    return None
+
+
+def kernel_older(release, ref):
+    """'6.1.0-53-amd64' < (6, 12)? Unbekannt -> False."""
+    m = re.match(r"(\d+)\.(\d+)", release or "")
+    return bool(m) and (int(m.group(1)), int(m.group(2))) < ref
+
+
+def short_name(name):
+    """'Intel Corporation Alder Lake-P GT2 [Iris Xe Graphics]' -> 'Intel Iris Xe Graphics'."""
+    vendor = name.split()[0] if name else ""
+    vendor = {"Advanced": "AMD", "NVIDIA": "NVIDIA", "Intel": "Intel"}.get(vendor, vendor)
+    inner = [i for i in re.findall(r"\[([^\]]+)\]", name) if not re.fullmatch(r"[A-Z]+/[A-Z]+", i)]  # nicht "[AMD/ATI]"
+    model = inner[-1] if inner else re.sub(
+        r"^.*?(Corporation|Inc\. and subsidiaries|Semiconductor Co\., Ltd\.|Co\., Ltd\.|Inc\.)\s+", "", name, count=1)
+    if model.lower().startswith(vendor.lower()):
+        return model
+    return f"{vendor} {model}".strip()
+
+
+# ---------------------------------------------------------------- Erkennung
+def scan(raw):
+    installed = set((raw.get("installed") or "").split())
+    virt = (raw.get("virt") or "none").strip() or "none"
+    in_vm = virt != "none"
+    wireless = [l.split() for l in (raw.get("wireless") or "").splitlines() if l.strip()]
+    pci = parse_lspci(raw.get("lspci"))
+    firmware = tuple(l.strip() for l in (raw.get("firmware") or "").splitlines() if l.strip())
+    want, notes = [], []
+
+    def need(*pkgs):
+        for p in pkgs:
+            if p in ALLOWED and p not in installed and p not in want:
+                want.append(p)
+        return [p for p in pkgs if p not in installed]
+
+    # Grafik
+    gpus = []
+    for d in pci:
+        if not d["class_id"].startswith("03"):
+            continue
+        name, ven, dev = short_name(d["name"]), d["vendor"], int(d["device"], 16)
+        g = {"name": name, "driver": d["driver"] or "none", "packages": []}
+        if ven in VIRTUAL_GPU_VENDORS or in_vm:
+            g["status"] = "Virtual graphics – no driver needed"
+        elif ven == "10de":
+            if d["driver"] == "nvidia":
+                g["status"] = "NVIDIA driver active"
+            elif dev >= MAXWELL_FIRST:
+                g["packages"] = need("nvidia-driver", "firmware-misc-nonfree", HEADERS)
+                g["status"] = ("Open-source driver – the NVIDIA driver is faster" if g["packages"]
+                               else "NVIDIA driver installed – active after a restart")
+            elif any(a <= dev <= b for a, b in KEPLER):
+                g["packages"] = need("nvidia-tesla-470-driver", "firmware-misc-nonfree", HEADERS)
+                g["status"] = ("Open-source driver – NVIDIA 470 driver available for this card" if g["packages"]
+                               else "NVIDIA 470 driver installed – active after a restart")
+            else:
+                g["status"] = "Open-source driver (nouveau) – no newer NVIDIA driver supports this card"
+            if g["packages"] and (raw.get("secureboot") or "").strip() == "1":
+                notes.append("Secure Boot is on: the NVIDIA driver only loads after you turn Secure Boot off "
+                             "or enroll its key (you are asked during installation).")
+        elif ven == "8086" and intel_gen12(dev):
+            fam, prefixes = intel_gen12(dev)
+            g["name"] = g["name"] if fam.split()[0] in g["name"] else f"{g['name']} ({fam})"
+            have_fw = any(f.startswith(prefixes) for f in firmware)
+            if not d["driver"]:
+                kver = (raw.get("kernel") or "").strip()
+                if kernel_older(kver, (6, 12)):
+                    # linux-image-amd64 ist als Metapaket immer installiert -> trotzdem empfehlen: mit dem
+                    # Backports-Pinning hebt apt es auf den aktuellen Kernel
+                    if KERNEL not in want:
+                        want.append(KERNEL)
+                    g["packages"] = [KERNEL]
+                    g["status"] = (f"No driver for this graphics chip in kernel {kver} – the screen stays at a low "
+                                   "resolution until the newer kernel is installed")
+                else:
+                    g["status"] = (f"No driver for this graphics chip yet (kernel {kver or '?'}) – the screen "
+                                   "stays at a low resolution")
+            elif not have_fw or "firmware-misc-nonfree" not in installed:
+                g["packages"] = need("firmware-misc-nonfree", "firmware-intel-graphics")
+                g["status"] = ("Firmware missing (power saving, video decoding)" if g["packages"]
+                               else "Firmware installed – active after a restart")
+            else:
+                g["status"] = f"Working ({d['driver']})"
+        elif ven == "1002":
+            g["packages"] = need("firmware-amd-graphics")
+            g["status"] = "Firmware missing" if g["packages"] else f"Working ({d['driver'] or 'amdgpu'})"
+        else:
+            g["status"] = f"Working ({d['driver']})" if d["driver"] else "No driver in use"
+        gpus.append(g)
+
+    # WLAN (PCI + USB)
+    wifi = []
+    for d in pci:
+        if d["class_id"] != "0280":
+            continue
+        ven, dev = d["vendor"], int(d["device"], 16)
+        iface = next((w for w in wireless if len(w) > 1 and w[1] == d["driver"]), None) if d["driver"] else None
+        w = {"name": short_name(d["name"]), "driver": d["driver"] or "none", "packages": []}
+        if d["driver"] and (iface or not wireless and in_vm):
+            w["status"] = f"Working ({iface[0] if iface else d['driver']})"
+        elif ven == "14e4":
+            w["packages"] = need("broadcom-sta-dkms", HEADERS) if dev in BROADCOM_WL else need("firmware-brcm80211")
+            w["status"] = "Driver missing" if w["packages"] else "Driver installed – active after a restart"
+        elif ven in WIFI_FIRMWARE:
+            w["packages"] = need(WIFI_FIRMWARE[ven])
+            w["status"] = "Firmware missing" if w["packages"] else (
+                "Driver loaded, but no Wi-Fi interface – try a restart" if d["driver"] else "No driver found")
+        else:
+            w["status"] = "No driver found"
+        wifi.append(w)
+    for line in (raw.get("lsusb") or "").splitlines():
+        m = USB_LINE.match(line.strip())
+        # nur WLAN-Sticks – nicht Funkmäuse/-tastaturen ("Wireless Mouse", "Wireless Receiver")
+        if not m or not re.search(r"802\.11|wlan|wi-?fi|wireless (network|lan|adapter)", m.group(3), re.I):
+            continue
+        w = {"name": m.group(3) or f"USB Wi-Fi {m.group(1)}:{m.group(2)}", "driver": "", "packages": []}
+        if wireless:
+            w["status"] = "Working"
+        elif m.group(1) in USB_WIFI_FIRMWARE:
+            w["packages"] = need(USB_WIFI_FIRMWARE[m.group(1)])
+            w["status"] = "Firmware missing" if w["packages"] else "No Wi-Fi interface – try a restart"
+        else:
+            w["status"] = "No driver found"
+        wifi.append(w)
+
+    # CPU-Microcode
+    cpu_vendor = re.search(r"^Vendor ID:\s*(\S+)", raw.get("lscpu") or "", re.M)
+    cpu_model = re.search(r"^Model name:\s*(.+)$", raw.get("lscpu") or "", re.M)
+    cpu = {"name": cpu_model.group(1).strip() if cpu_model else "Unknown CPU", "packages": []}
+    mc = {"GenuineIntel": "intel-microcode", "AuthenticAMD": "amd64-microcode"}.get(
+        cpu_vendor.group(1) if cpu_vendor else "")
+    if in_vm:
+        cpu["status"] = "Microcode is handled by the host (virtual machine)"
+    elif not mc:
+        cpu["status"] = "No microcode package for this CPU"
+    else:
+        cpu["packages"] = need(mc)
+        cpu["status"] = "Microcode update missing (security and stability fixes)" if cpu["packages"] \
+            else "Microcode up to date"
+
+    # Basis-Firmware
+    if not in_vm:
+        need("firmware-linux-nonfree")
+
+    return {"virt": virt, "gpu": gpus, "wifi": wifi, "cpu": cpu, "recommended": want, "notes": notes}
+
+
+def summary(rep):
+    out = []
+    for g in rep["gpu"] or [{"name": "No graphics card found", "status": ""}]:
+        out.append(f"Graphics: {g['name']} – {g['status']}")
+    for w in rep["wifi"] or [{"name": "No Wi-Fi adapter found", "status": ""}]:
+        out.append(f"Wi-Fi: {w['name']} – {w['status']}".rstrip(" –"))
+    out.append(f"CPU: {rep['cpu']['name']} – {rep['cpu']['status']}")
+    out += [f"Note: {n}" for n in rep["notes"]]
+    out.append("Recommended: " + (" ".join(rep["recommended"]) or "nothing – all drivers are installed"))
+    return "\n".join(out)
+
+
+# ---------------------------------------------------------------- Installation
+def notify(text, urgency="normal"):
+    try:
+        subprocess.run(["notify-send", "-u", urgency, "-c", "x-simpleos", "-a", "Hardware & Drivers",
+                        "-i", "preferences-system", "Hardware & Drivers", text], timeout=5,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
+def install(rep):
+    pkgs = [p for p in rep["recommended"] if p in ALLOWED]
+    if not pkgs:
+        notify("All recommended drivers are already installed.", "low")
+        return 0
+    log = os.path.join(os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache"), "simpleos-drivers.log")
+    os.makedirs(os.path.dirname(log), exist_ok=True)
+    with tempfile.NamedTemporaryFile("w", prefix="simpleos-drivers.", delete=False) as out:
+        feed = out.name
+    prog = None
+    if os.access("/usr/local/bin/simpleos-progress", os.X_OK):
+        prog = subprocess.Popen(["/usr/local/bin/simpleos-progress", "--follow", feed, "--title", "Installing drivers",
+                                 "--done", "Drivers installed", "--hint", "Restart afterwards to use them",
+                                 "--app", "Hardware & Drivers", "--icon-name", "preferences-system",
+                                 "--pid", str(os.getpid())], stderr=subprocess.DEVNULL)
+    with open(feed, "a") as fo, open(log, "a") as fl:
+        rc = subprocess.call(["pkexec", "/usr/local/sbin/simpleos-system-setup", "--drivers", *pkgs],
+                             stdout=fo, stderr=fl)
+        fo.write(f"EXIT: {rc}\n")
+    if prog:
+        prog.wait()
+    os.unlink(feed)
+    if rc == 0:
+        notify("Drivers installed. Restart the computer to use them.")
+    elif rc in (126, 127):
+        notify("No password entered – nothing was changed.", "low")
+    else:
+        notify("The drivers could not be installed. Details: ~/.cache/simpleos-drivers.log", "critical")
+    return 0
+
+
+def main(argv):
+    arg = argv[1] if len(argv) > 1 else ""
+    if arg == "--json":
+        print(json.dumps(scan(raw_inputs()), indent=1))
+    elif arg == "--summary":
+        print(summary(scan(raw_inputs())))
+    elif arg == "--install":
+        return install(scan(raw_inputs()))
+    elif arg == "":
+        os.execvp("simpleos-control-center", ["simpleos-control-center", "system"])
+    else:
+        print("Aufruf: simpleos-drivers [--json|--summary|--install]", file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

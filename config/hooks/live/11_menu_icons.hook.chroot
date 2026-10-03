@@ -1,0 +1,50 @@
+#!/bin/sh
+set -e
+# Symbole für das Openbox-Rechtsklick-Menü: einfarbige Papirus-"symbolic"-Symbole, umgefärbt auf Catppuccin
+# Mocha (Papirus-Dark zeichnet sie fest in #dfdfdf). Normale Einträge Subtext1 #bac2de, "Install Simple OS"
+# Mauve #cba6f7. Openbox lädt Symbole nur über Dateipfade (kein Icon-Theme) -> feste Kopien unter
+#   /usr/share/simpleos/menu-icons/<name>.svg   (menu.xml verweist darauf, 99_verify prüft jeden Pfad)
+SRC=/usr/share/icons/Papirus-Dark/symbolic
+DEST=/usr/share/simpleos/menu-icons
+mkdir -p "$DEST"
+while read -r name file color; do
+    [ -n "$name" ] || continue
+    [ -f "$SRC/$file" ] || { echo "11_menu_icons: $SRC/$file fehlt" >&2; exit 1; }
+    sed "s/#dfdfdf/$color/g" "$SRC/$file" > "$DEST/$name.svg"
+    grep -q "$color" "$DEST/$name.svg"
+done <<'LIST'
+install      devices/drive-harddisk-symbolic.svg                #cba6f7
+terminal     apps/utilities-terminal-symbolic.svg               #bac2de
+files        places/folder-symbolic.svg                         #bac2de
+browser      apps/web-browser-symbolic.svg                      #bac2de
+store        apps/system-software-install-symbolic.svg          #bac2de
+apps         actions/view-app-grid-symbolic.svg                 #bac2de
+pdf          mimetypes/x-office-document-symbolic.svg           #bac2de
+editor       apps/accessories-text-editor-symbolic.svg          #bac2de
+calculator   apps/accessories-calculator-symbolic.svg           #bac2de
+media        apps/multimedia-video-player-symbolic.svg          #bac2de
+image        mimetypes/image-x-generic-symbolic.svg             #bac2de
+taskmanager  apps/utilities-system-monitor-symbolic.svg         #bac2de
+settings     emblems/emblem-system-symbolic.svg                 #bac2de
+display      devices/video-display-symbolic.svg                 #bac2de
+sound        status/audio-volume-high-symbolic.svg              #bac2de
+wifi         devices/network-wireless-symbolic.svg              #bac2de
+bluetooth    apps/bluetooth-symbolic.svg                        #bac2de
+printer      devices/printer-symbolic.svg                       #bac2de
+night        status/night-light-symbolic.svg                    #bac2de
+netinfo      places/network-workgroup-symbolic.svg              #bac2de
+appearance   apps/org.gnome.Settings-appearance-symbolic.svg    #bac2de
+updates      status/software-update-available-symbolic.svg      #bac2de
+taskbar      apps/preferences-ubuntu-panel-symbolic.svg         #bac2de
+wizard       actions/system-run-symbolic.svg                    #bac2de
+help         apps/help-browser-symbolic.svg                     #bac2de
+welcome      actions/help-about-symbolic.svg                    #bac2de
+keys         devices/input-keyboard-symbolic.svg                #bac2de
+power        actions/system-shutdown-symbolic.svg               #bac2de
+system       devices/computer-symbolic.svg                      #bac2de
+backup       apps/deja-dup-symbolic.svg                         #bac2de
+cleaner      places/user-trash-symbolic.svg                     #bac2de
+disks        devices/drive-removable-media-symbolic.svg         #bac2de
+dnd          status/notifications-disabled-symbolic.svg         #bac2de
+search       actions/system-search-symbolic.svg                 #bac2de
+LIST

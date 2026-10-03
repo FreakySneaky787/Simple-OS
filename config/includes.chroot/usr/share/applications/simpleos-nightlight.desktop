@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Night Light
+Comment=Warmer screen colors in the evening
+Exec=/usr/local/bin/simpleos-nightlight
+Icon=weather-clear-night
+Categories=Settings;
+Keywords=night;blue;filter;warm;redshift;gammastep;

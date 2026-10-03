@@ -1,0 +1,60 @@
+#!/bin/sh
+# Simple OS – Meldungen für USB-Sticks und -Festplatten. udiskie (Openbox-Autostart) bindet angesteckte
+# Laufwerke automatisch ein und ruft bei jedem Ereignis dieses Skript auf (--notify-command):
+#   simpleos-usb-notify <event> <mount_path> <id_label> <drive_label>
+#   device_mounted   -> "USB drive is ready" mit Knöpfen "Open" (Klick auf die Meldung genügt) -> Dateimanager
+#                       und "Safely remove" -> aushängen + Laufwerk abschalten (udiskie-umount --detach)
+#   device_unmounted -> "can be removed safely"
+#   job_failed       -> verständliche Fehlermeldung
+# Andere Ereignisse werden ignoriert. Kein set -e, immer Exit 0; Details in ~/.cache/simpleos-usb-notify.log.
+
+SOS_NAME=simpleos-usb-notify SOS_TITLE="USB drive" SOS_ICON=drive-removable-media
+LIB=/usr/local/lib/simpleos/common.sh
+# "." auf eine fehlende Datei würde dash sofort beenden -> vorher prüfen
+[ -r "$LIB" ] || exit 0
+. "$LIB"
+sos_log_init "$@"
+
+event=${1:-} path=${2:-} label=${3:-} drive=${4:-}
+# Anzeigename: Datenträgername, sonst Laufwerksname, sonst neutral; "None" liefert udiskie für leere Felder
+[ "$label" = None ] && label=
+[ "$drive" = None ] && drive=
+name=${label:-${drive:-USB drive}}
+
+open_files() {
+    if command -v thunar >/dev/null; then exec thunar "$1"; fi
+    if command -v xdg-open >/dev/null; then exec xdg-open "$1"; fi
+    sos_notify "Your files are in $1"
+    exit 0
+}
+
+# Sicher entfernen: aushängen und Laufwerk abschalten. Die Meldung "can be removed safely" kommt danach von
+# selbst (udiskie meldet device_unmounted). Noch geöffnete Dateien -> verständlicher Hinweis.
+eject() {
+    if command -v udiskie-umount >/dev/null; then
+        udiskie-umount --detach "$1" >&2 2>&1 && return 0
+    elif command -v udisksctl >/dev/null; then
+        dev=$(findmnt -n -o SOURCE --target "$1" 2>/dev/null)
+        [ -n "$dev" ] && udisksctl unmount -b "$dev" >&2 2>&1 && { udisksctl power-off -b "$dev" >&2 2>&1; return 0; }
+    fi
+    sos_notify "\"$name\" is still in use. Close all files and windows from it, then try again." critical
+}
+
+case "$event" in
+    device_mounted)
+        [ -n "$path" ] && [ "$path" != None ] || exit 0
+        command -v notify-send >/dev/null || exit 0
+        sos_log "ask: $name mounted at $path"
+        # yes/default = Open (Klick auf die Meldung selbst), eject = Safely remove; wartet auf den Klick
+        answer=$(notify-send -c x-simpleos -a "$SOS_TITLE" -i "$SOS_ICON" -A "yes=Open" -A "eject=Safely remove" \
+                     -A "default=Open" "\"$name\" is ready" "Open it in the file manager or remove it safely." 2>/dev/null)
+        case "$answer" in
+            yes|default) open_files "$path" ;;
+            eject)       eject "$path" ;;
+        esac ;;
+    device_unmounted)
+        sos_notify "\"$name\" can now be removed safely." ;;
+    job_failed)
+        sos_notify "\"$name\" could not be opened. It may be damaged or use a format Simple OS can't read." critical ;;
+esac
+exit 0

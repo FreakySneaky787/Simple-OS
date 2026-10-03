@@ -1,0 +1,80 @@
+# Simple OS – Openbox Autostart
+# Auflösung: in VMs erst 1920x1080 als Basis (echte Monitore behalten ihre native Auflösung).
+# Bietet die virtuelle Grafik den Modus nicht an, den bevorzugten Modus nehmen statt bei 1024x768 zu bleiben.
+# Danach passt spice-vdagent Größe + Zwischenablage an, sofern die VM einen SPICE-Kanal hat
+# (Daemon spice-vdagentd startet per udev). Größe folgt dem Fenster nur mit SPICE-Client (virt-manager,
+# remote-viewer); QEMUs eingebauter qemu-vdagent (test_vm.sh) liefert nur Zwischenablage.
+if systemd-detect-virt -q --vm; then
+    xrandr -s 1920x1080 2>/dev/null || xrandr --auto 2>/dev/null || true
+fi
+# Standardordner (Documents, Downloads, Pictures … kommen samt ~/.config/user-dirs.dirs aus /etc/skel): Seitenleiste
+# von Thunar und Dateidialogen beim ersten Login einmal damit füllen – braucht den echten Home-Pfad, daher nicht
+# schon in /etc/skel. Kein xdg-user-dirs-update: das legt gelöschte Ordner nicht neu an, sondern biegt sie auf ~ um
+mkdir -p ~/.config/gtk-3.0
+[ -e ~/.config/gtk-3.0/bookmarks ] || for d in Documents Downloads Pictures Music Videos; do
+    echo "file://$HOME/$d $d"
+done > ~/.config/gtk-3.0/bookmarks
+# Eigene Bildschirm-Einstellung (Settings → Display, bestätigt mit "Keep changes") hat Vorrang
+simpleos-display --restore
+# Tastaturlayout des Kontos (simpleos-keyboard-setup; systemweit steht es in /etc/default/keyboard)
+simpleos-keyboard-setup --apply
+# Live-Session (USB-Stick/ISO): Desktop-Icon "Install Simple OS" + Welcome mit Installations-Banner;
+# installiertes System: Installer-Reste aus Desktop und Menü entfernen. Badge in der Taskleiste: --apply unten
+simpleos-live --setup
+if [ -e /dev/virtio-ports/com.redhat.spice.0 ]; then
+    spice-vdagent &
+fi
+# Compositor (Schatten, runde Ecken; GLX + VSync; nur Software-OpenGL/llvmpipe -> xrender ohne Effekte, Fallbacks
+# ohne VSync/GLX): simpleos-picom – dieselbe Logik nutzt Do Not Disturb (simpleos-dnd) beim Wiedereinschalten
+simpleos-picom --start
+# XSETTINGS (xsettingsd): GTK-Theme/Symbole/Schrift für alle GTK3-Programme; simpleos-theme schaltet Hell/Dunkel
+# darüber live um (SIGHUP) – ohne Settings-Dienst sähen laufende Fenster den Wechsel erst nach einem Neustart
+simpleos-theme --xsettings
+# Hintergrund: Fallback-Farbe, dann Wallpaper per feh (synchron, sofort sichtbar),
+# danach pcmanfm für Desktop-Icons (zeichnet dasselbe Wallpaper)
+xsetroot -solid "#1e1e2e"
+feh --no-fehbg --bg-fill /usr/share/backgrounds/simpleos/wallpaper.png
+pcmanfm --desktop &
+# Standard-Mauszeiger setzen (sonst unsichtbar über dem Root-Fenster)
+xsetroot -cursor_name left_ptr &
+# Benachrichtigungen zuerst: Applets und Skripte melden sich teils direkt beim Start (z.B. nm-applet
+# "Connection established"); sonst startete D-Bus dunst nebenbei und dieser Aufruf liefe ins Leere.
+# simpleos-dunst hängt in VMs/ohne echten Akku den Akku-Filter an (keine "Battery low"-Fehlalarme)
+simpleos-dunst &
+# System-Applets für die Taskleiste
+lxpolkit &
+# NetworkManager-Applet: Linksklick aufs Tray-Symbol listet die WLANs (anklicken, Passwort eingeben)
+nm-applet &
+blueman-applet &
+# Power-Manager nur mit echtem Akku (nicht in VMs, nicht am Desktop-PC): sonst meldete er über UPower
+# Phantom-Geräte mit 0 % als "low power". Meldungen/Tray-Symbol sind ohnehin aus
+# (/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml), Akku-Anzeige: tint2 + simpleos-battery
+simpleos-battery --present && xfce4-power-manager &
+volumeicon &
+# Taskleiste: Einstellungen anwenden (u.a. Akkuanzeige nur auf Geräten mit Akku), dann starten.
+# Ohne DISPLAY, sonst startet --apply selbst ein tint2 und es gäbe zwei Leisten.
+env -u DISPLAY simpleos-taskbar-select --apply 2>/dev/null
+tint2 &
+# USB-Sticks/-Festplatten automatisch einbinden; Meldung mit "Open" über simpleos-usb-notify (statt der
+# technischen udiskie-Meldungen), Tray-Symbol zum sicheren Entfernen nur, solange ein Laufwerk steckt
+udiskie --automount --no-notify --smart-tray --file-manager thunar \
+    --notify-command "/usr/local/bin/simpleos-usb-notify {event} {mount_path} {id_label} {drive_label}" &
+# Updates: 2 Minuten nach dem Login prüfen – Meldung nur, wenn es welche gibt (nicht in der Live-Session)
+(sleep 120; /usr/local/bin/simpleos-update --check) &
+# Zwischenablage-Verlauf (Super+V) merkt sich kopierte Texte
+simpleos-clipboard --daemon &
+# Nachtmodus (an/aus/automatisch 20–7 Uhr, Settings → Night Light) und Bildschirm-Abschaltung (Control Center → Power)
+simpleos-nightlight --daemon &
+# Dynamic Wallpaper (Control Center → Appearance): tagsüber hell, abends/Nachtmodus dunkel – ohne Einschalten still
+simpleos-wallpaper-schedule --daemon &
+simpleos-power --apply
+# Super-Taste allein antippen -> XF86Search (Openbox: Suche/Menü). Bewusst eine eigene Taste statt eines
+# künstlichen Super+Space: das vermischte sich mit echtem Super+Space (Menü ging auf und gleich wieder
+# zu oder gar nicht) und mit Super-Kürzeln. Super+Space bleibt eine eigene Openbox-Taste; erneutes Antippen
+# schließt das Menü (Rofi: kb-cancel XF86Search). Hält man Super länger als 500 ms, passiert nichts.
+pkill -x xcape 2>/dev/null
+xcape -e 'Super_L=XF86Search;Super_R=XF86Search' &
+# Einrichtungsassistent beim ersten Login (nicht in der Live-Session). Mit SPICE kurz warten, bis
+# spice-vdagent die Auflösung gesetzt hat – sonst wird der Wizard auf der alten Bildschirmgröße zentriert.
+[ -e /dev/virtio-ports/com.redhat.spice.0 ] && sleep 2
+simpleos-welcome-wizard --first-run &

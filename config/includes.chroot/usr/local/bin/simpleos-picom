@@ -1,0 +1,58 @@
+#!/bin/sh
+# Simple OS – Compositor (picom) starten/stoppen: eine Stelle für Openbox-Autostart und Do Not Disturb
+#   simpleos-picom --start     starten, falls er nicht läuft (Schatten, runde Ecken, kurze Blenden)
+#   simpleos-picom --stop      beenden (Do Not Disturb mit --no-effects on: ohne Schatten/Transparenz)
+#   simpleos-picom --running   Exit 0, wenn picom läuft
+#   simpleos-picom --mode      zeigt, wie gestartet würde: "glx <Renderer>" oder "software <Renderer>"
+# OpenGL-Prüfung (glxinfo): Hardware-Renderer -> GLX mit ~/.config/picom/picom.conf. Nur Software-Rendering
+# (llvmpipe/softpipe/swrast, z.B. VM ohne 3D) oder gar kein GLX -> xrender mit picom-software.conf ohne Schatten,
+# Blenden und runde Ecken – mit den vollen Effekten rechnete picom jedes Bild auf der CPU (~55 % CPU).
+# Ohne glxinfo gilt: VM = Software-Rendering, sonst Hardware.
+# Echte Hardware: --unredir-if-possible – Vollbild-Spiele/-Videos laufen am Compositor vorbei (weniger Latenz,
+# kein zusätzliches VSync, variable Bildrate möglich). In VMs nicht (Mauszeiger verschwand unter QEMU/virtio).
+# picom 9.1 bricht ab, wenn VSync bzw. GLX nicht verfügbar ist -> ohne VSync, notfalls mit xrender.
+# Kein set -e, Exit 0 (außer --running).
+SW_CONF=/usr/share/simpleos/picom-software.conf
+running() { pgrep -x picom >/dev/null 2>&1; }
+is_vm() { command -v systemd-detect-virt >/dev/null && systemd-detect-virt -q --vm; }
+# gibt "glx <Renderer>" bzw. "software <Renderer>" aus
+gl_mode() {
+    if command -v glxinfo >/dev/null; then
+        renderer=$(glxinfo -B 2>/dev/null | sed -n 's/^OpenGL renderer string: //p' | head -n1)
+        case "$renderer" in
+            "")                                                   echo "software (kein GLX)" ;;
+            *llvmpipe*|*softpipe*|*swrast*|*"Software Rasterizer"*) echo "software $renderer" ;;
+            *)                                                    echo "glx $renderer" ;;
+        esac
+    elif is_vm; then
+        echo "software (VM, glxinfo fehlt)"
+    else
+        echo "glx (glxinfo fehlt)"
+    fi
+}
+case "${1:-}" in
+    --start)
+        running && exit 0
+        command -v picom >/dev/null || exit 0
+        case "$(gl_mode)" in
+            glx*)
+                opts=--unredir-if-possible
+                is_vm && opts=
+                # shellcheck disable=SC2086
+                picom -b $opts 2>/dev/null || picom -b $opts --no-vsync 2>/dev/null ||
+                    picom -b --backend xrender --no-vsync 2>/dev/null ;;
+            *)
+                { [ -r "$SW_CONF" ] && picom -b --config "$SW_CONF" 2>/dev/null; } ||
+                    picom -b --backend xrender --no-vsync 2>/dev/null ;;
+        esac
+        exit 0 ;;
+    --stop)
+        running || exit 0
+        pkill -x picom 2>/dev/null
+        # bis zu 2 s warten, damit ein sofortiges --start nicht auf den alten Prozess trifft
+        i=0; while running && [ "$i" -lt 20 ]; do sleep 0.1; i=$((i + 1)); done
+        exit 0 ;;
+    --running) running; exit $? ;;
+    --mode) gl_mode; exit 0 ;;
+    *) echo "Aufruf: simpleos-picom --start | --stop | --running | --mode" >&2; exit 2 ;;
+esac

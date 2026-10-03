@@ -1,0 +1,15 @@
+#!/bin/sh
+groupadd -r autologin 2>/dev/null || true
+useradd -m -s /bin/bash simple 2>/dev/null || true
+usermod -aG autologin,sudo simple 2>/dev/null || true
+# Drucker einrichten (lpadmin, CUPS) und Scanner nutzen – eigener Aufruf: fehlt eine Gruppe, scheitert sonst
+# auch sudo
+for g in lpadmin scanner; do usermod -aG "$g" simple 2>/dev/null || true; done
+echo "simple:live" | chpasswd
+# skel-Dateien auch übernehmen, falls der User schon vorher existierte
+cp -rn /etc/skel/. /home/simple/
+chown -R simple:simple /home/simple
+# sudo ignoriert sudoers-Dateien, die nicht root gehören oder nicht 0440 sind
+chown root:root /etc/sudoers.d/simple-nopasswd
+chmod 0440 /etc/sudoers.d/simple-nopasswd
+visudo -cf /etc/sudoers.d/simple-nopasswd

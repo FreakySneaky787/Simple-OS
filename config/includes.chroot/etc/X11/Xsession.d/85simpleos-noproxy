@@ -1,0 +1,5 @@
+# Simple OS: lokale Adressen nie über einen Proxy (System-Proxy, VPN-Proxy) leiten – lokale Hilfsdienste
+# und System-Apps bleiben erreichbar, auch wenn ein Proxy gesetzt ist. Bestehende Ausnahmen bleiben erhalten.
+NO_PROXY="localhost,127.0.0.1,::1${NO_PROXY:+,$NO_PROXY}"
+no_proxy="localhost,127.0.0.1,::1${no_proxy:+,$no_proxy}"
+export NO_PROXY no_proxy

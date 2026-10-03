@@ -1,0 +1,3 @@
+# Simple OS – Standardordner (Desktop, Documents, Downloads, Music, Pictures, Videos, Templates) im Home-Ordner;
+# Vorlage in /etc/skel/.config/user-dirs.dirs, Browser speichern Downloads damit nach ~/Downloads
+xdg-user-dirs

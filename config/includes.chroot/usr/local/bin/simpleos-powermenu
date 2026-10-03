@@ -1,0 +1,46 @@
+#!/bin/sh
+# Simple OS – Power-Menü (Super+X, roter Knopf rechts in der Taskleiste, Menü → Power)
+# Rofi-Flyout: Lock, Sleep, Restart, Shut down, Sign out. Esc schließt ohne Aktion.
+# Robust wie simpleos-wifi: kein set -e, jeder Pfad endet mit Exit 0, Fehler als verständliche Meldung,
+# Details in ~/.cache/simpleos-powermenu.log. Startet Rofi nicht, erklärt eine Meldung den Weg über das Menü.
+
+SOS_NAME=simpleos-powermenu SOS_TITLE=Power SOS_ICON=system-shutdown SOS_PROMPT=Power SOS_CORNER=1
+LIB=/usr/local/lib/simpleos/common.sh
+# "." auf eine fehlende Datei würde dash sofort beenden -> vorher prüfen
+[ -r "$LIB" ] || { notify-send "Power" "Simple OS is incomplete (missing $LIB)." 2>/dev/null; exit 0; }
+. "$LIB"
+sos_log_init "$@"
+
+sos_rofi_failed() {
+    sos_notify "The power menu could not open. Right-click the desktop and choose Power instead." critical
+    exit 0
+}
+
+# Bildschirm sperren: LightDM (dm-tool), sonst logind
+lock_screen() {
+    command -v dm-tool >/dev/null && dm-tool lock >&2 2>&1 && return 0
+    command -v loginctl >/dev/null && loginctl lock-session >&2 2>&1 && return 0
+    return 1
+}
+# $1 = systemctl-Verb, $2 = Meldung bei Fehler
+power() {
+    systemctl "$1" >&2 2>&1 || loginctl "$1" >&2 2>&1 || sos_notify "$2" critical
+}
+
+# FontAwesome 4: lock U+F023, moon U+F186, refresh U+F021, power-off U+F011, sign-out U+F08B
+sos_add "$(sos_fa '\357\200\243')  Lock" "lock"
+sos_add "$(sos_fa '\357\206\206')  Sleep" "sleep"
+sos_add "$(sos_fa '\357\200\241')  Restart" "restart"
+sos_add "$(sos_fa '\357\200\221')  Shut down" "shutdown"
+sos_add "$(sos_fa '\357\202\213')  Sign out" "logout"
+sos_pick "<b>Power</b>" 300
+
+case "$action" in
+    lock)     lock_screen || sos_notify "The screen could not be locked." critical ;;
+    sleep)    lock_screen || sos_log "lock before suspend failed"  # beim Aufwachen gesperrt, wie bei Windows
+              power suspend "Sleep is not available on this computer." ;;
+    restart)  power reboot "The computer could not restart. Please save your work and try again." ;;
+    shutdown) power poweroff "The computer could not shut down. Please save your work and try again." ;;
+    logout)   openbox --exit >&2 2>&1 || sos_notify "Could not sign out. Please try again." critical ;;
+esac
+exit 0

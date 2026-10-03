@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Setup Wizard
+Comment=Browser, appearance and apps for Simple OS
+Exec=simpleos-welcome-wizard
+Icon=preferences-desktop
+Categories=Settings;

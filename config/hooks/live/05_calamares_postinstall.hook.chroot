@@ -1,0 +1,21 @@
+#!/bin/sh
+set -e
+CONF=/etc/calamares/settings.conf
+# Im exec-Block: removeuser vor users, Cleanup direkt vor umount
+awk '
+/^- exec:/ { inexec = 1 }
+/^- show:/ { inexec = 0 }
+inexec && $0 == "  - users"  { print "  - removeuser" }
+inexec && $0 == "  - umount" { print "  - shellprocess@simpleos-cleanup" }
+{ print }
+' "$CONF" > "$CONF.new"
+cat >> "$CONF.new" <<'INST'
+
+instances:
+- id: simpleos-cleanup
+  module: shellprocess
+  config: shellprocess_simpleos-cleanup.conf
+INST
+mv "$CONF.new" "$CONF"
+grep -q '^  - removeuser$' "$CONF"
+grep -q '^  - shellprocess@simpleos-cleanup$' "$CONF"

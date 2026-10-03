@@ -1,0 +1,7 @@
+# Simple OS – Installer (wird nach der Installation per simpleos-post-install entfernt)
+calamares
+calamares-settings-debian
+# Installer-Laufzeit (sonst fehlend wegen --apt-recommends false)
+squashfs-tools
+rsync
+efibootmgr

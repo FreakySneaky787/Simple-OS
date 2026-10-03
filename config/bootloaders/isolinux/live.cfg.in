@@ -1,0 +1,12 @@
+label live-@FLAVOUR@
+	menu label ^SimpleOS Live
+	menu default
+	linux @LINUX@
+	initrd @INITRD@
+	append @APPEND_LIVE@
+
+label live-@FLAVOUR@-failsafe
+	menu label SimpleOS Live (Failsafe)
+	linux @LINUX@
+	initrd @INITRD@
+	append @APPEND_LIVE_FAILSAFE@

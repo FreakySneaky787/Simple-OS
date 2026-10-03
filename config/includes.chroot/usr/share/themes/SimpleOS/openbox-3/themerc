@@ -1,0 +1,98 @@
+# Simple OS – Openbox-Theme (Catppuccin Mocha)
+border.width: 1
+padding.width: 8
+padding.height: 6
+window.handle.width: 0
+window.client.padding.width: 0
+window.client.padding.height: 0
+
+window.active.border.color: #89b4fa
+window.inactive.border.color: #313244
+window.active.client.color: #1e1e2e
+window.inactive.client.color: #181825
+
+window.active.title.bg: flat solid
+window.active.title.bg.color: #1e1e2e
+window.inactive.title.bg: flat solid
+window.inactive.title.bg.color: #181825
+window.active.title.separator.color: #313244
+window.inactive.title.separator.color: #181825
+window.active.label.bg: parentrelative
+window.active.label.text.color: #cdd6f4
+window.inactive.label.bg: parentrelative
+window.inactive.label.text.color: #6c7086
+window.label.text.justify: center
+
+window.active.handle.bg: flat solid
+window.active.handle.bg.color: #1e1e2e
+window.inactive.handle.bg: flat solid
+window.inactive.handle.bg.color: #181825
+window.active.grip.bg: flat solid
+window.active.grip.bg.color: #1e1e2e
+window.inactive.grip.bg: flat solid
+window.inactive.grip.bg.color: #181825
+
+window.active.button.unpressed.bg: parentrelative
+window.active.button.unpressed.image.color: #cdd6f4
+window.active.button.hover.bg: flat solid
+window.active.button.hover.bg.color: #313244
+window.active.button.hover.image.color: #89b4fa
+window.active.button.pressed.bg: flat solid
+window.active.button.pressed.bg.color: #45475a
+window.active.button.pressed.image.color: #89b4fa
+window.active.button.disabled.bg: parentrelative
+window.active.button.disabled.image.color: #45475a
+window.active.button.toggled.bg: parentrelative
+window.active.button.toggled.image.color: #89b4fa
+window.inactive.button.unpressed.bg: parentrelative
+window.inactive.button.unpressed.image.color: #6c7086
+window.inactive.button.hover.bg: flat solid
+window.inactive.button.hover.bg.color: #313244
+window.inactive.button.hover.image.color: #cdd6f4
+window.inactive.button.pressed.bg: flat solid
+window.inactive.button.pressed.bg.color: #45475a
+window.inactive.button.pressed.image.color: #cdd6f4
+window.inactive.button.disabled.bg: parentrelative
+window.inactive.button.disabled.image.color: #313244
+window.inactive.button.toggled.bg: parentrelative
+window.inactive.button.toggled.image.color: #6c7086
+
+# Menüs (Rechtsklick, Fenstermenü) – Catppuccin Mocha:
+#   Base #1e1e2e, Text #cdd6f4, Auswahl Surface0 #313244 mit Mauve #cba6f7, Trennlinien Surface1 #45475a.
+# Openbox 3.6 kennt keinen Innenabstand für Menüeinträge -> breiter Rahmen in Hintergrundfarbe als Innenabstand
+# (die Auswahl schwebt als Fläche im Menü, statt am Rand zu kleben). Die Kontur kommt von picom: runde Ecken
+# (10 px) und weicher Schatten statt harter, eckiger Linie. Eigene Mauve-Farbe, damit simpleos-theme (ersetzt
+# nur den Fenster-Akzent #89b4fa) die Menüs nicht umfärbt.
+menu.border.width: 6
+menu.border.color: #1e1e2e
+menu.overlap.x: -8
+menu.overlap.y: -6
+menu.title.bg: flat solid
+menu.title.bg.color: #1e1e2e
+menu.title.text.color: #cba6f7
+menu.title.text.justify: left
+menu.items.bg: flat solid
+menu.items.bg.color: #1e1e2e
+menu.items.text.color: #cdd6f4
+menu.items.disabled.text.color: #6c7086
+menu.items.active.bg: flat solid
+menu.items.active.bg.color: #313244
+menu.items.active.text.color: #cba6f7
+menu.items.active.disabled.text.color: #6c7086
+menu.separator.width: 1
+menu.separator.color: #45475a
+menu.separator.padding.width: 6
+menu.separator.padding.height: 6
+menu.bullet.image.color: #a6adc8
+menu.bullet.selected.image.color: #cba6f7
+
+osd.border.width: 1
+osd.border.color: #313244
+osd.bg: flat solid
+osd.bg.color: #1e1e2e
+osd.label.bg: parentrelative
+osd.label.text.color: #cdd6f4
+osd.hilight.bg: flat solid
+osd.hilight.bg.color: #89b4fa
+osd.unhilight.bg: flat solid
+osd.unhilight.bg.color: #313244

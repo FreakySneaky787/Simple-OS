@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Browser Selector
+Comment=Choose or install your default web browser
+Exec=simpleos-browser-select
+Icon=web-browser
+Categories=Settings;

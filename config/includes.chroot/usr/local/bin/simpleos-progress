@@ -1,0 +1,552 @@
+#!/usr/bin/python3
+"""Simple OS – schlichtes Ladefenster für jedes Werkzeug (Backups, Updates, eigene Skripte).
+
+    simpleos-progress --title TEXT [--message TEXT] [--percent X | --indeterminate] [--hint TEXT]
+                      [--done TEXT] [--follow DATEI] [--pid PID] [--timeout SEK] [--notify]
+                      [--app NAME] [--icon-name ICON]
+
+Aussehen: abgerundetes Fenster ohne Rahmen (GTK, eigener Rahmen per Cairo), links ein schlanker Bogen (3 px) auf
+einem dezenten Ring, der sich gleichmäßig dreht; darunter ein Balken in Pillenform, solide in der Akzentfarbe.
+Ohne Prozentzahl gleitet ein abgerundeter Block ruhig hin und her. Farben strikt aus simpleos-theme
+(~/.config/simpleos/theme: mode=dark -> Catppuccin Mocha, light -> Latte; accent=…).
+
+Eingabe (optional) – STDIN als Pipe/Datei oder --follow DATEI (wächst, Ende erst mit "EXIT:"):
+    TITLE: <Text>  / STEP: <Text>      Überschrift (STEP nur, wenn kein --title gegeben ist)
+    MESSAGE: <Text> / STAGE: <Text>    Beschreibung
+    PERCENT: <X> / PROGRESS: <X> [<Rest>]   Prozent (+ Restzeit)
+    DONE: <Text>                       Abschlusstext statt --done (z.B. "Already up to date")
+    EXIT: <Code>                       Ende: 0 -> Balken voll, kurz stehen lassen, schließen; sonst sofort schließen
+    <Zahl>  bzw.  # <Text>             wie zenity --progress
+    sonstige Zeilen                    "45%" irgendwo -> Prozent (apt "Progress: [ 45%]", pacman "… 40%",
+                                       timeshift "47.30% complete (7m 40s remaining)"); der Rest (ohne
+                                       Fortschrittsbalken aus #/=/-) wird zur Beschreibung
+    KEY: Wert (Großbuchstaben, unbekannt, z. B. FREE:/NEED:)  wird ignoriert (Maschinenzeilen der Helfer)
+STDIN-Ende ohne EXIT = Erfolg. STDIN als Terminal oder /dev/null = keine Eingabe: das Fenster zeigt --message und
+--percent/--indeterminate, bis Esc, --timeout oder Ende von --pid. Mit --follow erscheint es erst mit der ersten
+Zeile (damit es den pkexec-Passwortdialog nicht verdeckt). Esc/Klick auf × blendet nur aus.
+KEINE eigenen Fehlermeldungen: die Ergebnismeldung schickt der Aufrufer.
+Ohne Anzeige (kein DISPLAY, GTK nicht ladbar, --notify) -> dunst-Meldung mit Balken (int:value, gleicher
+x-dunst-stack-tag), am Ende unsichtbar geschlossen. Exit 0 (2 = falscher Aufruf).
+paint() zeichnet ohne Fenster (Cairo-Kontext genügt) – der Verify-Hook prüft damit das Rendering.
+"""
+import argparse
+import math
+import os
+import re
+import select
+import stat
+import subprocess
+import sys
+import time
+
+TAG = "simpleos-progress"
+STROKE = 3          # Bogen und Ring
+BAR_H = 6           # Pillenhöhe
+W = 420
+ACCENTS = {  # Mocha, Latte
+    "blue": ("#89b4fa", "#1e66f5"), "mauve": ("#cba6f7", "#8839ef"), "pink": ("#f5c2e7", "#ea76cb"),
+    "green": ("#a6e3a1", "#40a02b"), "peach": ("#fab387", "#fe640b"), "teal": ("#94e2d5", "#179299"),
+}
+PALETTES = {  # Catppuccin: base, surface0, text, subtext0, overlay0
+    "dark": {"bg": "#1e1e2e", "track": "#313244", "fg": "#cdd6f4", "sub": "#a6adc8", "dim": "#6c7086"},
+    "light": {"bg": "#eff1f5", "track": "#ccd0da", "fg": "#4c4f69", "sub": "#6c6f85", "dim": "#9ca0b0"},
+}
+
+
+def theme(path=None):
+    mode, accent = "dark", "blue"
+    try:
+        with open(path or os.path.expanduser("~/.config/simpleos/theme")) as f:
+            for line in f:
+                k, _, v = line.strip().partition("=")
+                v = v.strip("\"'")
+                if k == "mode" and v in PALETTES:
+                    mode = v
+                elif k == "accent" and v in ACCENTS:
+                    accent = v
+    except OSError:
+        pass
+    pal = dict(PALETTES[mode])
+    pal["accent"] = ACCENTS[accent][0 if mode == "dark" else 1]
+    return pal
+
+
+def rgb(h):
+    h = h.lstrip("#")
+    return tuple(int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+
+
+def clock(sec):
+    sec = int(sec)
+    return f"{sec // 3600}:{sec // 60 % 60:02d}:{sec % 60:02d}" if sec >= 3600 else f"{sec // 60}:{sec % 60:02d}"
+
+
+# ---------------------------------------------------------------- Zustand + Eingabe
+PCT = re.compile(r"(\d{1,3}(?:\.\d+)?)\s?%")
+REMAIN = re.compile(r"\(([^()]*?) remaining\)")
+BARS = re.compile(r"\[[#=\-.>*\s]*\]|\[\s*\d{1,3}%\s*\]")
+MACHINE = re.compile(r"^[A-Z_]{2,}: ")
+
+
+class State:
+    def __init__(self, title="Working", message="", percent=None, fixed_title=False):
+        self.title, self.message, self.pct, self.remaining = title, message, percent, ""
+        self.fixed = fixed_title  # --title gegeben: STEP-Texte der Helfer (rohe Punktnamen) ersetzen ihn nicht
+        self.exit, self.started = None, False
+        self.done_text = ""  # "DONE: <Text>" des Helfers ersetzt --done
+
+    def set_pct(self, val):
+        try:
+            self.pct = max(0.0, min(100.0, float(val)))
+            return True
+        except ValueError:
+            return False
+
+    def feed(self, line):
+        line = line.strip()
+        if not line:
+            return
+        key, sep, val = line.partition(": ")
+        val = val.strip()
+        if sep and key in ("TITLE", "STEP"):
+            self.started = True
+            if key == "STEP" and val != "Done":
+                # neuer Schritt (z.B. Update: Wiederherstellungspunkt -> apt -> Flatpak): eigener Fortschritt ab 0,
+                # bis dahin pendelt der Balken – sonst stünde er auf 100 % und spränge zurück
+                self.pct, self.remaining = None, ""
+            if val and val != "Done" and (key == "TITLE" or not self.fixed):
+                self.title = val
+        elif sep and key in ("MESSAGE", "STAGE"):
+            self.started, self.message = True, val
+        elif sep and key in ("PERCENT", "PROGRESS"):
+            num, _, rest = val.partition(" ")
+            if self.set_pct(num):
+                self.started, self.remaining = True, rest.strip()
+        elif sep and key == "DONE":
+            self.done_text = val
+        elif sep and key == "EXIT":
+            try:
+                self.exit = int(val)
+            except ValueError:
+                self.exit = 1
+        elif MACHINE.match(line):
+            return  # FREE:/NEED:/PATH: … der Helfer
+        elif re.fullmatch(r"\d{1,3}(\.\d+)?", line):  # zenity: nackte Zahl
+            self.started = self.set_pct(line) or self.started
+        elif line.startswith("#"):  # zenity: "# Text"
+            self.started, self.message = True, line.lstrip("# ").strip()
+        else:
+            self.started = True
+            m = PCT.findall(line)
+            if m:
+                self.set_pct(m[-1])
+            r = REMAIN.search(line)
+            if r:
+                self.remaining = r.group(1).strip()
+            text = BARS.sub(" ", REMAIN.sub(" ", line))
+            text = PCT.sub(" ", text) if m else text
+            text = re.sub(r"\b(complete|Progress:)\s*", " ", text) if m else text
+            text = " ".join(text.split()).strip(" :·-")
+            if text:
+                self.message = text[:120]
+
+
+class Source:
+    """Zeilen aus --follow DATEI (wächst) oder STDIN (Pipe/Datei, nicht blockierend). \\r trennt wie \\n."""
+
+    def __init__(self, follow=None):
+        self.follow, self.pos, self.rest, self.eof = follow, 0, "", False
+        self.fd = None
+        if follow:
+            return
+        try:
+            mode = os.fstat(0).st_mode
+        except OSError:
+            return
+        if (stat.S_ISFIFO(mode) or stat.S_ISREG(mode) or stat.S_ISSOCK(mode)) and not os.isatty(0):
+            self.fd = 0
+            os.set_blocking(0, False)
+
+    @property
+    def active(self):
+        return bool(self.follow) or self.fd is not None
+
+    def _split(self, data):
+        data = (self.rest + data).replace("\r", "\n")
+        *done, self.rest = data.split("\n")
+        return done
+
+    def lines(self):
+        if self.follow:
+            try:
+                with open(self.follow, encoding="utf-8", errors="replace") as f:
+                    f.seek(self.pos)
+                    data = f.read()
+                    self.pos = f.tell()
+            except OSError:
+                return []
+            return self._split(data)
+        if self.fd is None or self.eof:
+            return []
+        chunks = []
+        while True:
+            try:
+                b = os.read(self.fd, 65536)
+            except BlockingIOError:
+                break
+            except OSError:
+                b = b""
+            if not b:
+                self.eof = True
+                break
+            chunks.append(b)
+        out = self._split(b"".join(chunks).decode("utf-8", "replace"))
+        if self.eof and self.rest:
+            out.append(self.rest)
+            self.rest = ""
+        return out
+
+    def wait(self, sec):
+        if self.fd is not None and not self.eof:
+            select.select([self.fd], [], [], sec)
+        else:
+            time.sleep(sec)
+
+
+def alive(pid):
+    if not pid:
+        return True
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+# ---------------------------------------------------------------- Zeichnen (ohne GTK)
+def height(view):
+    return 132 if view.get("hint") else 112
+
+
+def rounded(cr, x, y, w, h, r):
+    r = min(r, h / 2, w / 2)
+    cr.new_sub_path()
+    cr.arc(x + w - r, y + r, r, -math.pi / 2, 0)
+    cr.arc(x + w - r, y + h - r, r, 0, math.pi / 2)
+    cr.arc(x + r, y + h - r, r, math.pi / 2, math.pi)
+    cr.arc(x + r, y + r, r, math.pi, 3 * math.pi / 2)
+    cr.close_path()
+
+
+def layout_geometry(view):
+    """Positionen (für Zeichnen und Tests): Spinner-Mitte/-Radius, Balken x/y/w/h, Schließen-Feld."""
+    return {"spin": (32, 32, 10), "bar": (20, 66, W - 40, BAR_H), "close": (W - 36, 12, 24, 24)}
+
+
+def paint(cr, view, pal, t):
+    """view: title, message, pct (angezeigter Wert oder None), done, remaining, elapsed, hint, rounded, hover_close"""
+    import cairo
+    import gi
+    gi.require_version("Pango", "1.0")
+    gi.require_version("PangoCairo", "1.0")
+    from gi.repository import Pango, PangoCairo
+
+    H = height(view)
+    geo = layout_geometry(view)
+    accent, track = rgb(pal["accent"]), rgb(pal["track"])
+
+    cr.set_operator(cairo.OPERATOR_SOURCE)
+    cr.set_source_rgba(0, 0, 0, 0)
+    cr.paint()
+    cr.set_operator(cairo.OPERATOR_OVER)
+    radius = 14 if view.get("rounded", True) else 0
+    rounded(cr, 0.5, 0.5, W - 1, H - 1, radius)
+    cr.set_source_rgb(*rgb(pal["bg"]))
+    cr.fill_preserve()
+    cr.set_source_rgb(*track)
+    cr.set_line_width(1)
+    cr.stroke()
+
+    def text(s, x, y, size, color, bold=False, width=None, right=False):
+        lay = PangoCairo.create_layout(cr)
+        lay.set_font_description(Pango.FontDescription(f"Inter {'Bold ' if bold else ''}{size}"))
+        lay.set_text(s, -1)
+        if width:
+            lay.set_width(int(width * Pango.SCALE))
+            lay.set_ellipsize(Pango.EllipsizeMode.END)
+        tw, _ = lay.get_pixel_size()
+        cr.set_source_rgb(*rgb(color))
+        cr.move_to(x - tw if right else x, y)
+        PangoCairo.show_layout(cr, lay)
+
+    # Spinner: dezenter Ring + ein schlanker Bogen (Viertelkreis), gleichmäßige Drehung (1 U/s); fertig = voller Ring
+    cx, cy, r = geo["spin"]
+    cr.set_line_width(STROKE)
+    cr.set_line_cap(cairo.LINE_CAP_ROUND)
+    cr.set_source_rgb(*track)
+    cr.arc(cx, cy, r, 0, 2 * math.pi)
+    cr.stroke()
+    cr.set_source_rgb(*accent)
+    if view.get("done"):
+        cr.arc(cx, cy, r, 0, 2 * math.pi)
+    else:
+        a = (t * 2 * math.pi) % (2 * math.pi)
+        cr.arc(cx, cy, r, a, a + math.pi / 2)
+    cr.stroke()
+
+    # Schließen (blendet nur aus)
+    x, y, w, h = geo["close"]
+    if view.get("hover_close"):
+        rounded(cr, x, y, w, h, 6)
+        cr.set_source_rgb(*track)
+        cr.fill()
+    cr.set_source_rgb(*rgb(pal["dim"]))
+    cr.set_line_width(1.5)
+    for dx, dy in ((1, 1), (1, -1)):
+        cr.move_to(x + 12 - 4 * dx, y + 12 - 4 * dy)
+        cr.line_to(x + 12 + 4 * dx, y + 12 + 4 * dy)
+    cr.stroke()
+
+    text(view.get("title", ""), 56, 14, 11, pal["fg"], bold=True, width=W - 56 - 44)
+    text(view.get("message", ""), 56, 34, 9.5, pal["sub"], width=W - 56 - 20)
+
+    # Balken: Pille, Spur + solide Akzentfüllung; unbestimmt: ruhig pendelnder Block (Sinus, 3 s pro Hin und Zurück)
+    bx, by, bw, bh = geo["bar"]
+    rounded(cr, bx, by, bw, bh, bh / 2)
+    cr.set_source_rgb(*track)
+    cr.fill()
+    cr.set_source_rgb(*accent)
+    pct = 100.0 if view.get("done") else view.get("pct")
+    if pct is None:
+        seg = bw * 0.25
+        u = 0.5 - 0.5 * math.cos(t * 2 * math.pi / 3)
+        rounded(cr, bx + u * (bw - seg), by, seg, bh, bh / 2)
+        cr.fill()
+    elif pct > 0:
+        rounded(cr, bx, by, max(bh, bw * pct / 100), bh, bh / 2)
+        cr.fill()
+
+    left = f"{int(pct + 0.5)}%" if pct is not None else ""
+    right = " · ".join(s for s in ((f"{view['remaining']} left" if view.get("remaining") and not view.get("done") else ""),
+                                   view.get("elapsed", "")) if s)
+    if left:
+        text(left, bx, by + 14, 9, pal["sub"])
+    if right:
+        text(right, bx + bw, by + 14, 9, pal["dim"], right=True)
+    if view.get("hint"):
+        text(view["hint"], bx, by + 38, 8.5, pal["dim"], width=bw)
+
+
+# ---------------------------------------------------------------- ohne Anzeige: dunst-Meldung mit Balken
+def run_notify(args, st, src):
+    last_sent, last_key = 0.0, None
+    deadline = time.monotonic() + args.timeout if args.timeout else None
+
+    def send(expire="0"):
+        pct = 100 if st.exit == 0 else int(st.pct or 0)
+        body = st.title + (f"\n{st.message}" if st.message else "")
+        if st.pct is not None or st.exit == 0:
+            body += f" · {pct}%" + (f" · {st.remaining} left" if st.remaining and st.exit is None else "")
+        cmd = ["notify-send", "-u", "low", "-c", "x-simpleos", "-a", args.app, "-i", args.icon_name, "-t", expire,
+               "-h", f"string:x-dunst-stack-tag:{TAG}", "-h", f"int:value:{pct}", args.app, body]
+        try:
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+        except (OSError, subprocess.SubprocessError):
+            pass
+
+    while True:
+        for line in src.lines():
+            st.feed(line)
+        if src.eof and st.exit is None:
+            st.exit = 0
+        if st.exit is not None:
+            # begonnen: letzter Stand ersetzt die Meldung und läuft sofort ab (-t 1); nie begonnen: nichts
+            if st.started:
+                send("1")
+            return
+        if not alive(args.pid) or (deadline and time.monotonic() > deadline):
+            if last_key is not None:
+                send("1")
+            return
+        if st.started:
+            key = (st.title, st.message, int(st.pct or 0) // 2)
+            now = time.monotonic()
+            if key != last_key and (now - last_sent >= 2 or last_key is None):
+                send()
+                last_sent, last_key = now, key
+        src.wait(0.25)
+
+
+# ---------------------------------------------------------------- Fenster
+def run_window(args, st, src):
+    import gi
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("Gdk", "3.0")
+    from gi.repository import Gdk, GLib, Gtk
+
+    pal = theme()
+    hint = args.hint or ""
+    H = height({"hint": hint})
+
+    class Win(Gtk.Window):
+        def __init__(self):
+            super().__init__(title=args.app)
+            self.set_default_size(W, H)
+            self.set_size_request(W, H)
+            self.set_resizable(False)
+            self.set_decorated(False)
+            self.set_app_paintable(True)
+            self.set_keep_above(True)
+            self.set_icon_name(args.icon_name)
+            self.set_position(Gtk.WindowPosition.CENTER)
+            self.set_type_hint(Gdk.WindowTypeHint.DIALOG)
+            screen = self.get_screen()
+            visual = screen.get_rgba_visual()
+            self.rounded = visual is not None and screen.is_composited()
+            if visual is not None:
+                self.set_visual(visual)
+            self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.POINTER_MOTION_MASK)
+            self.connect("draw", self.on_draw)
+            self.connect("button-press-event", self.on_press)
+            self.connect("motion-notify-event", self.on_motion)
+            self.connect("key-press-event", self.on_key)
+            self.connect("delete-event", self.on_hide)
+            self.t0 = self.last = time.monotonic()
+            self.op_start = None
+            self.shown_pct = st.pct
+            self.done_at = None
+            self.hidden_by_user = self.hover_close = False
+            self.deadline = self.t0 + args.timeout if args.timeout else None
+            GLib.timeout_add(100, self.poll)
+            # eigener Takt statt add_tick_callback: liefert der Compositor keine Frames, bliebe der stehen
+            GLib.timeout_add(16, self.tick)
+            if not args.follow:
+                self.start()
+
+        def start(self):
+            self.op_start = time.monotonic()
+            self.show_all()
+            self.present()
+
+        def in_close(self, ev):
+            x, y, w, h = layout_geometry({})["close"]
+            return x <= ev.x <= x + w and y <= ev.y <= y + h
+
+        def on_press(self, _w, ev):
+            if self.in_close(ev):
+                return self.on_hide()
+            if ev.button == 1:
+                self.begin_move_drag(ev.button, int(ev.x_root), int(ev.y_root), ev.time)
+            return True
+
+        def on_motion(self, _w, ev):
+            if self.in_close(ev) != self.hover_close:
+                self.hover_close = not self.hover_close
+                self.queue_draw()
+
+        def on_key(self, _w, ev):
+            return self.on_hide() if ev.keyval == Gdk.KEY_Escape else False
+
+        def on_hide(self, *_):
+            self.hidden_by_user = True  # Vorgang läuft weiter; die Ergebnismeldung kommt vom Aufrufer
+            self.hide()
+            return True
+
+        def poll(self):
+            for line in src.lines():
+                st.feed(line)
+            if src.eof and st.exit is None:
+                st.exit = 0
+            if st.started and self.op_start is None and st.exit is None:
+                self.start()
+            if st.exit is not None:
+                if self.op_start is None or self.hidden_by_user or st.exit != 0:
+                    Gtk.main_quit()
+                elif self.done_at is None:
+                    self.done_at = time.monotonic()
+                    GLib.timeout_add(900, Gtk.main_quit)
+                return False
+            if not alive(args.pid) or (self.deadline and time.monotonic() > self.deadline):
+                Gtk.main_quit()
+                return False
+            return True
+
+        def tick(self):
+            now = time.monotonic()
+            dt, self.last = min(0.1, now - self.last), now
+            target = 100.0 if self.done_at else st.pct
+            if target is None:
+                self.shown_pct = None
+            else:
+                cur = self.shown_pct if self.shown_pct is not None else 0.0
+                self.shown_pct = cur + (target - cur) * min(1.0, dt * 6)
+            self.queue_draw()
+            return True
+
+        def on_draw(self, _w, cr):
+            now = time.monotonic()
+            done = st.done_text or args.done
+            view = {"title": done if self.done_at and done else st.title, "message": st.message,
+                    "pct": self.shown_pct, "done": bool(self.done_at), "remaining": st.remaining,
+                    "elapsed": clock(now - self.op_start) if self.op_start and src.active else "",
+                    "hint": hint, "rounded": self.rounded, "hover_close": self.hover_close}
+            paint(cr, view, pal, now - self.t0)
+            return True
+
+    win = Win()
+    win.connect("destroy", Gtk.main_quit)
+    Gtk.main()
+
+
+def parse(argv=None):
+    ap = argparse.ArgumentParser(prog="simpleos-progress", description="Simple OS progress window")
+    ap.add_argument("--title")
+    ap.add_argument("--message", default="")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--percent", type=float)
+    mode.add_argument("--indeterminate", action="store_true")
+    ap.add_argument("--hint", default="")
+    ap.add_argument("--done", default="")
+    ap.add_argument("--follow")
+    ap.add_argument("--pid", type=int, default=0)
+    ap.add_argument("--timeout", type=float, default=0)
+    ap.add_argument("--app", default="Simple OS")
+    ap.add_argument("--icon-name", default="dialog-information")
+    ap.add_argument("--notify", action="store_true", help="always as a dunst notification")
+    args = ap.parse_args(argv)
+    if args.percent is not None:
+        args.percent = max(0.0, min(100.0, args.percent))
+    return args
+
+
+def main():
+    args = parse()
+    st = State(args.title or "Working", args.message, args.percent, fixed_title=bool(args.title))
+    src = Source(args.follow)
+    if not src.active:
+        st.started = True  # nichts zu lesen: sofort anzeigen
+    gui = not args.notify and os.environ.get("DISPLAY") and os.environ.get("SIMPLEOS_PROGRESS", "window") != "notify"
+    if gui:
+        try:
+            import gi
+            gi.require_version("Gtk", "3.0")
+            from gi.repository import Gtk
+            gui = Gtk.init_check(sys.argv)[0]
+        except Exception as err:  # GTK fehlt/kaputt -> Meldung statt Fenster
+            print(f"simpleos-progress: kein Fenster ({err})", file=sys.stderr)
+            gui = False
+    try:
+        (run_window if gui else run_notify)(args, st, src)
+    except Exception as err:  # nie den Aufrufer hängen lassen: Ende abwarten
+        print(f"simpleos-progress: {err}", file=sys.stderr)
+        while st.exit is None and not src.eof and src.active and alive(args.pid):
+            for line in src.lines():
+                st.feed(line)
+            src.wait(0.25)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

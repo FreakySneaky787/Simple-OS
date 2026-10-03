@@ -1,0 +1,181 @@
+#!/bin/sh
+# Simple OS – Fenster andocken wie bei Windows 11 (Openbox-Tastenkürzel in rc.xml)
+#   simpleos-snap left|right   Super+Links/Rechts: linke/rechte Bildschirmhälfte. Liegt das Fenster schon
+#                              links und gibt es links einen weiteren Bildschirm, wandert es dorthin (rechte
+#                              Hälfte); liegt es rechts, kehrt es mit Super+Links in die alte Größe zurück.
+#   simpleos-snap up           Super+Oben: maximieren
+#   simpleos-snap down         Super+Unten: angedockt/maximiert -> alte Größe und Position; sonst minimieren
+#   simpleos-snap corner-left|corner-right|corner-up|corner-down
+#                              Super+Alt+Pfeile: Viertel des Bildschirms. Links/Rechts wählt die Spalte,
+#                              Oben/Unten die Zeile (das Fenster "wandert" durch die vier Ecken)
+# Bildschirm = der, auf dem die Fenstermitte liegt (mehrere Monitore). Nutzbare Fläche = Monitor geschnitten
+# mit _NET_WORKAREA (Taskleiste bleibt frei). Fensterrahmen (_NET_FRAME_EXTENTS) werden abgezogen, damit der
+# ganze Rahmen genau in die Kachel passt. Zustand pro Fenster (Kachel + Ursprungsgröße) in
+# $XDG_RUNTIME_DIR/simpleos-snap/<Fenster-ID>; wurde das Fenster seither von Hand verschoben, gilt es wieder
+# als frei. Kein set -e; fehlt etwas (kein aktives Fenster, Desktop, Taskleiste), passiert nichts. Exit 0.
+# Tests: SIMPLEOS_SNAP_WIN ersetzt das aktive Fenster.
+
+LOG=${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}/simpleos-snap.log
+mkdir -p "${LOG%/*}" 2>/dev/null
+log() { echo "$(date '+%F %T' 2>/dev/null) $*" >> "$LOG" 2>/dev/null; }
+action=${1:-}
+case "$action" in
+    left|right|up|down|corner-left|corner-right|corner-up|corner-down) ;;
+    *) echo "Aufruf: simpleos-snap left|right|up|down|corner-left|corner-right|corner-up|corner-down" >&2; exit 2 ;;
+esac
+for tool in xdotool wmctrl xprop xwininfo xrandr; do
+    command -v "$tool" >/dev/null || { log "$tool missing"; exit 0; }
+done
+
+win=${SIMPLEOS_SNAP_WIN:-$(xdotool getactivewindow 2>/dev/null)}
+case "$win" in ''|*[!0-9]*) log "no active window"; exit 0 ;; esac
+# Desktop (pcmanfm), Taskleiste, Menüs nicht anfassen
+case "$(xprop -id "$win" _NET_WM_WINDOW_TYPE 2>/dev/null)" in
+    *DESKTOP*|*DOCK*|*MENU*|*SPLASH*|*NOTIFICATION*|*TOOLTIP*) exit 0 ;;
+esac
+
+# Zahlenliste einer xprop-Eigenschaft ("NAME(CARDINAL) = 1, 2, 3") -> "1 2 3"
+xnums() { sed -n 's/^[^=]*= *//p' | tr -d ',' | head -n 1; }
+
+# ---- Fenster: Client-Geometrie (xwininfo: absolute Position; xdotool getwindowgeometry zählt bei Openbox den
+#      Rahmen doppelt) + Rahmen -> äußere Rahmen-Geometrie fx fy fw fh
+eval "$(xwininfo -id "$win" 2>/dev/null | awk -F: '
+    /Absolute upper-left X/ { printf "X=%d\n", $2 } /Absolute upper-left Y/ { printf "Y=%d\n", $2 }
+    /^ *Width/ { printf "WIDTH=%d\n", $2 }        /^ *Height/ { printf "HEIGHT=%d\n", $2 }')"
+[ -n "${WIDTH:-}" ] || { log "no geometry for $win"; exit 0; }
+set -- $(xprop -id "$win" _NET_FRAME_EXTENTS 2>/dev/null | xnums)
+el=${1:-0} er=${2:-0} et=${3:-0} eb=${4:-0}
+fx=$((X - el)) fy=$((Y - et)) fw=$((WIDTH + el + er)) fh=$((HEIGHT + et + eb))
+cx=$((fx + fw / 2)) cy=$((fy + fh / 2))
+
+# ---- Bildschirme: "x y w h" je Zeile (xrandr --listactivemonitors: " 0: +*DP-1 2560/597x1440/336+0+0  DP-1")
+monitors() {
+    xrandr --listactivemonitors 2>/dev/null |
+        sed -n 's/^ *[0-9]*: [^ ]* \([0-9]*\)\/[0-9]*x\([0-9]*\)\/[0-9]*+\([0-9]*\)+\([0-9]*\).*/\3 \4 \1 \2/p'
+}
+MONS=$(monitors)
+[ -n "$MONS" ] || { log "no monitors"; exit 0; }
+# Monitor mit der Fenstermitte (sonst der erste)
+mon=$(printf '%s\n' "$MONS" | awk -v x="$cx" -v y="$cy" '$1 <= x && x < $1 + $3 && $2 <= y && y < $2 + $4 { print; exit }')
+[ -n "$mon" ] || mon=$(printf '%s\n' "$MONS" | head -n 1)
+
+# Nutzbare Fläche: Monitor ∩ _NET_WORKAREA (erstes Viereck = aktueller Arbeitsbereich aller Monitore)
+area() {  # $1..$4 = Monitor x y w h
+    set -- "$@" $(xprop -root _NET_WORKAREA 2>/dev/null | xnums)
+    if [ $# -ge 8 ]; then
+        ax=$(( $1 > $5 ? $1 : $5 )) ay=$(( $2 > $6 ? $2 : $6 ))
+        ax2=$(( $1 + $3 < $5 + $7 ? $1 + $3 : $5 + $7 )) ay2=$(( $2 + $4 < $6 + $8 ? $2 + $4 : $6 + $8 ))
+        if [ "$ax2" -gt "$ax" ] && [ "$ay2" -gt "$ay" ]; then
+            echo "$ax $ay $((ax2 - ax)) $((ay2 - ay))"
+            return
+        fi
+    fi
+    echo "$1 $2 $3 $4"
+}
+set -- $(area $mon)
+mx=$1 my=$2 mw=$3 mh=$4
+
+# ---- Zustand
+SD=${XDG_RUNTIME_DIR:-${HOME:-/tmp}/.cache}/simpleos-snap
+mkdir -p "$SD" 2>/dev/null
+SF=$SD/$win
+pos= orig= target= oext=
+[ -r "$SF" ] && . "$SF" 2>/dev/null
+# Von Hand verschoben/vergrößert (Abweichung > 8 px) -> nicht mehr angedockt
+if [ -n "$pos" ] && [ "$pos" != max ]; then
+    set -- $target
+    if [ $# -ne 4 ] || [ $(( (fx - $1) * (fx - $1) + (fy - $2) * (fy - $2) )) -gt 64 ] ||
+       [ $(( fw - $3 )) -gt 8 ] || [ $(( $3 - fw )) -gt 8 ] || [ $(( fh - $4 )) -gt 8 ] || [ $(( $4 - fh )) -gt 8 ]; then
+        pos= orig=
+    fi
+fi
+maximized() { xprop -id "$win" _NET_WM_STATE 2>/dev/null | grep -q '_NET_WM_STATE_MAXIMIZED_HORZ'; }
+[ "$pos" = max ] && ! maximized && pos=
+[ -z "$pos" ] && maximized && pos=max
+# Ursprungsgröße nur von frei liegenden Fenstern merken (von Hand maximierte stellt Openbox selbst wieder her)
+had_orig=0
+# oext: Rahmenmaße im freien Zustand (maximiert entfernt Openbox die Seitenränder)
+if [ -n "$orig" ]; then had_orig=1; else orig="$fx $fy $fw $fh" oext="$el $er $et $eb"; fi
+
+save() { printf 'pos=%s\norig="%s"\noext="%s"\ntarget="%s"\n' "$1" "$orig" "$oext" "$2" > "$SF" 2>/dev/null; }
+unmax() { wmctrl -i -r "$win" -b remove,maximized_vert,maximized_horz 2>/dev/null; }
+# Rahmen auf x y w h setzen: wmctrl erwartet die Client-Größe; Schwerkraft 1 (NordWest) = x/y ist die linke
+# obere Ecke des Rahmens (mit 0 nimmt Openbox die Fenster-eigene Schwerkraft und versetzt um die Titelleiste)
+place() {
+    unmax
+    wmctrl -i -r "$win" -e "1,$1,$2,$(($3 - el - er)),$(($4 - et - eb))" 2>/dev/null
+}
+# Kachel name -> "x y w h" auf der Fläche mx my mw mh
+cell() {
+    hw=$((mw / 2)) hh=$((mh / 2))
+    case "$1" in
+        left)         echo "$mx $my $hw $mh" ;;
+        right)        echo "$((mx + hw)) $my $((mw - hw)) $mh" ;;
+        top-left)     echo "$mx $my $hw $hh" ;;
+        top-right)    echo "$((mx + hw)) $my $((mw - hw)) $hh" ;;
+        bottom-left)  echo "$mx $((my + hh)) $hw $((mh - hh))" ;;
+        bottom-right) echo "$((mx + hw)) $((my + hh)) $((mw - hw)) $((mh - hh))" ;;
+    esac
+}
+snap() {
+    g=$(cell "$1")
+    place $g
+    save "$1" "$g"
+    log "snap $win $1 -> $g"
+}
+restore() {
+    set -- $oext
+    [ $# -eq 4 ] && el=$1 er=$2 et=$3 eb=$4
+    set -- $orig
+    unmax
+    [ "$had_orig" = 1 ] && [ $# -eq 4 ] && wmctrl -i -r "$win" -e "1,$1,$2,$(($3 - el - er)),$(($4 - et - eb))" 2>/dev/null
+    rm -f "$SF"
+    log "restore $win -> $orig"
+}
+# Nachbar-Bildschirm links/rechts des aktuellen (vertikal überlappend) -> "x y w h"
+neighbour() {
+    set -- $mon
+    printf '%s\n' "$MONS" | awk -v x="$1" -v y="$2" -v w="$3" -v h="$4" -v d="$NEIGHBOUR_DIR" '
+        { ov = ($2 < y + h && y < $2 + $4) }
+        ov && d == "left"  && $1 + $3 <= x && (best == "" || $1 > bx) { best = $0; bx = $1 }
+        ov && d == "right" && $1 >= x + w  && (best == "" || $1 < bx) { best = $0; bx = $1 }
+        END { if (best != "") print best }'
+}
+# Spalte/Zeile des Fensters (für die Ecken): aus der Kachel, sonst aus der Lage der Fenstermitte
+col() { case "$pos" in *left) echo left ;; *right) echo right ;; *) [ "$cx" -lt $((mx + mw / 2)) ] && echo left || echo right ;; esac; }
+row() { case "$pos" in bottom-*) echo bottom ;; *) echo top ;; esac; }
+
+case "$action" in
+    left|right)
+        other=right; [ "$action" = right ] && other=left
+        if [ "$pos" = "$action" ]; then
+            nb=$(NEIGHBOUR_DIR=$action neighbour)
+            if [ -n "$nb" ]; then
+                mon=$nb
+                set -- $(area $nb)
+                mx=$1 my=$2 mw=$3 mh=$4
+                snap "$other"
+            fi
+        elif [ "$pos" = "$other" ]; then
+            restore
+        else
+            snap "$action"
+        fi ;;
+    up)
+        [ "$pos" = max ] && exit 0
+        save max ""
+        wmctrl -i -r "$win" -b add,maximized_vert,maximized_horz 2>/dev/null
+        log "maximize $win" ;;
+    down)
+        if [ -n "$pos" ]; then
+            restore
+        else
+            xdotool windowminimize "$win" 2>/dev/null
+            log "minimize $win"
+        fi ;;
+    corner-left)  snap "$(row)-left" ;;
+    corner-right) snap "$(row)-right" ;;
+    corner-up)    snap "top-$(col)" ;;
+    corner-down)  snap "bottom-$(col)" ;;
+esac
+exit 0

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Simple OS – alter Name der Tastenkürzel-Übersicht; weiter gültig für bestehende Verknüpfungen
+exec /usr/local/bin/simpleos-help "$@"

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Software Center
+Comment=Install apps like Steam, Discord, Spotify and LibreOffice with one click
+Exec=/usr/local/bin/simpleos-software-center
+Icon=system-software-install
+Categories=System;PackageManager;
+Keywords=store;install;apps;flatpak;flathub;steam;discord;spotify;

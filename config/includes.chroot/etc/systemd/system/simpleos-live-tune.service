@@ -1,0 +1,13 @@
+# Simple OS – Live-Session: RAM-Overlay vergrößern, Flatpak-Platzreserve senken (/usr/local/sbin/simpleos-live-tune)
+[Unit]
+Description=Simple OS live session tuning (overlay size, Flatpak reserve)
+ConditionKernelCommandLine=boot=live
+After=local-fs.target
+Before=display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/simpleos-live-tune
+
+[Install]
+WantedBy=multi-user.target

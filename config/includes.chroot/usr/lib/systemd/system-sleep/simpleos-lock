@@ -1,0 +1,67 @@
+#!/bin/sh
+# Simple OS – Bildschirm sperren, BEVOR der Rechner schläft (systemd-sleep-Hook, läuft als root).
+# systemd ruft alle Programme in /usr/lib/systemd/system-sleep/ mit "pre|post" und "suspend|hibernate|
+# hybrid-sleep|suspend-then-hibernate" auf – also bei jedem Schlafen: Laptop zuklappen (logind,
+# /etc/systemd/logind.conf.d/10-simpleos-lid.conf), Power-Menü "Sleep", systemctl suspend, Akku leer.
+# Ablauf bei "pre":
+#   1. jede LightDM-Benutzersitzung sperren: D-Bus org.freedesktop.DisplayManager.Session.Lock (dasselbe wie
+#      "dm-tool lock" – LightDM wechselt auf den Anmeldebildschirm, Passwort nötig)
+#   2. warten, bis der Sperrbildschirm wirklich zu sehen ist: das aktive VT (/sys/class/tty/tty0/active) ist nicht
+#      mehr das VT einer gesperrten Sitzung (loginctl VTNr) – höchstens 3 s. Sonst schliefe der Rechner, bevor
+#      LightDM umgeschaltet hat, und beim Aufklappen wäre kurz der Desktop zu sehen. Ist schon gesperrt
+#      (Power-Menü "Sleep" sperrt vorher selbst), geht es ohne Warten weiter.
+# Nicht in der Live-Session (der Live-Benutzer hat kein bekanntes Passwort). Nie ein Fehler-Exit: Schlafen
+# darf am Sperren nicht scheitern. Meldungen landen im Journal (journalctl -u systemd-suspend).
+# Tests: SIMPLEOS_BUSCTL / SIMPLEOS_LOGINCTL ersetzen busctl/loginctl, SIMPLEOS_TTY_ACTIVE die Datei des aktiven
+# VTs, SIMPLEOS_LOCK_WAIT die Wartezeit in Zehntelsekunden (systemd ruft den Hook mit leerer Umgebung auf).
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+[ "${1:-}" = pre ] || exit 0
+
+if [ -x /usr/local/bin/simpleos-live ] && /usr/local/bin/simpleos-live --check; then
+    echo "simpleos-lock: Live-Session – nicht gesperrt"
+    exit 0
+fi
+BUSCTL=${SIMPLEOS_BUSCTL:-busctl}
+LOGINCTL=${SIMPLEOS_LOGINCTL:-loginctl}
+ACTIVE=${SIMPLEOS_TTY_ACTIVE:-/sys/class/tty/tty0/active}
+WAIT=${SIMPLEOS_LOCK_WAIT:-30}
+DM=org.freedesktop.DisplayManager
+
+# Benutzersitzungen von LightDM: 'ao 1 "/org/freedesktop/DisplayManager/Session0"'
+sessions=$($BUSCTL --system get-property $DM /org/freedesktop/DisplayManager $DM Sessions 2>/dev/null |
+    grep -o '"/org/freedesktop/DisplayManager/Session[0-9]*"' | tr -d '"')
+if [ -z "$sessions" ]; then
+    echo "simpleos-lock: keine LightDM-Sitzung – loginctl lock-sessions"
+    $LOGINCTL lock-sessions 2>/dev/null
+    exit 0
+fi
+
+vts=
+for s in $sessions; do
+    user=$($BUSCTL --system get-property $DM "$s" $DM.Session UserName 2>/dev/null | sed -n 's/^s "\(.*\)"$/\1/p')
+    if $BUSCTL --system call $DM "$s" $DM.Session Lock >/dev/null 2>&1; then
+        echo "simpleos-lock: $s (${user:-?}) gesperrt"
+    else
+        echo "simpleos-lock: $s konnte nicht gesperrt werden"
+    fi
+    [ -n "$user" ] || continue
+    # VTs der grafischen Sitzungen dieses Benutzers
+    for id in $($LOGINCTL list-sessions --no-legend 2>/dev/null | awk -v u="$user" '$3 == u { print $1 }'); do
+        vt=$($LOGINCTL show-session "$id" -p VTNr --value 2>/dev/null)
+        case "$vt" in ''|0|*[!0-9]*) ;; *) vts="$vts tty$vt" ;; esac
+    done
+done
+
+# Warten, bis der Sperrbildschirm vorne ist
+i=0
+while [ "$i" -lt "$WAIT" ]; do
+    now=$(cat "$ACTIVE" 2>/dev/null)
+    case " $vts " in
+        *" $now "*) ;;                       # noch die Benutzersitzung zu sehen
+        *) echo "simpleos-lock: Sperrbildschirm aktiv (${now:-?})"; exit 0 ;;
+    esac
+    sleep 0.1
+    i=$((i + 1))
+done
+echo "simpleos-lock: Sperrbildschirm nach $((WAIT / 10)) s noch nicht zu sehen – schlafe trotzdem"
+exit 0

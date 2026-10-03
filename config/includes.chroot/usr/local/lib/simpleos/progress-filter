@@ -1,0 +1,192 @@
+#!/usr/bin/python3
+"""Simple OS – Fortschritt von flatpak / apt / timeshift in Live-Zeilen für Ladefenster und Wizard übersetzen.
+
+    flatpak install --system -y flathub APP 2>&1 | progress-filter flatpak
+    apt-get -o APT::Status-Fd=3 … 3>&1 1>&2   | progress-filter apt [--dl FROM TO] [--inst FROM TO]
+    timeshift --create … 2>&1                 | progress-filter timeshift
+
+Ausgabe: "PROGRESS: <Prozent> [<Rest>]" und "STAGE: <Text>", sofort und einzeln (flush). Alle anderen Zeilen gehen
+unverändert durch (Fehlertexte!), Wiederholungen nur einmal.
+Warum Python statt awk: mawk liest Pipes in großen Blöcken – der Fortschritt kam erst am Ende an; mit
+"-W interactive" streamt es, zerlegt dann aber die \\r-getrennten Fortschrittszeilen nicht mehr.
+
+flatpak (OHNE --noninteractive, sonst gibt Flatpak keinen Fortschritt aus): Übersicht " 1.  ref … < 148.0 MB" ->
+  Gewichte ("(partial)" = Obergrenze, real meist nur wenige MB -> 5 %); "Installing 2/3… ███ 45%  2.3 MB/s  00:12" ->
+  Gesamtfortschritt nach Größe gewichtet; das Tempo steht im Abschnitt ("Downloading part 2 of 8 · 80 kB/s"), damit ein
+  langsamer Flathub-Download (z.B. Runtime mit ~36 kB/s) nicht wie hängengeblieben wirkt. Bewusst KEINE Restzeit:
+  Flatpak meldet das Tempo nur für den aktuellen Teil, und das schwankt je Teil extrem (GL-Treiber aus vielen kleinen
+  Dateien ~80 kB/s, große Runtimes als Delta mehrere MB/s) – hochgerechnet ergab das "2 h left" für Minuten.
+apt: "dlstatus:…:<Prozent>:…" -> Download-Anteil (Vorgabe 0–40 %), "pmstatus:<Paket>:<Prozent>:…" -> Installation
+  (Vorgabe 40–100 %), STAGE "Downloading" / "Installing <Paket>".
+timeshift: "12.34% complete (5m 10s remaining)" -> Prozent + Rest; Abschnitte in Alltagssprache.
+"""
+import os
+import re
+import sys
+
+UNIT = {"": 1, "k": 1e3, "m": 1e6, "g": 1e9}
+# Tempo nur zusammen mit Flatpaks eigener Prognose ("00:12"): die erscheint erst, wenn das Tempo eingeschwungen ist
+SPEED = re.compile(r"\d+%\s+([\d.]+)\s*([kMG]?)(?:B|bytes)/s\s+\d+:\d\d")
+PARTIAL = 0.05
+TS_STAGES = (
+    (re.compile(r"Estimating system size"), "Measuring the system"),
+    (re.compile(r"Mounted|Mounting|Saving to device|Creating new snapshot"), "Preparing the backup disk"),
+    (re.compile(r"Synching files"), "Copying system files"),
+    (re.compile(r"Restoring"), "Putting system files back"),
+    (re.compile(r"Removing|Deleting"), "Removing old files"),
+    (re.compile(r"[Ss]napshot saved|Tagged snapshot|Updating GRUB|Restore completed"), "Finishing up"),
+)
+
+
+def speed_text(bps):
+    """Tempo auf 2 Stellen gerundet ("80 kB/s", "1.5 MB/s", "12 MB/s"), damit nicht jede Schwankung eine Zeile wird."""
+    for unit, f in (("MB/s", 1e6), ("kB/s", 1e3)):
+        if bps >= f:
+            v = bps / f
+            return f"{v:.1f} {unit}" if v < 10 else f"{round(v, -1 if v >= 100 else 0):.0f} {unit}"
+    return f"{bps:.0f} B/s"
+
+
+def out(line):
+    sys.stdout.write(line + "\n")
+    sys.stdout.flush()
+
+
+class Filter:
+    def __init__(self, mode, args):
+        self.mode = mode
+        self.last_line = self.last_stage = self.last_pct = None
+        self.weights, self.count, self.speed, self.speed_part = {}, 0, "", None
+        self.dl = (0.0, 40.0)
+        self.inst = (40.0, 100.0)
+        it = iter(args)
+        for a in it:
+            if a in ("--dl", "--inst"):
+                rng = (float(next(it)), float(next(it)))
+                if a == "--dl":
+                    self.dl = rng
+                else:
+                    self.inst = rng
+
+    def stage(self, text):
+        if text != self.last_stage:
+            out("STAGE: " + text)
+            self.last_stage = text
+
+    def pct(self, value, rest=""):
+        v = int(max(0, min(100, value)))
+        key = (v, rest)
+        if key != self.last_pct:
+            out(f"PROGRESS: {v}" + (f" {rest}" if rest else ""))
+            self.last_pct = key
+
+    def passthrough(self, line):
+        if line.strip() and line != self.last_line:
+            out(line)
+            self.last_line = line
+
+    # ------------------------------------------------------------ flatpak
+    def flatpak(self, line):
+        m = re.match(r"^\s*(\d+)\.\t", line)
+        if m:
+            i = int(m.group(1))
+            self.count = max(self.count, i)
+            s = re.search(r"<\s*([\d.]+)\D{0,3}?([kMG]?)B", line)
+            if s:
+                self.weights[i] = float(s.group(1)) * UNIT[s.group(2).lower()] * (PARTIAL if "(partial)" in line else 1)
+            return
+        if re.match(r"^(Installing|Updating|Downloading)", line) and "%" in line:
+            p = re.search(r"(\d+)%", line)
+            if not p:
+                return
+            cur, cnt = 1, max(self.count, 1)
+            m = re.search(r"(\d+)/(\d+)", line)
+            if m:
+                cur, cnt = int(m.group(1)), int(m.group(2))
+            frac = int(p.group(1)) / 100
+            total = sum(self.weights.values())
+            if total > 0 and cur in self.weights:
+                done = sum(w for k, w in self.weights.items() if k < cur)
+                overall = (done + self.weights[cur] * frac) / total * 100
+            else:
+                overall = ((cur - 1) + frac) / cnt * 100
+            if cur != self.speed_part:
+                self.speed, self.speed_part = "", cur     # neuer Teil: altes Tempo gilt nicht mehr
+            v = SPEED.search(line)
+            if v and float(v.group(1)) > 0:
+                self.speed = speed_text(float(v.group(1)) * UNIT[v.group(2).lower()])
+            label = f"Downloading part {cur} of {cnt}" if cnt > 1 else "Downloading"
+            self.stage(label + (f" · {self.speed}" if self.speed else ""))
+            self.pct(min(overall, 99))           # 100 erst mit "Installation complete."
+            return
+        if re.match(r"^(Installing|Updating)[^%]*$", line):
+            return
+        if re.match(r"^(Installation complete|Changes complete|Updates complete)", line):
+            self.pct(100)
+        self.passthrough(line)
+
+    # ------------------------------------------------------------ apt
+    def apt(self, line):
+        parts = line.split(":", 3)
+        if len(parts) >= 3 and parts[0] in ("dlstatus", "pmstatus"):
+            try:
+                p = float(parts[2])
+            except ValueError:
+                return
+            lo, hi = self.dl if parts[0] == "dlstatus" else self.inst
+            if parts[0] == "dlstatus":
+                self.stage("Downloading")
+            else:
+                self.stage("Installing " + parts[1])
+            self.pct(lo + (hi - lo) * p / 100)
+            return
+        self.passthrough(line)
+
+    # ------------------------------------------------------------ timeshift
+    def timeshift(self, line):
+        m = re.search(r"(\d+(?:\.\d+)?)% complete", line)
+        if m:
+            rest = re.search(r"\(([^()]*?) remaining\)", line)
+            v = m.group(1)
+            key = (v, rest.group(1) if rest else "")
+            if key != self.last_pct:
+                out(f"PROGRESS: {v}" + (f" {key[1]}" if key[1] else ""))
+                self.last_pct = key
+            return
+        for rx, text in TS_STAGES:
+            if rx.search(line):
+                self.stage(text)
+                return
+        # timeshift-Zeilen sonst nicht durchreichen (stehen im Protokoll)
+
+    def feed(self, line):
+        getattr(self, self.mode)(line.rstrip())
+
+
+def main(argv):
+    if len(argv) < 2 or argv[1] not in ("flatpak", "apt", "timeshift"):
+        print("Aufruf: progress-filter flatpak|apt|timeshift [--dl A B] [--inst A B]", file=sys.stderr)
+        return 2
+    f = Filter(argv[1], argv[2:])
+    rest = b""
+    while True:
+        try:
+            chunk = os.read(0, 65536)
+        except InterruptedError:
+            continue
+        if not chunk:
+            break
+        data = (rest + chunk).replace(b"\r", b"\n").split(b"\n")
+        rest = data.pop()
+        for raw in data:
+            f.feed(raw.decode("utf-8", "replace"))
+    if rest:
+        f.feed(rest.decode("utf-8", "replace"))
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv))
+    except BrokenPipeError:
+        sys.exit(0)

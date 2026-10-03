@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Software Updates
+Comment=Check for and install system updates
+Exec=/usr/local/bin/simpleos-update
+Icon=system-software-update
+Categories=Settings;System;
+Keywords=update;upgrade;apt;security;

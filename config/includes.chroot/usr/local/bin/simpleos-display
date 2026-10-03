@@ -1,0 +1,278 @@
+#!/bin/sh
+# Simple OS – Bildschirm-Einstellungen (Super+P, Settings → Display)
+# Rofi-Menü in Alltagssprache statt Ausgangsnamen (eDP-1 -> "Built-in display", HDMI-1 -> "HDMI 1"):
+#   ein Bildschirm     "Resolution", "Refresh rate"
+#   mehrere            je Bildschirm ein Untermenü (Auflösung, Bildwiederholrate, Hauptbildschirm, Aus) und
+#                      "Duplicate", "Extend right", "Extend left", "Only <Bildschirm>" (wie Windows+P)
+#   ganz unten         "Advanced Display Settings" -> arandr (lxrandr als Ersatz)
+# Jede Änderung muss bestätigt werden ("Keep changes"); ohne Antwort in 15 s (Bild schwarz/unlesbar) oder
+# bei "Revert" stellt das Skript den alten Zustand wieder her – wie bei Windows. Bestätigte Einstellungen
+# landen in ~/.config/simpleos/display und werden beim Login per "simpleos-display --restore" gesetzt.
+# Robust wie simpleos-wifi: kein set -e, Exit 0, Fehler als Meldung, Details in ~/.cache/simpleos-display.log.
+#   simpleos-display            Menü
+#   simpleos-display --restore  gespeicherte Einstellung anwenden (Openbox-Autostart), still. Ohne gespeicherte
+#                               Einstellung: --best (Xorg nimmt sonst den bevorzugten Modus des Monitors, bei
+#                               vielen 120/144/165-Hz-Monitoren 60 Hz)
+#   simpleos-display --best     jeder aktive Bildschirm: höchste Bildwiederholrate der aktuellen Auflösung
+# Tests: SIMPLEOS_DISPLAY_TIMEOUT = Sekunden bis zum automatischen Zurücksetzen.
+
+SOS_NAME=simpleos-display SOS_TITLE=Display SOS_ICON=video-display SOS_PROMPT=Display
+TAB=$(printf '\t')
+SAVED=${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/simpleos/display
+TIMEOUT=${SIMPLEOS_DISPLAY_TIMEOUT:-15}
+LIB=/usr/local/lib/simpleos/common.sh
+# "." auf eine fehlende Datei würde dash sofort beenden -> vorher prüfen
+[ -r "$LIB" ] || { notify-send "Display" "Simple OS is incomplete (missing $LIB)." 2>/dev/null; exit 0; }
+. "$LIB"
+sos_log_init "$@"
+
+advanced() {
+    for tool in arandr lxrandr; do
+        command -v "$tool" >/dev/null && { "$tool" >/dev/null 2>&1 & exit 0; }
+    done
+    sos_notify "The advanced display settings are not installed." critical
+    exit 0
+}
+sos_rofi_failed() {
+    sos_notify "The display menu could not open. Opening the advanced display settings instead."
+    advanced
+}
+
+case "${1:-}" in
+    --restore|--best) command -v xrandr >/dev/null || exit 0 ;;
+    *) command -v xrandr >/dev/null || { sos_notify "Display settings are not available (xrandr missing)." critical; exit 0; } ;;
+esac
+
+# ---- xrandr lesen. Q = Ausgabe von "xrandr --query" (einmal pro Menüdurchlauf)
+query() { Q=$(LC_ALL=C xrandr --query 2>/dev/null); }
+connected() { printf '%s\n' "$Q" | awk '$2 == "connected" { print $1 }'; }
+# Ausgang aktiv (hat eine Geometrie WxH+X+Y)?
+is_on() { printf '%s\n' "$Q" | awk -v o="$1" '$1 == o { for (i = 3; i <= NF; i++) if ($i ~ /^[0-9]+x[0-9]+\+/) f = 1 } END { exit !f }'; }
+is_primary() { printf '%s\n' "$Q" | awk -v o="$1" '$1 == o && $3 == "primary" { f = 1 } END { exit !f }'; }
+# Modus-Zeilen eines Ausgangs: "Modus<TAB>Rate<TAB>aktiv(1/0)" (eine Zeile pro Rate)
+mode_lines() {
+    printf '%s\n' "$Q" | awk -v o="$1" -v OFS='\t' '
+        /^[^ \t]/ { inside = ($1 == o); next }
+        inside && /^ +[0-9]+x[0-9]+/ {
+            for (i = 2; i <= NF; i++) {
+                r = $i; cur = (r ~ /\*/); gsub(/[*+]/, "", r)
+                if (r == "") continue
+                print $1, r, cur
+            }
+        }'
+}
+modes() { mode_lines "$1" | cut -f1 | awk '!seen[$0]++'; }
+cur_mode() { mode_lines "$1" | awk -F'\t' '$3 == 1 { print $1; exit }'; }
+cur_rate() { mode_lines "$1" | awk -F'\t' '$3 == 1 { print $2; exit }'; }
+rates() { mode_lines "$1" | awk -F'\t' -v m="$2" '$1 == m { print $2 }'; }
+# Höchste Rate der aktuellen Auflösung je aktivem Bildschirm (nur, wenn sie höher ist als die aktuelle)
+best() {
+    query
+    for o in $(connected); do
+        is_on "$o" || continue
+        m=$(cur_mode "$o") cur=$(cur_rate "$o")
+        [ -n "$m" ] || continue
+        top=$(rates "$o" "$m" | sort -gr | head -n 1)
+        [ -n "$top" ] || continue
+        if awk -v a="$top" -v b="${cur:-0}" 'BEGIN { exit !(a > b + 0.5) }'; then
+            sos_log "best: $o $m ${cur:-?} -> $top Hz"
+            xrandr --output "$o" --mode "$m" --rate "$top" >&2 2>&1 || sos_log "best: $o $top Hz abgelehnt"
+        fi
+    done
+}
+case "${1:-}" in
+    --restore)
+        if [ -s "$SAVED" ]; then
+            # Gespeicherte Ausgänge, die es nicht mehr gibt (Monitor abgesteckt) -> xrandr scheitert, alles bleibt
+            # shellcheck disable=SC2046
+            xrandr $(head -n 1 "$SAVED") >&2 2>&1 || sos_log "restore failed: $(head -n 1 "$SAVED")"
+        else
+            best
+        fi
+        exit 0 ;;
+    --best) best; exit 0 ;;
+esac
+command -v rofi >/dev/null || { sos_log "rofi missing"; sos_rofi_failed; }
+hz() { printf '%s' "$1" | awk '{ printf "%d Hz", $1 + 0.5 }'; }
+# Anzeigename statt Ausgangsname
+pretty() {
+    n=${1##*-}; sos_is_num "$n" || n=
+    case "$1" in
+        eDP*|LVDS*|DSI*)            echo "Built-in display" ;;
+        HDMI*)                      echo "HDMI${n:+ $n}" ;;
+        DP*|DisplayPort*)           echo "DisplayPort${n:+ $n}" ;;
+        DVI*)                       echo "DVI${n:+ $n}" ;;
+        VGA*)                       echo "VGA${n:+ $n}" ;;
+        Virtual*|qxl*|default|XWAYLAND*) echo "Screen${n:+ $n}" ;;
+        *)                          echo "$1" ;;
+    esac
+}
+# Aktueller Zustand aller angeschlossenen Ausgänge als xrandr-Argumente (zum Zurücksetzen/Speichern)
+snapshot() {
+    args=
+    for o in $(connected); do
+        if is_on "$o"; then
+            pos=$(printf '%s\n' "$Q" | awk -v o="$o" '$1 == o { for (i = 3; i <= NF; i++) if ($i ~ /^[0-9]+x[0-9]+\+/) { split($i, a, "+"); print a[2] "x" a[3]; exit } }')
+            args="$args --output $o --mode $(cur_mode "$o") --rate $(cur_rate "$o") --pos ${pos:-0x0}"
+            is_primary "$o" && args="$args --primary"
+        else
+            args="$args --output $o --off"
+        fi
+    done
+    printf '%s' "${args# }"
+}
+
+# Rückfrage mit Zeitlimit: Exit 0 nur bei "Keep changes". Grab-Fehler direkt nach dem Moduswechsel
+# -> neuer Versuch; kein Rofi, Esc oder Zeit abgelaufen -> zurücksetzen.
+confirm() {
+    try=0
+    while [ "$try" -lt 3 ]; do
+        try=$((try + 1))
+        err=$(mktemp 2>/dev/null) || err=/dev/null
+        answer=$(printf 'Keep changes\nRevert\n' | timeout "$TIMEOUT" rofi -dmenu -i -no-custom -format i -p "$SOS_TITLE" \
+            -mesg "<b>Keep these display settings?</b>   Reverting in $TIMEOUT seconds…" -markup \
+            -theme-str 'window { width: 420px; location: center; anchor: center; } mainbox { children: [ message, listview ]; }
+                        listview { lines: 2; } element-icon { enabled: false; }' 2>"$err")
+        rc=$?
+        grab=0; [ "$err" != /dev/null ] && grep -qi grab "$err" && grab=1
+        [ "$err" != /dev/null ] && { cat "$err" >&2; rm -f "$err"; }
+        [ "$rc" -ne 0 ] && [ "$grab" = 1 ] && { sleep 0.3; continue; }
+        break
+    done
+    [ "$answer" = 0 ]          # Zeile 0 = "Keep changes"
+}
+# apply "xrandr-Argumente": anwenden, bestätigen lassen, sonst zurück; bestätigt -> speichern
+apply() {
+    prev=$(snapshot)
+    sos_log "apply: $1 (previous: $prev)"
+    # shellcheck disable=SC2086
+    if ! xrandr $1 >&2 2>&1; then
+        sos_notify "This display setting is not supported." critical
+        return
+    fi
+    if confirm; then
+        query
+        mkdir -p "${SAVED%/*}" 2>/dev/null && snapshot > "$SAVED" 2>/dev/null && echo >> "$SAVED"
+        sos_notify "Display settings saved." low
+    else
+        # shellcheck disable=SC2086
+        xrandr $prev >&2 2>&1 || sos_log "revert failed"
+        sos_notify "Display settings restored." low
+    fi
+}
+
+# FontAwesome 4: desktop U+F108, expand U+F065, refresh U+F021, clone U+F24D, arrow-right U+F061,
+# arrow-left U+F060, cog U+F013, star U+F005, power-off U+F011, check U+F00C
+I_SCREEN='\357\204\210' I_RES='\357\201\245' I_RATE='\357\200\241' I_DUP='\357\211\215' I_RIGHT='\357\201\241'
+I_LEFT='\357\201\240' I_COG='\357\200\223' I_STAR='\357\200\205' I_OFF='\357\200\221' I_CHECK='\357\200\214'
+
+pick_resolution() {
+    cur=$(cur_mode "$1")
+    for m in $(modes "$1"); do
+        if [ "$m" = "$cur" ]; then sos_add "$(sos_fa "$I_CHECK")  $m  $(sos_dim "Current")" "noop"
+        else sos_add "      $m" "set$TAB$m"; fi
+    done
+    sos_pick "<b>Resolution</b>   $(sos_dim "$(pretty "$1")")" 360
+    [ "$action" = set ] && apply "--output $1 --mode $arg1"
+}
+pick_rate() {
+    cur=$(cur_mode "$1") rate=$(cur_rate "$1")
+    [ -n "$cur" ] || { sos_notify "This display is off."; return; }
+    for r in $(rates "$1" "$cur"); do
+        if [ "$r" = "$rate" ]; then sos_add "$(sos_fa "$I_CHECK")  $(hz "$r")  $(sos_dim "Current")" "noop"
+        else sos_add "      $(hz "$r")" "set$TAB$r"; fi
+    done
+    sos_pick "<b>Refresh rate</b>   $(sos_dim "$(pretty "$1") · $cur")" 360
+    [ "$action" = set ] && apply "--output $1 --mode $cur --rate $arg1"
+}
+# Untermenü eines Bildschirms (nur bei mehreren)
+screen_menu() {
+    sos_add "$(sos_fa "$I_RES")  Resolution  $(sos_dim "$(cur_mode "$1")")" "res"
+    sos_add "$(sos_fa "$I_RATE")  Refresh rate  $(sos_dim "$(hz "$(cur_rate "$1")")")" "rate"
+    is_primary "$1" || sos_add "$(sos_fa "$I_STAR")  Make main display" "primary"
+    if is_on "$1"; then sos_add "$(sos_fa "$I_OFF")  Turn off" "off"
+    else sos_add "$(sos_fa "$I_SCREEN")  Turn on" "on"; fi
+    sos_pick "<b>$(sos_esc "$(pretty "$1")")</b>" 360
+    case "$action" in
+        res)     pick_resolution "$1" ;;
+        rate)    pick_rate "$1" ;;
+        primary) apply "--output $1 --primary" ;;
+        off)     apply "--output $1 --off" ;;
+        on)      apply "--output $1 --auto --right-of $(connected | grep -vx "$1" | head -n 1)" ;;
+    esac
+}
+# Größter Modus, den alle Bildschirme können (für "Duplicate")
+common_mode() {
+    first=1 list=
+    for o in $(connected); do
+        m=$(modes "$o")
+        if [ "$first" = 1 ]; then list=$m; first=0
+        else list=$(printf '%s\n' "$list" | grep -Fx "$m"); fi
+    done
+    printf '%s\n' "$list" | awk -Fx 'NF == 2 { p = $1 * $2; if (p > best) { best = p; m = $0 } } END { print m }'
+}
+layout() {
+    main=$1 prevo=$1 m=
+    # Hauptbildschirm behält seine Auflösung; ist er aus, nimmt er seinen bevorzugten Modus
+    if is_on "$1"; then args="--output $1 --primary"; else args="--output $1 --auto --primary --pos 0x0"; fi
+    for o in $(connected); do
+        [ "$o" = "$main" ] && continue
+        case "$2" in
+            dup)   m=$(common_mode)
+                   if [ -n "$m" ]; then args="--output $main --mode $m --primary --pos 0x0"; break; fi
+                   args="$args --output $o --auto --same-as $main" ;;
+            right) args="$args --output $o --auto --right-of $prevo"; prevo=$o ;;
+            left)  args="$args --output $o --auto --left-of $prevo"; prevo=$o ;;
+            only)  args="$args --output $o --off" ;;
+        esac
+    done
+    # Duplizieren mit gemeinsamer Auflösung: alle anderen Bildschirme auf denselben Modus und dieselbe Stelle
+    if [ "$2" = dup ] && [ -n "$m" ]; then
+        for o in $(connected); do [ "$o" = "$main" ] || args="$args --output $o --mode $m --same-as $main"; done
+    fi
+    apply "$args"
+}
+
+while :; do
+    query
+    outs=$(connected)
+    n=$(printf '%s\n' "$outs" | grep -c .)
+    if [ "$n" -eq 0 ]; then
+        sos_notify "No display found." critical
+        exit 0
+    fi
+    main=$(for o in $outs; do is_primary "$o" && echo "$o"; done | head -n 1)
+    [ -n "$main" ] || main=$(for o in $outs; do is_on "$o" && echo "$o"; done | head -n 1)
+    [ -n "$main" ] || main=$(printf '%s\n' "$outs" | head -n 1)
+    if [ "$n" -eq 1 ]; then
+        sos_add "$(sos_fa "$I_RES")  Resolution  $(sos_dim "$(cur_mode "$main")")" "res$TAB$main"
+        sos_add "$(sos_fa "$I_RATE")  Refresh rate  $(sos_dim "$(hz "$(cur_rate "$main")")")" "rate$TAB$main"
+        head="<b>Display</b>   $(sos_dim "$(pretty "$main") · $(cur_mode "$main")")"
+    else
+        for o in $outs; do
+            if is_on "$o"; then state="$(cur_mode "$o") · $(hz "$(cur_rate "$o")")"; else state="Off"; fi
+            is_primary "$o" && state="$state · Main"
+            sos_add "$(sos_fa "$I_SCREEN")  $(sos_esc "$(pretty "$o")")  $(sos_dim "$state")" "screen$TAB$o"
+        done
+        sos_add "$(sos_fa "$I_DUP")  Duplicate" "layout${TAB}dup"
+        sos_add "$(sos_fa "$I_RIGHT")  Extend right" "layout${TAB}right"
+        sos_add "$(sos_fa "$I_LEFT")  Extend left" "layout${TAB}left"
+        for o in $outs; do
+            sos_add "$(sos_fa "$I_SCREEN")  Only $(sos_esc "$(pretty "$o")")" "only$TAB$o"
+        done
+        head="<b>Display</b>   $(sos_dim "$n displays")"
+    fi
+    sos_add "$(sos_fa "$I_COG")  Advanced Display Settings" "advanced"
+    sos_pick "$head" 440
+
+    case "$action" in
+        res)      pick_resolution "$arg1" ;;
+        rate)     pick_rate "$arg1" ;;
+        screen)   screen_menu "$arg1" ;;
+        layout)   layout "$main" "$arg1" ;;
+        only)     layout "$arg1" only ;;
+        advanced) advanced ;;
+        *)        break ;;
+    esac
+done
+exit 0

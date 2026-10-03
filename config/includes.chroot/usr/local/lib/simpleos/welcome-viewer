@@ -1,0 +1,176 @@
+#!/usr/bin/env python3
+"""Simple OS – Welcome-Fenster: zeigt /usr/share/simpleos/welcome.html in einem eigenen, schlanken
+GTK3/WebKit2GTK-4.1-Fenster statt im Standardbrowser.
+
+Warum nicht xdg-open/$BROWSER: gehärtete Privacy-Browser (Mullvad Browser als Flatpak) sehen /usr/share des
+Hosts nicht bzw. blockieren file://-Seiten; Mullvad VPN kann lokale Verbindungen sperren. Dieses Fenster
+  - lädt nur lokale Dateien aus /usr/share/simpleos (kein Netz, kein localhost-Dienst nötig),
+  - nutzt nie einen Proxy (NO_PROXY für localhost/127.0.0.1/::1, WebKit-Proxymodus NO_PROXY),
+  - speichert nichts (flüchtiges Profil), JavaScript ist aus (die Seite braucht keins),
+  - öffnet externe Links (https:, mailto:) im Standardbrowser – dafür ist er da.
+
+  welcome-viewer [SEITE]     Fenster öffnen (Exit 0 nach dem Schließen)
+  welcome-viewer --probe     ohne Bildschirm prüfen, ob Fenster und Seite verfügbar sind (Exit 0/3);
+                             meldet zusätzlich "live banner: on|off"
+Live-Session (simpleos-live --check): ganz oben ein Mauve-Banner "You are running Simple OS in Live Mode!" mit
+dem großen Knopf "Install Simple OS Now" (startet simpleos-install) – natives GTK, kein JavaScript nötig.
+Exit 3 = WebKit/GTK nicht verfügbar oder kein Bildschirm -> simpleos-welcome nimmt den nächsten Weg.
+"""
+import os
+import subprocess
+import sys
+
+PAGE_DIR = "/usr/share/simpleos"
+DEFAULT_PAGE = PAGE_DIR + "/welcome.html"
+UNAVAILABLE = 3
+
+# Lokale Adressen nie über einen Proxy/VPN-Proxy leiten (vor dem Laden von WebKit setzen)
+_local = "localhost,127.0.0.1,::1"
+for _var in ("NO_PROXY", "no_proxy"):
+    os.environ[_var] = _local + ("," + os.environ[_var] if os.environ.get(_var) else "")
+# VMs ohne 3D-Beschleunigung: ohne diese Schalter bleibt WebKits Fenster teils leer
+os.environ.setdefault("WEBKIT_DISABLE_COMPOSITING_MODE", "1")
+os.environ.setdefault("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
+
+args = [a for a in sys.argv[1:] if not a.startswith("--")]
+page = os.path.realpath(args[0] if args else DEFAULT_PAGE)
+
+try:
+    import gi
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("WebKit2", "4.1")
+    from gi.repository import Gio, Gtk, WebKit2  # noqa: E402
+except (ImportError, ValueError) as err:
+    print(f"welcome-viewer: WebKit not available: {err}", file=sys.stderr)
+    sys.exit(UNAVAILABLE)
+
+if not os.path.isfile(page) or not page.startswith(PAGE_DIR + "/"):
+    print(f"welcome-viewer: page not found: {page}", file=sys.stderr)
+    sys.exit(UNAVAILABLE)
+
+LIVE_TEXT = "You are running Simple OS in Live Mode! Try out everything safely or install it to your system."
+INSTALL_LABEL = "Install Simple OS Now"
+BANNER_CSS = b"""
+.live-banner { background-color: #cba6f7; padding: 14px 20px; }
+.live-banner label { color: #1e1e2e; }
+.live-banner .live-title { font-weight: bold; font-size: 13pt; }
+.live-banner button.install, .live-banner button.install:hover {
+    background-image: none; background-color: #1e1e2e; color: #cba6f7; border: none; box-shadow: none;
+    border-radius: 10px; padding: 12px 26px; font-size: 13pt; font-weight: bold; }
+.live-banner button.install:hover { background-color: #313244; }
+.live-banner button.install label { color: #cba6f7; }
+"""
+
+
+def is_live():
+    try:
+        return subprocess.run(["/usr/local/bin/simpleos-live", "--check"], timeout=5).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def install_now(_button=None):
+    try:
+        subprocess.Popen(["/usr/local/bin/simpleos-install"], start_new_session=True)
+    except OSError as err:
+        print(f"welcome-viewer: cannot start the installer: {err}", file=sys.stderr)
+
+
+def live_banner():
+    """Mauve-Banner mit Text und großem Knopf; None außerhalb der Live-Session."""
+    if not is_live():
+        return None
+    from gi.repository import Gdk
+    css = Gtk.CssProvider()
+    css.load_from_data(BANNER_CSS)
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), css,
+                                             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+    box = Gtk.Box(spacing=18)
+    box.get_style_context().add_class("live-banner")
+    texts = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, valign=Gtk.Align.CENTER)
+    title = Gtk.Label(label="Live Mode", xalign=0)
+    title.get_style_context().add_class("live-title")
+    text = Gtk.Label(label=LIVE_TEXT, xalign=0, wrap=True)
+    texts.pack_start(title, False, False, 0)
+    texts.pack_start(text, False, False, 0)
+    box.pack_start(texts, True, True, 0)
+    button = Gtk.Button(label=INSTALL_LABEL, valign=Gtk.Align.CENTER)
+    button.get_style_context().add_class("install")
+    button.connect("clicked", install_now)
+    box.pack_end(button, False, False, 0)
+    return box
+
+
+if "--probe" in sys.argv:
+    # Bindungen und Proxy-/Beschleunigungs-API vorhanden (ohne Fenster)
+    assert hasattr(WebKit2.WebsiteDataManager, "set_network_proxy_settings")
+    assert WebKit2.NetworkProxyMode.NO_PROXY is not None
+    assert WebKit2.HardwareAccelerationPolicy.NEVER is not None
+    print("welcome-viewer: ok")
+    print(f"live banner: {'on' if is_live() else 'off'}")
+    sys.exit(0)
+
+if not Gtk.init_check(sys.argv)[0]:
+    print("welcome-viewer: no display", file=sys.stderr)
+    sys.exit(UNAVAILABLE)
+
+
+def is_local(uri):
+    return uri.startswith("file://" + PAGE_DIR + "/") or uri.startswith("about:")
+
+
+def on_decide_policy(_view, decision, decision_type):
+    """Nur die eigenen lokalen Seiten im Fenster; alles andere (Links ins Web) im Standardbrowser."""
+    if decision_type not in (WebKit2.PolicyDecisionType.NAVIGATION_ACTION,
+                             WebKit2.PolicyDecisionType.NEW_WINDOW_ACTION):
+        return False
+    uri = decision.get_navigation_action().get_request().get_uri()
+    if decision_type == WebKit2.PolicyDecisionType.NAVIGATION_ACTION and is_local(uri):
+        return False
+    decision.ignore()
+    if not is_local(uri):
+        try:
+            Gio.AppInfo.launch_default_for_uri(uri, None)
+        except Exception as err:  # noqa: BLE001 – ein fehlender Browser darf das Fenster nicht beenden
+            print(f"welcome-viewer: cannot open {uri}: {err}", file=sys.stderr)
+    return True
+
+
+def main():
+    settings = Gtk.Settings.get_default()
+    settings.set_property("gtk-application-prefer-dark-theme", True)
+
+    context = WebKit2.WebContext.new_ephemeral()
+    context.get_website_data_manager().set_network_proxy_settings(WebKit2.NetworkProxyMode.NO_PROXY, None)
+    view = WebKit2.WebView.new_with_context(context)
+    web = view.get_settings()
+    web.set_enable_javascript(False)
+    web.set_enable_developer_extras(False)
+    web.set_hardware_acceleration_policy(WebKit2.HardwareAccelerationPolicy.NEVER)
+    web.set_default_font_family("Inter")
+    view.connect("decide-policy", on_decide_policy)
+    view.connect("context-menu", lambda *_: True)  # kein "Reload/Inspect"-Menü
+
+    window = Gtk.Window(title="Welcome to Simple OS")
+    window.set_default_size(900, 760)
+    window.set_position(Gtk.WindowPosition.CENTER)
+    window.set_icon_name("user-home")
+    banner = live_banner()
+    if banner:
+        layout = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        layout.pack_start(banner, False, False, 0)
+        layout.pack_start(view, True, True, 0)
+        window.add(layout)
+    else:
+        window.add(view)
+    window.connect("destroy", Gtk.main_quit)
+    window.connect("key-press-event",
+                   lambda _w, ev: ev.keyval == 0xff1b and window.destroy())  # Esc schließt
+    view.load_uri("file://" + page)
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

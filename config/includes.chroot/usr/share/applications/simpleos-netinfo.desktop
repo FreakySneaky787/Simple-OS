@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Network Info
+Comment=Show LAN IP, gateway, hostname, VPN status and public IP
+Exec=simpleos-netinfo
+Icon=network-wired
+Categories=Settings;Network;

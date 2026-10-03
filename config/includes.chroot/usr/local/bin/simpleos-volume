@@ -1,0 +1,132 @@
+#!/bin/sh
+# Simple OS – Sound-Flyout (Super+A, Settings → Sound)
+# Rofi-Menü wie bei Windows 11 rechts über der Taskleiste:
+#   Kopfzeile   aktiver Ausgang und Lautstärke ("Speakers · 40%")
+#   Lautstärke  "Volume up" / "Volume down" (±10 %, Menü bleibt offen), "Set volume…" (0–100 %), Mute/Unmute
+#   Ausgänge    alle Ausgabegeräte (HDMI, USB, Bluetooth) und Anschlüsse eines Geräts (Lautsprecher /
+#               Kopfhörer); Klick schaltet um und verschiebt laufende Wiedergaben mit
+#   ganz unten  "Advanced Audio Settings" -> pavucontrol
+# Robust wie simpleos-wifi: kein set -e, Exit 0, Fehler als Meldung, Details in ~/.cache/simpleos-volume.log.
+# Spricht über pactl mit pipewire-pulse.
+
+SOS_NAME=simpleos-volume SOS_TITLE=Sound SOS_ICON=audio-volume-high SOS_PROMPT=Sound SOS_CORNER=1
+TAB=$(printf '\t')
+LIB=/usr/local/lib/simpleos/common.sh
+# "." auf eine fehlende Datei würde dash sofort beenden -> vorher prüfen
+[ -r "$LIB" ] || { notify-send "Sound" "Simple OS is incomplete (missing $LIB)." 2>/dev/null; exit 0; }
+. "$LIB"
+sos_log_init "$@"
+
+advanced() {
+    if command -v pavucontrol >/dev/null; then
+        pavucontrol >/dev/null 2>&1 &
+    else
+        sos_notify "The advanced sound settings are not installed (pavucontrol missing)." critical
+    fi
+    exit 0
+}
+sos_rofi_failed() {
+    sos_notify "The sound menu could not open. Opening the advanced sound settings instead."
+    advanced
+}
+
+command -v pactl >/dev/null || { sos_notify "Sound control is not available (pactl missing)." critical; exit 0; }
+command -v rofi >/dev/null || { sos_log "rofi missing"; sos_rofi_failed; }
+
+# Lautstärke des Standardausgangs in Prozent (erster Kanal)
+volume() {
+    LC_ALL=C pactl get-sink-volume @DEFAULT_SINK@ 2>/dev/null | sed -n 's/^[^/]*\/ *\([0-9]*\)%.*/\1/p' | head -n 1
+}
+muted() { LC_ALL=C pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null | grep -q 'yes'; }
+set_volume() {
+    pactl set-sink-mute @DEFAULT_SINK@ 0 >&2 2>&1
+    pactl set-sink-volume @DEFAULT_SINK@ "$1" >&2 2>&1 || sos_notify "The volume could not be changed." critical
+}
+# Ausgänge: "Gerät<TAB>Anschluss<TAB>Bezeichnung<TAB>aktiv(1/0)", ein Eintrag pro Anschluss bzw. pro Gerät
+# ohne Anschlüsse; nicht verfügbare Anschlüsse (Kopfhörer nicht eingesteckt) fehlen
+outputs() {
+    default=$(pactl get-default-sink 2>/dev/null)
+    LC_ALL=C pactl list sinks 2>/dev/null | awk -v def="$default" -v OFS='\t' '
+        function flush() {
+            if (name == "") return
+            if (nports == 0) print name, "", desc, (name == def)
+            for (i = 1; i <= nports; i++) {
+                label = (nports > 1) ? desc " – " pdesc[i] : desc
+                print name, port[i], label, (name == def && (active == port[i] || nports == 1))
+            }
+            name = ""; nports = 0; active = ""; inports = 0
+        }
+        /^Sink #/ { flush(); next }
+        /^\tName: / { name = substr($0, 8); next }
+        /^\tDescription: / { desc = substr($0, 15); next }
+        /^\tPorts:/ { inports = 1; next }
+        /^\tActive Port: / { active = substr($0, 15); inports = 0; next }
+        /^\t[A-Za-z]/ { inports = 0 }
+        inports && /^\t\t[^\t]/ {
+            line = substr($0, 3)
+            if (line ~ /not available/) next
+            p = line; sub(/:.*/, "", p)
+            d = line; sub(/^[^:]*: /, "", d); sub(/ \(type:.*$/, "", d); sub(/ \(priority.*$/, "", d)
+            nports++; port[nports] = p; pdesc[nports] = d
+        }
+        END { flush() }'
+}
+switch_output() {
+    pactl set-default-sink "$1" >&2 2>&1 || { sos_notify "This output could not be selected." critical; return; }
+    [ -n "$2" ] && { pactl set-sink-port "$1" "$2" >&2 2>&1 || sos_notify "This output could not be selected." critical; }
+    # Laufende Wiedergaben (Browser, Musik) mitnehmen
+    pactl list short sink-inputs 2>/dev/null | cut -f1 | while read -r id; do
+        sos_is_num "$id" && pactl move-sink-input "$id" "$1" >&2 2>&1
+    done
+    sos_notify "Sound now plays on $3." low
+}
+
+# FontAwesome 4: volume-up U+F028, volume-down U+F027, volume-off U+F026, sliders U+F1DE, check U+F00C,
+# headphones U+F025, cog U+F013
+I_UP='\357\200\250' I_DOWN='\357\200\247' I_OFF='\357\200\246' I_SLIDERS='\357\207\236' I_CHECK='\357\200\214'
+I_PHONES='\357\200\245' I_COG='\357\200\223'
+
+while :; do
+    vol=$(volume); sos_is_num "$vol" || vol=0
+    out_list=$(outputs)
+    current=$(printf '%s\n' "$out_list" | awk -F'\t' '$4 == 1 { print $3; exit }')
+    state="$vol%"; muted && state="Muted"
+    sos_add "$(sos_fa "$I_UP")  Volume up  $(sos_dim "$state")" "up"
+    sos_add "$(sos_fa "$I_DOWN")  Volume down" "down"
+    sos_add "$(sos_fa "$I_SLIDERS")  Set volume…" "level"
+    if muted; then sos_add "$(sos_fa "$I_UP")  Unmute" "mute"; else sos_add "$(sos_fa "$I_OFF")  Mute" "mute"; fi
+    n=$(printf '%s\n' "$out_list" | grep -c .)
+    if [ "$n" -gt 0 ]; then
+        while IFS="$TAB" read -r sink port label active; do
+            [ -n "$sink" ] || continue
+            if [ "$active" = 1 ]; then
+                sos_add "$(sos_fa "$I_CHECK")  $(sos_esc "$label")  $(sos_dim "Active")" "noop"
+            else
+                sos_add "$(sos_fa "$I_PHONES")  $(sos_esc "$label")" "output$TAB$sink$TAB$port"
+            fi
+        done <<EOF
+$out_list
+EOF
+    else
+        sos_add "$(sos_fa "$I_OFF")  No sound output found" "noop"
+    fi
+    sos_add "$(sos_fa "$I_COG")  Advanced Audio Settings" "advanced"
+    sos_pick "<b>Sound</b>   $(sos_dim "${current:-No output} · $state")" 420
+
+    case "$action" in
+        up)       set_volume +10% ;;
+        down)     set_volume -10% ;;
+        mute)     pactl set-sink-mute @DEFAULT_SINK@ toggle >&2 2>&1 || sos_notify "Mute could not be changed." critical ;;
+        level)
+            for l in 100 80 60 50 40 30 20 10 0; do sos_add "$l%" "set$TAB$l"; done
+            sos_pick "<b>Set volume</b>   $(sos_dim "now $state")" 300
+            [ "$action" = set ] && sos_is_num "$arg1" && set_volume "$arg1%" ;;
+        output)
+            label=$(printf '%s\n' "$out_list" | awk -F'\t' -v s="$arg1" -v p="$arg2" '$1 == s && $2 == p { print $3; exit }')
+            switch_output "$arg1" "$arg2" "${label:-the selected output}" ;;
+        advanced) advanced ;;
+        noop)     ;;
+        *)        break ;;
+    esac
+done
+exit 0

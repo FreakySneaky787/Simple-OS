@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+# Benachrichtigungen (dunst 1.9, kennt keine Drop-in-Konfiguration): Linksklick auf eine Meldung löst ihre
+# Aktion aus – z.B. "Open" beim USB-Stick (simpleos-usb-notify) oder "Install" bei Updates (simpleos-update).
+# Das Aktionsmenü (mehrere Knöpfe) nutzt rofi statt des nicht installierten dmenu.
+RC=/etc/xdg/dunst/dunstrc
+sed -i 's|^\([[:space:]]*mouse_left_click[[:space:]]*=\).*|\1 do_action, close_current|' "$RC"
+sed -i 's|^\([[:space:]]*dmenu[[:space:]]*=\).*|\1 /usr/bin/rofi -dmenu -p Action|' "$RC"
+grep -q '^[[:space:]]*mouse_left_click = do_action, close_current$' "$RC"
+grep -q '^[[:space:]]*dmenu = /usr/bin/rofi -dmenu -p Action$' "$RC"

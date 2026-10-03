@@ -1,0 +1,35 @@
+#!/bin/sh
+# Simple OS – Willkommensseite öffnen (Menü → Help → Welcome to Simple OS)
+# Nie über den Standardbrowser ($BROWSER, xdg-open): gehärtete Browser wie der Mullvad Browser (Flatpak) sehen
+# /usr/share nicht bzw. blockieren file://-Seiten, und ein VPN kann localhost sperren. Reihenfolge:
+#   1. eigenes WebKit-Fenster (/usr/local/lib/simpleos/welcome-viewer) – der Normalfall
+#   2. Firefox ESR / Chromium (Debian-Pakete, lesen /usr/share direkt), falls WebKit fehlt
+#   3. Meldung mit dem Pfad der Seite
+# Kein set -e; immer Exit 0. Details in ~/.cache/simpleos-welcome.log.
+
+SOS_NAME=simpleos-welcome SOS_TITLE="Welcome" SOS_ICON=user-home
+PAGE=/usr/share/simpleos/welcome.html
+VIEWER=/usr/local/lib/simpleos/welcome-viewer
+LIB=/usr/local/lib/simpleos/common.sh
+# "." auf eine fehlende Datei würde dash sofort beenden -> vorher prüfen
+[ -r "$LIB" ] || { notify-send "Welcome" "Simple OS is incomplete (missing $LIB)." 2>/dev/null; exit 0; }
+. "$LIB"
+sos_log_init "$@"
+
+# Lokale Adressen nie über Proxy/VPN-Proxy; der Standardbrowser des Nutzers spielt hier keine Rolle
+export NO_PROXY="localhost,127.0.0.1,::1${NO_PROXY:+,$NO_PROXY}"
+export no_proxy="localhost,127.0.0.1,::1${no_proxy:+,$no_proxy}"
+unset BROWSER
+
+[ -r "$PAGE" ] || { sos_notify "The welcome page is missing ($PAGE)." critical; exit 0; }
+
+if [ -x "$VIEWER" ] && command -v python3 >/dev/null; then
+    python3 "$VIEWER" "$PAGE"
+    rc=$?
+    [ "$rc" -eq 3 ] || exit 0          # 3 = WebKit/Bildschirm nicht verfügbar -> nächster Weg
+    sos_log "viewer unavailable, falling back"
+fi
+if command -v firefox-esr >/dev/null; then exec firefox-esr --new-window "file://$PAGE"; fi
+if command -v chromium >/dev/null; then exec chromium --app="file://$PAGE"; fi
+sos_notify "The welcome page could not open. You can find it at $PAGE" critical
+exit 0

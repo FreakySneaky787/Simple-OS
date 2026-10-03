@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Do Not Disturb
+Comment=Pause notifications until you turn it off again
+Exec=/usr/local/bin/simpleos-dnd --toggle
+Icon=notification-disabled
+Categories=Settings;
+Keywords=dnd;do not disturb;focus;quiet;notifications;mute;bitte nicht stören;

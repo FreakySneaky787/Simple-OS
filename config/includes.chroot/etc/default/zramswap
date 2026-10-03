@@ -1,0 +1,4 @@
+# Simple OS – zram-tools
+ALGO=zstd
+PERCENT=50
+PRIORITY=100

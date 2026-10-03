@@ -1,0 +1,105 @@
+#!/bin/sh
+# Simple OS – Netzwerk-Info (Super+N)
+#   simpleos-netinfo           Infofenster per Rofi (LAN-IP, Gateway, Hostname, VPN, öffentliche IP)
+#   simpleos-netinfo --text    dieselben Infos als Text (Terminal)
+#   simpleos-netinfo --panel   für tint2: Kurzanzeige auf stdout, Tooltip auf stderr (ohne Netzzugriff)
+# Die öffentliche IP fragt nur das Infofenster/--text ab (api.ipify.org, 3 s Timeout).
+
+# LAN = Schnittstelle der Standardroute der Haupttabelle. OpenVPN (0/1 + 128/1) und WireGuard über
+# NetworkManager (eigene Tabelle) lassen sie unverändert, die LAN-IP bleibt also auch mit VPN sichtbar.
+# Mehrere Standardrouten (Kabel + WLAN, VMs, simulierte Netze): die mit der niedrigsten Metrik gewinnt –
+# dieselbe Wahl wie der Kernel (Ethernet 100 vor WLAN 600, siehe NetworkManager/conf.d/20-simpleos-route-metric.conf)
+set -- "${1:-}" $(ip -4 route show default 2>/dev/null | awk '{
+    d = ""; g = ""; m = 0
+    for (i = 1; i < NF; i++) { if ($i == "via") g = $(i + 1); if ($i == "dev") d = $(i + 1); if ($i == "metric") m = $(i + 1) + 0 }
+    if (d != "" && (best == "" || m < best)) { best = m; dev = d; gw = g }
+} END { if (dev != "") print dev, gw }')
+mode=$1 dev=${2:-} gw=${3:-}
+# Ohne Standardroute (reines LAN ohne Router): erste globale IPv4-Adresse
+[ -n "$dev" ] || dev=$(ip -4 -o addr show scope global 2>/dev/null | awk '{print $2; exit}')
+ip=
+[ -n "$dev" ] && ip=$(ip -4 -o addr show dev "$dev" scope global 2>/dev/null | awk '{sub("/.*", "", $4); print $4; exit}')
+host=$(hostname)
+
+kind="Ethernet"
+[ -d "/sys/class/net/$dev/wireless" ] && kind="Wi-Fi"
+
+vpn_status() {
+    vpn=$(nmcli -t -f TYPE,NAME connection show --active 2>/dev/null |
+          awk -F: '$1 == "vpn" || $1 == "wireguard" { print $2; exit }')
+    [ -n "$vpn" ] || vpn=$(ip -o link show up 2>/dev/null |
+          awk -F': ' '$2 ~ /^(tun|tap|wg|ppp|tailscale)/ { sub("@.*", "", $2); print $2; exit }')
+    if [ -n "$vpn" ]; then echo "active ($vpn)"; else echo "off"; fi
+}
+public_ip() {
+    python3 - <<'PY' 2>/dev/null || echo "not reachable"
+import urllib.request
+print(urllib.request.urlopen("https://api.ipify.org", timeout=3).read().decode().strip())
+PY
+}
+
+if [ "$mode" = "--panel" ]; then
+    # FontAwesome 4: wifi (U+F1EB), sitemap (U+F0E8), chain-broken (U+F127)
+    if [ -z "$ip" ]; then
+        icon=$(printf '\357\204\247'); label="Offline"
+    elif [ "$kind" = "Wi-Fi" ]; then
+        icon=$(printf '\357\207\253'); label=$ip
+    else
+        icon=$(printf '\357\203\250'); label=$ip
+    fi
+    printf '<span font_desc="FontAwesome 11">%s</span>  %s\n' "$icon" "$label"
+    hint='Klick / Click: WLAN / Wi-Fi · Rechtsklick / Right-click: Details (Super+N)'
+    if [ -n "$ip" ]; then
+        printf 'Netzwerk / Network\nLAN IP:  %s\nDevice:  %s (%s)\nGateway: %s\nHost:    %s\n%s' \
+            "$ip" "$dev" "$kind" "${gw:-none}" "$host" "$hint" >&2
+    else
+        printf 'Keine Verbindung / No network connection\nHost:    %s\n%s' "$host" "$hint" >&2
+    fi
+    exit 0
+fi
+
+info() {
+    conn=
+    [ -n "$dev" ] && conn=$(nmcli -t -g GENERAL.CONNECTION device show "$dev" 2>/dev/null)
+    printf '%-12s %s\n' \
+        "LAN IP"     "${ip:-not connected}" \
+        "Interface"  "${dev:-none}${dev:+ ($kind${conn:+, $conn})}" \
+        "Gateway"    "${gw:-none}" \
+        "Hostname"   "$host" \
+        "VPN"        "$(vpn_status)"
+    # zuletzt, weil sie übers Netz geht (Rofi zeigt die übrigen Zeilen schon vorher an)
+    printf '%-12s %s\n' "Public IP" "$(public_ip)"
+}
+
+if [ "$mode" = "--text" ] || [ -z "$DISPLAY" ]; then
+    info
+    exit 0
+fi
+
+# Rofi fehlt oder startet nicht -> dieselben Infos als Meldung; Grab-Fehler (Super+N gedrückt gehalten,
+# Klick in der Taskleiste) bzw. "Rofi already running" (Klick im Startmenü) -> bis zu 6 Versuche. Rofi liest die Zeilen gestreamt, die öffentliche IP kommt nach.
+show_as_notification() {
+    command -v notify-send >/dev/null && notify-send -a Network -i network-workgroup "Network" "$(info)" 2>/dev/null
+    exit 0
+}
+command -v rofi >/dev/null || show_as_notification
+settings="Wi-Fi & network settings"
+err=$(mktemp 2>/dev/null) || err=/dev/null
+try=0 rc=1
+while [ "$try" -lt 6 ]; do
+    try=$((try + 1))
+    choice=$({ info; echo "$settings"; } | rofi -dmenu -i -no-custom -async-pre-read 0 -p "Network" \
+        -mesg "<b>Network information</b>" -markup \
+        -theme-str 'window { width: 560px; } listview { lines: 7; } element-icon { enabled: false; } element-text { font: "JetBrains Mono 10"; }' \
+        2>"$err"); rc=$?
+    [ "$rc" -eq 0 ] && break
+    # Grab-Fehler oder noch laufendes Startmenü-Rofi (Sperrdatei, Klick im Menü) -> kurz warten, neu versuchen
+    grep -qiE 'grab|already running|pidfile' "$err" 2>/dev/null || break
+    sleep 0.3
+done
+failed=0
+[ "$rc" -ne 0 ] && grep -qiE 'grab|display|fail|error|cannot|unable' "$err" 2>/dev/null && failed=1
+[ "$err" = /dev/null ] || rm -f "$err"
+[ "$failed" = 1 ] && show_as_notification
+[ "$choice" = "$settings" ] && exec /usr/local/bin/simpleos-wifi
+exit 0

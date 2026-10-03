@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Simple OS – Rechtsklick-Aktionen im Dateimanager (Thunar "Custom Actions")
+     "Extract Here" / "Extract To…" für Archive liefert thunar-archive-plugin (file-roller). -->
+<actions>
+  <action>
+    <icon>utilities-terminal</icon>
+    <name>Open Terminal Here</name>
+    <name xml:lang="de">Terminal hier öffnen</name>
+    <unique-id>simpleos-terminal</unique-id>
+    <command>kitty --directory %f</command>
+    <description>Open a terminal in this folder</description>
+    <range></range>
+    <patterns>*</patterns>
+    <startup-notify/>
+    <directories/>
+  </action>
+  <action>
+    <icon>preferences-desktop-wallpaper</icon>
+    <name>Set as Wallpaper</name>
+    <name xml:lang="de">Als Hintergrundbild setzen</name>
+    <unique-id>simpleos-wallpaper</unique-id>
+    <command>/usr/local/bin/simpleos-wallpaper %f</command>
+    <description>Use this picture as the desktop background</description>
+    <range>1</range>
+    <patterns>*</patterns>
+    <image-files/>
+  </action>
+  <action>
+    <icon>edit-copy</icon>
+    <name>Copy to Clipboard</name>
+    <name xml:lang="de">In Zwischenablage kopieren</name>
+    <unique-id>simpleos-copy</unique-id>
+    <command>/usr/local/bin/simpleos-copy-file %F</command>
+    <description>Copy the picture, the text or the path – ready to paste with Ctrl+V</description>
+    <range></range>
+    <patterns>*</patterns>
+    <directories/>
+    <audio-files/>
+    <image-files/>
+    <other-files/>
+    <text-files/>
+    <video-files/>
+  </action>
+  <action>
+    <icon>dialog-password</icon>
+    <name>Open as Administrator</name>
+    <name xml:lang="de">Als Administrator öffnen</name>
+    <unique-id>simpleos-admin</unique-id>
+    <command>/usr/local/bin/simpleos-admin-open %f</command>
+    <description>Folders open in the file manager, files in the text editor – asks for your password</description>
+    <range>1</range>
+    <patterns>*</patterns>
+    <directories/>
+    <other-files/>
+    <text-files/>
+  </action>
+</actions>

@@ -1,0 +1,87 @@
+#!/bin/sh
+# Simple OS – Do Not Disturb (Control Center → System, Menü → System → Do Not Disturb, Launcher, Klick aufs
+# Symbol in der Taskleiste)
+#   simpleos-dnd --on | --off | --toggle    (ohne Argument: --toggle)
+#   simpleos-dnd --status                   "on" oder "off"
+#   simpleos-dnd --no-effects on|off|status Fenstereffekte (Schatten/Transparenz) bei DND mit ausschalten?
+#                                           Vorgabe: off = Effekte bleiben; gespeichert in ~/.config/simpleos/dnd
+#   simpleos-dnd --panel                    Taskleisten-Anzeige (tint2-Executor, läuft dauerhaft): eine Zeile je
+#                                           Wechsel – Glocken-Symbol mit Strich, solange DND an ist, sonst leer
+# An:  kurze Meldung "Do Not Disturb is on" (vor der Pause, damit sie noch erscheint), dann Meldungen pausieren
+#      (dunstctl set-paused true); mit "--no-effects on" zusätzlich Compositor picom aus (nur wenn er lief).
+# Aus: Meldungen wieder an (gesammelte erscheinen dann), picom wieder an (nur wenn DND ihn beendet hatte).
+# Zustand pro Sitzung in $XDG_RUNTIME_DIR/simpleos-dnd (nach einem Neustart ist DND aus).
+# Kein set -e, Exit 0; Details in ~/.cache/simpleos-dnd.log.
+
+STATE=${XDG_RUNTIME_DIR:-${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}}/simpleos-dnd
+SETTINGS=${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/simpleos/dnd
+
+# Taskleiste: vor allem anderen (kein Log, keine Bibliothek) – läuft dauerhaft, solange tint2 lebt.
+# FontAwesome 4 bell-slash U+F1F6
+if [ "${1:-}" = --panel ]; then
+    last=x
+    while kill -0 "$PPID" 2>/dev/null; do
+        if [ -f "$STATE" ]; then now=on; else now=off; fi
+        if [ "$now" != "$last" ]; then
+            if [ "$now" = on ]; then
+                printf "<span font_desc='FontAwesome 11'>\357\207\266</span>\n"
+            else
+                echo
+            fi
+            last=$now
+        fi
+        sleep 1
+    done
+    exit 0
+fi
+
+SOS_NAME=simpleos-dnd SOS_TITLE="Do Not Disturb" SOS_ICON=notification-disabled
+LIB=/usr/local/lib/simpleos/common.sh
+[ -r "$LIB" ] || { notify-send "Do Not Disturb" "Simple OS is incomplete (missing $LIB)." 2>/dev/null; exit 0; }
+. "$LIB"
+sos_log_init "$@"
+
+active() { [ -f "$STATE" ]; }
+effects_off() { grep -qx 'effects=off' "$SETTINGS" 2>/dev/null; }
+dunst_pause() { command -v dunstctl >/dev/null && dunstctl set-paused "$1" >&2 2>&1; }
+
+on() {
+    active && { sos_notify "Do Not Disturb is already on." low; return; }
+    picom=0
+    sos_notify "Do Not Disturb is on – notifications are paused until you turn it off." low
+    if effects_off && command -v simpleos-picom >/dev/null && simpleos-picom --running; then
+        simpleos-picom --stop && picom=1
+    fi
+    printf 'picom=%s\n' "$picom" > "$STATE"
+    sleep 0.5   # Meldung noch zeigen lassen, dann pausieren
+    dunst_pause true
+    sos_log "on: picom=$picom"
+}
+off() {
+    active || { sos_notify "Do Not Disturb is already off." low; return; }
+    picom=0
+    . "$STATE" 2>/dev/null
+    rm -f "$STATE"
+    dunst_pause false
+    [ "$picom" = 1 ] && command -v simpleos-picom >/dev/null && simpleos-picom --start
+    sos_notify "Do Not Disturb is off – notifications are back." low
+    sos_log "off: picom=$picom"
+}
+effects() {
+    case "$1" in
+        on)     mkdir -p "${SETTINGS%/*}" && echo effects=off > "$SETTINGS" ;;
+        off)    rm -f "$SETTINGS" ;;
+        status) if effects_off; then echo on; else echo off; fi ;;
+        *)      echo "Aufruf: simpleos-dnd --no-effects on|off|status" >&2; exit 2 ;;
+    esac
+}
+
+case "${1:---toggle}" in
+    --on)      on ;;
+    --off)     off ;;
+    --toggle)  if active; then off; else on; fi ;;
+    --status)  if active; then echo on; else echo off; fi ;;
+    --no-effects) effects "${2:-}" ;;
+    *) echo "Aufruf: simpleos-dnd [--on|--off|--toggle|--status|--no-effects on|off|status|--panel]" >&2; exit 2 ;;
+esac
+exit 0

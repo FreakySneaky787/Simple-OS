@@ -1,0 +1,446 @@
+#!/bin/sh
+# Simple OS – System-Änderungen des Setup-Wizards (läuft als root, Aufruf per pkexec mit GUI-Passwortdialog)
+#   pkexec simpleos-system-setup [--browser firefox|chromium|mullvad] [--purge-firefox]
+#                                [--office libreoffice|onlyoffice|none] [--gaming]
+#   pkexec simpleos-system-setup --upgrade   System-Update (simpleos-update): Paketlisten laden, alle Updates
+#                                    installieren, ohne Pakete zu entfernen; danach Flatpak-Apps (system), zuletzt
+#                                    Firmware/BIOS vom LVFS (fwupd; nicht in VMs). Vorher ein Wiederherstellungspunkt,
+#                                    falls in simpleos-backup eingeschaltet. Firmware-Ergebnis als Zeile
+#                                    "FIRMWARE: installed|needs-power|failed" – ein Firmware-Fehler macht das
+#                                    System-Update nicht ungültig (Exit-Code bleibt 0)
+#   pkexec simpleos-system-setup --firewall on|off   Firewall (ufw) ein-/ausschalten (Control Center → System)
+#   pkexec simpleos-system-setup --drivers PAKET…   Treiber/Firmware/Microcode installieren (simpleos-drivers
+#                                    --install); nur Pakete der festen Liste DRIVER_PACKAGES, Quellen werden um
+#                                    contrib/non-free ergänzt (nvidia-driver, broadcom-sta-dkms). Live-Zeilen
+#                                    "STAGE: …" / "PROGRESS: <Prozent>" für das Ladefenster (simpleos-progress).
+#                                    Test: SIMPLEOS_SETUP_DRYRUN=1 gibt die apt-Aufrufe nur aus (pkexec leert die
+#                                    Umgebung, von außen nicht setzbar)
+#   simpleos-system-setup --repos    nur contrib/non-free/non-free-firmware in den APT-Quellen aktivieren
+#                                    (von simpleos-post-install, weil Calamares' sources-final nur
+#                                    "main non-free-firmware" schreibt – Steam liegt in contrib)
+# Nur feste Aktionen, keine freien Paketnamen. Zeilen "STEP: <Text>" zeigt der Wizard als Status an.
+# Polkit-Aktion: /usr/share/polkit-1/actions/org.simpleos.system-setup.policy
+set -u
+export DEBIAN_FRONTEND=noninteractive
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+usage() { echo "Aufruf: $0 [--browser firefox|chromium|mullvad] [--purge-firefox] [--office libreoffice|onlyoffice|none] [--gaming] | --repos | --upgrade | --firewall on|off | --drivers PAKET…" >&2; exit 2; }
+# Einzige Pakete, die --drivers installieren darf (dieselbe Liste wie ALLOWED in simpleos-drivers)
+# Kernel/Header/Firmware kommen per Pinning aus bookworm-backports (/etc/apt/preferences.d/simpleos-backports.pref)
+DRIVER_PACKAGES="firmware-linux-nonfree firmware-misc-nonfree firmware-intel-graphics firmware-amd-graphics
+firmware-realtek firmware-iwlwifi firmware-atheros firmware-brcm80211 broadcom-sta-dkms nvidia-driver
+nvidia-tesla-470-driver linux-image-amd64 linux-headers-amd64 intel-microcode amd64-microcode"
+
+[ "$(id -u)" -eq 0 ] || [ "${SIMPLEOS_SETUP_DRYRUN:-}" = 1 ] || { echo "simpleos-system-setup: muss als root laufen (pkexec)" >&2; exit 1; }
+
+browser= purge_firefox=0 office=none gaming=0 repos_only=0 upgrade=0 drivers=0 firewall=
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --drivers)       [ $# -ge 2 ] || usage; drivers=1; shift; break ;;   # Rest = Paketnamen
+        --browser)       [ $# -ge 2 ] || usage; browser=$2; shift ;;
+        --purge-firefox) purge_firefox=1 ;;
+        --office)        [ $# -ge 2 ] || usage; office=$2; shift ;;
+        --gaming)        gaming=1 ;;
+        --repos)         repos_only=1 ;;
+        --upgrade)       upgrade=1 ;;
+        --firewall)      [ $# -ge 2 ] || usage; firewall=$2; shift ;;
+        *)               usage ;;
+    esac
+    shift
+done
+case "$browser" in ""|firefox|chromium|mullvad) ;; *) usage ;; esac
+case "$office" in libreoffice|onlyoffice|none) ;; *) usage ;; esac
+case "$firewall" in ""|on|off) ;; *) usage ;; esac
+
+failed=0
+step() { echo "STEP: $*"; }
+fail() { echo "FEHLER: $*" >&2; failed=1; }
+# Warten statt abbrechen, falls gerade ein anderer apt-Prozess läuft
+# Fortschritt für Wizard/Ladefenster: "STAGE: …" und "PROGRESS: <Prozent>" je Vorgang (nach jedem "STEP:" neu).
+# apt meldet ihn über Status-Fd 3 ("dlstatus:…:<Prozent>:…" Download 0–40 %, "pmstatus:<Paket>:<Prozent>:…"
+# Installation 40–100 %), seine normale Ausgabe geht nach stderr (Protokoll/Details). Der Exit-Code kommt über eine
+# Datei aus der Pipe (POSIX-sh kennt kein pipefail).
+aptget() {
+    _rcf=$(mktemp)
+    { apt-get -y -o DPkg::Lock::Timeout=300 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
+          -o APT::Status-Fd=3 "$@" 3>&1 1>&2; echo $? > "$_rcf"; } | /usr/local/lib/simpleos/progress-filter apt
+    _rc=$(cat "$_rcf" 2>/dev/null); rm -f "$_rcf"
+    return "${_rc:-1}"
+}
+# Warten, bis kein anderer apt/dpkg-Vorgang läuft: nach dem ersten Start lädt apt-daily im Hintergrund die
+# Paketlisten und hält /var/lib/apt/lists/lock – "apt-get update" scheiterte dann sofort (DPkg::Lock::Timeout gilt
+# nur für die dpkg-Sperre), Gaming installierte ohne 32-Bit-Listen weiter ("Unable to locate package libgl1:i386")
+# und Software Updates meldete "Some updates could not be installed". Höchstens 10 min, mit Hinweis im Ladefenster.
+apt_wait() {
+    _w=0
+    while systemctl is-active --quiet apt-daily.service apt-daily-upgrade.service 2>/dev/null ||
+          pgrep -x 'apt-get|apt|dpkg' >/dev/null 2>&1; do
+        [ "$_w" -eq 0 ] && echo "STAGE: Waiting for a background update to finish"
+        _w=$((_w + 1))
+        [ "$_w" -ge 300 ] && return 0
+        sleep 2
+    done
+}
+# apt-get update nach apt_wait; scheitert es (Sperre, kurzer Netz-Aussetzer), nach 5 s ein zweiter Versuch
+apt_get_update() {
+    apt_wait
+    apt-get -o DPkg::Lock::Timeout=300 update && return 0
+    sleep 5
+    apt_wait
+    apt-get -o DPkg::Lock::Timeout=300 update
+}
+installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q 'install ok installed'; }
+# Flatpak ohne --noninteractive: nur so gibt es Fortschritt aus (-y beantwortet alle Rückfragen); der Filter macht
+# daraus STAGE/PROGRESS (gewichtet nach Größe der Teile) und reicht Fehlertexte durch.
+FP_PROGRESS=/usr/local/lib/simpleos/flatpak-progress
+# flatpak_install ID [MB]: vorher Platz prüfen (Vorgabe 1200 MB; Live-Betrieb: RAM-Overlay), sonst klare Meldung
+flatpak_install() {
+    _need=${2:-1200}
+    _free=${SIMPLEOS_SETUP_FREE_MB:-$(flatpak_free_mb)}
+    if [ -n "$_free" ] && [ "$_free" -lt "$_need" ]; then
+        step "Not enough free space: $_free MB free, about $_need MB needed"
+        echo "FEHLER: $1: zu wenig Speicherplatz ($_free MB frei, ~$_need MB nötig)" >&2
+        return 1
+    fi
+    _rcf=$(mktemp)
+    { flatpak install --system -y flathub "$1" </dev/null 2>&1; echo $? > "$_rcf"; } |
+        if [ -x "$FP_PROGRESS" ]; then "$FP_PROGRESS"; else cat; fi
+    _rc=$(cat "$_rcf" 2>/dev/null); rm -f "$_rcf"
+    return "${_rc:-1}"
+}
+# Freier Platz für Flatpak in MB (Live-Betrieb: RAM-Overlay)
+flatpak_free_mb() { df -Pm /var/lib/flatpak 2>/dev/null | awk 'NR == 2 { print $4 }'; }
+
+# Debian-Quellen: contrib, non-free und non-free-firmware ergänzen (klassisches Format und deb822).
+# Nur Einträge mit "main" von Debian-Servern; das Live-Medium (file:) und fremde Repos bleiben unberührt.
+ensure_repos() {
+    rc=1
+    for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
+        [ -f "$f" ] || continue
+        deb822=0
+        grep -q '^URIs:.*debian' "$f" && ! grep -q '^URIs:.*file:' "$f" && deb822=1
+        new=$(mktemp)
+        awk -v deb822="$deb822" '
+            function add(line,   n, i, c) {
+                sub(/[ \t]+$/, "", line)
+                n = split("contrib non-free non-free-firmware", c, " ")
+                for (i = 1; i <= n; i++)
+                    if (line !~ ("[ \t]" c[i] "([ \t]|$)")) line = line " " c[i]
+                return line
+            }
+            /^[ \t]*deb(-src)?[ \t]/ && /debian/ && !/file:/ && /[ \t]main([ \t]|$)/ { print add($0); next }
+            deb822 && /^Components:.*[ \t]main([ \t]|$)/ { print add($0); next }
+            { print }' "$f" > "$new"
+        if ! cmp -s "$f" "$new"; then
+            cat "$new" > "$f"  # Inhalt ersetzen, Rechte/Besitzer bleiben
+            echo "APT-Quellen ergänzt: $f"
+            rc=0
+        fi
+        rm -f "$new"
+    done
+    return "$rc"  # 0 = etwas geändert
+}
+
+if [ "$repos_only" -eq 1 ]; then
+    ensure_repos || true
+    exit 0
+fi
+
+# ------------------------------------------------------------ Treiber (simpleos-drivers --install)
+# Nur Pakete aus DRIVER_PACKAGES; nvidia-driver/broadcom-sta-dkms liegen in non-free/contrib -> Quellen ergänzen.
+# apt meldet Fortschritt über Status-Fd 3 ("dlstatus:…:<Prozent>:…", "pmstatus:<Paket>:<Prozent>:…") ->
+# "STAGE:"/"PROGRESS:" (Download 5–40 %, Installation 40–100 %; progress-filter streamt sofort). Erfolg = alle
+# Pakete wirklich installiert.
+if [ "$drivers" -eq 1 ]; then
+    [ "$browser$purge_firefox$gaming$upgrade" = "000" ] && [ "$office" = none ] && [ -z "$firewall" ] || usage  # nur allein erlaubt
+    [ $# -ge 1 ] || usage
+    for p in "$@"; do
+        case " $(echo $DRIVER_PACKAGES) " in *" $p "*) ;; *) echo "Paket nicht erlaubt: $p" >&2; exit 2 ;; esac
+    done
+    dry=${SIMPLEOS_SETUP_DRYRUN:-0}
+    APT_GET=apt-get
+    [ "$dry" = 1 ] && APT_GET="echo apt-get"
+    echo "STAGE: Checking package sources"
+    echo "PROGRESS: 2"
+    [ "$dry" = 1 ] || ensure_repos >&2 || true
+    rc=0
+    {
+        if [ "$dry" = 1 ]; then $APT_GET update >&2; else apt_get_update >&2; fi || exit 1
+        echo "STAGE: Downloading drivers" >&3
+        $APT_GET -y -o DPkg::Lock::Timeout=300 -o Dpkg::Options::=--force-confdef \
+            -o Dpkg::Options::=--force-confold -o APT::Status-Fd=3 install "$@" >&2
+    } 3>&1 | /usr/local/lib/simpleos/progress-filter apt --dl 5 40 --inst 40 100
+    if [ "$dry" != 1 ]; then
+        for p in "$@"; do
+            installed "$p" || { echo "nicht installiert: $p" >&2; rc=1; }
+        done
+    fi
+    [ "$rc" -eq 0 ] && { echo "PROGRESS: 100"; step "Done"; }
+    exit "$rc"
+fi
+
+# ------------------------------------------------------------ Firewall (ufw)
+# Nur allein erlaubt. "ufw --force enable" fragt nicht nach (bestehende SSH-Verbindungen gibt es hier nicht)
+if [ -n "$firewall" ]; then
+    [ "$browser$purge_firefox$gaming$upgrade$repos_only$drivers" = "00000" ] && [ "$office" = none ] || usage
+    command -v ufw >/dev/null || { echo "FEHLER: ufw fehlt" >&2; exit 1; }
+    if [ "$firewall" = on ]; then
+        step "Turning on the firewall"
+        ufw --force enable
+    else
+        step "Turning off the firewall"
+        ufw disable
+    fi
+    exit $?
+fi
+
+# ------------------------------------------------------------ Firmware (fwupd, LVFS)
+# fw_pending: 0 = Firmware-Updates vorhanden. Erst die Metadaten auffrischen (Exit 2 = schon aktuell, ohne Netz
+# scheitert es – dann gelten die vom fwupd-refresh.timer). In VMs gibt es nichts zu aktualisieren.
+# fw_update: spielt alle ein und meldet "FIRMWARE: …"; BIOS-Kapseln (UEFI) laufen beim nächsten Neustart ->
+# Neustart-Hinweis über $REBOOT_FLAG. Ohne Netzteil/zu leerem Akku verweigert fwupd selbst -> needs-power.
+REBOOT_FLAG=/var/run/reboot-required
+FWUPD_OPTS="--assume-yes --no-unreported-check --no-reboot-check --no-device-prompt --no-security-fix"
+fw_pending() {
+    command -v fwupdmgr >/dev/null || return 1
+    systemd-detect-virt -q --vm 2>/dev/null && return 1
+    # shellcheck disable=SC2086
+    timeout 120 fwupdmgr refresh $FWUPD_OPTS >/dev/null 2>&1
+    # shellcheck disable=SC2086
+    timeout 60 fwupdmgr get-updates --json $FWUPD_OPTS 2>/dev/null | grep -q '"Releases"'
+}
+fw_update() {
+    # shellcheck disable=SC2086
+    _fw=$(timeout 1800 fwupdmgr update $FWUPD_OPTS 2>&1)
+    _rc=$?
+    printf '%s\n' "$_fw" >&2
+    if [ "$_rc" -eq 0 ]; then
+        echo "FIRMWARE: installed"
+        : > "$REBOOT_FLAG" 2>/dev/null
+    else
+        case "$_fw" in
+            *[Pp]ower*|*[Bb]attery*|*" AC "*) echo "FIRMWARE: needs-power" ;;
+            *) echo "FIRMWARE: failed" ;;
+        esac
+    fi
+    return 0
+}
+
+# ------------------------------------------------------------ System-Update
+# Sicher: unterbrochene Installationen zuerst reparieren, bei belegtem apt warten (aptget: Lock-Timeout),
+# "upgrade --with-new-pkgs" entfernt nie Pakete, geänderte Konfigurationsdateien bleiben (force-confold).
+# Exit != 0 -> simpleos-update meldet "Some updates could not be installed".
+if [ "$upgrade" -eq 1 ]; then
+    [ "$browser$purge_firefox$gaming" = "00" ] && [ "$office" = none ] || usage  # nur allein erlaubt
+    step "Checking for updates"
+    dpkg --configure -a || fail "Unterbrochene Installation konnte nicht repariert werden"
+    apt_get_update || { fail "Paketlisten konnten nicht geladen werden"; exit 1; }
+    # Erst nachsehen, was ansteht: ohne System- und App-Updates gleich fertig ("UPTODATE: 1", Ladefenster zeigt
+    # "Already up to date") – vorher lief trotzdem alles mit Ladebalken durch ("Nothing to do").
+    # Kann Flatpak nicht nachsehen (Netz), lieber normal aktualisieren.
+    apt_pending=0
+    apt-get -s upgrade --with-new-pkgs 2>/dev/null | grep -q '^Inst ' && apt_pending=1
+    fp_pending=0
+    if command -v flatpak >/dev/null && flatpak remotes --system 2>/dev/null | grep -q .; then
+        _ls=$(flatpak remote-ls --updates --system --columns=ref 2>/dev/null) || _ls=unbekannt
+        [ -n "$_ls" ] && fp_pending=1
+    fi
+    fw=0
+    fw_pending && fw=1
+    if [ "$apt_pending$fp_pending$fw" = 000 ] && [ "$failed" -eq 0 ]; then
+        echo "UPTODATE: 1"
+        echo "DONE: Already up to date"
+        step "Done"
+        exit 0
+    fi
+    if [ "$apt_pending" -eq 1 ]; then
+        # Wiederherstellungspunkt (simpleos-backup → "Restore point before updates: On"), nur wenn wirklich
+        # System-Updates anstehen; schlägt er fehl, läuft das Update trotzdem (Hinweis im Protokoll)
+        if [ -x /usr/local/sbin/simpleos-backup-helper ]; then
+            /usr/local/sbin/simpleos-backup-helper --before-update ||
+                echo "Wiederherstellungspunkt vor dem Update fehlgeschlagen – Update läuft trotzdem" >&2
+        fi
+        step "Installing updates"
+        aptget upgrade --with-new-pkgs || fail "Updates konnten nicht installiert werden"
+    fi
+    if [ "$fp_pending" -eq 1 ]; then
+        step "Updating apps from the Software Store"
+        _rcf=$(mktemp)
+        { flatpak update --system -y </dev/null 2>&1; echo $? > "$_rcf"; } | if [ -x "$FP_PROGRESS" ]; then "$FP_PROGRESS"; else cat; fi
+        _rc=$(cat "$_rcf" 2>/dev/null); rm -f "$_rcf"
+        [ "${_rc:-1}" -eq 0 ] || fail "Flatpak-Apps konnten nicht aktualisiert werden"
+    fi
+    # Zuletzt: Firmware braucht oft einen Neustart, und ein fehlgeschlagenes BIOS-Update soll die übrigen nicht aufhalten
+    if [ "$fw" -eq 1 ]; then
+        step "Updating firmware (BIOS and devices)"
+        echo "STAGE: Don't turn off the computer"
+        fw_update
+    fi
+    [ "$failed" -eq 0 ] && step "Done"
+    exit "$failed"
+fi
+
+updated=0
+apt_update() {
+    ensure_repos && updated=0
+    [ "$updated" -eq 1 ] && return 0
+    step "Updating package lists"
+    # Scheitert es, arbeiten Browser/Office mit den vorhandenen Listen weiter (die amd64-Pakete stehen schon darin);
+    # Gaming braucht frische Listen (32-Bit gerade erst aktiviert) und prüft den Rückgabewert
+    apt_get_update && { updated=1; return 0; }
+    echo "Paketlisten konnten nicht geladen werden – nutze die vorhandenen" >&2
+    return 1
+}
+
+# ------------------------------------------------------------------ Browser
+case "$browser" in
+    firefox)
+        # z.B. nach einem früheren Wechsel auf Chromium/Mullvad wieder zurück
+        if ! installed firefox-esr; then
+            apt_update
+            step "Installing Firefox ESR"
+            aptget install firefox-esr || fail "Firefox ESR konnte nicht installiert werden"
+        fi ;;
+    chromium)
+        if ! installed chromium; then
+            apt_update
+            step "Installing Chromium"
+            aptget install chromium || fail "Chromium konnte nicht installiert werden"
+        fi ;;
+    mullvad)
+        if ! flatpak info --system net.mullvad.MullvadBrowser >/dev/null 2>&1; then
+            step "Installing Mullvad Browser"
+            flatpak_install net.mullvad.MullvadBrowser || fail "Mullvad Browser konnte nicht installiert werden"
+        fi ;;
+esac
+
+# Firefox nur entfernen, wenn der neue Browser wirklich da ist – nie ohne Browser zurücklassen
+if [ "$purge_firefox" -eq 1 ] && installed firefox-esr; then
+    case "$browser" in
+        chromium) new_id=chromium.desktop;                   ok=$(installed chromium && echo 1) ;;
+        mullvad)  new_id=net.mullvad.MullvadBrowser.desktop; ok=$(flatpak info --system net.mullvad.MullvadBrowser >/dev/null 2>&1 && echo 1) ;;
+        *)        new_id=;                                   ok= ;;
+    esac
+    if [ -n "$ok" ]; then
+        step "Removing Firefox ESR"
+        if aptget purge firefox-esr; then
+            aptget autoremove --purge
+            rm -rf /usr/share/firefox-esr
+            # Systemweite Vorgaben auf den neuen Browser umstellen (für neue Benutzer und xdg-mime)
+            for f in /etc/xdg/mimeapps.list /usr/share/applications/defaults.list; do
+                [ -f "$f" ] && sed -i "s|=firefox-esr\.desktop|=$new_id|" "$f"
+            done
+            # Menüeintrag "Firefox ESR" aus skel und allen User-Homes entfernen (sed -i behält den Besitzer)
+            for f in /etc/skel/.config/openbox/menu.xml /home/*/.config/openbox/menu.xml; do
+                [ -f "$f" ] && sed -i '/<item label="Firefox ESR">/,/<\/item>/d' "$f"
+            done
+        else
+            fail "Firefox ESR konnte nicht entfernt werden"
+        fi
+    elif [ -n "$browser" ] && [ "$browser" != firefox ]; then
+        echo "Firefox ESR bleibt installiert, weil der neue Browser fehlt." >&2
+    fi
+fi
+
+# ------------------------------------------------------------------- Office
+# Einträge im Openbox-Menü (Office) für skel und alle User-Homes, einmalig; sed -i behält den Besitzer
+menu_add_office() {  # $1 = Kennung, stdin = <item>-Zeilen
+    items=$(mktemp)
+    { echo "      <!-- simpleos-office-$1 -->"; cat; } > "$items"
+    for f in /etc/skel/.config/openbox/menu.xml /home/*/.config/openbox/menu.xml; do
+        [ -f "$f" ] || continue
+        grep -q "simpleos-office-$1 " "$f" && continue
+        sed -i "/<!-- simpleos-office:/r $items" "$f"
+    done
+    rm -f "$items"
+}
+office_menu() {
+    case "$office" in
+        libreoffice)
+            installed libreoffice-writer || return 0
+            menu_add_office libreoffice <<'ITEMS'
+      <item label="LibreOffice Writer">
+        <action name="Execute"><command>libreoffice --writer</command></action>
+      </item>
+      <item label="LibreOffice Calc">
+        <action name="Execute"><command>libreoffice --calc</command></action>
+      </item>
+      <item label="LibreOffice Impress">
+        <action name="Execute"><command>libreoffice --impress</command></action>
+      </item>
+      <item label="LibreOffice Draw">
+        <action name="Execute"><command>libreoffice --draw</command></action>
+      </item>
+ITEMS
+            ;;
+        onlyoffice)
+            flatpak info --system org.onlyoffice.desktopeditors >/dev/null 2>&1 || return 0
+            menu_add_office onlyoffice <<'ITEMS'
+      <item label="ONLYOFFICE">
+        <action name="Execute"><command>flatpak run org.onlyoffice.desktopeditors</command></action>
+      </item>
+ITEMS
+            ;;
+    esac
+}
+
+case "$office" in
+    libreoffice)
+        if ! installed libreoffice-writer; then
+            apt_update
+            step "Installing LibreOffice (this can take a while)"
+            aptget install libreoffice-writer libreoffice-calc libreoffice-impress libreoffice-draw \
+                libreoffice-gtk3 hunspell-de-de hunspell-en-us \
+                || fail "LibreOffice konnte nicht installiert werden"
+        fi ;;
+    onlyoffice)
+        if ! flatpak info --system org.onlyoffice.desktopeditors >/dev/null 2>&1; then
+            # ~615 MB Download, ~1,3 GB installiert + Laufzeit/Grafik-Erweiterungen (~1,2 GB), falls noch nicht da
+            need=1600
+            flatpak info --system org.freedesktop.Platform//25.08 >/dev/null 2>&1 || need=2900
+            step "Installing ONLYOFFICE (about 1 GB download – this takes several minutes)"
+            flatpak_install org.onlyoffice.desktopeditors "$need" || fail "ONLYOFFICE konnte nicht installiert werden"
+        fi ;;
+esac
+office_menu
+
+# ------------------------------------------------------------------- Gaming
+if [ "$gaming" -eq 1 ]; then
+    # Reihenfolge: Quellen (Steam liegt in contrib) -> i386 -> apt-get update -> Installation
+    if ensure_repos; then
+        step "Enabling contrib and non-free repositories"
+        updated=0
+    fi
+    if ! dpkg --print-foreign-architectures | grep -qx i386; then
+        step "Enabling 32-bit support"
+        dpkg --add-architecture i386
+        updated=0
+    fi
+    if ! apt_update; then
+        fail "Gaming-Paket: Paketlisten (32-Bit) konnten nicht geladen werden – Internetverbindung prüfen"
+    else
+        # Lizenz im Hintergrund vorab akzeptieren (die Wahl von "Ultimate Gaming" im Wizard ist die Zustimmung).
+        # bookworm fragt bei der Installation nicht (Steam zeigt die Lizenz beim ersten Start grafisch),
+        # ältere/neuere steam-installer-Versionen tun es per debconf – dann ohne Terminal-Prompt.
+        for owner in steam steam-installer; do
+            printf '%s steam/question select I AGREE\n%s steam/license note \n' "$owner" "$owner" | debconf-set-selections
+        done
+        # NVIDIA-Treiber aktiv: Steam braucht dessen 32-Bit-Bibliotheken (sonst startet es nicht)
+        nvidia=
+        if [ -e /sys/module/nvidia/version ]; then
+            nvidia="nvidia-driver-libs:i386"
+        fi
+        step "Installing Steam, Lutris and MangoHud (this can take a while)"
+        # 32-Bit-Grafiktreiber explizit: Steam und viele Spiele sind 32-Bit
+        aptget install steam-installer steam-libs-i386 lutris mangohud gamemode \
+            libgl1-mesa-dri:i386 libgl1:i386 mesa-vulkan-drivers mesa-vulkan-drivers:i386 $nvidia \
+            || fail "Gaming-Paket konnte nicht vollständig installiert werden"
+    fi
+fi
+
+if [ "$failed" -eq 0 ]; then
+    step "Done"
+else
+    step "Finished with errors"
+fi
+exit "$failed"

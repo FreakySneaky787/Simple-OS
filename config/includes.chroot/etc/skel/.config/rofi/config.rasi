@@ -1,0 +1,120 @@
+configuration {
+    modi: "drun,run,window";
+    show-icons: true;
+    icon-theme: "Papirus-Dark";
+    font: "Inter 11";
+    display-drun: "Apps";
+    display-run: "Run";
+    display-window: "Windows";
+    drun-display-format: "{name}";
+    /* Startmenü wie bei Windows: EIN Klick öffnet/übernimmt den Eintrag (Rofi-Vorgabe wäre Doppelklick).
+       Gilt für alle Rofi-Fenster (Menü, Suche, Flyouts); Desktop-Symbole (pcmanfm) bleiben beim Doppelklick.
+       "!" = beim LOSLASSEN übernehmen: beim Drücken öffnete die App (WLAN, Sound, Appearance …) ihr eigenes
+       Rofi-Fenster schon, während die Taste noch unten war – das Loslassen außerhalb schloss es sofort wieder. */
+    me-select-entry: "";
+    me-accept-entry: "!MousePrimary";
+    /* Super erneut antippen schließt das Menü (xcape schickt beim Antippen XF86Search, siehe Openbox-Autostart) */
+    kb-cancel: "Escape,Control+g,Control+bracketleft,XF86Search";
+}
+
+* {
+    bg:        #1e1e2e;
+    bg-alt:    #313244;
+    bg-sel:    #45475a;
+    fg:        #cdd6f4;
+    fg-sub:    #a6adc8;
+    fg-dim:    #6c7086;
+    line:      #313244;
+    accent:    #89b4fa;
+
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+/* Fenster: weiche Ecken, feine Kontur statt kräftigem Rahmen; den Schatten zeichnet picom */
+window {
+    location:         center;
+    anchor:           center;
+    width:            600px;
+    border:           1px;
+    border-color:     @line;
+    border-radius:    16px;
+    background-color: @bg;
+    transparency:     "real";
+}
+
+mainbox {
+    /* message: Hinweiszeile von "rofi -mesg" (Netzwerk, Power, Updates …); ohne -mesg blendet Rofi sie aus */
+    children: [ inputbar, message, listview ];
+    spacing:  10px;
+    padding:  14px;
+}
+
+/* Suchfeld: ruhige Fläche ohne Rahmen, das Prompt-Wort nur als leise Beschriftung */
+inputbar {
+    children:         [ prompt, entry ];
+    background-color: @bg-alt;
+    border-radius:    12px;
+    padding:          10px 14px;
+    spacing:          10px;
+}
+
+prompt {
+    text-color: @fg-sub;
+}
+
+entry {
+    placeholder:       "Search";
+    placeholder-color: @fg-dim;
+    cursor:            text;
+}
+
+/* Hinweiszeile als Überschrift, nicht als Kasten */
+message {
+    padding: 2px 6px 0px 6px;
+    /* ohne eigene Angabe zeichnet Rofi seinen eingebauten gestrichelten Rahmen (im hellen Modus sichtbar) */
+    border:  0px;
+}
+
+textbox {
+    text-color: @fg-sub;
+}
+
+listview {
+    border:       0px;
+    lines:        8;
+    columns:      1;
+    fixed-height: false;
+    scrollbar:    false;
+    spacing:      2px;
+}
+
+element {
+    padding:       9px 12px;
+    border-radius: 10px;
+    spacing:       12px;
+}
+
+element normal.normal,
+element alternate.normal {
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+/* Auswahl: dezente Fläche, schmale Akzent-Markierung links (Farbe per simpleos-theme) */
+element selected.normal {
+    background-color: @bg-alt;
+    text-color:       @fg;
+    border:           0px 0px 0px 3px;
+    border-color:     @accent;
+}
+
+element-icon {
+    size:           24px;
+    vertical-align: 0.5;
+}
+
+element-text {
+    vertical-align: 0.5;
+    text-color:     inherit;
+}

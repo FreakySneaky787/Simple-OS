@@ -1,0 +1,421 @@
+#!/usr/bin/env python3
+"""Simple OS – Software Center (Menü → Software Store, Launcher "Software Center").
+
+Ausgewählte Programme per Klick installieren, öffnen und entfernen – ohne Terminal, ohne apt/flatpak-Befehle:
+  Flatpak (Flathub)   systemweit; Flatpaks Polkit-Regel erlaubt das Mitgliedern der Gruppe sudo ohne Passwort,
+                      sonst fragt lxpolkit grafisch
+  System-Pakete       nur über feste Aktionen von "pkexec simpleos-system-setup" (Steam = --gaming,
+                      LibreOffice = --office libreoffice) – grafische Passwortabfrage, keine freien Paketnamen
+Oben Suche und Kategorien, unten "More apps": Bazaar (simpleos-software) und GNOME Software (alle Flathub-
+und Debian-Programme). Installationen laufen im Hintergrund mit Fortschrittsanzeige; Fehler als Klartext.
+
+  simpleos-software-center            Fenster
+  simpleos-software-center --list     Katalog mit Status (installed/available) als Text (Tests)
+Test: SIMPLEOS_SC_SELFTEST=1 (Fenster aufbauen, Suche/Kategorien durchschalten, Exit 1 bei Python-Ausnahme).
+"""
+import os
+import re
+import shutil
+import subprocess
+import sys
+import threading
+import time
+
+HELPER = "/usr/local/sbin/simpleos-system-setup"
+FP_PROGRESS = "/usr/local/lib/simpleos/flatpak-progress"
+# Unter so viel freiem Platz (MB) vor einer Flatpak-Installation nachfragen (große Apps samt Laufzeit: 1–3 GB)
+LOW_SPACE_MB = 3000
+# (Schlüssel, Name, Beschreibung, Kategorie, Symbol, Quelle, Kennung)
+#   Quelle flatpak: Kennung = Flathub-ID
+#   Quelle system:  Kennung = "Helfer-Argumente|Paket zur Erkennung|Startbefehl"
+CATALOG = [
+    ("steam", "Steam", "Play thousands of games (with Lutris and MangoHud)", "Games", "steam", "system",
+     "--gaming|steam-installer|steam"),
+    ("libreoffice", "LibreOffice", "Documents, spreadsheets and presentations", "Office", "libreoffice-startcenter",
+     "system", "--office libreoffice|libreoffice-writer|libreoffice"),
+    ("discord", "Discord", "Voice, video and text chat", "Internet", "com.discordapp.Discord", "flatpak",
+     "com.discordapp.Discord"),
+    ("spotify", "Spotify", "Music and podcasts", "Media", "com.spotify.Client", "flatpak", "com.spotify.Client"),
+    ("vlc", "VLC", "Plays almost every video and audio file", "Media", "org.videolan.VLC", "flatpak", "org.videolan.VLC"),
+    ("onlyoffice", "ONLYOFFICE", "Office suite that looks like Microsoft Office", "Office",
+     "org.onlyoffice.desktopeditors", "flatpak", "org.onlyoffice.desktopeditors"),
+    ("thunderbird", "Thunderbird", "Email and calendar", "Internet", "org.mozilla.Thunderbird", "flatpak",
+     "org.mozilla.Thunderbird"),
+    ("telegram", "Telegram", "Messenger", "Internet", "org.telegram.desktop", "flatpak", "org.telegram.desktop"),
+    ("signal", "Signal", "Private messenger", "Internet", "org.signal.Signal", "flatpak", "org.signal.Signal"),
+    ("zoom", "Zoom", "Video meetings", "Internet", "us.zoom.Zoom", "flatpak", "us.zoom.Zoom"),
+    ("gimp", "GIMP", "Edit photos and images", "Graphics", "org.gimp.GIMP", "flatpak", "org.gimp.GIMP"),
+    ("krita", "Krita", "Digital painting", "Graphics", "org.kde.krita", "flatpak", "org.kde.krita"),
+    ("inkscape", "Inkscape", "Vector graphics", "Graphics", "org.inkscape.Inkscape", "flatpak", "org.inkscape.Inkscape"),
+    ("obs", "OBS Studio", "Record and stream your screen", "Media", "com.obsproject.Studio", "flatpak",
+     "com.obsproject.Studio"),
+    ("kdenlive", "Kdenlive", "Video editor", "Media", "org.kde.kdenlive", "flatpak", "org.kde.kdenlive"),
+    ("audacity", "Audacity", "Record and edit audio", "Media", "org.audacityteam.Audacity", "flatpak",
+     "org.audacityteam.Audacity"),
+    ("heroic", "Heroic Games Launcher", "Epic Games, GOG and Amazon games", "Games", "com.heroicgameslauncher.hgl",
+     "flatpak", "com.heroicgameslauncher.hgl"),
+    ("prism", "Prism Launcher", "Minecraft launcher", "Games", "org.prismlauncher.PrismLauncher", "flatpak",
+     "org.prismlauncher.PrismLauncher"),
+    ("bottles", "Bottles", "Run Windows programs", "Games", "com.usebottles.bottles", "flatpak", "com.usebottles.bottles"),
+    ("vscode", "Visual Studio Code", "Code editor", "Development", "com.visualstudio.code", "flatpak",
+     "com.visualstudio.code"),
+    ("bitwarden", "Bitwarden", "Password manager", "Utilities", "com.bitwarden.desktop", "flatpak",
+     "com.bitwarden.desktop"),
+    ("kodi", "Kodi", "Media center for TV and movies", "Media", "tv.kodi.Kodi", "flatpak", "tv.kodi.Kodi"),
+]
+CATEGORIES = ["All", "Internet", "Office", "Media", "Graphics", "Games", "Development", "Utilities"]
+
+
+def run(*args, timeout=30):
+    try:
+        return subprocess.run(list(args), capture_output=True, text=True, timeout=timeout)
+    except FileNotFoundError:
+        return subprocess.CompletedProcess(args, 127, "", f"{args[0]} is not installed")
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(args, 124, "", "timeout")
+
+
+def flatpak_installed():
+    if not shutil.which("flatpak"):
+        return set()
+    return set(run("flatpak", "list", "--app", "--columns=application").stdout.split())
+
+
+def deb_installed(pkg):
+    return "install ok installed" in run("dpkg-query", "-W", "-f=${Status}", pkg).stdout
+
+
+def status(app, flatpaks=None):
+    """'installed' | 'available'"""
+    _k, _n, _d, _c, _i, source, ident = app
+    if source == "flatpak":
+        flatpaks = flatpak_installed() if flatpaks is None else flatpaks
+        return "installed" if ident in flatpaks else "available"
+    return "installed" if deb_installed(ident.split("|")[1]) else "available"
+
+
+def install_cmd(app):
+    _k, _n, _d, _c, _i, source, ident = app
+    if source == "flatpak":
+        # ohne --noninteractive: nur so meldet Flatpak Fortschritt (-y beantwortet alle Rückfragen)
+        return ["flatpak", "install", "--system", "-y", "flathub", ident]
+    return ["pkexec", HELPER] + ident.split("|")[0].split()
+
+
+def remove_cmd(app):
+    """System-Pakete entfernt das Software Center nicht (Steam/LibreOffice hängen an mehreren Paketen)."""
+    _k, _n, _d, _c, _i, source, ident = app
+    if source == "flatpak":
+        return ["flatpak", "uninstall", "--system", "-y", "--noninteractive", ident]
+    return None
+
+
+def open_cmd(app):
+    _k, _n, _d, _c, _i, source, ident = app
+    return ["flatpak", "run", ident] if source == "flatpak" else ident.split("|")[2].split()
+
+
+def matches(app, query, category):
+    if category not in ("All", app[3]):
+        return False
+    q = query.strip().lower()
+    return not q or q in app[1].lower() or q in app[2].lower() or q in app[0]
+
+
+def remaining(pct, t0):
+    """' · about 3 min left' aus bisherigem Tempo (erst ab 3 %, vorher zu ungenau)"""
+    if pct < 3 or pct >= 100:
+        return ""
+    left = (time.monotonic() - t0) * (100 - pct) / pct
+    if left < 60:
+        return " · less than a minute left"
+    return f" · about {int(left / 60 + 0.5)} min left"
+
+
+def free_mb(path="/var/lib/flatpak"):
+    try:
+        st = os.statvfs(path)
+        return st.f_bavail * st.f_frsize // 1_000_000
+    except OSError:
+        return None
+
+
+def explain(rc, output):
+    """Fehler in Alltagssprache"""
+    text = output.lower()
+    if rc == 126 or "dismissed" in text or "not authorized" in text:
+        return "No password entered – nothing was installed."
+    if rc == 127:
+        return "This could not start (a required program is missing)."
+    # Platz zuerst; NICHT nach "network" suchen – Flatpak listet bei jeder Installation die Berechtigungen der App
+    # (fast immer "network"), sonst hieße jeder Fehler "kein Internet"
+    if "min-free-space" in text or "no space left" in text or ("space" in text and "not enough" in text):
+        return "Not enough free space. In Live mode, apps are kept in memory – install Simple OS first."
+    if any(k in text for k in ("could not resolve", "unable to connect", "could not connect", "temporary failure",
+                               "network is unreachable", "timeout was reached")):
+        return "No internet connection. Check your network and try again."
+    if "no remote" in text or "flathub" in text and "not found" in text:
+        return "Flathub is not set up on this computer."
+    return "Something went wrong. Please try again later."
+
+
+def main(argv):
+    if "--list" in argv:
+        fl = flatpak_installed()
+        for app in CATALOG:
+            print(f"{app[0]}\t{app[5]}\t{status(app, fl)}\t{' '.join(install_cmd(app))}")
+        return 0
+    if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
+        print("simpleos-software-center: no display", file=sys.stderr)
+        return 1
+
+    import gi
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import GLib, Gtk
+
+    selftest = os.environ.get("SIMPLEOS_SC_SELFTEST") == "1"
+    errors = []
+    if selftest:
+        def hook(etype, value, tb):
+            errors.append(value)
+            sys.__excepthook__(etype, value, tb)
+        sys.excepthook = hook
+
+    def label(text, markup=False, dim=False):
+        lab = Gtk.Label(xalign=0)
+        lab.set_line_wrap(True)
+        lab.set_markup(text) if markup else lab.set_text(text)
+        if dim:
+            lab.get_style_context().add_class("dim-label")
+        return lab
+
+    class Store(Gtk.Window):
+        def __init__(self):
+            super().__init__(title="Software Center")
+            self.set_default_size(820, 640)
+            self.set_icon_name("system-software-install")
+            self.set_position(Gtk.WindowPosition.CENTER)
+            self.connect("destroy", Gtk.main_quit)
+            self.busy = None        # Schlüssel der laufenden Installation
+            self.category = "All"
+            self.states = {}
+            hb = Gtk.HeaderBar(show_close_button=True, title="Software Center")
+            self.search = Gtk.SearchEntry(placeholder_text="Search apps")
+            self.search.connect("search-changed", lambda *_: self.fill())
+            hb.pack_start(self.search)
+            more = Gtk.MenuButton(label="More apps")
+            menu = Gtk.Menu()
+            for text, cmdline in (("Browse Flathub (Bazaar)", ["simpleos-software"]),
+                                  ("GNOME Software (all apps and system packages)", ["gnome-software"])):
+                item = Gtk.MenuItem(label=text)
+                item.connect("activate", lambda _i, c=cmdline: self.spawn(c))
+                menu.append(item)
+            menu.show_all()
+            more.set_popup(menu)
+            hb.pack_end(more)
+            self.set_titlebar(hb)
+            outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+            cats = Gtk.Box(spacing=6, margin=10)
+            group = None
+            for c in CATEGORIES:
+                rb = Gtk.RadioButton.new_with_label_from_widget(group, c)
+                rb.set_mode(False)          # wie Knöpfe aussehen
+                group = group or rb
+                rb.connect("toggled", lambda b, c=c: b.get_active() and self.set_category(c))
+                cats.pack_start(rb, False, False, 0)
+            outer.pack_start(cats, False, False, 0)
+            self.progress = Gtk.ProgressBar(show_text=True, no_show_all=True, margin_start=10, margin_end=10)
+            outer.pack_start(self.progress, False, False, 0)
+            scroll = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER)
+            self.list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, margin=10)
+            self.list.get_style_context().add_class("frame")
+            scroll.add(self.list)
+            outer.pack_start(scroll, True, True, 0)
+            if not shutil.which("flatpak"):
+                outer.pack_end(label("Flatpak is missing – only system apps can be installed.", dim=True), False, False, 6)
+            self.add(outer)
+            self.show_all()
+            self.reload()
+
+        def spawn(self, cmdline):
+            try:
+                subprocess.Popen(cmdline, start_new_session=True)
+            except OSError:
+                self.error(f"{cmdline[0]} is not installed.")
+
+        def set_category(self, c):
+            self.category = c
+            self.fill()
+
+        def reload(self):
+            def work():
+                fl = flatpak_installed()
+                return {app[0]: status(app, fl) for app in CATALOG}
+
+            def done(states):
+                self.states = states
+                self.fill()
+            threading.Thread(target=lambda: (lambda r: GLib.idle_add(done, r))(work()), daemon=True).start()
+
+        def fill(self):
+            for child in self.list.get_children():
+                self.list.remove(child)
+            shown = [a for a in CATALOG if matches(a, self.search.get_text(), self.category)]
+            if not shown:
+                self.list.add(label("No apps found. Try “More apps” for the full catalog.", dim=True))
+            for app in shown:
+                key, name, desc, cat, icon, source, _ident = app
+                row = Gtk.Box(spacing=12, margin=10)
+                img = Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.DIALOG)
+                img.set_pixel_size(48)
+                row.pack_start(img, False, False, 0)
+                texts = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+                texts.pack_start(label(f"<b>{GLib.markup_escape_text(name)}</b>", markup=True), False, False, 0)
+                texts.pack_start(label(desc, dim=True), False, False, 0)
+                texts.pack_start(label(f"{cat} · {'Flathub' if source == 'flatpak' else 'Debian'}", dim=True),
+                                 False, False, 0)
+                row.pack_start(texts, True, True, 0)
+                st = self.states.get(key)
+                btns = Gtk.Box(spacing=6)
+                if st is None:
+                    btns.pack_start(Gtk.Spinner(active=True), False, False, 0)
+                elif self.busy == key:
+                    btns.pack_start(label("Working…", dim=True), False, False, 0)
+                elif st == "installed":
+                    b = Gtk.Button(label="Open")
+                    b.connect("clicked", lambda _b, a=app: self.spawn(open_cmd(a)))
+                    btns.pack_start(b, False, False, 0)
+                    if remove_cmd(app):
+                        r = Gtk.Button(label="Remove")
+                        r.get_style_context().add_class("destructive-action")
+                        r.set_sensitive(self.busy is None)
+                        r.connect("clicked", lambda _b, a=app: self.confirm_remove(a))
+                        btns.pack_start(r, False, False, 0)
+                else:
+                    b = Gtk.Button(label="Install")
+                    b.get_style_context().add_class("suggested-action")
+                    b.set_sensitive(self.busy is None)
+                    b.connect("clicked", lambda _b, a=app: self.install(a))
+                    btns.pack_start(b, False, False, 0)
+                btns.set_valign(Gtk.Align.CENTER)
+                row.pack_end(btns, False, False, 0)
+                self.list.add(row)
+            self.list.show_all()
+
+        def confirm_remove(self, app):
+            d = Gtk.MessageDialog(transient_for=self, modal=True, message_type=Gtk.MessageType.QUESTION,
+                                  buttons=Gtk.ButtonsType.OK_CANCEL, text=f"Remove {app[1]}?")
+            d.format_secondary_text("Your files stay. The app's settings are kept for a later reinstall.")
+            ok = d.run() == Gtk.ResponseType.OK
+            d.destroy()
+            if ok:
+                self.do(app, remove_cmd(app), "Removing")
+
+        def install(self, app):
+            # wenig Platz (v.a. Live-Betrieb: RAM-Overlay) -> vorher ehrlich fragen statt nach Minuten scheitern
+            free = free_mb() if app[5] == "flatpak" else None
+            if free is not None and free < LOW_SPACE_MB:
+                d = Gtk.MessageDialog(transient_for=self, modal=True, message_type=Gtk.MessageType.WARNING,
+                                      buttons=Gtk.ButtonsType.OK_CANCEL, text=f"Only {free} MB free – install {app[1]} anyway?")
+                d.format_secondary_text("Large apps need 1–3 GB including their runtime. In Live mode, apps are kept "
+                                        "in memory and are gone after a restart – install Simple OS first.")
+                ok = d.run() == Gtk.ResponseType.OK
+                d.destroy()
+                if not ok:
+                    return
+            self.do(app, install_cmd(app), "Installing")
+
+        def do(self, app, cmdline, verb):
+            self.busy = app[0]
+            self.fill()
+            self.progress.set_text(f"{verb} {app[1]}… (this can take a few minutes)")
+            self.progress.show()
+            # pulsieren, bis echte Prozentzahlen kommen (PROGRESS-Zeilen), dann fester Balken + Restzeit
+            state = {"pct": None, "t0": time.monotonic(), "label": f"{verb} {app[1]}"}
+            pulse = GLib.timeout_add(150, lambda: (state["pct"] is None and self.progress.pulse(), True)[1])
+
+            def show(line):
+                if line.startswith("STEP: "):
+                    state["label"] = line[6:]
+                    state["pct"], state["t0"] = None, time.monotonic()
+                    self.progress.set_text(state["label"])
+                elif line.startswith("PROGRESS: "):
+                    # "PROGRESS: <Prozent> [<Rest>]": Rest = Restzeit aus dem Download-Tempo (progress-filter)
+                    num, _, rest = line[10:].partition(" ")
+                    try:
+                        pct = max(0, min(100, int(float(num))))
+                    except ValueError:
+                        return False
+                    state["pct"] = pct
+                    self.progress.set_fraction(pct / 100)
+                    rest = rest.strip()
+                    left = f" · about {rest} left" if rest and pct < 100 else remaining(pct, state["t0"])
+                    self.progress.set_text(f"{state['label']} · {pct}%{left}")
+                return False
+
+            def work():
+                try:
+                    p = subprocess.Popen(cmdline, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                except OSError as err:
+                    return 127, str(err)
+                src = p.stdout
+                filt = None
+                if cmdline[:2] == ["flatpak", "install"] and os.access(FP_PROGRESS, os.X_OK):
+                    filt = subprocess.Popen([FP_PROGRESS], stdin=p.stdout, stdout=subprocess.PIPE)
+                    p.stdout.close()
+                    src = filt.stdout
+                out = []
+                for raw in src:
+                    line = raw.decode(errors="replace").strip()
+                    out.append(line + "\n")
+                    GLib.idle_add(show, line)
+                rc = p.wait()
+                if filt:
+                    filt.wait()
+                return rc, "".join(out)
+
+            def done(res):
+                GLib.source_remove(pulse)
+                rc, out = res
+                self.busy = None
+                self.progress.hide()
+                if rc != 0:
+                    print(f"simpleos-software-center: {' '.join(cmdline)} -> {rc}\n{out}", file=sys.stderr)
+                    self.error(f"{app[1]}: {explain(rc, out)}")
+                else:
+                    self.notify(f"{app[1]} is {'installed' if verb == 'Installing' else 'removed'}.")
+                self.reload()
+            threading.Thread(target=lambda: (lambda r: GLib.idle_add(done, r))(work()), daemon=True).start()
+
+        def notify(self, text):
+            if shutil.which("notify-send"):
+                subprocess.Popen(["notify-send", "-c", "x-simpleos", "-i", "system-software-install",
+                                  "Software Center", text])
+
+        def error(self, text):
+            d = Gtk.MessageDialog(transient_for=self, modal=True, message_type=Gtk.MessageType.WARNING,
+                                  buttons=Gtk.ButtonsType.OK, text=text)
+            d.run()
+            d.destroy()
+
+    win = Store()
+    if selftest:
+        steps = [lambda: win.search.set_text("disc"), lambda: win.search.set_text(""),
+                 *[(lambda c=c: win.set_category(c)) for c in CATEGORIES]]
+
+        def step():
+            if steps:
+                steps.pop(0)()
+                return True
+            GLib.timeout_add(1500, Gtk.main_quit)
+            return False
+        GLib.timeout_add(500, step)
+    Gtk.main()
+    if errors:
+        print(f"simpleos-software-center: {len(errors)} error(s) in self-test", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

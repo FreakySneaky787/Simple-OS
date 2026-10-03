@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Keyboard Layout
+Comment=Choose your keyboard layout (German, Swiss, US …)
+Exec=/usr/local/bin/simpleos-keyboard-setup
+Icon=input-keyboard
+Categories=Settings;HardwareSettings;
+Keywords=keyboard;layout;tastatur;qwertz;qwerty;swiss;german;language;

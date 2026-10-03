@@ -1,0 +1,25 @@
+#!/bin/sh
+set -e
+# Akku-Programme nur mit echtem Akku: Fehlalarme "Battery low" in VMs/am Desktop-PC kommen von Diensten,
+# die Phantom-Akkus (UPower, ACPI-Attrappen der VM) melden. Gesichert werden alle Startwege:
+#   XDG-Autostart  Exec über "simpleos-battery --run" (startet nur mit echtem Akku, nie in VMs);
+#                  xfce4-power-manager zusätzlich Hidden=true (startet ~/.config/openbox/autostart selbst)
+#   systemd        upower/acpid: ConditionVirtualization=!vm (Drop-ins unter /etc/systemd/system)
+#   dunst          simpleos-dunst (Autostart, D-Bus, systemd-User-Dienst) filtert, was trotzdem kommt
+# Gilt auch für später installierte Pakete mit denselben Namen nicht automatisch -> 99_verify prüft alle
+# Startwege erneut.
+BATT_RE='xfce4-power-manager|cbatticon|mate-power-manager|gnome-power-manager|gsd-power|powerdevil|batterymon|fdpowermon|batti|statnot|acpid'
+for f in /etc/xdg/autostart/*.desktop; do
+    [ -f "$f" ] || continue
+    exec_line=$(sed -n 's/^Exec=//p' "$f" | head -n 1)
+    printf '%s\n%s\n' "${f##*/}" "$exec_line" | grep -qE "$BATT_RE" || continue
+    case "$exec_line" in */usr/local/bin/simpleos-battery\ --run\ *) continue ;; esac
+    sed -i "s|^Exec=\(.*\)\$|Exec=/usr/local/bin/simpleos-battery --run \1|" "$f"
+    grep -q '^Exec=/usr/local/bin/simpleos-battery --run ' "$f"
+done
+XFPM=/etc/xdg/autostart/xfce4-power-manager.desktop
+if [ -f "$XFPM" ]; then
+    sed -i '/^Hidden=/d' "$XFPM"
+    sed -i '/^\[Desktop Entry\]/a Hidden=true' "$XFPM"
+    grep -qx 'Hidden=true' "$XFPM"
+fi

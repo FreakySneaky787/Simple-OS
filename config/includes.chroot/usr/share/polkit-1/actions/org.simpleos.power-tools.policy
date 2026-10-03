@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!-- Simple OS – root-Helfer der Power-Werkzeuge (Aufruf per pkexec):
+       Backups     Wiederherstellungspunkte (timeshift) anlegen/zurückspielen/löschen: Passwort
+       Cleaner     Paket-Cache, alte Pakete/Runtimes, alte Protokolle löschen: Passwort
+       Task-Manager  Prozess eines anderen Benutzers (z.B. root) beenden: Passwort -->
+<policyconfig>
+  <vendor>Simple OS</vendor>
+  <action id="org.simpleos.backup">
+    <description>Create, restore and delete system restore points</description>
+    <message>Simple OS needs your password to manage restore points.</message>
+    <icon_name>document-save</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/local/sbin/simpleos-backup-helper</annotate>
+  </action>
+  <action id="org.simpleos.cleaner">
+    <description>Remove cached packages, unused software and old system logs</description>
+    <message>Simple OS needs your password to free up disk space.</message>
+    <icon_name>user-trash-full</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/local/sbin/simpleos-cleaner-helper</annotate>
+  </action>
+  <action id="org.simpleos.taskmanager">
+    <description>End a process of another user</description>
+    <message>The Task Manager needs your password to end a system process.</message>
+    <icon_name>utilities-system-monitor</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/local/sbin/simpleos-taskmanager-helper</annotate>
+  </action>
+</policyconfig>

@@ -1,0 +1,22 @@
+#!/bin/sh
+# Simple OS – startet den Standard-Browser (Super+B). Wechseln: simpleos-browser-select
+id=$(xdg-mime query default x-scheme-handler/https 2>/dev/null)
+file=
+if [ -n "$id" ]; then
+    for dir in "${XDG_DATA_HOME:-$HOME/.local/share}" $(echo "${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" | tr ':' ' ') \
+            /var/lib/flatpak/exports/share; do
+        if [ -f "$dir/applications/$id" ]; then file="$dir/applications/$id"; break; fi
+    done
+fi
+if [ -z "$file" ]; then
+    # Keine gültige Vorgabe: erster vorhandener Browser (Firefox kann per Setup-Wizard entfernt sein)
+    for b in firefox-esr chromium; do
+        command -v "$b" >/dev/null && exec "$b" "$@"
+    done
+    exec simpleos-browser-select
+fi
+# Exec-Zeile ohne Feldcodes (%u, %U, ...) und Flatpak-Marker (@@u ... @@)
+cmd=$(sed -n 's/^Exec=//p' "$file" | head -n1 | sed -e 's/@@[a-zA-Z]\{0,1\}//g' -e 's/%[a-zA-Z]//g')
+# Kaputter Starter ohne Exec-Zeile: sonst endete "exec" ohne Befehl stumm
+[ -n "$(echo "$cmd" | tr -d ' ')" ] || exec simpleos-browser-select
+eval "exec $cmd \"\$@\""

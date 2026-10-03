@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Simple OS – Rechtsklick-Menü: bewusst schlank. Alle Apps findet der Launcher (Super);
+     alle Einstellungen liegen gebündelt unter "Settings". Papirus-Symbole an jedem Eintrag: Openbox 3.6
+     kennt keinen Innenabstand für Menüeinträge, die Symbolspalte rückt den Text vom Rand ab. -->
+<openbox_menu xmlns="http://openbox.org/3.4/menu">
+  <menu id="root-menu" label="Simple OS">
+    <!-- simpleos-installer-begin: nur in der Live-Session. simpleos-post-install (Calamares) und
+         simpleos-live beim Login ohne Live-Medium löschen alles bis zur Ende-Markierung. -->
+    <item label="Install Simple OS" icon="/usr/share/simpleos/menu-icons/install.svg">
+      <action name="Execute"><command>/usr/local/bin/simpleos-install</command></action>
+    </item>
+    <separator />
+    <!-- simpleos-installer-end -->
+    <item label="Search (Super+Space)" icon="/usr/share/simpleos/menu-icons/search.svg">
+      <action name="Execute"><command>/usr/local/bin/simpleos-search</command></action>
+    </item>
+    <item label="Terminal" icon="/usr/share/simpleos/menu-icons/terminal.svg">
+      <action name="Execute"><command>kitty</command></action>
+    </item>
+    <item label="Files" icon="/usr/share/simpleos/menu-icons/files.svg">
+      <action name="Execute"><command>thunar</command></action>
+    </item>
+    <item label="Web Browser" icon="/usr/share/simpleos/menu-icons/browser.svg">
+      <action name="Execute"><command>simpleos-browser</command></action>
+    </item>
+    <item label="Software Store" icon="/usr/share/simpleos/menu-icons/store.svg">
+      <action name="Execute"><command>/usr/local/bin/simpleos-software-center</command></action>
+    </item>
+    <menu id="apps" label="Apps" icon="/usr/share/simpleos/menu-icons/apps.svg">
+      <item label="PDF Viewer" icon="/usr/share/simpleos/menu-icons/pdf.svg">
+        <action name="Execute"><command>atril</command></action>
+      </item>
+      <!-- simpleos-office: LibreOffice/ONLYOFFICE trägt simpleos-system-setup nach der Installation hier ein -->
+      <item label="Text Editor" icon="/usr/share/simpleos/menu-icons/editor.svg">
+        <action name="Execute"><command>mousepad</command></action>
+      </item>
+      <item label="Calculator" icon="/usr/share/simpleos/menu-icons/calculator.svg">
+        <action name="Execute"><command>galculator</command></action>
+      </item>
+      <item label="Media Player" icon="/usr/share/simpleos/menu-icons/media.svg">
+        <action name="Execute"><command>mpv --player-operation-mode=pseudo-gui</command></action>
+      </item>
+      <item label="Image Viewer" icon="/usr/share/simpleos/menu-icons/image.svg">
+        <action name="Execute"><command>viewnior</command></action>
+      </item>
+      <item label="Task Manager (Ctrl+Shift+Esc)" icon="/usr/share/simpleos/menu-icons/taskmanager.svg">
+        <action name="Execute"><command>/usr/local/bin/simpleos-taskmanager</command></action>
+      </item>
+      <item label="System Monitor" icon="/usr/share/simpleos/menu-icons/terminal.svg">
+        <action name="Execute"><command>kitty -e htop</command></action>
+      </item>
+    </menu>
+    <separator />
+    <menu id="simpleos-settings" label="Settings" icon="/usr/share/simpleos/menu-icons/settings.svg">
+      <item label="Control Center (Super+I)" icon="/usr/share/simpleos/menu-icons/settings.svg">
+        <action name="Execute"><command>/usr/local/bin/simpleos-control-center</command></action>
+      </item>
+      <separator />
+      <item label="Display (Super+P)" icon="/usr/share/simpleos/menu-icons/display.svg">
+        <action name="Execute"><command>/usr/local/bin/simpleos-display</command></action>
+      </item>
+      <item label="Keyboard Layout" icon="/usr/share/simpleos/menu-icons/keys.svg">
+        <action name="Execute"><command>/usr/local/bin/simpleos-keyboard-setup</command></action>
+      </item>
+      <item label="Sound (Super+A)" icon="/usr/share/simpleos/menu-icons/sound.svg">
+        <action name="Execute"><command>/usr/local/bin/simpleos-volume</command></action>
+      </item>
+      <item label="Network &amp; Wi-Fi" icon="/usr/share/simpleos/menu-icons/wifi.svg">
+        <action name="Execute"><command>/usr/local/bin/simpleos-wifi</command></action>
+      </item>
+      <item label="Bluetooth" icon="/usr/share/simpleos/menu-icons/bluetooth.svg">
+        <action name="Execute"><command>/usr/local/bin/simpleos-bluetooth</command></action>
+      </item>
+      <item label="Printers &amp; Scanners" icon="/usr/share/simpleos/menu-icons/printer.svg">
+        <action name="Execute"><command>/usr/local/bin/simpleos-control-center system</command></action>
+      </item>
+      <item label="Night Light" icon="/usr/share/simpleos/menu-icons/night.svg">
+        <action name="Execute"><command>/usr/local/bin/simpleos-nightlight</command></action>
+      </item>
+      <item label="Network Info (Super+N)" icon="/usr/share/simpleos/menu-icons/netinfo.svg">
+        <action name="Execute"><command>simpleos-netinfo</command></action>
+      </item>
+      <item label="Appearance" icon="/usr/share/simpleos/menu-icons/appearance.svg">
+        <action name="Execute"><command>simpleos-theme --pick</command></action>
+      </item>
+      <item label="Software Updates" icon="/usr/share/simpleos/menu-icons/updates.svg">
+        <action name="Execute"><command>/usr/local/bin/simpleos-update</command></action>
+      </item>
+      <item label="Taskbar &amp; Panel" icon="/usr/share/simpleos/menu-icons/taskbar.svg">
+        <action name="Execute"><command>simpleos-taskbar-select</command></action>
+      </item>
+      <item label="Default Browser" icon="/usr/share/simpleos/menu-icons/browser.svg">
+        <action name="Execute"><command>simpleos-browser-select</command></action>
+      </item>
+      <separator />
+      <item label="Setup Wizard" icon="/usr/share/simpleos/menu-icons/wizard.svg">
+        <action name="Execute"><command>simpleos-welcome-wizard</command></action>
+      </item>
+    </menu>
+    <menu id="simpleos-system" label="System" icon="/usr/share/simpleos/menu-icons/system.svg">
+      <item label="Backups" icon="/usr/share/simpleos/menu-icons/backup.svg">
+        <action name="Execute"><command>/usr/local/bin/simpleos-backup</command></action>
+      </item>
+      <item label="Storage Cleaner" icon="/usr/share/simpleos/menu-icons/cleaner.svg">
+        <action name="Execute"><command>/usr/local/bin/simpleos-cleaner</command></action>
+      </item>
+      <item label="Disks &amp; USB Sticks" icon="/usr/share/simpleos/menu-icons/disks.svg">
+        <action name="Execute"><command>gnome-disks</command></action>
+      </item>
+      <item label="Do Not Disturb (on/off)" icon="/usr/share/simpleos/menu-icons/dnd.svg">
+        <action name="Execute"><command>/usr/local/bin/simpleos-dnd --toggle</command></action>
+      </item>
+    </menu>
+    <menu id="simpleos-help" label="Help" icon="/usr/share/simpleos/menu-icons/help.svg">
+      <item label="Welcome to Simple OS" icon="/usr/share/simpleos/menu-icons/welcome.svg">
+        <action name="Execute"><command>simpleos-welcome</command></action>
+      </item>
+      <item label="Keyboard Shortcuts (Super+H)" icon="/usr/share/simpleos/menu-icons/keys.svg">
+        <action name="Execute"><command>/usr/local/bin/simpleos-help</command></action>
+      </item>
+    </menu>
+    <separator />
+    <item label="Power (Super+X)" icon="/usr/share/simpleos/menu-icons/power.svg">
+      <action name="Execute"><command>/usr/local/bin/simpleos-powermenu</command></action>
+    </item>
+  </menu>
+</openbox_menu>

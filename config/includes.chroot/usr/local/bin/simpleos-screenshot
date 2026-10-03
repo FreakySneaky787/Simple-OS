@@ -1,0 +1,39 @@
+#!/bin/sh
+# Simple OS – Bildschirmfoto
+#   simpleos-screenshot          ganzer Bildschirm (Print)
+#   simpleos-screenshot --area   Bereich mit der Maus aufziehen (Shift+Print); Esc/Rechtsklick bricht still ab
+# Speichert nach ~/Pictures/Screenshots/Screenshot_JJJJ-MM-TT_HH-MM-SS.png, legt das Bild zugleich in die
+# Zwischenablage (xclip, image/png) und meldet "Screenshot saved & copied" mit Vorschau.
+# Eigenes Skript, weil Openbox in <command> weder ~ noch $(date) expandiert.
+# Fehler (maim fehlt, kein Bildschirm, Ordner nicht beschreibbar) als Meldung statt stummem Ende.
+dir="${HOME:-/tmp}/Pictures/Screenshots"
+mkdir -p "$dir" 2>/dev/null || dir=/tmp
+file="$dir/Screenshot_$(date +%Y-%m-%d_%H-%M-%S).png"
+fail() { notify-send -u critical -c x-simpleos -i dialog-error "Screenshot" "$1" 2>/dev/null; exit 0; }
+
+command -v maim >/dev/null || fail "Screenshots are not available (maim is missing)."
+case "${1:-}" in
+    --area)
+        err=$(maim --select --hidecursor "$file" 2>&1 >/dev/null)
+        if [ $? -ne 0 ]; then
+            rm -f "$file" 2>/dev/null
+            # Auswahl abgebrochen (Esc, Rechtsklick): keine Fehlermeldung
+            printf '%s' "$err" | grep -qi 'cancel' && exit 0
+            fail "The screenshot could not be saved."
+        fi ;;
+    *)
+        maim --hidecursor "$file" 2>/dev/null || fail "The screenshot could not be saved." ;;
+esac
+[ -s "$file" ] || fail "The screenshot could not be saved."
+
+copied=0
+if command -v xclip >/dev/null; then
+    # xclip bleibt im Hintergrund und liefert das Bild, bis etwas anderes kopiert wird
+    xclip -selection clipboard -t image/png -i "$file" >/dev/null 2>&1 </dev/null && copied=1
+fi
+if [ "$copied" = 1 ]; then
+    notify-send -c x-simpleos -i "$file" "Screenshot saved & copied" "$file" 2>/dev/null
+else
+    notify-send -c x-simpleos -i "$file" "Screenshot saved" "$file" 2>/dev/null
+fi
+exit 0

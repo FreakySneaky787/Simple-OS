@@ -1,0 +1,6 @@
+# Build-Zwischenstände (live-build-Chroot, Caches, build.log) und fertige Abbilder
+/build/
+/output/
+# Python-Bytecode (tools/gen_branding.py, Syntaxprüfungen)
+__pycache__/
+*.pyc

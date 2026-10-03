@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+grep -q fastfetch /etc/skel/.bashrc || cat >> /etc/skel/.bashrc <<'BASHRC'
+
+# Simple OS: Logo + Systeminfos
+command -v fastfetch >/dev/null && fastfetch
+BASHRC

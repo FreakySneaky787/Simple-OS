@@ -1,0 +1,19 @@
+#!/bin/sh
+set -e
+# Schutz und Wartung (Paketliste 15-system), nach der Paketinstallation, weil es Konfigurationsdateien der Pakete sind.
+# Firewall (ufw): an ab dem ersten Start. Grundregeln von ufw: eingehend DROP, ausgehend offen; mDNS (Druckersuche)
+# und UPnP-Antworten lässt /etc/ufw/before*.rules schon durch, DHCP ebenso. "ufw enable" geht im Chroot nicht
+# (keine Netfilter-Tabellen) – ENABLED=yes lässt ufw.service die Regeln beim Booten laden.
+# Umschalten: Control Center → System → Firewall (pkexec simpleos-system-setup --firewall on|off)
+sed -i 's/^ENABLED=.*/ENABLED=yes/' /etc/ufw/ufw.conf
+grep -qx 'ENABLED=yes' /etc/ufw/ufw.conf
+grep -qx 'DEFAULT_INPUT_POLICY="DROP"' /etc/default/ufw
+# earlyoom: greift erst, wenn RAM (5 %) UND Swap/zram (10 %) fast voll sind; nie den Desktop selbst beenden.
+# systemd teilt $EARLYOOM_ARGS an Leerzeichen und wertet keine Anführungszeichen aus -> Muster ohne Leerzeichen/Quotes
+cat > /etc/default/earlyoom <<'CONF'
+# Simple OS: bei fast vollem Arbeitsspeicher das Programm mit dem höchsten Speicherverbrauch beenden (Browser-Tabs
+# zuerst, die stufen sich selbst hoch), Anzeige, Fenster, Taskleiste, Ton und Netzwerk nie.
+EARLYOOM_ARGS="-m 5 -s 10 -r 3600 --avoid (^|/)(init|systemd|Xorg|X|lightdm|openbox|tint2|pipewire|wireplumber|dbus-daemon|NetworkManager)$"
+CONF
+# Dienste ausdrücklich einschalten (Paket-Voreinstellungen könnten sich ändern)
+systemctl enable ufw.service earlyoom.service power-profiles-daemon.service thermald.service fwupd-refresh.timer

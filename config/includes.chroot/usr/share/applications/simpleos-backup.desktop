@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Backups
+Comment=Create and restore system restore points
+Exec=/usr/local/bin/simpleos-backup
+Icon=deja-dup
+Categories=System;
+Keywords=backup;restore;snapshot;timeshift;restore point;undo;

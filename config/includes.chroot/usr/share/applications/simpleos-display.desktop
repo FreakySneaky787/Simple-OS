@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Display
+Comment=Resolution, refresh rate, duplicate or extend screens
+Exec=/usr/local/bin/simpleos-display
+Icon=video-display
+Categories=Settings;HardwareSettings;
+Keywords=screen;monitor;resolution;refresh;hdmi;

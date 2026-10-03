@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Software Store
+Comment=Find and install apps from Flathub
+Exec=simpleos-software
+Icon=system-software-install
+Categories=System;PackageManager;

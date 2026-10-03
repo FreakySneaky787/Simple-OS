@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Keyboard Shortcuts
+Comment=Show all keyboard shortcuts
+Exec=/usr/local/bin/simpleos-help
+Icon=preferences-desktop-keyboard-shortcuts
+Categories=System;Documentation;

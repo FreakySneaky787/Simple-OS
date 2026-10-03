@@ -1,0 +1,1090 @@
+#!/usr/bin/env python3
+"""Simple OS – Control Center (Super+I, Menü → Settings → Control Center).
+
+Ein Fenster für alle Einstellungen, links die Bereiche, rechts die Seite:
+  Sound        Lautstärke, Stumm, Ausgang (Lautsprecher/Kopfhörer/HDMI), Mikrofon, -> pavucontrol
+  Display      Auflösung, Bildwiederholrate, mehrere Bildschirme, Nachtmodus (simpleos-nightlight)
+  Wi-Fi        Netze, Verbinden mit Passwort, Trennen, WLAN an/aus (Funktionen des Setup-Wizards)
+  Bluetooth    an/aus, gekoppelte Geräte verbinden/trennen/entfernen, Geräte suchen und koppeln
+  Appearance   Hell/Dunkel, Akzentfarbe (simpleos-theme), Hintergrundbild (simpleos-wallpaper)
+  Appearance   … + "Dynamic wallpaper (day/night)" (simpleos-wallpaper-schedule)
+  Power        Bildschirm ausschalten nach … (simpleos-power), Akku, Energieprofil (power-profiles-daemon),
+               Akkuschonung (nur bis 80 % laden, falls der Laptop das kann), Sperren/Ruhezustand/Neustart/Aus
+  System       Tastaturlayout (simpleos-keyboard-setup), Do Not Disturb (simpleos-dnd: Meldungen pausieren, optional ohne Fenstereffekte),
+               Hardware & Drivers (simpleos-drivers: Grafik, WLAN, CPU-Microcode; "Install Recommended Drivers"),
+               Backups (simpleos-backup: Wiederherstellungspunkte), Speicher (freier Platz, simpleos-cleaner),
+               Drucker & Scanner (system-config-printer, simple-scan), Firewall (ufw über den Root-Helfer),
+               Laufwerke (gnome-disks: USB-Sticks formatieren, ISO schreiben)
+
+  simpleos-control-center [sound|display|wifi|bluetooth|appearance|power|system]   Fenster (auf dieser Seite)
+Läuft nur einmal (Gtk.Application); ein zweiter Aufruf holt das Fenster nach vorn.
+Änderungen gehen über dieselben Werkzeuge wie die Rofi-Flyouts – beide zeigen immer denselben Stand.
+Bildschirm-Änderungen müssen bestätigt werden (15 s, sonst zurück); gespeichert wie bei simpleos-display.
+Lange Aufrufe (WLAN-Suche, Bluetooth, Verbinden) laufen im Hintergrund, das Fenster bleibt bedienbar.
+Test: SIMPLEOS_CC_SELFTEST=1 öffnet jede Seite einmal und endet mit Exit 1, falls dabei eine Python-Ausnahme
+auftrat (99_verify nutzt das mit dem GTK-Broadway-Backend, ohne Bildschirm).
+"""
+import importlib.machinery
+import os
+import re
+import shutil
+import subprocess
+import sys
+import threading
+from pathlib import Path
+
+PAGES = [("sound", "Sound", "audio-volume-high"), ("display", "Display", "video-display"),
+         ("wifi", "Wi-Fi", "network-wireless"), ("bluetooth", "Bluetooth", "bluetooth"),
+         ("appearance", "Appearance", "preferences-desktop-theme"), ("power", "Power", "battery"),
+         ("system", "System", "computer")]
+WIZARD = "/usr/local/bin/simpleos-welcome-wizard"
+HELPER = "/usr/local/sbin/simpleos-system-setup"
+UFW_CONF = Path(os.environ.get("SIMPLEOS_UFW_CONF", "/etc/ufw/ufw.conf"))
+PROFILES = [("power-saver", "Power saver", "Longer battery life, a bit slower"),
+            ("balanced", "Balanced", "Recommended"),
+            ("performance", "Performance", "Fastest – uses more power, fans get louder")]
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "simpleos"
+ACCENTS = ["blue", "mauve", "pink", "green", "peach", "teal"]
+SCREEN_OFF = [(0, "Never"), (5, "5 minutes"), (10, "10 minutes"), (15, "15 minutes"), (30, "30 minutes"),
+              (60, "1 hour")]
+
+
+def cmd(*args, timeout=15, env=None):
+    """Befehl ausführen; nie eine Ausnahme (fehlendes Programm, Zeitüberschreitung -> Code 127/124)."""
+    try:
+        return subprocess.run(list(args), capture_output=True, text=True, timeout=timeout, env=env)
+    except FileNotFoundError:
+        return subprocess.CompletedProcess(args, 127, "", f"{args[0]}: not found")
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(args, 124, "", f"{args[0]}: timeout")
+    except OSError as err:
+        return subprocess.CompletedProcess(args, 1, "", str(err))
+
+
+def spawn(*args):
+    try:
+        subprocess.Popen(list(args), start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except OSError:
+        return False
+
+
+# ------------------------------------------------------------------ Sound (pactl, wie simpleos-volume)
+def _c(*args):
+    return cmd(*args, env=dict(os.environ, LC_ALL="C"))
+
+
+def volume(kind="sink"):
+    out = _c("pactl", f"get-{kind}-volume", f"@DEFAULT_{kind.upper()}@").stdout
+    m = re.search(r"/\s*(\d+)%", out)
+    return int(m.group(1)) if m else 0
+
+
+def muted(kind="sink"):
+    return "yes" in _c("pactl", f"get-{kind}-mute", f"@DEFAULT_{kind.upper()}@").stdout
+
+
+def set_volume(percent, kind="sink"):
+    _c("pactl", f"set-{kind}-mute", f"@DEFAULT_{kind.upper()}@", "0")
+    return _c("pactl", f"set-{kind}-volume", f"@DEFAULT_{kind.upper()}@", f"{int(percent)}%").returncode == 0
+
+
+def set_mute(on, kind="sink"):
+    return _c("pactl", f"set-{kind}-mute", f"@DEFAULT_{kind.upper()}@", "1" if on else "0").returncode == 0
+
+
+def outputs():
+    """[(sink, port, label, active)] – ein Eintrag pro verfügbarem Anschluss (Kopfhörer nur eingesteckt)."""
+    default = _c("pactl", "get-default-sink").stdout.strip()
+    result, cur = [], None
+
+    def flush():
+        if not cur:
+            return
+        ports = cur["ports"]
+        if not ports:
+            result.append((cur["name"], "", cur["desc"], cur["name"] == default))
+        for port, pdesc in ports:
+            label = f"{cur['desc']} – {pdesc}" if len(ports) > 1 else cur["desc"]
+            active = cur["name"] == default and (cur["active"] == port or len(ports) == 1)
+            result.append((cur["name"], port, label, active))
+
+    inports = False
+    for line in _c("pactl", "list", "sinks").stdout.splitlines():
+        if line.startswith("Sink #"):
+            flush()
+            cur, inports = {"name": "", "desc": "", "ports": [], "active": ""}, False
+        elif cur is None:
+            continue
+        elif line.startswith("\tName: "):
+            cur["name"] = line[7:]
+        elif line.startswith("\tDescription: "):
+            cur["desc"] = line[14:]
+        elif line.startswith("\tPorts:"):
+            inports = True
+        elif line.startswith("\tActive Port: "):
+            cur["active"], inports = line[14:], False
+        elif line.startswith("\t") and not line.startswith("\t\t"):
+            inports = False
+        elif inports and line.startswith("\t\t") and not line.startswith("\t\t\t"):
+            if "not available" in line:
+                continue
+            port, _, rest = line[2:].partition(": ")
+            cur["ports"].append((port, re.sub(r" \((type|priority):.*$", "", rest)))
+    flush()
+    return result
+
+
+def switch_output(sink, port):
+    if _c("pactl", "set-default-sink", sink).returncode != 0:
+        return False
+    if port:
+        _c("pactl", "set-sink-port", sink, port)
+    for line in _c("pactl", "list", "short", "sink-inputs").stdout.splitlines():
+        sid = line.split("\t", 1)[0]
+        if sid.isdigit():
+            _c("pactl", "move-sink-input", sid, sink)
+    return True
+
+
+# ------------------------------------------------------------------ Display (xrandr, wie simpleos-display)
+def screens(query=None):
+    """[{name, on, primary, pos, modes: [(mode, [rates])], mode, rate}] – nur angeschlossene Ausgänge."""
+    if query is None:
+        query = _c("xrandr", "--query").stdout
+    result, cur = [], None
+    for line in query.splitlines():
+        if line and not line[0].isspace():
+            cur = None
+            f = line.split()
+            if len(f) >= 2 and f[1] == "connected":
+                geo = next((x for x in f[2:] if re.match(r"^\d+x\d+\+\d+\+\d+$", x)), "")
+                pos = "x".join(geo.split("+")[1:3]) if geo else ""
+                cur = {"name": f[0], "on": bool(geo), "primary": len(f) > 2 and f[2] == "primary",
+                       "pos": pos or "0x0", "modes": [], "mode": "", "rate": ""}
+                result.append(cur)
+        elif cur is not None and re.match(r"^\s+\d+x\d+", line):
+            f = line.split()
+            rates = []
+            for tok in f[1:]:
+                r = tok.replace("*", "").replace("+", "")
+                if not r:
+                    continue
+                rates.append(r)
+                if "*" in tok:
+                    cur["mode"], cur["rate"] = f[0], r
+            if f[0] not in [m for m, _ in cur["modes"]]:
+                cur["modes"].append((f[0], rates))
+    return result
+
+
+def pretty(name):
+    num = name.rsplit("-", 1)[-1]
+    num = f" {num}" if num.isdigit() else ""
+    for prefixes, label in ((("eDP", "LVDS", "DSI"), "Built-in display"), (("HDMI",), "HDMI"),
+                            (("DP", "DisplayPort"), "DisplayPort"), (("DVI",), "DVI"), (("VGA",), "VGA"),
+                            (("Virtual", "qxl", "default", "XWAYLAND"), "Screen")):
+        if name.startswith(prefixes):
+            return label if label == "Built-in display" else label + num
+    return name
+
+
+def snapshot(scr):
+    """xrandr-Argumente für den aktuellen Zustand – gleiches Format wie simpleos-display."""
+    args = []
+    for s in scr:
+        if s["on"]:
+            args += ["--output", s["name"], "--mode", s["mode"], "--rate", s["rate"], "--pos", s["pos"]]
+            if s["primary"]:
+                args.append("--primary")
+        else:
+            args += ["--output", s["name"], "--off"]
+    return args
+
+
+def layout_args(scr, main, kind):
+    """Mehrere Bildschirme: dup | right | left | only (nur main)."""
+    by = {s["name"]: s for s in scr}
+    args = ["--output", main, "--primary"] if by[main]["on"] else ["--output", main, "--auto", "--primary", "--pos", "0x0"]
+    others = [s["name"] for s in scr if s["name"] != main]
+    if kind == "dup":
+        common = set(m for m, _ in by[main]["modes"])
+        for o in others:
+            common &= set(m for m, _ in by[o]["modes"])
+        best = max(common, key=lambda m: int(m.split("x")[0]) * int(re.sub(r"\D.*", "", m.split("x")[1])),
+                   default="")
+        if best:
+            args = ["--output", main, "--mode", best, "--primary", "--pos", "0x0"]
+            for o in others:
+                args += ["--output", o, "--mode", best, "--same-as", main]
+        else:
+            for o in others:
+                args += ["--output", o, "--auto", "--same-as", main]
+        return args
+    prev = main
+    for o in others:
+        if kind == "only":
+            args += ["--output", o, "--off"]
+        else:
+            args += ["--output", o, "--auto", "--right-of" if kind == "right" else "--left-of", prev]
+            prev = o
+    return args
+
+
+def save_display(args):
+    try:
+        CONFIG.mkdir(parents=True, exist_ok=True)
+        (CONFIG / "display").write_text(" ".join(args) + "\n")
+        return True
+    except OSError:
+        return False
+
+
+def nightlight_status():
+    out = cmd("simpleos-nightlight", "--status").stdout.split()
+    if len(out) >= 3:
+        return out[1], int(out[2]) if out[2].isdigit() else 4000
+    return "off", 4000
+
+
+# ------------------------------------------------------------------ Bluetooth (bluetoothctl)
+def bt(*args, timeout=15):
+    return cmd("bluetoothctl", *args, timeout=timeout)
+
+
+def bt_state():
+    """(Adapter vorhanden, eingeschaltet)"""
+    if not re.search(r"^Controller ", bt("list").stdout, re.M):
+        return False, False
+    return True, "Powered: yes" in bt("show").stdout
+
+
+BT_KINDS = {"audio-headset": "Headphones", "audio-headphones": "Headphones", "audio-card": "Speaker",
+            "audio-speakers": "Speaker", "input-mouse": "Mouse", "input-keyboard": "Keyboard",
+            "input-gaming": "Gamepad", "input-tablet": "Tablet", "phone": "Phone", "computer": "Computer"}
+
+
+def bt_devices(paired=True):
+    """[(mac, name, connected, kind, paired)]"""
+    out = bt("devices", "Paired").stdout if paired else bt("devices").stdout
+    if paired and "Device " not in out:
+        out = bt("paired-devices").stdout   # bluez < 5.65
+    result = []
+    for mac, name in re.findall(r"^Device ([0-9A-Fa-f:]{17}) (.*)$", out, re.M):
+        info = bt("info", mac).stdout
+        icon = (re.search(r"^\s*Icon: (\S+)", info, re.M) or [None, ""])[1]
+        result.append((mac, name, bool(re.search(r"^\s*Connected: yes", info, re.M)),
+                       BT_KINDS.get(icon, "Device"), bool(re.search(r"^\s*Paired: yes", info, re.M))))
+    return result
+
+
+def bt_scan(seconds=10):
+    bt("--timeout", str(seconds), "scan", "on", timeout=seconds + 5)
+    return [d for d in bt_devices(paired=False) if not d[4] and d[1] != d[0].replace(":", "-")]
+
+
+def bt_pair(mac):
+    out = bt("pair", mac, timeout=40)
+    if not re.search(r"successful|AlreadyExists", out.stdout + out.stderr):
+        return False
+    bt("trust", mac)
+    return "successful" in bt("connect", mac, timeout=30).stdout
+
+
+# ------------------------------------------------------------------ Appearance / Power
+def theme_state():
+    out = cmd("simpleos-theme", "--show").stdout
+    mode = (re.search(r"^mode=(\w+)", out, re.M) or [None, "dark"])[1]
+    accent = (re.search(r"^accent=(\w+)", out, re.M) or [None, "blue"])[1]
+    return mode, accent
+
+
+def current_wallpaper():
+    conf = Path.home() / ".config/pcmanfm/default/desktop-items-0.conf"
+    try:
+        m = re.search(r"^wallpaper=(.+)$", conf.read_text(), re.M)
+        return m.group(1) if m else ""
+    except OSError:
+        return ""
+
+
+def screen_off():
+    m = re.search(r"screen_off=(\d+)", cmd("simpleos-power", "--get").stdout)
+    return int(m.group(1)) if m else 10
+
+
+def charge_limit():
+    """on | off | unsupported (Akkuschonung über simpleos-power)"""
+    m = re.search(r"charge_limit=(\w+)", cmd("simpleos-power", "--get").stdout)
+    return m.group(1) if m else "unsupported"
+
+
+def power_profile():
+    """(aktuell, [verfügbar]) über simpleos-power; ("unsupported", []) ohne power-profiles-daemon"""
+    out = cmd("simpleos-power", "--profile").stdout
+    cur = (re.search(r"^current=(\S+)", out, re.M) or [None, "unsupported"])[1]
+    avail = (re.search(r"^available=(.*)$", out, re.M) or [None, ""])[1].split()
+    return cur, avail
+
+
+def firewall_on():
+    """ufw lädt seine Regeln beim Start nur mit ENABLED=yes (Datei ist für alle lesbar, ufw status bräuchte root)"""
+    try:
+        return re.search(r"^ENABLED=yes\s*$", UFW_CONF.read_text(), re.M) is not None
+    except OSError:
+        return False
+
+
+def drivers_report():
+    import json
+    r = cmd("simpleos-drivers", "--json", timeout=30)
+    return json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else RuntimeError("simpleos-drivers failed")
+
+
+def keyboard_layouts():
+    """[(Layout:Variante, Name)] aus simpleos-keyboard-setup --list"""
+    out = cmd("simpleos-keyboard-setup", "--list").stdout
+    return [tuple(l.split("\t", 1)) for l in out.splitlines() if "\t" in l]
+
+
+def keyboard_current():
+    l, _, v = cmd("simpleos-keyboard-setup", "--status").stdout.rstrip("\n").partition("\t")
+    return f"{l or 'us'}:{v}"
+
+
+def dnd_on():
+    return cmd("simpleos-dnd", "--status").stdout.strip() == "on"
+
+
+def dnd_no_effects():
+    return cmd("simpleos-dnd", "--no-effects", "status").stdout.strip() == "on"
+
+
+def dynamic_wallpaper_on():
+    return cmd("simpleos-wallpaper-schedule", "--status").stdout.split("\n")[0].strip() == "on"
+
+
+def dynamic_theme_on():
+    return "theme=on" in cmd("simpleos-wallpaper-schedule", "--status").stdout.split()
+
+
+def disk_usage(path="/"):
+    """(belegt, gesamt) in Bytes"""
+    try:
+        st = os.statvfs(path)
+        total = st.f_blocks * st.f_frsize
+        return total - st.f_bavail * st.f_frsize, total
+    except OSError:
+        return 0, 0
+
+
+def human(n):
+    for unit in ("B", "kB", "MB", "GB", "TB"):
+        if n < 1000 or unit == "TB":
+            return f"{n:.0f} {unit}" if unit == "B" else f"{n:.1f} {unit}"
+        n /= 1000
+
+
+def battery_text():
+    if cmd("simpleos-battery", "--present").returncode != 0:
+        return ""
+    ps = os.environ.get("SIMPLEOS_POWER_SUPPLY", "/sys/class/power_supply")
+    for bat in sorted(Path(ps).glob("BAT*")):
+        try:
+            cap = (bat / "capacity").read_text().strip()
+            status = (bat / "status").read_text().strip()
+            return f"{cap}% · {status.replace('Discharging', 'On battery').replace('Not charging', 'Plugged in')}"
+        except OSError:
+            continue
+    return ""
+
+
+def power_action(what):
+    if what == "lock":
+        return cmd("dm-tool", "lock").returncode == 0 or cmd("loginctl", "lock-session").returncode == 0
+    if what == "sleep":
+        cmd("dm-tool", "lock")
+    verb = {"sleep": "suspend", "restart": "reboot", "shutdown": "poweroff"}[what]
+    return cmd("systemctl", verb).returncode == 0 or cmd("loginctl", verb).returncode == 0
+
+
+# ================================================================== Fenster
+def load_gtk():
+    import gi
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import GLib, Gtk
+    return GLib, Gtk
+
+
+def wizard_module():
+    try:
+        return importlib.machinery.SourceFileLoader("simpleos_wizard", WIZARD).load_module()
+    except Exception:  # Wizard fehlt/kaputt -> Seite zeigt einen Hinweis
+        return None
+
+
+def main(argv):
+    GLib, Gtk = load_gtk()
+
+    def bg(work, done):
+        """work() im Hintergrund, done(Ergebnis) danach im GTK-Thread."""
+        def run():
+            try:
+                res = work()
+            except Exception as err:  # nie das Fenster abstürzen lassen
+                res = err
+            GLib.idle_add(lambda: (done(res), False)[1])
+        threading.Thread(target=run, daemon=True).start()
+
+    def label(text, markup=False, dim=False, wrap=True, xalign=0.0):
+        lab = Gtk.Label(xalign=xalign)
+        lab.set_line_wrap(wrap)
+        if markup:
+            lab.set_markup(text)
+        else:
+            lab.set_text(text)
+        if dim:
+            lab.get_style_context().add_class("dim-label")
+        return lab
+
+    def card(rows):
+        """Gerahmte Liste: rows = [(Titel, Untertitel|None, Widget|None)]"""
+        box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        box.get_style_context().add_class("frame")
+        for title, sub, widget in rows:
+            row = Gtk.Box(spacing=12, margin=10)
+            texts = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            texts.pack_start(label(title), False, False, 0)
+            if sub:
+                texts.pack_start(label(sub, dim=True), False, False, 0)
+            row.pack_start(texts, True, True, 0)
+            if widget:
+                widget.set_valign(Gtk.Align.CENTER)
+                row.pack_end(widget, False, False, 0)
+            box.add(row)
+        return box
+
+    def button(text, cb, style=None):
+        b = Gtk.Button(label=text)
+        b.connect("clicked", lambda *_: cb())
+        if style:
+            b.get_style_context().add_class(style)
+        return b
+
+    class Page(Gtk.ScrolledWindow):
+        title = ""
+
+        def __init__(self, win):
+            super().__init__(hscrollbar_policy=Gtk.PolicyType.NEVER)
+            self.win = win
+            self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14, margin=24)
+            Gtk.ScrolledWindow.add(self, self.box)
+
+        def clear(self):
+            for child in self.box.get_children():
+                self.box.remove(child)
+            self.box.pack_start(label(f"<span size='x-large' weight='bold'>{self.title}</span>", markup=True),
+                                False, False, 0)
+
+        def put(self, widget):
+            self.box.pack_start(widget, False, False, 0)
+
+        def note(self, text):
+            self.put(label(text, dim=True))
+
+        def refresh(self):
+            pass
+
+        def show_all_now(self):
+            self.box.show_all()
+
+    class SoundPage(Page):
+        title = "Sound"
+
+        def refresh(self):
+            self.clear()
+            if not shutil.which("pactl"):
+                self.note("Sound control is not available (pactl missing).")
+                return self.show_all_now()
+            vol = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 5)
+            vol.set_value(volume())
+            vol.set_size_request(260, -1)
+            vol.connect("value-changed", lambda s: set_volume(s.get_value()))
+            mute = Gtk.Switch(active=muted())
+            mute.connect("notify::active", lambda s, _p: set_mute(s.get_active()))
+            outs = outputs()
+            combo = Gtk.ComboBoxText()
+            for i, (sink, port, lab, active) in enumerate(outs):
+                combo.append(str(i), lab)
+                if active:
+                    combo.set_active_id(str(i))
+
+            def changed(c):
+                if c.get_active_id() is not None:
+                    sink, port, _l, _a = outs[int(c.get_active_id())]
+                    switch_output(sink, port)
+            combo.connect("changed", changed)
+            mic = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 5)
+            mic.set_value(volume("source"))
+            mic.set_size_request(260, -1)
+            mic.connect("value-changed", lambda s: set_volume(s.get_value(), "source"))
+            self.put(card([("Volume", None, vol), ("Mute", None, mute),
+                           ("Output", "Speakers, headphones, HDMI, Bluetooth" if outs else "No sound output found",
+                            combo if outs else None)]))
+            self.put(card([("Microphone", None, mic)]))
+            self.put(card([("Advanced Audio Settings", "Per-app volume, inputs, profiles",
+                            button("Open", lambda: spawn("pavucontrol")))]))
+            self.show_all_now()
+
+    class DisplayPage(Page):
+        title = "Display"
+
+        def refresh(self):
+            self.clear()
+            scr = screens()
+            if not scr:
+                self.note("No display found (xrandr missing or not running in a desktop session).")
+            for s in scr:
+                res = Gtk.ComboBoxText()
+                for m, _r in s["modes"]:
+                    res.append(m, m)
+                res.set_active_id(s["mode"] or None)
+                rate = Gtk.ComboBoxText()
+
+                def fill_rates(_c=None, s=s, res=res, rate=rate):
+                    rate.remove_all()
+                    rates = dict(s["modes"]).get(res.get_active_id() or "", [])
+                    for r in rates:
+                        rate.append(r, f"{round(float(r))} Hz")
+                    rate.set_active_id(s["rate"] if s["rate"] in rates else (rates[0] if rates else None))
+                fill_rates()
+                res.connect("changed", fill_rates)
+
+                def apply(s=s, res=res, rate=rate):
+                    args = ["--output", s["name"], "--mode", res.get_active_id() or s["mode"]]
+                    if rate.get_active_id():
+                        args += ["--rate", rate.get_active_id()]
+                    self.apply(args)
+                state = ("Main · " if s["primary"] and len(scr) > 1 else "") + (s["mode"] or "Off")
+                self.put(label(f"<b>{GLib.markup_escape_text(pretty(s['name']))}</b>  "
+                               f"<span alpha='55%'>{state}</span>", markup=True))
+                self.put(card([("Resolution", None, res), ("Refresh rate", None, rate),
+                               ("", None, button("Apply", apply, "suggested-action"))]))
+            if len(scr) > 1:
+                main = next((s["name"] for s in scr if s["primary"]), scr[0]["name"])
+                lay = Gtk.ComboBoxText()
+                for key, text in (("right", "Extend right"), ("left", "Extend left"), ("dup", "Duplicate"),
+                                  ("only", f"Only {pretty(main)}")):
+                    lay.append(key, text)
+                lay.set_active_id("right")
+                self.put(card([("Multiple displays", "Like Windows+P",
+                                lay), ("", None, button("Apply", lambda: self.apply(
+                                    layout_args(scr, main, lay.get_active_id() or "right")), "suggested-action"))]))
+            # Nachtmodus
+            mode, temp = nightlight_status()
+            nl = Gtk.ComboBoxText()
+            for key, text in (("off", "Off"), ("on", "On"), ("auto", "Automatic (20:00–07:00)")):
+                nl.append(key, text)
+            nl.set_active_id(mode)
+            nl.connect("changed", lambda c: cmd("simpleos-nightlight", f"--{c.get_active_id()}", timeout=20))
+            warm = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 3000, 6000, 250)
+            warm.set_inverted(True)
+            warm.set_value(temp)
+            warm.set_size_request(220, -1)
+            warm.connect("button-release-event",
+                         lambda s, _e: cmd("simpleos-nightlight", "--temp", str(int(s.get_value())), timeout=20))
+            self.put(label("<b>Night light</b>", markup=True))
+            self.put(card([("Night light", "Warmer colors in the evening", nl),
+                           ("Warmth", "Right = warmer", warm)]))
+            self.put(card([("Advanced Display Settings", "Drag screens into place",
+                            button("Open", lambda: spawn("arandr") or spawn("lxrandr")))]))
+            self.show_all_now()
+
+        def apply(self, args):
+            before = snapshot(screens())
+            if cmd("xrandr", *args).returncode != 0:
+                self.win.error("This display setting is not supported.")
+                return
+            dialog = Gtk.MessageDialog(transient_for=self.win, modal=True, message_type=Gtk.MessageType.QUESTION,
+                                       text="Keep these display settings?")
+            dialog.add_buttons("Revert", Gtk.ResponseType.CANCEL, "Keep changes", Gtk.ResponseType.OK)
+            left = [15]
+
+            def tick():
+                left[0] -= 1
+                if left[0] <= 0:
+                    dialog.response(Gtk.ResponseType.CANCEL)
+                    return False
+                dialog.format_secondary_text(f"Reverting in {left[0]} seconds…")
+                return True
+            dialog.format_secondary_text("Reverting in 15 seconds…")
+            timer = GLib.timeout_add_seconds(1, tick)
+            resp = dialog.run()
+            GLib.source_remove(timer) if left[0] > 0 else None
+            dialog.destroy()
+            if resp == Gtk.ResponseType.OK:
+                save_display(snapshot(screens()))
+            else:
+                cmd("xrandr", *before)
+            self.refresh()
+
+    class WifiPage(Page):
+        title = "Wi-Fi"
+
+        def refresh(self):
+            self.clear()
+            self.w = wizard_module()
+            if not self.w:
+                self.note("Wi-Fi settings are not available (Simple OS setup wizard missing).")
+                return self.show_all_now()
+            spin = Gtk.Spinner(active=True)
+            self.put(spin)
+            self.note("Searching for networks…")
+            self.show_all_now()
+            w = self.w
+
+            def work():
+                s = w.network_state()
+                return s, (w.wifi_networks(s["wifi"]) if s["wifi"] and s["radio"] else [])
+            bg(work, self.show)
+
+        def show(self, res):
+            self.clear()
+            if isinstance(res, Exception):
+                self.note(f"Wi-Fi could not be read: {res}")
+                return self.show_all_now()
+            state, nets = res
+            view = self.w.network_view(state, nets)
+            radio = Gtk.Switch(active=bool(state["radio"]), sensitive=bool(state["wifi"]))
+            radio.connect("notify::active", lambda s, _p: bg(
+                lambda: self.w.nmcli("radio", "wifi", "on" if s.get_active() else "off"), lambda _r: self.refresh()))
+            self.put(card([(view["status"], view["hint"], radio if state["wifi"] else None)]))
+            if view["show_list"]:
+                rows = []
+                for ssid, info, secured, in_use, act in view["rows"]:
+                    rows.append((ssid, info, button(act, lambda s=ssid, sec=secured, u=in_use: self.click(s, sec, u),
+                                                    None if in_use else "suggested-action")))
+                if rows:
+                    self.put(card(rows))
+            self.put(card([("Search again", None, button("Refresh", self.refresh)),
+                           ("More network options", "Wired, VPN, hidden networks",
+                            button("Open", lambda: spawn("nm-connection-editor")))]))
+            self.show_all_now()
+
+        def click(self, ssid, secured, in_use):
+            dev = self.w.network_state()["wifi"]
+            if in_use:
+                return bg(lambda: self.w.disconnect_wifi(dev), self.done)
+            saved = ssid in self.w.nmcli("-t", "-f", "NAME", "connection", "show").stdout.splitlines()
+            password = ""
+            if secured and not saved:
+                password = self.win.ask_password(ssid)
+                if password is None:
+                    return
+            bg(lambda: self.w.connect_wifi(dev, ssid, password), self.done)
+
+        def done(self, res):
+            if isinstance(res, tuple) and not res[0]:
+                self.win.error(res[1])
+            self.refresh()
+
+    class BluetoothPage(Page):
+        title = "Bluetooth"
+
+        def refresh(self):
+            self.clear()
+            if not shutil.which("bluetoothctl"):
+                self.note("Bluetooth is not available (bluez missing).")
+                return self.show_all_now()
+            self.show_all_now()
+            bg(lambda: (bt_state(), bt_devices()), self.show)
+
+        def show(self, res):
+            self.clear()
+            if isinstance(res, Exception):
+                self.note(f"Bluetooth could not be read: {res}")
+                return self.show_all_now()
+            (adapter, powered), devs = res
+            if not adapter:
+                self.note("No Bluetooth adapter found. Virtual machines and many desktop PCs have none – "
+                          "a USB Bluetooth stick adds it.")
+                return self.show_all_now()
+            sw = Gtk.Switch(active=powered)
+            sw.connect("notify::active", lambda s, _p: bg(
+                lambda: (cmd("rfkill", "unblock", "bluetooth") if s.get_active() else None,
+                         bt("power", "on" if s.get_active() else "off")), lambda _r: self.refresh()))
+            self.put(card([("Bluetooth", "On" if powered else "Off", sw)]))
+            if powered:
+                rows = []
+                for mac, name, conn, kind, _p in devs:
+                    acts = Gtk.Box(spacing=6)
+                    acts.pack_start(button("Disconnect" if conn else "Connect", lambda m=mac, c=conn: bg(
+                        lambda: bt("disconnect" if c else "connect", m, timeout=30), lambda _r: self.refresh())),
+                        False, False, 0)
+                    acts.pack_start(button("Remove", lambda m=mac: bg(lambda: bt("remove", m), lambda _r: self.refresh()),
+                                           "destructive-action"), False, False, 0)
+                    rows.append((name, kind + (" · Connected" if conn else ""), acts))
+                if rows:
+                    self.put(label("<b>Your devices</b>", markup=True))
+                    self.put(card(rows))
+                self.put(card([("Add device", "Put your device in pairing mode first",
+                                button("Search", self.scan, "suggested-action"))]))
+            self.put(card([("More Bluetooth settings", None, button("Open", lambda: spawn("blueman-manager")))]))
+            self.show_all_now()
+
+        def scan(self):
+            self.clear()
+            self.put(Gtk.Spinner(active=True))
+            self.note("Searching for devices (10 seconds)…")
+            self.show_all_now()
+            bg(lambda: bt_scan(10), self.found)
+
+        def found(self, res):
+            self.clear()
+            devs = [] if isinstance(res, Exception) else res
+            if not devs:
+                self.note("Nothing found. Make sure the device is in pairing mode and nearby.")
+            else:
+                self.put(card([(name, kind, button("Pair", lambda m=mac, n=name: bg(
+                    lambda: bt_pair(m), lambda ok, n=n: (None if ok is True else self.win.error(
+                        f"Could not pair with {n}. Put it in pairing mode and try again."), self.refresh())),
+                    "suggested-action")) for mac, name, _c, kind, _p in devs]))
+            self.put(card([("Search again", None, button("Search", self.scan)),
+                           ("Back", None, button("Back", self.refresh))]))
+            self.show_all_now()
+
+    class AppearancePage(Page):
+        title = "Appearance"
+
+        def refresh(self):
+            self.clear()
+            mode, accent = theme_state()
+            dark = Gtk.ComboBoxText()
+            dark.append("dark", "Dark")
+            dark.append("light", "Light")
+            dark.set_active_id(mode)
+            acc = Gtk.ComboBoxText()
+            for a in ACCENTS:
+                acc.append(a, a.capitalize())
+            acc.set_active_id(accent)
+
+            def apply_theme(*_):
+                bg(lambda: cmd("simpleos-theme", "--mode", dark.get_active_id() or "dark",
+                               "--accent", acc.get_active_id() or "blue", timeout=60), lambda _r: None)
+            dark.connect("changed", apply_theme)
+            acc.connect("changed", apply_theme)
+            self.put(card([("Apps", "Dark or light windows", dark),
+                           ("Accent color", "Menus, taskbar, window borders", acc)]))
+            chooser = Gtk.FileChooserButton(title="Choose a picture", action=Gtk.FileChooserAction.OPEN)
+            filt = Gtk.FileFilter()
+            filt.set_name("Pictures")
+            filt.add_mime_type("image/*")
+            chooser.add_filter(filt)
+            wp = current_wallpaper()
+            if wp and os.path.exists(wp):
+                chooser.set_filename(wp)
+            pics = Path.home() / "Pictures"
+            if pics.is_dir():
+                chooser.set_current_folder(str(pics))
+            chooser.connect("file-set", lambda c: cmd("simpleos-wallpaper", c.get_filename() or "", timeout=20))
+            self.put(card([("Wallpaper", "Or right-click a picture in Files → Set as Wallpaper", chooser),
+                           ("Default wallpaper", None,
+                            button("Restore", lambda: (cmd("simpleos-wallpaper", "--default"), self.refresh())))]))
+            dyn = Gtk.Switch(active=dynamic_wallpaper_on())
+            dyn.connect("notify::active", lambda s, _p: bg(
+                lambda: cmd("simpleos-wallpaper-schedule", "--on" if s.get_active() else "--off", timeout=30),
+                lambda _r: None))
+            follow = Gtk.Switch(active=dynamic_theme_on())
+            follow.connect("notify::active", lambda s, _p: bg(
+                lambda: cmd("simpleos-wallpaper-schedule", "--theme", "on" if s.get_active() else "off", timeout=60),
+                lambda _r: self.refresh()))
+            self.put(card([("Dynamic wallpaper (day/night)",
+                            "Light during the day, dark in the evening and whenever night light is on", dyn),
+                           ("Switch light/dark mode with it", "Apps, menus and taskbar follow the wallpaper", follow)]))
+            self.put(card([("Taskbar", "Position, size, style",
+                            button("Open", lambda: spawn("simpleos-taskbar-select")))]))
+            self.show_all_now()
+
+    class PowerPage(Page):
+        title = "Power"
+
+        def refresh(self):
+            self.clear()
+            bat = battery_text()
+            if bat:
+                self.put(card([("Battery", bat, None)]))
+            off = Gtk.ComboBoxText()
+            for minutes, text in SCREEN_OFF:
+                off.append(str(minutes), text)
+            off.set_active_id(str(screen_off()))
+            off.connect("changed", lambda c: cmd("simpleos-power", "--screen-off", c.get_active_id() or "10"))
+            self.put(card([("Turn off the screen after", "When the computer is not used", off)]))
+            cur, avail = power_profile()
+            if cur != "unsupported":
+                mode = Gtk.ComboBoxText()
+                hints = {}
+                for key, text, hint in PROFILES:
+                    if key in avail:
+                        mode.append(key, text)
+                        hints[key] = hint
+                mode.set_active_id(cur)
+                mode.connect("changed", self.set_profile)
+                self.put(card([("Power mode", hints.get(cur, ""), mode)]))
+            limit = charge_limit()
+            if limit != "unsupported":
+                prot = Gtk.Switch(active=limit == "on")
+                prot.connect("notify::active", self.set_limit)
+                self.put(card([("Battery protection", "Stop charging at about 80 % – the battery lasts longer "
+                                "if the laptop is mostly plugged in", prot)]))
+            acts = Gtk.Box(spacing=6)
+            for key, text, style in (("lock", "Lock", None), ("sleep", "Sleep", None),
+                                     ("restart", "Restart", None), ("shutdown", "Shut down", "destructive-action")):
+                acts.pack_start(button(text, lambda k=key: self.power(k), style), False, False, 0)
+            self.put(card([("Power", None, acts)]))
+            self.show_all_now()
+
+        def set_profile(self, combo):
+            key = combo.get_active_id()
+            if key and cmd("simpleos-power", "--profile", key).returncode != 0:
+                self.win.error("The power mode could not be changed.")
+            self.refresh()   # Untertitel passend zum Profil
+
+        def set_limit(self, sw, _p):
+            want = "on" if sw.get_active() else "off"
+            if cmd("simpleos-power", "--charge-limit", want).returncode != 0:
+                self.win.error("Battery protection could not be changed.")
+                self.refresh()
+
+        def power(self, what):
+            if what in ("restart", "shutdown"):
+                d = Gtk.MessageDialog(transient_for=self.win, modal=True, message_type=Gtk.MessageType.QUESTION,
+                                      buttons=Gtk.ButtonsType.OK_CANCEL,
+                                      text="Restart now?" if what == "restart" else "Shut down now?")
+                d.format_secondary_text("Save your work first.")
+                ok = d.run() == Gtk.ResponseType.OK
+                d.destroy()
+                if not ok:
+                    return
+            if not power_action(what):
+                self.win.error("That did not work. Please try again.")
+
+    class SystemPage(Page):
+        title = "System"
+
+        def refresh(self):
+            self.clear()
+            dnd = Gtk.Switch(active=dnd_on())
+            dnd.connect("notify::active", lambda s, _p: bg(
+                lambda: cmd("simpleos-dnd", "--on" if s.get_active() else "--off", timeout=30), lambda _r: None))
+            quiet = Gtk.Switch(active=dnd_no_effects())
+            quiet.connect("notify::active", lambda s, _p: cmd("simpleos-dnd", "--no-effects",
+                                                              "on" if s.get_active() else "off"))
+            self.put(label("<b>Keyboard</b>", markup=True))
+            kb = Gtk.ComboBoxText()
+            cur = keyboard_current()
+            for key, name in keyboard_layouts():
+                kb.append(key, name)
+            if not kb.set_active_id(cur):
+                kb.append(cur, cur.replace(":", " – ") or "Unknown")
+                kb.set_active_id(cur)
+            kb.connect("changed", lambda c: c.get_active_id() and bg(
+                lambda: cmd("simpleos-keyboard-setup", "--set", c.get_active_id(), timeout=120), lambda _r: None))
+            self.put(card([("Keyboard layout", "Applies right away – also on the login screen", kb)]))
+            self.put(label("<b>Focus</b>", markup=True))
+            self.put(card([("Do Not Disturb", "Pause notifications until you turn it off", dnd),
+                           ("Also turn off window effects", "No shadows or transparency while it is on", quiet)]))
+            used, total = disk_usage("/")
+            bar = Gtk.LevelBar(min_value=0, max_value=1, value=(used / total) if total else 0)
+            bar.set_size_request(240, 10)
+            self.put(label("<b>Storage</b>", markup=True))
+            self.put(card([("System disk", f"{human(total - used)} free of {human(total)}", bar),
+                           ("Free up space", "Package cache, unused apps, old logs, thumbnails",
+                            button("Clean up", lambda: spawn("simpleos-cleaner"), "suggested-action")),
+                           ("Disks & USB sticks", "Format a USB stick, write an ISO image, check disk health",
+                            button("Open", lambda: spawn("gnome-disks")))]))
+            self.put(label("<b>Security</b>", markup=True))
+            fw = Gtk.Switch(active=firewall_on())
+            fw.connect("notify::active", self.set_firewall)
+            self.put(card([("Firewall", "Blocks connections from other devices to this computer – "
+                            "browsing, printing and games keep working", fw)]))
+            self.put(label("<b>Printers &amp; Scanners</b>", markup=True))
+            self.put(card([("Printers", "Most printers on your network or USB are found automatically",
+                            button("Open", lambda: spawn("system-config-printer"))),
+                           ("Scan a document", "Scanners and printers with a scanner",
+                            button("Scan", lambda: spawn("simple-scan")))]))
+            self.put(label("<b>Backups</b>", markup=True))
+            if cmd("simpleos-live", "--check").returncode == 0:
+                self.note("Backups can only be created on an installed system.")
+            else:
+                self.put(card([("Restore points", "Undo system changes – your personal files are not touched",
+                                button("Open", lambda: spawn("simpleos-backup"))),
+                               ("Create a restore point now", "The first one can take 10–20 minutes",
+                                button("Create", lambda: spawn("simpleos-backup", "--create"), "suggested-action"))]))
+            self.put(label("<b>Hardware &amp; Drivers</b>", markup=True))
+            hw = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            hw.pack_start(card([("Checking graphics, Wi-Fi and CPU…", None, Gtk.Spinner(active=True))]),
+                          False, False, 0)
+            self.put(hw)
+            bg(drivers_report, lambda rep: self.show_drivers(hw, rep))
+            self.put(card([("Software Updates", None, button("Open", lambda: spawn("simpleos-update"))),
+                           ("Task Manager", "Ctrl+Shift+Esc",
+                            button("Open", lambda: spawn("simpleos-taskmanager")))]))
+            self.show_all_now()
+
+        def set_firewall(self, sw, _p):
+            want = sw.get_active()
+            if want == firewall_on():
+                return
+            sw.set_sensitive(False)
+
+            def done(res):
+                # 126/127 = Passwortdialog abgebrochen -> still zurück; sonst zählt nur der neue Zustand
+                if getattr(res, "returncode", 1) not in (126, 127) and firewall_on() != want:
+                    self.win.error("The firewall could not be changed.")
+                self.refresh()
+            bg(lambda: cmd("pkexec", HELPER, "--firewall", "on" if want else "off", timeout=120), done)
+
+        def show_drivers(self, hw, rep):
+            for c in hw.get_children():
+                hw.remove(c)
+            if not isinstance(rep, dict):
+                hw.pack_start(card([("Hardware could not be checked", str(rep) or None, None)]), False, False, 0)
+                hw.show_all()
+                return
+            rows = []
+            for g in rep.get("gpu") or [{"name": "No graphics card found", "status": ""}]:
+                rows.append((f"Graphics · {g['name']}", g["status"] or None, None))
+            for w in rep.get("wifi") or [{"name": "No Wi-Fi adapter found", "status": ""}]:
+                rows.append((f"Wi-Fi · {w['name']}", w["status"] or None, None))
+            cpu = rep.get("cpu") or {}
+            rows.append((f"CPU · {cpu.get('name', 'Unknown')}", cpu.get("status"), None))
+            todo = rep.get("recommended") or []
+            if todo:
+                b = button("Install Recommended Drivers", lambda: spawn("simpleos-drivers", "--install"),
+                           "suggested-action")
+                rows.append((f"{len(todo)} package{'s' if len(todo) != 1 else ''} recommended",
+                             ", ".join(todo), b))
+            else:
+                rows.append(("All recommended drivers are installed", None, None))
+            hw.pack_start(card(rows), False, False, 0)
+            for n in rep.get("notes") or []:
+                hw.pack_start(label(n, dim=True), False, False, 0)
+            hw.show_all()
+
+    class Window(Gtk.ApplicationWindow):
+        def __init__(self, app):
+            super().__init__(application=app, title="Control Center")
+            self.set_default_size(880, 600)
+            self.set_icon_name("preferences-system")
+            self.set_position(Gtk.WindowPosition.CENTER)
+            hb = Gtk.HeaderBar(show_close_button=True, title="Control Center")
+            self.set_titlebar(hb)
+            pane = Gtk.Box()
+            self.side = Gtk.ListBox()
+            self.side.set_size_request(200, -1)
+            self.side.get_style_context().add_class("sidebar")
+            self.stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE)
+            self.pages = {}
+            classes = {"system": SystemPage,
+                       "sound": SoundPage, "display": DisplayPage, "wifi": WifiPage, "bluetooth": BluetoothPage,
+                       "appearance": AppearancePage, "power": PowerPage}
+            for key, title, icon in PAGES:
+                row = Gtk.ListBoxRow()
+                row.key = key
+                b = Gtk.Box(spacing=10, margin=10)
+                b.pack_start(Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.LARGE_TOOLBAR), False, False, 0)
+                b.pack_start(label(title), False, False, 0)
+                row.add(b)
+                self.side.add(row)
+                page = classes[key](self)
+                self.pages[key] = page
+                self.stack.add_named(page, key)
+            self.side.connect("row-selected", lambda _l, row: row and self.open(row.key, select=False))
+            pane.pack_start(self.side, False, False, 0)
+            pane.pack_start(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL), False, False, 0)
+            pane.pack_start(self.stack, True, True, 0)
+            self.add(pane)
+            self.show_all()
+
+        def open(self, key, select=True):
+            key = key if key in self.pages else "sound"
+            if select:
+                for row in self.side.get_children():
+                    if row.key == key:
+                        self.side.select_row(row)   # löst open(select=False) aus
+                        return
+            self.stack.set_visible_child_name(key)
+            self.pages[key].refresh()
+
+        def error(self, text):
+            d = Gtk.MessageDialog(transient_for=self, modal=True, message_type=Gtk.MessageType.WARNING,
+                                  buttons=Gtk.ButtonsType.OK, text=text)
+            d.run()
+            d.destroy()
+
+        def ask_password(self, ssid):
+            d = Gtk.Dialog(title=f"Connect to {ssid}", transient_for=self, modal=True)
+            d.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Connect", Gtk.ResponseType.OK)
+            d.set_default_response(Gtk.ResponseType.OK)
+            entry = Gtk.Entry(visibility=False, activates_default=True, placeholder_text="Wi-Fi password")
+            box = d.get_content_area()
+            box.set_spacing(8)
+            box.set_border_width(12)
+            box.add(label(f"Enter the password for “{ssid}”."))
+            box.add(entry)
+            d.show_all()
+            ok = d.run() == Gtk.ResponseType.OK
+            text = entry.get_text()
+            d.destroy()
+            return text if ok else None
+
+    from gi.repository import Gio
+    selftest = os.environ.get("SIMPLEOS_CC_SELFTEST") == "1"
+    errors = []
+    if selftest:
+        def hook(etype, value, tb):
+            errors.append(value)
+            sys.__excepthook__(etype, value, tb)
+        sys.excepthook = hook
+
+    class App(Gtk.Application):
+        def __init__(self):
+            flags = Gio.ApplicationFlags.HANDLES_COMMAND_LINE
+            if selftest:
+                flags |= Gio.ApplicationFlags.NON_UNIQUE
+            super().__init__(application_id="org.simpleos.ControlCenter", flags=flags)
+            self.win = None
+
+        def do_command_line(self, line):
+            args = line.get_arguments()[1:]
+            if not self.win:
+                self.win = Window(self)
+            self.win.open(args[0] if args else "sound")
+            self.win.present()
+            if selftest:
+                keys = [k for k, _t, _i in PAGES]
+
+                def step():
+                    if keys:
+                        self.win.open(keys.pop(0))
+                        return True
+                    GLib.timeout_add(1500, self.quit)   # Hintergrund-Aufrufe der letzten Seite abwarten
+                    return False
+                GLib.timeout_add(700, step)
+            return 0
+
+    rc = App().run(argv)
+    if errors:
+        print(f"simpleos-control-center: {len(errors)} error(s) in self-test", file=sys.stderr)
+        return 1
+    return rc
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
+        print(__doc__)
+        sys.exit(0)
+    if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
+        print("simpleos-control-center: no display", file=sys.stderr)
+        sys.exit(1)
+    sys.exit(main(sys.argv))

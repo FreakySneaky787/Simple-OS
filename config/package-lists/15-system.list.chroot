@@ -1,0 +1,11 @@
+# Simple OS – Schutz und Wartung im Hintergrund (Einstellungen: Hook 12_system_services, Control Center)
+# Firewall: eingehend alles zu, ausgehend offen; Druckersuche (mDNS) und UPnP erlauben die ufw-Grundregeln
+ufw
+# Bei vollem Arbeitsspeicher das größte Programm beenden, statt dass der Rechner minutenlang einfriert
+earlyoom
+# Energieprofile (Power saver / Balanced / Performance, Control Center → Power); thermald hält Intel-CPUs kühl
+power-profiles-daemon
+thermald
+# BIOS-/Firmware-Updates vom LVFS (Lenovo, Dell, HP …) über Software Updates; signierter EFI-Teil für Secure Boot
+fwupd
+fwupd-amd64-signed

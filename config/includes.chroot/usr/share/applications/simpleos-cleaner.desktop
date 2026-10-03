@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Storage Cleaner
+Comment=Free up disk space and see what uses it
+Exec=/usr/local/bin/simpleos-cleaner
+Icon=user-trash-full
+Categories=System;
+Keywords=disk;space;clean;cleanup;storage;cache;junk;analyzer;

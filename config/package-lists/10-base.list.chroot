@@ -1,0 +1,20 @@
+# Simple OS – Basissystem
+sudo
+locales
+network-manager
+wpasupplicant
+wireless-regdb
+libpam-systemd
+polkitd
+# pkexec: grafische Passwortabfrage (lxpolkit) für Installationen aus dem Setup-Wizard
+pkexec
+dosfstools
+exfatprogs
+ntfs-3g
+zram-tools
+# Boot-Splash
+plymouth
+plymouth-themes
+# Performance: preload (App-Starts per RAM-Cache), gamemode (CPU/GPU-Boost für Spiele)
+preload
+gamemode

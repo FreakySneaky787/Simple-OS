@@ -1,0 +1,37 @@
+#!/bin/sh
+# Simple OS – root-Teil von simpleos-cleaner (Aufruf per pkexec; Polkit-Aktion org.simpleos.cleaner).
+# Nur feste Aufräum-Aktionen, beliebig kombinierbar:
+#   --apt-cache    apt-get clean (heruntergeladene .deb-Dateien)
+#   --autoremove   apt-get autoremove (nicht mehr benötigte Abhängigkeiten; Konfigurationsdateien bleiben)
+#   --flatpak      flatpak uninstall --unused (verwaiste Runtimes der Systeminstallation)
+#   --journal      journalctl --vacuum-time=7d (archivierte Protokolle älter als 7 Tage)
+# Zeilen "STEP: <Text>" = Fortschritt. Exit 0 = alles erledigt, 1 = mindestens ein Schritt fehlgeschlagen,
+# 2 = ungültiger Aufruf.
+set -u
+export DEBIAN_FRONTEND=noninteractive
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+[ $# -gt 0 ] || { echo "Aufruf: $0 --apt-cache|--autoremove|--flatpak|--journal …" >&2; exit 2; }
+for a in "$@"; do
+    case "$a" in --apt-cache|--autoremove|--flatpak|--journal) ;; *) echo "unbekannt: $a" >&2; exit 2 ;; esac
+done
+[ "$(id -u)" -eq 0 ] || { echo "simpleos-cleaner-helper: muss als root laufen (pkexec)" >&2; exit 1; }
+failed=0
+for a in "$@"; do
+    case "$a" in
+        --apt-cache)
+            echo "STEP: Removing downloaded package files"
+            apt-get -o DPkg::Lock::Timeout=120 clean || failed=1 ;;
+        --autoremove)
+            echo "STEP: Removing packages that are no longer needed"
+            apt-get -y -o DPkg::Lock::Timeout=120 autoremove || failed=1 ;;
+        --flatpak)
+            if command -v flatpak >/dev/null; then
+                echo "STEP: Removing unused Flatpak runtimes"
+                flatpak uninstall --system --unused -y --noninteractive || failed=1
+            fi ;;
+        --journal)
+            echo "STEP: Removing system logs older than 7 days"
+            journalctl --vacuum-time=7d || failed=1 ;;
+    esac
+done
+exit "$failed"

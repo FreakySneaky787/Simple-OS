@@ -1,0 +1,67 @@
+#!/bin/sh
+# Simple OS – Tastenkürzel-Übersicht (Super+H oder Super+Shift+?, Menü → Help → Keyboard Shortcuts)
+# Zentriertes Rofi-Fenster, nach Themen gruppiert, Tippen filtert die Liste, Esc schließt.
+# Robust wie simpleos-wifi: kein set -e, Exit 0; startet Rofi nicht, zeigt eine Meldung die wichtigsten Kürzel.
+
+SOS_NAME=simpleos-help SOS_TITLE="Keyboard shortcuts" SOS_ICON=input-keyboard
+LIB=/usr/local/lib/simpleos/common.sh
+# "." auf eine fehlende Datei würde dash sofort beenden -> vorher prüfen
+[ -r "$LIB" ] || { notify-send "Keyboard shortcuts" "Simple OS is incomplete (missing $LIB)." 2>/dev/null; exit 0; }
+. "$LIB"
+sos_log_init "$@"
+
+sos_rofi_failed() {
+    sos_notify "Super: apps · Super+Enter: terminal · Super+B: browser · Super+E: files · Super+X: power menu"
+    exit 0
+}
+
+sos_rofi -dmenu -i -no-custom -markup-rows -p "Filter" \
+    -mesg "<b>Simple OS – Keyboard shortcuts</b>   ·   type to filter   ·   Esc to close" -markup \
+    -theme-str 'window { width: 760px; location: center; anchor: center; } listview { lines: 18; }
+                element-icon { enabled: false; } element-text { font: "JetBrains Mono 10"; }' \
+    >/dev/null <<'LIST'
+<b>── Apps ─────────────────────────────────────────────────</b>
+Super (tap) / Super+Space   Search – apps, files, calculations (42*12), power options
+Super+Enter                 Terminal
+Super+B                     Web browser
+Super+E                     Files
+Super+H / Super+Shift+?     This overview
+<b>── Windows ──────────────────────────────────────────────</b>
+Super+Q / Alt+F4            Close the active app
+Alt+Tab / Alt+Shift+Tab     Switch between windows
+Super+D                     Show desktop
+Super+Left / Super+Right    Snap window to the left / right half (again: next screen)
+Super+Up / Super+Down       Maximize / restore or minimize
+Super+Alt+Arrows            Snap window to a quarter of the screen
+Alt+Space                   Window menu (maximize, move, …)
+Alt+Esc                     Send window to the back
+Double-click title bar      Maximize / restore
+Alt+Left-drag               Move window
+Alt+Right-drag              Resize window
+<b>── Workspaces ───────────────────────────────────────────</b>
+Super+F1 … Super+F4         Go to workspace 1–4
+Ctrl+Alt+Left/Right         Previous / next workspace
+Shift+Alt+Left/Right        Move window to previous / next workspace
+<b>── System ───────────────────────────────────────────────</b>
+Super+X                     Power menu – lock, sleep, restart, shut down, log out
+Super+N                     Network info – LAN IP, gateway, VPN, public IP
+Super+I                     Control Center – all settings in one window
+Ctrl+Shift+Esc              Task Manager – see CPU/RAM, end frozen apps
+Super+V                     Clipboard history – pick something you copied earlier
+Super+A                     Sound – volume, speakers / headphones / HDMI
+Super+P                     Display – resolution, refresh rate, duplicate / extend
+Print                       Screenshot – saved to Pictures/Screenshots and copied
+Shift+Print                 Screenshot of an area – drag with the mouse
+Volume keys                 Volume up / down / mute
+USB stick plugged in        Message with Open / Safely remove
+Update message              Click it to install updates (asks for your password)
+<b>── Mouse ────────────────────────────────────────────────</b>
+Right-click desktop         Simple OS menu (Settings, Help, Power)
+Panel: left button          Apps
+Panel: network display      Network menu – Wi-Fi, cable, details
+Panel: red button (right)   Power menu
+Settings → Software Updates Check for and install updates
+Settings → Taskbar &amp; Panel  Move or restyle the taskbar
+Files: right-click           Set as Wallpaper, Copy to Clipboard, Open as Administrator, Extract Here
+LIST
+exit 0

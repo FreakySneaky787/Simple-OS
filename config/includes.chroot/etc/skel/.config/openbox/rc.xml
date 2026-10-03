@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc" xmlns:xi="http://www.w3.org/2001/XInclude">
+  <resistance><strength>10</strength><screen_edge_strength>20</screen_edge_strength></resistance>
+  <focus>
+    <focusNew>yes</focusNew>
+    <followMouse>no</followMouse>
+  </focus>
+  <placement><policy>Smart</policy><center>yes</center></placement>
+  <theme>
+    <name>SimpleOS</name>
+    <titleLayout>NLIMC</titleLayout>
+    <keepBorder>yes</keepBorder>
+    <animateIconify>no</animateIconify>
+    <font place="ActiveWindow"><name>Inter</name><size>10</size><weight>Bold</weight><slant>Normal</slant></font>
+    <font place="InactiveWindow"><name>Inter</name><size>10</size><weight>Normal</weight><slant>Normal</slant></font>
+    <font place="MenuHeader"><name>Inter</name><size>11</size><weight>Bold</weight><slant>Normal</slant></font>
+    <font place="MenuItem"><name>Inter</name><size>11</size><weight>Normal</weight><slant>Normal</slant></font>
+    <font place="ActiveOnScreenDisplay"><name>Inter</name><size>10</size><weight>Bold</weight><slant>Normal</slant></font>
+    <font place="InactiveOnScreenDisplay"><name>Inter</name><size>10</size><weight>Normal</weight><slant>Normal</slant></font>
+  </theme>
+  <desktops>
+    <number>4</number>
+    <firstdesk>1</firstdesk>
+    <popupTime>875</popupTime>
+  </desktops>
+  <resize><drawContents>yes</drawContents></resize>
+  <!-- Menüs ohne Verzögerung: Untermenüs öffnen/schließen sofort. hideDelay: kurzer Klick lässt das
+       Menü offen (bei 0 würde es sich beim Loslassen der Maustaste sofort wieder schließen). -->
+  <menu>
+    <file>menu.xml</file>
+    <hideDelay>200</hideDelay>
+    <middle>no</middle>
+    <submenuShowDelay>0</submenuShowDelay>
+    <submenuHideDelay>0</submenuHideDelay>
+    <showIcons>yes</showIcons>
+    <manageDesktops>no</manageDesktops>
+  </menu>
+
+  <keyboard>
+    <chainQuitKey>C-g</chainQuitKey>
+
+    <!-- Suche (Spotlight): Super antippen (xcape schickt XF86Search – eigene Taste, kein künstliches Super+Space),
+         Super+Space oder Alt+F2 – Apps, Dateien, Rechnen, Systembefehle (simpleos-search) -->
+    <keybind key="XF86Search">
+      <action name="Execute"><command>/usr/local/bin/simpleos-search</command></action>
+    </keybind>
+    <keybind key="W-space">
+      <action name="Execute"><command>/usr/local/bin/simpleos-search</command></action>
+    </keybind>
+    <keybind key="A-F2">
+      <action name="Execute"><command>/usr/local/bin/simpleos-search</command></action>
+    </keybind>
+    <!-- Fenster andocken wie bei Windows 11 (simpleos-snap): Super+Pfeile = Hälften/Maximieren/Wiederherstellen,
+         Super+Alt+Pfeile = Viertel (Links/Rechts wählt die Spalte, Oben/Unten die Zeile) -->
+    <keybind key="W-Left"><action name="Execute"><command>/usr/local/bin/simpleos-snap left</command></action></keybind>
+    <keybind key="W-Right"><action name="Execute"><command>/usr/local/bin/simpleos-snap right</command></action></keybind>
+    <keybind key="W-Up"><action name="Execute"><command>/usr/local/bin/simpleos-snap up</command></action></keybind>
+    <keybind key="W-Down"><action name="Execute"><command>/usr/local/bin/simpleos-snap down</command></action></keybind>
+    <keybind key="W-A-Left"><action name="Execute"><command>/usr/local/bin/simpleos-snap corner-left</command></action></keybind>
+    <keybind key="W-A-Right"><action name="Execute"><command>/usr/local/bin/simpleos-snap corner-right</command></action></keybind>
+    <keybind key="W-A-Up"><action name="Execute"><command>/usr/local/bin/simpleos-snap corner-up</command></action></keybind>
+    <keybind key="W-A-Down"><action name="Execute"><command>/usr/local/bin/simpleos-snap corner-down</command></action></keybind>
+    <!-- Terminal: Super+Enter -->
+    <keybind key="W-Return">
+      <action name="Execute"><command>kitty</command></action>
+    </keybind>
+    <!-- Browser: Super+B, Dateimanager: Super+E -->
+    <keybind key="W-b">
+      <action name="Execute"><command>simpleos-browser</command></action>
+    </keybind>
+    <keybind key="W-e">
+      <action name="Execute"><command>thunar</command></action>
+    </keybind>
+    <!-- Keybinding-Hilfe: Super+H oder Super+Shift+? -->
+    <keybind key="W-h">
+      <action name="Execute"><command>/usr/local/bin/simpleos-help</command></action>
+    </keybind>
+    <keybind key="W-S-question">
+      <action name="Execute"><command>/usr/local/bin/simpleos-help</command></action>
+    </keybind>
+    <!-- Netzwerk-Info (LAN-IP, Gateway, Hostname, VPN, öffentliche IP): Super+N -->
+    <keybind key="W-n">
+      <action name="Execute"><command>simpleos-netinfo</command></action>
+    </keybind>
+
+    <!-- Fenster -->
+    <keybind key="A-F4"><action name="Close" /></keybind>
+    <keybind key="W-q"><action name="Close" /></keybind>
+    <keybind key="A-Escape">
+      <action name="Lower" /><action name="FocusToBottom" /><action name="Unfocus" />
+    </keybind>
+    <keybind key="A-space"><action name="ShowMenu"><menu>client-menu</menu></action></keybind>
+    <keybind key="A-Tab"><action name="NextWindow" /></keybind>
+    <keybind key="A-S-Tab"><action name="PreviousWindow" /></keybind>
+    <keybind key="W-d"><action name="ToggleShowDesktop" /></keybind>
+
+    <!-- Power-Menü, Screenshot, Medientasten -->
+    <keybind key="W-x">
+      <action name="Execute"><command>/usr/local/bin/simpleos-powermenu</command></action>
+    </keybind>
+    <keybind key="Print">
+      <action name="Execute"><command>/usr/local/bin/simpleos-screenshot</command></action>
+    </keybind>
+    <keybind key="S-Print">
+      <action name="Execute"><command>/usr/local/bin/simpleos-screenshot --area</command></action>
+    </keybind>
+    <!-- Zwischenablage-Verlauf, Sound-Flyout, Bildschirm (wie Windows+V / +A / +P) -->
+    <keybind key="W-v">
+      <action name="Execute"><command>/usr/local/bin/simpleos-clipboard</command></action>
+    </keybind>
+    <keybind key="W-a">
+      <action name="Execute"><command>/usr/local/bin/simpleos-volume</command></action>
+    </keybind>
+    <keybind key="W-p">
+      <action name="Execute"><command>/usr/local/bin/simpleos-display</command></action>
+    </keybind>
+    <!-- Control Center (wie Windows+I), Task-Manager (wie Windows) -->
+    <keybind key="W-i">
+      <action name="Execute"><command>/usr/local/bin/simpleos-control-center</command></action>
+    </keybind>
+    <keybind key="C-S-Escape">
+      <action name="Execute"><command>/usr/local/bin/simpleos-taskmanager</command></action>
+    </keybind>
+    <!-- Fn-Tasten: Lautstärke (höchstens 100 %) und Bildschirmhelligkeit mit kurzem OSD-Balken (simpleos-osd) -->
+    <keybind key="XF86AudioRaiseVolume">
+      <action name="Execute"><command>/usr/local/bin/simpleos-osd volume up</command></action>
+    </keybind>
+    <keybind key="XF86AudioLowerVolume">
+      <action name="Execute"><command>/usr/local/bin/simpleos-osd volume down</command></action>
+    </keybind>
+    <keybind key="XF86AudioMute">
+      <action name="Execute"><command>/usr/local/bin/simpleos-osd volume mute</command></action>
+    </keybind>
+    <keybind key="XF86MonBrightnessUp">
+      <action name="Execute"><command>/usr/local/bin/simpleos-osd brightness up</command></action>
+    </keybind>
+    <keybind key="XF86MonBrightnessDown">
+      <action name="Execute"><command>/usr/local/bin/simpleos-osd brightness down</command></action>
+    </keybind>
+
+    <!-- Arbeitsflächen -->
+    <keybind key="C-A-Left"><action name="GoToDesktop"><to>left</to><wrap>no</wrap></action></keybind>
+    <keybind key="C-A-Right"><action name="GoToDesktop"><to>right</to><wrap>no</wrap></action></keybind>
+    <keybind key="S-A-Left"><action name="SendToDesktop"><to>left</to><wrap>no</wrap></action></keybind>
+    <keybind key="S-A-Right"><action name="SendToDesktop"><to>right</to><wrap>no</wrap></action></keybind>
+    <keybind key="W-F1"><action name="GoToDesktop"><to>1</to></action></keybind>
+    <keybind key="W-F2"><action name="GoToDesktop"><to>2</to></action></keybind>
+    <keybind key="W-F3"><action name="GoToDesktop"><to>3</to></action></keybind>
+    <keybind key="W-F4"><action name="GoToDesktop"><to>4</to></action></keybind>
+  </keyboard>
+
+  <mouse>
+    <dragThreshold>1</dragThreshold>
+    <doubleClickTime>200</doubleClickTime>
+    <screenEdgeWarpTime>0</screenEdgeWarpTime>
+
+    <context name="Frame">
+      <mousebind button="A-Left" action="Press"><action name="Focus" /><action name="Raise" /></mousebind>
+      <mousebind button="A-Left" action="Drag"><action name="Move" /></mousebind>
+      <mousebind button="A-Right" action="Press"><action name="Focus" /><action name="Raise" /></mousebind>
+      <mousebind button="A-Right" action="Drag"><action name="Resize" /></mousebind>
+    </context>
+    <context name="Titlebar">
+      <mousebind button="Left" action="Drag"><action name="Move" /></mousebind>
+      <mousebind button="Left" action="DoubleClick"><action name="ToggleMaximize" /></mousebind>
+      <mousebind button="Up" action="Click"><action name="if"><shaded>no</shaded><then><action name="Shade" /><action name="FocusToBottom" /><action name="Unfocus" /><action name="Lower" /></then></action></mousebind>
+      <mousebind button="Down" action="Click"><action name="if"><shaded>yes</shaded><then><action name="Unshade" /><action name="Raise" /></then></action></mousebind>
+    </context>
+    <context name="Titlebar Top Right Bottom Left TLCorner TRCorner BRCorner BLCorner">
+      <mousebind button="Left" action="Press"><action name="Focus" /><action name="Raise" /><action name="Unshade" /></mousebind>
+      <mousebind button="Middle" action="Press"><action name="Lower" /><action name="FocusToBottom" /><action name="Unfocus" /></mousebind>
+      <mousebind button="Right" action="Press"><action name="Focus" /><action name="Raise" /><action name="ShowMenu"><menu>client-menu</menu></action></mousebind>
+    </context>
+    <context name="Top"><mousebind button="Left" action="Drag"><action name="Resize"><edge>top</edge></action></mousebind></context>
+    <context name="Left"><mousebind button="Left" action="Drag"><action name="Resize"><edge>left</edge></action></mousebind></context>
+    <context name="Right"><mousebind button="Left" action="Drag"><action name="Resize"><edge>right</edge></action></mousebind></context>
+    <context name="Bottom"><mousebind button="Left" action="Drag"><action name="Resize"><edge>bottom</edge></action></mousebind></context>
+    <context name="TRCorner BRCorner TLCorner BLCorner">
+      <mousebind button="Left" action="Press"><action name="Focus" /><action name="Raise" /><action name="Unshade" /></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Resize" /></mousebind>
+    </context>
+    <context name="Client">
+      <mousebind button="Left" action="Press"><action name="Focus" /><action name="Raise" /></mousebind>
+      <mousebind button="Middle" action="Press"><action name="Focus" /><action name="Raise" /></mousebind>
+      <mousebind button="Right" action="Press"><action name="Focus" /><action name="Raise" /></mousebind>
+    </context>
+    <context name="Icon">
+      <mousebind button="Left" action="Press"><action name="Focus" /><action name="Raise" /><action name="Unshade" /><action name="ShowMenu"><menu>client-menu</menu></action></mousebind>
+    </context>
+    <context name="AllDesktops">
+      <mousebind button="Left" action="Click"><action name="ToggleOmnipresent" /></mousebind>
+    </context>
+    <context name="Iconify">
+      <mousebind button="Left" action="Click"><action name="Iconify" /></mousebind>
+    </context>
+    <context name="Maximize">
+      <mousebind button="Left" action="Click"><action name="ToggleMaximize" /></mousebind>
+    </context>
+    <context name="Close">
+      <mousebind button="Left" action="Click"><action name="Close" /></mousebind>
+    </context>
+    <context name="Desktop">
+      <mousebind button="Up" action="Click"><action name="GoToDesktop"><to>previous</to></action></mousebind>
+      <mousebind button="Down" action="Click"><action name="GoToDesktop"><to>next</to></action></mousebind>
+    </context>
+    <context name="Root">
+      <mousebind button="Middle" action="Press"><action name="ShowMenu"><menu>client-list-combined-menu</menu></action></mousebind>
+      <mousebind button="Right" action="Press"><action name="ShowMenu"><menu>root-menu</menu></action></mousebind>
+    </context>
+    <context name="MoveResize">
+      <mousebind button="Up" action="Click"><action name="GoToDesktop"><to>previous</to></action></mousebind>
+      <mousebind button="Down" action="Click"><action name="GoToDesktop"><to>next</to></action></mousebind>
+    </context>
+  </mouse>
+
+  <!-- Startregeln für große Apps: zentriert und maximiert bzw. mit fester Startgröße, damit sie nicht in
+       winzigen, beschnittenen Fenstern aufgehen. Nur type="normal": Dialoge (Login, Einstellungen,
+       Datei öffnen) behalten ihre eigene Größe. class = zweiter Teil von WM_CLASS (xprop WM_CLASS). -->
+  <applications>
+    <!-- Menü/Suche/Flyouts (Rofi) immer im Vordergrund, auch über Vollbild-Spielen und -Apps. Rofi öffnet als
+         override-redirect-Fenster (liegt dann von sich aus ganz oben); die Regel greift, sobald Openbox es verwaltet
+         (rofi -normal-window). -->
+    <application class="Rofi">
+      <layer>above</layer>
+      <focus>yes</focus>
+    </application>
+    <!-- Browser (Debian: firefox-esr), ONLYOFFICE (Flatpak), Lutris: maximiert -->
+    <application class="Chromium" type="normal">
+      <position force="no"><x>center</x><y>center</y></position>
+      <maximized>yes</maximized>
+    </application>
+    <application class="firefox-esr" type="normal">
+      <position force="no"><x>center</x><y>center</y></position>
+      <maximized>yes</maximized>
+    </application>
+    <application class="firefox" type="normal">
+      <position force="no"><x>center</x><y>center</y></position>
+      <maximized>yes</maximized>
+    </application>
+    <application class="DesktopEditors" type="normal">
+      <position force="no"><x>center</x><y>center</y></position>
+      <maximized>yes</maximized>
+    </application>
+    <application class="Lutris" type="normal">
+      <position force="no"><x>center</x><y>center</y></position>
+      <maximized>yes</maximized>
+    </application>
+    <!-- Mullvad Browser: bewusst nicht maximiert (Anti-Fingerprinting rundet die Fenstergröße) -->
+    <application class="*ullvad*" type="normal">
+      <position force="no"><x>center</x><y>center</y></position>
+      <size><width>1100</width><height>750</height></size>
+    </application>
+    <!-- Steam: nur das Hauptfenster; Login- und Update-Fenster haben andere Titel -->
+    <application class="steam" title="Steam" type="normal">
+      <position force="no"><x>center</x><y>center</y></position>
+      <size><width>1100</width><height>750</height></size>
+    </application>
+    <!-- Setup-Wizard: feste Größe (760x540), nur zentrieren -->
+    <application title="Simple OS Setup" type="normal">
+      <position force="yes"><x>center</x><y>center</y></position>
+    </application>
+  </applications>
+</openbox_config>

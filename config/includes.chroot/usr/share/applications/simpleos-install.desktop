@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Install Simple OS
+Comment=Install Simple OS on this computer – your files on the stick stay untouched
+Exec=/usr/local/bin/simpleos-install
+Icon=system-os-installer
+Terminal=false
+Categories=System;
+Keywords=install;installer;calamares;setup;disk;

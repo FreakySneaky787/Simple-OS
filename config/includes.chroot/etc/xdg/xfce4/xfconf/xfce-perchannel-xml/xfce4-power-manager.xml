@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Simple OS – Systemvorgaben für xfce4-power-manager (xfconfd liest $XDG_CONFIG_DIRS, also /etc/xdg).
+     Der Power-Manager startet nur auf Geräten mit echtem Akku (Openbox-Autostart über simpleos-battery).
+     Achtung: in XML-Kommentaren ist ein doppelter Bindestrich verboten.
+     Akku-Anzeige und "Battery low" übernehmen tint2 + simpleos-battery; xfce4-power-manager bleibt still:
+       show-tray-icon       false  kein zweites Akku-Symbol im Tray
+       general-notification false  keine Meldungen "System is running on low power" / "Your mouse charge
+                                   level is low" (auch Funkmäuse/-tastaturen und USVs über UPower)
+       handle-brightness-keys / show-brightness-popup false  Helligkeitstasten macht Openbox + simpleos-osd
+                                   (eigenes OSD; sonst doppelt bzw. Konflikt um die Tasten)
+       logind-handle-lid-switch true  Deckel zuklappen entscheidet logind (/etc/systemd/logind.conf.d/
+                                   10-simpleos-lid.conf: Energiesparmodus, auch am Netzteil) -->
+<channel name="xfce4-power-manager" version="1.0">
+  <property name="xfce4-power-manager" type="empty">
+    <property name="show-tray-icon" type="bool" value="false"/>
+    <property name="general-notification" type="bool" value="false"/>
+    <property name="logind-handle-lid-switch" type="bool" value="true"/>
+    <property name="handle-brightness-keys" type="bool" value="false"/>
+    <property name="show-brightness-popup" type="bool" value="false"/>
+  </property>
+</channel>

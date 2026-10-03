@@ -1,0 +1,93 @@
+#!/bin/sh
+# Simple OS – Software Store (Bazaar von Flathub). Ist er installiert, startet er sofort; sonst wird er einmalig
+# aus Flathub installiert (systemweit; Polkit erlaubt das Mitgliedern von "sudo" ohne Passwort).
+# Vor der Installation:
+#   - Speicherplatz unter /var/lib/flatpak: Bazaar + GNOME-Laufzeit brauchen ~2,5 GB (ist die Laufzeit schon da,
+#     nur wenig). Im Live-Betrieb liegt alles im Arbeitsspeicher (simpleos-live-tune vergrößert das Overlay) –
+#     reicht es nicht, sagt die Meldung das ehrlich und verweist auf "Install Simple OS".
+#   - Flathub erreichbar (sonst: Internet-Hinweis).
+# Installation mit Ladefenster (simpleos-progress), Protokoll in ~/.cache/simpleos-software.log. Fehler werden
+# eingeordnet: zu wenig Platz / Flathub nicht erreichbar / sonstiger Fehler (dann mit Protokoll-Hinweis) – vorher
+# hieß jeder Fehler "Check your internet connection", auch wenn nur der Platz fehlte.
+# Kein set -e, Exit 0. Tests: SIMPLEOS_SW_FREE_MB ersetzt den freien Platz, SIMPLEOS_SW_NET=0/1 die Netzprüfung.
+
+SOS_NAME=simpleos-software SOS_TITLE="Software Store" SOS_ICON=system-software-install
+LIB=/usr/local/lib/simpleos/common.sh
+[ -r "$LIB" ] || { notify-send "Software Store" "Simple OS is incomplete (missing $LIB)." 2>/dev/null; exit 0; }
+. "$LIB"
+sos_log_init "$@"
+
+APP=io.github.kolunmi.Bazaar
+NEED_FULL=2600   # MB: Bazaar + GNOME-Laufzeit + GL-Erweiterungen
+NEED_APP=300     # MB: Laufzeit schon vorhanden
+fail() { sos_notify "$1" critical; exit 0; }
+
+command -v flatpak >/dev/null || fail "The Software Store is not available (Flatpak is missing)."
+if flatpak info "$APP" >/dev/null 2>&1; then
+    exec flatpak run "$APP" "$@"
+fi
+flatpak remotes --system --columns=name 2>/dev/null | grep -qx flathub ||
+    fail "The Software Store can't be installed: the Flathub source is not set up."
+
+# ---- Platz
+if flatpak list --system --runtime --columns=application 2>/dev/null | grep -qx org.gnome.Platform; then
+    need=$NEED_APP
+else
+    need=$NEED_FULL
+fi
+free=${SIMPLEOS_SW_FREE_MB:-$(df -Pm /var/lib/flatpak 2>/dev/null | awk 'NR == 2 { print $4 }')}
+sos_is_num "$free" || free=999999
+if [ "$free" -lt "$need" ]; then
+    if [ -x /usr/local/bin/simpleos-live ] && /usr/local/bin/simpleos-live --check; then
+        fail "In Live mode, apps are kept in memory – only $free MB are free, the Software Store needs about $(( (need + 99) / 100 * 100 )) MB. Install Simple OS (icon on the desktop), then open the Software Store."
+    fi
+    fail "Not enough free disk space for the Software Store: $free MB free, about $need MB needed. Free up space with the Storage Cleaner."
+fi
+
+# ---- Netz (schnell, statt nach Minuten an einer Zeitüberschreitung zu scheitern)
+net=${SIMPLEOS_SW_NET:-}
+if [ -z "$net" ]; then
+    if timeout 20 python3 -c 'import urllib.request as u; u.urlopen("https://dl.flathub.org/repo/summary.idx", timeout=15)' 2>>"$SOS_LOG"; then
+        net=1
+    else
+        net=0
+    fi
+fi
+[ "$net" = 1 ] || fail "Flathub can't be reached. Check your internet connection and try again."
+
+# ---- Installation mit Ladefenster
+feed=$(mktemp) || fail "The Software Store could not be installed (no temporary file)."
+PROGRESS=/usr/local/bin/simpleos-progress
+ppid=
+if [ -x "$PROGRESS" ]; then
+    "$PROGRESS" --follow "$feed" --title "Installing the Software Store" --done "Software Store installed" \
+        --hint "One time only · about $(( (need + 99) / 100 * 100 )) MB from Flathub" --app "$SOS_TITLE" \
+        --icon-name "$SOS_ICON" --pid $$ 2>>"$SOS_LOG" &
+    ppid=$!
+else
+    sos_notify "Installing the Software Store from Flathub – this takes a few minutes, one time only." low
+fi
+echo "STEP: Installing the Software Store" >> "$feed"
+rcf=$feed.rc
+# ohne --noninteractive (sonst kein Fortschritt; -y beantwortet alle Rückfragen); der Filter macht daraus
+# PROGRESS/STAGE für das Ladefenster und reicht Fehlertexte durch
+FP_PROGRESS=/usr/local/lib/simpleos/flatpak-progress
+[ -x "$FP_PROGRESS" ] || FP_PROGRESS=cat
+{ flatpak install --system -y flathub "$APP" </dev/null 2>&1; echo $? > "$rcf"; } | "$FP_PROGRESS" | tee -a "$SOS_LOG" >> "$feed"
+rc=$(cat "$rcf" 2>/dev/null); rc=${rc:-1}
+echo "EXIT: $rc" >> "$feed"
+[ -n "$ppid" ] && wait "$ppid" 2>/dev/null
+out=$(cat "$feed")
+rm -f "$feed" "$rcf"
+
+if [ "$rc" -eq 0 ] && flatpak info "$APP" >/dev/null 2>&1; then
+    setsid -f flatpak run "$APP" "$@" >/dev/null 2>&1
+    exit 0
+fi
+case "$out" in
+    *min-free-space*|*"No space left"*|*"not enough space"*|*"Not enough space"*)
+        fail "Not enough free space to install the Software Store. In Live mode, install Simple OS first." ;;
+    *"Could not resolve"*|*"Could not connect"*|*"Timeout was reached"*|*"Network is unreachable"*|*"Failed to connect"*)
+        fail "Flathub can't be reached. Check your internet connection and try again." ;;
+esac
+fail "The Software Store could not be installed. Details: ~/.cache/simpleos-software.log"

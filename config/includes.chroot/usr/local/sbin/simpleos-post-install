@@ -1,0 +1,28 @@
+#!/bin/sh
+# Simple OS – läuft per Calamares (shellprocess) im Chroot des installierten Systems
+set -e
+export DEBIAN_FRONTEND=noninteractive
+
+# Installer entfernen
+apt-get purge -y calamares calamares-settings-debian
+
+# Calamares (sources-final) schreibt nur "main non-free-firmware" -> contrib/non-free ergänzen,
+# sonst findet der Setup-Wizard z.B. steam-installer (contrib) nicht
+/usr/local/sbin/simpleos-system-setup --repos
+
+# Menüeintrag "Install Simple OS" aus skel und allen User-Homes entfernen
+for f in /etc/skel/.config/openbox/menu.xml /home/*/.config/openbox/menu.xml; do
+    [ -f "$f" ] && sed -i '/simpleos-installer-begin/,/simpleos-installer-end/d' "$f"
+done
+# Installer-Starter (Launcher, Desktop-Icons); den Taskleisten-Badge nimmt simpleos-taskbar-select --apply
+# beim nächsten Login heraus (kein Live-Medium mehr)
+rm -f /usr/share/applications/simpleos-install.desktop /etc/skel/Desktop/simpleos-install.desktop \
+      /home/*/Desktop/simpleos-install.desktop /home/*/Desktop/install-debian.desktop
+
+# Reste der Live-Session: Autologin des Live-Users und dessen NOPASSWD-sudo
+rm -f /etc/lightdm/lightdm.conf.d/01_autologin.conf /etc/sudoers.d/simple-nopasswd
+
+# Offline-Pakete für bootloader-config (grub-pc/grub-efi-amd64/cryptsetup-initramfs) werden nicht mehr gebraucht
+rm -rf /usr/share/simpleos/bootloader-debs
+
+rm -f "$0"

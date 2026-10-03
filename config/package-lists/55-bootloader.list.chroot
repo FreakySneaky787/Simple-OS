@@ -1,0 +1,24 @@
+# Simple OS – Bootloader für das installierte System (BIOS + UEFI), offline ohne Paket-Pool auf dem Medium.
+# Nur die parallel installierbaren Teile; die Meta-Pakete grub-pc bzw. grub-efi-amd64 schließen sich
+# gegenseitig aus -> liegen als .deb unter /usr/share/simpleos/bootloader-debs (Hook 08_bootloader_debs)
+# und werden von /usr/sbin/bootloader-config je nach Firmware installiert.
+grub-common
+# update-grub, grub-install
+grub2-common
+# BIOS (i386-pc) und UEFI (x86_64-efi)
+grub-pc-bin
+grub-efi-amd64-bin
+# Secure Boot (ab Werk an bei aktuellen Laptops): shim (von Microsoft signiert) + von Debian signiertes GRUB;
+# Calamares installiert sie über /usr/local/sbin/simpleos-grub-install immer mit --uefi-secure-boot. Ohne diese
+# Pakete bekam das installierte System ein unsigniertes GRUB und startete mit Secure Boot nicht.
+# mokutil: Schlüssel für selbst gebaute Module (DKMS: nvidia-driver, broadcom-sta) registrieren
+shim-signed
+grub-efi-amd64-signed
+mokutil
+os-prober
+efibootmgr
+# Abhängigkeiten der gebündelten .debs (grub-pc/grub-efi-amd64: ucf; cryptsetup-initramfs bei LUKS)
+ucf
+cryptsetup
+keyutils
+initramfs-tools

@@ -1,0 +1,58 @@
+#!/bin/sh
+# Simple OS – Live-Modus erkennen und den Desktop darauf einstellen
+#   simpleos-live --check   Exit 0 = Live-Session (vom USB-Stick/ISO gestartet), sonst 1
+#   simpleos-live --setup   Openbox-Autostart, bei jedem Login:
+#     Live:       Desktop-Icon "Install Simple OS" (~/Desktop/simpleos-install.desktop), Welcome-Fenster
+#                 einmal pro Sitzung öffnen (mit Installations-Banner); Debians "Install Debian"-Icon entfernen
+#     installiert: Installer-Icons vom Desktop und den Installer-Eintrag aus dem Openbox-Menü entfernen
+#                 (falls simpleos-post-install das nicht erledigen konnte)
+# Taskleisten-Badge: simpleos-taskbar-select --apply (fragt --check). Menüeintrag: menu.xml zwischen
+# simpleos-installer-begin/-end.
+# Erkennung: Kernel-Parameter boot=live (live-boot) oder eingebundenes Live-Medium (/run/live/medium,
+# ältere live-boot-Versionen /lib/live/mount/medium). Der Benutzername allein beweist nichts (auch ein
+# installiertes System kann einen Benutzer "simple" haben).
+# Tests: SIMPLEOS_LIVE=1/0 erzwingt das Ergebnis, SIMPLEOS_CMDLINE ersetzt /proc/cmdline.
+# Kein set -e, Exit 0 (außer --check).
+
+is_live() {
+    case "${SIMPLEOS_LIVE:-}" in 1) return 0 ;; 0) return 1 ;; esac
+    grep -qw 'boot=live' "${SIMPLEOS_CMDLINE:-/proc/cmdline}" 2>/dev/null && return 0
+    [ -d /run/live/medium ] || [ -d /lib/live/mount/medium ]
+}
+
+desktop_dir() {
+    d=
+    command -v xdg-user-dir >/dev/null && d=$(xdg-user-dir DESKTOP 2>/dev/null)
+    # xdg-user-dir liefert ohne Konfiguration $HOME selbst – dann ~/Desktop
+    [ -n "$d" ] && [ "$d" != "$HOME" ] || d=$HOME/Desktop
+    echo "$d"
+}
+
+case "${1:-}" in
+    --check) is_live; exit $? ;;
+    --setup)
+        desk=$(desktop_dir)
+        rm -f "$desk/install-debian.desktop"
+        if is_live; then
+            mkdir -p "$desk"
+            if [ -f /usr/share/applications/simpleos-install.desktop ]; then
+                cp /usr/share/applications/simpleos-install.desktop "$desk/simpleos-install.desktop"
+                chmod 0755 "$desk/simpleos-install.desktop"
+            fi
+            # Welcome einmal pro Sitzung (Banner "Install Simple OS Now")
+            run=${XDG_RUNTIME_DIR:-${HOME:-/tmp}/.cache}
+            if [ ! -e "$run/simpleos-live-welcome" ] && [ -n "${DISPLAY:-}" ]; then
+                touch "$run/simpleos-live-welcome" 2>/dev/null
+                (sleep 3; simpleos-welcome) >/dev/null 2>&1 &
+            fi
+        else
+            rm -f "$desk/simpleos-install.desktop"
+            menu=${XDG_CONFIG_HOME:-$HOME/.config}/openbox/menu.xml
+            if [ -f "$menu" ] && grep -q simpleos-installer-begin "$menu"; then
+                sed -i '/simpleos-installer-begin/,/simpleos-installer-end/d' "$menu"
+                [ -n "${DISPLAY:-}" ] && openbox --reconfigure 2>/dev/null
+            fi
+        fi
+        exit 0 ;;
+    *) echo "Aufruf: simpleos-live --check | --setup" >&2; exit 2 ;;
+esac

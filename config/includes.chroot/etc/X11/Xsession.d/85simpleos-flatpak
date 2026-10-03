@@ -1,0 +1,4 @@
+# Simple OS: Flatpak-Exports (Desktop-Dateien, Icons) für die Session sichtbar machen
+if [ -r /etc/profile.d/flatpak.sh ]; then
+    . /etc/profile.d/flatpak.sh
+fi

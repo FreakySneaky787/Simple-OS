@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Appearance
+Comment=Dark or light mode and accent color
+Exec=simpleos-theme --pick
+Icon=preferences-desktop-theme
+Categories=Settings;DesktopSettings;

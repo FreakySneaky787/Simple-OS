@@ -1,0 +1,126 @@
+#!/bin/sh
+# Simple OS – Nachtmodus / Blaufilter (gammastep, Settings → Night Light, Control Center → Display)
+#   simpleos-nightlight             Rofi-Menü: an / aus / automatisch (abends), Wärme
+#   simpleos-nightlight --on|--off|--auto|--toggle
+#   simpleos-nightlight --temp K    Farbtemperatur 3000–6000 K (wärmer = kleiner), wirkt sofort
+#   simpleos-nightlight --status    "on" oder "off" (gerade aktiv?), Zeile 2: Modus, Zeile 3: Temperatur
+#   simpleos-nightlight --apply     Zustand anwenden (nach Änderungen, beim Login)
+#   simpleos-nightlight --daemon    Openbox-Autostart: Automatik alle 5 Minuten prüfen (läuft nur einmal)
+# Automatik: 20:00–07:00 warm, sonst normal – ohne Standortdienst (kein geoclue, keine Internetabfrage).
+# Einstellung in ~/.config/simpleos/nightlight (mode=off|on|auto, temp=4000).
+# Robust wie simpleos-wifi: kein set -e, Exit 0, Fehler als Meldung (z.B. VM-Grafik ohne Farbtabellen),
+# Details in ~/.cache/simpleos-nightlight.log.
+# Tests: SIMPLEOS_HOUR ersetzt die aktuelle Stunde.
+
+SOS_NAME=simpleos-nightlight SOS_TITLE="Night light" SOS_ICON=weather-clear-night SOS_PROMPT="Night light"
+TAB=$(printf '\t')
+CONF=${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/simpleos/nightlight
+LIB=/usr/local/lib/simpleos/common.sh
+[ -r "$LIB" ] || { notify-send "Night light" "Simple OS is incomplete (missing $LIB)." 2>/dev/null; exit 0; }
+. "$LIB"
+sos_log_init "$@"
+RUN=${XDG_RUNTIME_DIR:-$SOS_LOG_DIR}
+START=20 END=7
+
+mode=off temp=4000
+load() {
+    [ -r "$CONF" ] || return 0
+    m=$(sed -n 's/^mode=//p' "$CONF" | head -n 1) t=$(sed -n 's/^temp=//p' "$CONF" | head -n 1)
+    case "$m" in off|on|auto) mode=$m ;; esac
+    sos_is_num "$t" && [ "$t" -ge 3000 ] && [ "$t" -le 6000 ] && temp=$t
+}
+save() {
+    mkdir -p "${CONF%/*}" 2>/dev/null
+    printf 'mode=%s\ntemp=%s\n' "$mode" "$temp" > "$CONF" 2>/dev/null || sos_log "cannot write $CONF"
+}
+# Soll gerade warm sein?
+wanted() {
+    case "$mode" in
+        on) return 0 ;;
+        auto)
+            h=${SIMPLEOS_HOUR:-$(date +%H)}; h=${h#0}; h=${h:-0}
+            [ "$h" -ge "$START" ] || [ "$h" -lt "$END" ] ;;
+        *) return 1 ;;
+    esac
+}
+applied=0
+apply() {
+    if wanted; then want=$temp; else want=off; fi
+    # Gleicher Zustand wie zuletzt -> nichts tun (Daemon prüft alle 5 Minuten)
+    [ "${1:-}" != force ] && [ "$(cat "$RUN/simpleos-nightlight.state" 2>/dev/null)" = "$want" ] && return 0
+    if ! command -v gammastep >/dev/null; then
+        [ "$want" = off ] || sos_notify "Night light is not installed (gammastep missing)." critical
+        return 0
+    fi
+    if [ "$want" = off ]; then
+        gammastep -x >&2 2>&1
+    elif ! gammastep -P -O "$want" >&2 2>&1; then
+        sos_notify "Night light is not supported by this display. Virtual machines often can't change screen colors." critical
+        mode=off; save
+        return 0
+    fi
+    echo "$want" > "$RUN/simpleos-nightlight.state" 2>/dev/null
+    applied=1
+}
+# Rückmeldung nach einem Wechsel durch den Benutzer (Menü, Control Center, --on/--off/--auto/--toggle) – nur wenn
+# das Anwenden geklappt hat (Fehler meldet apply selbst); Daemon und --apply bleiben still
+announce() {
+    [ "$applied" = 1 ] || return 0
+    case "$mode" in
+        on)   sos_notify "Night light is on – warmer colors ($temp K)." low ;;
+        off)  sos_notify "Night light is off." low ;;
+        auto) if wanted; then now="on now"; else now="off right now"; fi
+              sos_notify "Night light is automatic – warmer colors from 20:00 to 07:00 ($now)." low ;;
+    esac
+}
+
+# Dynamic Wallpaper (simpleos-wallpaper-schedule) sofort mitziehen: Nachtmodus an -> dunkles Wallpaper
+couple() {
+    command -v simpleos-wallpaper-schedule >/dev/null && simpleos-wallpaper-schedule --apply >/dev/null 2>&1
+    return 0
+}
+
+load
+case "${1:-}" in
+    --on)     mode=on; save; apply force; couple; announce; exit 0 ;;
+    --off)    mode=off; save; apply force; couple; announce; exit 0 ;;
+    --auto)   mode=auto; save; apply force; couple; announce; exit 0 ;;
+    --toggle) if wanted; then mode=off; else mode=on; fi; save; apply force; couple; announce; exit 0 ;;
+    --temp)   sos_is_num "${2:-}" && [ "$2" -ge 3000 ] && [ "$2" -le 6000 ] || { echo "temp: 3000–6000" >&2; exit 2; }
+              temp=$2; save; apply force; exit 0 ;;
+    --status) if wanted; then echo on; else echo off; fi; echo "$mode"; echo "$temp"; exit 0 ;;
+    --apply)  apply force; exit 0 ;;
+    --daemon)
+        # Nur eine Instanz pro Sitzung
+        pidf=$RUN/simpleos-nightlight.pid
+        if [ -r "$pidf" ] && kill -0 "$(cat "$pidf")" 2>/dev/null; then exit 0; fi
+        echo $$ > "$pidf" 2>/dev/null
+        rm -f "$RUN/simpleos-nightlight.state"
+        while :; do
+            load; apply; couple
+            sleep 300
+        done ;;
+    "") ;;
+    *) echo "Aufruf: simpleos-nightlight [--on|--off|--auto|--toggle|--temp K|--status|--apply|--daemon]" >&2; exit 2 ;;
+esac
+
+# ---- Menü. FontAwesome 4: moon U+F186, sun U+F185, clock U+F017, fire U+F06D, check U+F00C
+I_MOON='\357\206\206' I_SUN='\357\206\205' I_CLOCK='\357\200\227' I_FIRE='\357\201\255' I_CHECK='\357\200\214'
+mark() { [ "$1" = "$2" ] && sos_dim "Current"; }
+while :; do
+    if wanted; then now="On"; else now="Off"; fi
+    sos_add "$(sos_fa "$I_MOON")  Turn on  $(mark on "$mode")" "on"
+    sos_add "$(sos_fa "$I_SUN")  Turn off  $(mark off "$mode")" "off"
+    sos_add "$(sos_fa "$I_CLOCK")  Automatic (20:00–07:00)  $(mark auto "$mode")" "auto"
+    for t in 3500 4000 4500 5000; do
+        case $t in 3500) w="Very warm" ;; 4000) w="Warm" ;; 4500) w="Mild" ;; 5000) w="Slight" ;; esac
+        sos_add "$(sos_fa "$I_FIRE")  $w ($t K)  $(mark "$t" "$temp")" "temp$TAB$t"
+    done
+    sos_pick "<b>Night light</b>   $(sos_dim "$now · $temp K")" 380
+    case "$action" in
+        on|off|auto) mode=$action; save; apply force; couple; announce ;;
+        temp)        temp=$arg1; save; apply force ;;
+        *)           break ;;
+    esac
+done
+exit 0

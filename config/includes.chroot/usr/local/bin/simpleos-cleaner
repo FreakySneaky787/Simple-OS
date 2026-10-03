@@ -1,0 +1,245 @@
+#!/bin/sh
+# Simple OS – Speicher aufräumen & Speicherplatz anzeigen (Menü → System → Storage Cleaner, Control Center → System)
+# Rofi-Fenster: oben "Clean everything · 1.4 GB", darunter jeder Posten mit Größe; Klick -> Rückfrage mit der
+# Größe -> aufräumen -> Meldung, wie viel frei wurde. "Disk usage": freier Platz und die größten Ordner im
+# Home (Klick öffnet den Ordner).
+#   Posten                      wie                                             braucht root
+#   apt-cache   Paket-Cache     apt-get clean (/var/cache/apt/archives/*.deb)    ja
+#   autoremove  alte Pakete     apt-get autoremove (nicht mehr benötigte Abhängigkeiten)   ja
+#   flatpak     Flatpak-Reste   flatpak uninstall --unused (verwaiste Runtimes)  ja
+#   journal     alte Protokolle journalctl --vacuum-time=7d (archivierte Journale älter als 7 Tage)   ja
+#   thumbnails  Vorschaubilder  ~/.cache/thumbnails (werden bei Bedarf neu erzeugt)   nein
+# Der Scan läuft ohne root (Größen per stat/apt-get -s/flatpak list), aufgeräumt wird mit EINEM pkexec-Aufruf
+# des Helfers /usr/local/sbin/simpleos-cleaner-helper. Flatpak-Größe ist eine Schätzung (welche Runtime
+# wirklich verwaist ist, entscheidet flatpak beim Aufräumen selbst).
+#   simpleos-cleaner                    Fenster
+#   simpleos-cleaner --scan             "Posten<TAB>Bytes<TAB>Anzahl<TAB>Beschreibung" (ohne Änderungen)
+#   simpleos-cleaner --dry-run          lesbare Übersicht, was frei würde (ohne Änderungen)
+#   simpleos-cleaner --clean all|POSTEN…  ohne Fenster aufräumen
+# Robust wie simpleos-wifi: kein set -e, Exit 0 (außer bei falschem Aufruf), Details in ~/.cache/simpleos-cleaner.log.
+# Tests: SIMPLEOS_CLEAN_APT (Paket-Cache), SIMPLEOS_CLEAN_JOURNAL (Journal-Ordner) ersetzen die Systempfade.
+
+SOS_NAME=simpleos-cleaner SOS_TITLE="Storage Cleaner" SOS_ICON=user-trash-full SOS_PROMPT=Storage
+TAB=$(printf '\t')
+HELPER=/usr/local/sbin/simpleos-cleaner-helper
+APT_DIR=${SIMPLEOS_CLEAN_APT:-/var/cache/apt/archives}
+JOURNAL_DIR=${SIMPLEOS_CLEAN_JOURNAL:-/var/log/journal}
+THUMBS=${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}/thumbnails
+LIB=/usr/local/lib/simpleos/common.sh
+[ -r "$LIB" ] || { notify-send "Storage Cleaner" "Simple OS is incomplete (missing $LIB)." 2>/dev/null; exit 0; }
+. "$LIB"
+sos_log_init "$@"
+
+sum() { awk '{ s += $1 } END { printf "%.0f\n", s }'; }
+# Bytes -> "1.4 GB" (SI-Einheiten wie apt und flatpak)
+human() {
+    awk -v b="${1:-0}" 'BEGIN { split("B kB MB GB TB", u, " "); i = 1
+        while (b >= 1000 && i < 5) { b /= 1000; i++ }
+        if (i == 1) printf "%d %s", b, u[i]; else printf "%.1f %s", b, u[i] }'
+}
+# "1.2 GB" / "735.3 MB" / "5.9 kB" -> Bytes (flatpak list --columns=size; flatpak trennt Zahl und Einheit
+# mit einem geschützten Leerzeichen U+00A0)
+to_bytes() {
+    printf '%s\n' "$1" | sed 's/\xc2\xa0/ /g' | awk '{ v = $1; gsub(",", ".", v); u = toupper($2)
+        m = (u == "KB") ? 1e3 : (u == "MB") ? 1e6 : (u == "GB") ? 1e9 : (u == "TB") ? 1e12 : 1
+        printf "%.0f\n", v * m }'
+}
+
+# ---- Scan: je Posten "Bytes<TAB>Anzahl"
+scan_apt_cache() {
+    find "$APT_DIR" -maxdepth 1 -type f -name '*.deb' -printf '%s\n' 2>/dev/null > "$tmp"
+    printf '%s\t%s\n' "$(sum < "$tmp")" "$(grep -c . "$tmp")"
+}
+scan_autoremove() {
+    command -v apt-get >/dev/null || { printf '0\t0\n'; return; }
+    pkgs=$(LC_ALL=C apt-get -s autoremove 2>/dev/null | awk '/^Remv /{ print $2 }')
+    n=$(printf '%s\n' "$pkgs" | grep -c .)
+    [ "$n" -gt 0 ] || { printf '0\t0\n'; return; }
+    # shellcheck disable=SC2086
+    kb=$(dpkg-query -W -f='${Installed-Size}\n' $pkgs 2>/dev/null | sum)
+    printf '%s\t%s\n' "$(( ${kb:-0} * 1024 ))" "$n"
+}
+scan_flatpak() {
+    command -v flatpak >/dev/null || { printf '0\t0\n'; return; }
+    # Genutzt: Runtime jeder App (id/branch); Erweiterungen (GL-Treiber, Themes, Codecs) und Übersetzungen
+    # benutzter Runtimes zählen als genutzt
+    used=$(flatpak list --app --system --columns=runtime 2>/dev/null | awk -F/ 'NF >= 3 { print $1 "/" $3 }')
+    apps=$(flatpak list --app --system --columns=application 2>/dev/null)
+    flatpak list --runtime --system --columns=application,branch,size 2>/dev/null |
+        USED=$used APPS=$apps awk -F'\t' '
+            BEGIN { n = split(ENVIRON["USED"], u, "\n"); for (i = 1; i <= n; i++) if (u[i] != "") U[u[i]] = 1
+                    n = split(ENVIRON["APPS"], a, "\n"); for (i = 1; i <= n; i++) if (a[i] != "") A[a[i]] = 1 }
+            NF >= 3 {
+                id = $1; br = $2; base = id; sub(/\.(Locale|Debug)$/, "", base)
+                if ((base "/" br) in U) next
+                # Erweiterung einer installierten App (org.gnome.Boxes.Extension.OsinfoDb …)
+                for (k in A) if (index(id, k ".") == 1) next
+                # Erweiterung einer benutzten Runtime (org.freedesktop.Platform.Compat.i386//24.08 …)
+                for (k in U) { split(k, p, "/"); if (index(id, p[1] ".") == 1 && index(br, p[2]) == 1) next }
+                # Treiber/Themes/Codecs teilen sich mehrere Runtime-Generationen -> nie als verwaist schätzen
+                if (id ~ /\.GL\.|\.GL32\.|openh264|ffmpeg|[Cc]odecs|Gtk3theme|\.Icontheme|\.VAAPI\./) next
+                print $3
+            }' > "$tmp"
+    bytes=0 n=0
+    while IFS= read -r size; do
+        [ -n "$size" ] || continue
+        bytes=$((bytes + $(to_bytes "$size"))) n=$((n + 1))
+    done < "$tmp"
+    printf '%s\t%s\n' "$bytes" "$n"
+}
+scan_journal() {
+    # archivierte Journale (name@….journal, ….journal~) älter als 7 Tage – genau das löscht --vacuum-time=7d
+    find "$JOURNAL_DIR" -type f \( -name '*@*.journal' -o -name '*.journal~' \) -mtime +7 -printf '%s\n' 2>/dev/null > "$tmp"
+    printf '%s\t%s\n' "$(sum < "$tmp")" "$(grep -c . "$tmp")"
+}
+scan_thumbnails() {
+    find "$THUMBS" -type f -printf '%s\n' 2>/dev/null > "$tmp"
+    printf '%s\t%s\n' "$(sum < "$tmp")" "$(grep -c . "$tmp")"
+}
+ITEMS="apt-cache autoremove flatpak journal thumbnails"
+label() {
+    case "$1" in
+        apt-cache)  echo "Downloaded package files" ;;
+        autoremove) echo "Packages no longer needed" ;;
+        flatpak)    echo "Unused Flatpak runtimes" ;;
+        journal)    echo "System logs older than 7 days" ;;
+        thumbnails) echo "Thumbnail cache" ;;
+    esac
+}
+scan() {
+    tmp=$(mktemp) || return
+    for it in $ITEMS; do
+        r=$(scan_"$(echo "$it" | tr - _)")
+        printf '%s\t%s\t%s\n' "$it" "$r" "$(label "$it")"
+    done
+    rm -f "$tmp"
+}
+free_bytes() { df -B1 --output=avail / 2>/dev/null | tail -n 1 | tr -d ' '; }
+
+# ---- Aufräumen: $@ = Posten. Thumbnails selbst, der Rest mit einem pkexec-Aufruf
+clean() {
+    before=$(free_bytes)
+    flags= user=0
+    for it in "$@"; do
+        case "$it" in
+            thumbnails) user=1 ;;
+            apt-cache|autoremove|flatpak|journal) flags="$flags --$it" ;;
+        esac
+    done
+    if [ "$user" = 1 ] && [ -d "$THUMBS" ]; then
+        find "$THUMBS" -mindepth 1 -delete 2>/dev/null || sos_log "thumbnails: delete failed"
+    fi
+    if [ -n "$flags" ]; then
+        if ! command -v pkexec >/dev/null; then
+            sos_notify "System files can't be cleaned (pkexec missing)." critical
+        else
+            # shellcheck disable=SC2086
+            pkexec "$HELPER" $flags >&2 2>&1; rc=$?
+            case "$rc" in
+                0) ;;
+                126|127) sos_notify "No password entered – system files were not cleaned."; return ;;
+                *) sos_notify "Some items could not be cleaned. Details: ~/.cache/simpleos-cleaner.log" critical ;;
+            esac
+        fi
+    fi
+    after=$(free_bytes)
+    gained=$(( ${after:-0} - ${before:-0} ))
+    [ "$gained" -lt 0 ] && gained=0
+    sos_notify "Done – $(human "$gained") freed." low
+}
+
+case "${1:-}" in
+    --scan) scan; exit 0 ;;
+    --dry-run)
+        total=0
+        scan > "${SOS_LOG_DIR}/simpleos-cleaner.scan"
+        while IFS="$TAB" read -r it bytes n desc; do
+            printf '%-32s %10s  (%s)\n' "$desc" "$(human "$bytes")" "$n"
+            total=$((total + bytes))
+        done < "${SOS_LOG_DIR}/simpleos-cleaner.scan"
+        printf '%-32s %10s\n' "Would free in total" "$(human "$total")"
+        exit 0 ;;
+    --clean)
+        shift
+        [ $# -gt 0 ] || { echo "Aufruf: simpleos-cleaner --clean all|$ITEMS" >&2; exit 2; }
+        [ "$1" = all ] && set -- $ITEMS
+        for it in "$@"; do case " $ITEMS " in *" $it "*) ;; *) echo "unbekannt: $it" >&2; exit 2 ;; esac; done
+        clean "$@"
+        exit 0 ;;
+    "") ;;
+    *) echo "Aufruf: simpleos-cleaner [--scan | --dry-run | --clean all|POSTEN…]" >&2; exit 2 ;;
+esac
+
+command -v rofi >/dev/null || { sos_log "rofi missing"; sos_rofi_failed; }
+# FontAwesome 4: magic U+F0D0, trash U+F1F8, pie-chart U+F200, folder U+F07B, check U+F00C, arrow-left U+F060
+I_MAGIC='\357\203\220' I_TRASH='\357\207\270' I_PIE='\357\210\200' I_FOLDER='\357\201\273' I_CHECK='\357\200\214'
+I_BACK='\357\201\240'
+
+usage_menu() {
+    df_line=$(df -B1 --output=size,used,avail / 2>/dev/null | tail -n 1)
+    set -- $df_line
+    head="<b>Disk usage</b>   $(sos_dim "$(human "${3:-0}") free of $(human "${1:-0}")")"
+    # Größte Ordner im Home (eine Ebene, gleiches Dateisystem)
+    du -x -d1 -B1 "$HOME" 2>/dev/null | sort -rn | sed -n '2,11p' > "$SOS_LOG_DIR/simpleos-cleaner.du"
+    while IFS="$TAB" read -r bytes dir; do
+        [ -n "$dir" ] || continue
+        sos_add "$(sos_fa "$I_FOLDER")  $(sos_esc "${dir#"$HOME"/}")  $(sos_dim "$(human "$bytes")")" "open$TAB$dir"
+    done < "$SOS_LOG_DIR/simpleos-cleaner.du"
+    sos_add "$(sos_fa "$I_BACK")  Back" "back"
+    sos_pick "$head" 520
+    if [ "$action" = open ]; then
+        if command -v thunar >/dev/null; then thunar "$arg1" >/dev/null 2>&1 &
+        else xdg-open "$arg1" >/dev/null 2>&1 & fi
+        exit 0
+    fi
+}
+confirm() {  # $1 Text, $2 Größe -> Exit 0 bei "Clean up"
+    sos_add "$(sos_fa "$I_TRASH")  Clean up – free $2" "yes"
+    sos_add "$(sos_fa "$I_BACK")  Cancel" "no"
+    sos_pick "<b>$(sos_esc "$1")</b>" 460
+    [ "$action" = yes ]
+}
+
+while :; do
+    data=$(scan)
+    total=0 all=
+    while IFS="$TAB" read -r it bytes n desc; do
+        [ -n "$it" ] || continue
+        if [ "${bytes:-0}" -gt 0 ]; then total=$((total + bytes)); all="$all $it"; fi
+    done <<EOF
+$data
+EOF
+    if [ "$total" -gt 0 ]; then
+        sos_add "$(sos_fa "$I_MAGIC")  Clean everything  $(sos_dim "$(human "$total")")" "clean${TAB}all"
+    else
+        sos_add "$(sos_fa "$I_CHECK")  Nothing to clean right now" "noop"
+    fi
+    while IFS="$TAB" read -r it bytes n desc; do
+        [ -n "$it" ] || continue
+        if [ "${bytes:-0}" -gt 0 ]; then
+            sos_add "$(sos_fa "$I_TRASH")  $desc  $(sos_dim "$(human "$bytes")")" "clean$TAB$it"
+        else
+            sos_add "$(sos_fa "$I_CHECK")  $desc  $(sos_dim "clean")" "noop"
+        fi
+    done <<EOF
+$data
+EOF
+    sos_add "$(sos_fa "$I_PIE")  Disk usage" "usage"
+    sos_pick "<b>Storage Cleaner</b>   $(sos_dim "$(human "$(free_bytes)") free on the system disk")" 520
+    case "$action" in
+        clean)
+            # Posten vor der Rückfrage sichern: confirm ruft sos_pick auf und setzt $arg1 zurück
+            item=$arg1
+            if [ "$item" = all ]; then
+                # shellcheck disable=SC2086
+                confirm "Clean everything?" "$(human "$total")" && clean $all
+            else
+                bytes=$(printf '%s\n' "$data" | awk -F'\t' -v k="$item" '$1 == k { print $2 }')
+                confirm "$(label "$item")?" "$(human "$bytes")" && clean "$item"
+            fi ;;
+        usage) usage_menu ;;
+        noop)  ;;
+        *)     break ;;
+    esac
+done
+exit 0

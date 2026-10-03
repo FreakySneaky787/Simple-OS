@@ -1,0 +1,181 @@
+#!/bin/sh
+# Simple OS – Design anwenden (wird vom Setup-Wizard genutzt, geht aber auch direkt):
+#   simpleos-theme [--mode dark|light] [--accent blue|mauve|pink|green|peach|teal] [--show]
+#   simpleos-theme --pick    Auswahl per Rofi (Menü → Settings → Appearance)
+#   simpleos-theme --xsettings   Openbox-Autostart: XSETTINGS-Dienst (xsettingsd) mit dem aktuellen Design starten
+#   simpleos-theme … --no-wallpaper   Hintergrund nicht anfassen (simpleos-wallpaper-schedule setzt ihn selbst)
+# --mode   hell (Catppuccin Latte) / dunkel (Mocha) – sofort in der laufenden Sitzung:
+#            a) GTK: settings.ini (gtk-theme-name, gtk-application-prefer-dark-theme), GTK2, gsettings
+#               (libadwaita/Flatpaks über das Portal) und XSETTINGS (xsettingsd, SIGHUP -> laufende GTK3-Fenster
+#               wechseln ohne Neustart; ohne Settings-Dienst lesen sie das Theme nur beim Start)
+#            b) Openbox: openbox --reconfigure
+#            c) Hintergrund: helles/dunkles Simple-OS-Wallpaper per pcmanfm --set-wallpaper (simpleos-wallpaper) –
+#               nur wenn noch ein Simple-OS-Wallpaper gesetzt ist (eigene Bilder bleiben) und Dynamic Wallpaper aus ist
+#            d) Rofi: Farben Latte/Mocha in config.rasi (gilt ab dem nächsten Öffnen); Taskleiste mit "Match theme"
+#               (simpleos-taskbar-select) hell/dunkel, tint2 lädt per SIGUSR1 neu
+#          Fensterrahmen und Rechtsklick-Menü bleiben Mocha (Openbox-Theme SimpleOS).
+# --accent färbt Rofi, Taskleiste (tint2) und Fensterrahmen/Menüs (Openbox-Theme).
+set -e
+
+STATE="$HOME/.config/simpleos/theme"
+BASE_ACCENT="#89b4fa"   # Akzent in den ausgelieferten Dateien (skel, /usr/share/themes/SimpleOS)
+
+mode=dark
+accent=blue
+[ -r "$STATE" ] && . "$STATE"
+old_accent=$accent
+set_wallpaper=1
+DAY_WP=/usr/share/backgrounds/simpleos/wallpaper-day.png
+NIGHT_WP=/usr/share/backgrounds/simpleos/wallpaper.png
+XSD_CONF="$HOME/.config/xsettingsd/xsettingsd.conf"
+
+# XSETTINGS-Datei für xsettingsd: Theme, Symbole, Schrift (aus gtk-3.0/settings.ini)
+write_xsettings() {  # $1 GTK-Theme, $2 Symbole
+    font=$(sed -n 's/^gtk-font-name=//p' "$HOME/.config/gtk-3.0/settings.ini" 2>/dev/null | head -n 1)
+    mkdir -p "$(dirname "$XSD_CONF")"
+    printf 'Net/ThemeName "%s"\nNet/IconThemeName "%s"\nGtk/FontName "%s"\n' "$1" "$2" "${font:-Inter 10}" > "$XSD_CONF"
+}
+# Laufenden xsettingsd neu laden (SIGHUP) bzw. starten
+reload_xsettings() {
+    command -v xsettingsd >/dev/null || return 0
+    [ -n "${DISPLAY:-}" ] || return 0
+    if pkill -HUP -x xsettingsd 2>/dev/null; then return 0; fi
+    setsid xsettingsd -c "$XSD_CONF" >/dev/null 2>&1 &
+}
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --mode)   mode=$2; shift 2 ;;
+        --accent) accent=$2; shift 2 ;;
+        --show)   echo "mode=$mode"; echo "accent=$accent"; exit 0 ;;
+        --no-wallpaper) set_wallpaper=0; shift ;;
+        --xsettings)
+            case "$mode" in light) write_xsettings Arc Papirus ;; *) write_xsettings Arc-Dark Papirus-Dark ;; esac
+            reload_xsettings
+            exit 0 ;;
+        --pick)
+            # rofi-retry: Grab-Fehler -> neuer Versuch, rofi fehlt/startet nicht -> Meldung statt stummem Ende
+            rofi=/usr/local/lib/simpleos/rofi-retry
+            [ -x "$rofi" ] || rofi=rofi
+            choice=$(printf '%s\n' "Dark mode" "Light mode" "Accent: blue" "Accent: mauve" "Accent: pink" \
+                         "Accent: green" "Accent: peach" "Accent: teal" |
+                SOS_NAME=simpleos-theme SOS_TITLE=Appearance "$rofi" -dmenu -i -no-custom -p "Appearance" -mesg "Current: $mode mode, $accent accent" \
+                    -theme-str 'window { width: 360px; } listview { lines: 8; } element-icon { enabled: false; }' || true)
+            case "$choice" in
+                "Dark mode")  mode=dark ;;
+                "Light mode") mode=light ;;
+                "Accent: "*)  accent=${choice#Accent: } ;;
+                *) exit 0 ;;
+            esac
+            shift ;;
+        *) echo "Usage: simpleos-theme [--mode dark|light] [--accent blue|mauve|pink|green|peach|teal] [--no-wallpaper] [--show|--pick|--xsettings]" >&2; exit 2 ;;
+    esac
+done
+
+hex_of() {
+    case "$1" in
+        blue)  echo "#89b4fa" ;;
+        mauve) echo "#cba6f7" ;;
+        pink)  echo "#f5c2e7" ;;
+        green) echo "#a6e3a1" ;;
+        peach) echo "#fab387" ;;
+        teal)  echo "#94e2d5" ;;
+        *) return 1 ;;
+    esac
+}
+# Latte-Akzente (dunkler, lesbar auf hellem Grund) für Rofi im hellen Modus
+latte_of() {
+    case "$1" in
+        blue) echo "#1e66f5" ;; mauve) echo "#8839ef" ;; pink) echo "#ea76cb" ;;
+        green) echo "#40a02b" ;; peach) echo "#fe640b" ;; teal) echo "#179299" ;;
+        *) return 1 ;;
+    esac
+}
+hex=$(hex_of "$accent") || { echo "Unknown accent: $accent" >&2; exit 2; }
+old_hex=$(hex_of "$old_accent" 2>/dev/null || echo "$BASE_ACCENT")
+
+# gtk-application-prefer-dark-theme bleibt in BEIDEN Modi 0: GTK liest ihn nur beim Programmstart (es gibt kein
+# XSETTING dafür), und alle Arc-Varianten haben eine Dunkel-Variante (gtk-dark.css) – ein mit 1 gestartetes
+# Fenster bliebe nach dem Wechsel auf Hell dunkel. Dunkel kommt allein über den Theme-Namen Arc-Dark (live per
+# XSETTINGS); libadwaita/Flatpaks folgen color-scheme (gsettings, live über das Portal).
+case "$mode" in
+    dark)  gtk_theme=Arc-Dark; icons=Papirus-Dark; prefer=0; scheme=prefer-dark ;;
+    light) gtk_theme=Arc;      icons=Papirus;      prefer=0; scheme=prefer-light ;;
+    *) echo "Unknown mode: $mode" >&2; exit 2 ;;
+esac
+
+# ---- Apps: GTK 3/4, GTK 2, gsettings (libadwaita/Flatpaks über das GTK-Portal) ----
+for ini in "$HOME/.config/gtk-3.0/settings.ini" "$HOME/.config/gtk-4.0/settings.ini"; do
+    [ -f "$ini" ] || continue
+    sed -i -e "s/^gtk-theme-name=.*/gtk-theme-name=$gtk_theme/" \
+           -e "s/^gtk-icon-theme-name=.*/gtk-icon-theme-name=$icons/" \
+           -e "s/^gtk-application-prefer-dark-theme=.*/gtk-application-prefer-dark-theme=$prefer/" "$ini"
+done
+if [ -f "$HOME/.gtkrc-2.0" ]; then
+    sed -i -e "s/^gtk-theme-name=.*/gtk-theme-name=\"$gtk_theme\"/" \
+           -e "s/^gtk-icon-theme-name=.*/gtk-icon-theme-name=\"$icons\"/" "$HOME/.gtkrc-2.0"
+fi
+if command -v gsettings >/dev/null; then
+    gsettings set org.gnome.desktop.interface color-scheme "$scheme" 2>/dev/null || true
+    gsettings set org.gnome.desktop.interface gtk-theme "$gtk_theme" 2>/dev/null || true
+    gsettings set org.gnome.desktop.interface icon-theme "$icons" 2>/dev/null || true
+fi
+
+# XSETTINGS: laufende GTK3-Programme wechseln sofort (xsettingsd liest die Datei bei SIGHUP neu)
+write_xsettings "$gtk_theme" "$icons"
+
+# ---- Rofi: Farben Mocha (dunkel) / Latte (hell) + Akzent ----
+rasi="$HOME/.config/rofi/config.rasi"
+if [ -f "$rasi" ]; then
+    if [ "$mode" = light ]; then
+        rofi_hex=$(latte_of "$accent")
+        set -- "#eff1f5" "#e6e9ef" "#ccd0da" "#4c4f69" "#6c6f85" "#9ca0b0" "#ccd0da"
+    else
+        rofi_hex=$hex
+        set -- "#1e1e2e" "#313244" "#45475a" "#cdd6f4" "#a6adc8" "#6c7086" "#313244"
+    fi
+    sed -i -e "s/^\(\s*bg:\s*\)#[0-9a-fA-F]\{6\};/\1$1;/" -e "s/^\(\s*bg-alt:\s*\)#[0-9a-fA-F]\{6\};/\1$2;/" \
+           -e "s/^\(\s*bg-sel:\s*\)#[0-9a-fA-F]\{6\};/\1$3;/" -e "s/^\(\s*fg:\s*\)#[0-9a-fA-F]\{6\};/\1$4;/" \
+           -e "s/^\(\s*fg-sub:\s*\)#[0-9a-fA-F]\{6\};/\1$5;/" -e "s/^\(\s*fg-dim:\s*\)#[0-9a-fA-F]\{6\};/\1$6;/" \
+           -e "s/^\(\s*line:\s*\)#[0-9a-fA-F]\{6\};/\1$7;/" \
+           -e "s/^\(\s*accent:\s*\)#[0-9a-fA-F]\{6\};/\1$rofi_hex;/" "$rasi"
+fi
+
+# ---- Akzentfarbe: tint2, Openbox ----
+
+tint2rc="$HOME/.config/tint2/tint2rc"
+[ -f "$tint2rc" ] && [ "$old_hex" != "$hex" ] && sed -i "s/$old_hex/$hex/gI" "$tint2rc"
+
+# Openbox: eigene Kopie des SimpleOS-Themes (~/.themes hat Vorrang vor /usr/share/themes)
+ob_dir="$HOME/.themes/SimpleOS/openbox-3"
+if [ "$hex" = "$BASE_ACCENT" ]; then
+    rm -rf "$HOME/.themes/SimpleOS"
+else
+    mkdir -p "$ob_dir"
+    sed "s/$BASE_ACCENT/$hex/gI" /usr/share/themes/SimpleOS/openbox-3/themerc > "$ob_dir/themerc"
+fi
+
+mkdir -p "$(dirname "$STATE")"
+printf 'mode=%s\naccent=%s\n' "$mode" "$accent" > "$STATE"
+
+# Taskleiste "Match theme" (simpleos-taskbar-select): hell/dunkel mitziehen
+if grep -qx 'style=theme' "$HOME/.config/simpleos/taskbar" 2>/dev/null; then
+    DISPLAY= simpleos-taskbar-select --apply || true
+fi
+
+# ---- Hintergrund: helles/dunkles Simple-OS-Wallpaper (eigene Bilder und Dynamic Wallpaper bleiben unberührt)
+if [ "$set_wallpaper" = 1 ] && [ "$(simpleos-wallpaper-schedule --status 2>/dev/null | head -n 1)" != on ]; then
+    current=$(sed -n 's/^wallpaper=//p' "$HOME/.config/pcmanfm/default/desktop-items-0.conf" 2>/dev/null | head -n 1)
+    case "$current" in
+        ""|"$DAY_WP"|"$NIGHT_WP")
+            if [ "$mode" = light ] && [ -r "$DAY_WP" ]; then target=$DAY_WP; else target=$NIGHT_WP; fi
+            [ "$current" = "$target" ] || simpleos-wallpaper "$target" >/dev/null 2>&1 || true ;;
+    esac
+fi
+
+# ---- Laufende Session neu laden ----
+if [ -n "${DISPLAY:-}" ]; then
+    reload_xsettings || true
+    openbox --reconfigure 2>/dev/null || true
+    pkill -USR1 -x tint2 2>/dev/null || true
+fi

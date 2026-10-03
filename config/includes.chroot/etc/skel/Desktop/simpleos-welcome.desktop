@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Welcome
+Comment=Documentation and first steps
+Exec=simpleos-welcome
+Icon=help-about
+Categories=System;Documentation;

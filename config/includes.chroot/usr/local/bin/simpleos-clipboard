@@ -1,0 +1,177 @@
+#!/usr/bin/python3
+"""Simple OS – Zwischenablage-Verlauf (Super+V, wie Windows+V).
+
+  simpleos-clipboard            Rofi-Liste der zuletzt kopierten Texte; Auswahl kommt zurück in die
+                                Zwischenablage (Strg+V fügt sie ein), "Clear history" leert den Verlauf
+  simpleos-clipboard --daemon   merkt sich jeden kopierten Text (Openbox-Autostart, GTK3 owner-change,
+                                kein Abfragen im Takt); läuft nur einmal pro Sitzung
+  simpleos-clipboard --list     Verlauf als JSON (Tests)
+  simpleos-clipboard --add TEXT Eintrag hinzufügen (Tests)
+  simpleos-clipboard --clear    Verlauf leeren
+
+Nur Text, höchstens 50 Einträge à 100 000 Zeichen, gleiche Texte rutschen nach oben. Verlauf in
+~/.cache/simpleos/clipboard.json (nur für den Benutzer lesbar). Inhalte von Passwort-Managern
+(Ziel x-kde-passwordManagerHint) landen nie im Verlauf.
+Robust wie die Shell-Werkzeuge: Fehler als Meldung, immer Exit 0 (außer bei falschem Aufruf).
+Tests: SIMPLEOS_CLIPBOARD_FILE ersetzt den Pfad des Verlaufs.
+"""
+import json
+import os
+import shutil
+import subprocess
+import sys
+
+MAX_ITEMS = 50
+MAX_CHARS = 100_000
+TITLE = "Clipboard"
+CACHE = os.environ.get("XDG_CACHE_HOME") or os.path.join(os.environ.get("HOME") or "/tmp", ".cache")
+HISTORY = os.environ.get("SIMPLEOS_CLIPBOARD_FILE") or os.path.join(CACHE, "simpleos", "clipboard.json")
+ROFI_RETRY = "/usr/local/lib/simpleos/rofi-retry"
+
+
+def notify(text, urgency="normal"):
+    if shutil.which("notify-send"):
+        subprocess.run(["notify-send", "-u", urgency, "-c", "x-simpleos", "-a", TITLE, "-i", "edit-paste",
+                        TITLE, text], stderr=subprocess.DEVNULL, check=False)
+
+
+def load():
+    try:
+        with open(HISTORY, encoding="utf-8") as f:
+            items = json.load(f)
+        return [i for i in items if isinstance(i, str) and i.strip()][:MAX_ITEMS]
+    except (OSError, ValueError):
+        return []
+
+
+def save(items):
+    os.makedirs(os.path.dirname(HISTORY), exist_ok=True)
+    tmp = HISTORY + ".tmp"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump(items[:MAX_ITEMS], f, ensure_ascii=False)
+    os.replace(tmp, HISTORY)
+
+
+def add(text):
+    if not text or not text.strip() or len(text) > MAX_CHARS:
+        return False
+    items = load()
+    if items and items[0] == text:
+        return False
+    save([text] + [i for i in items if i != text])
+    return True
+
+
+def label(text, width=90):
+    """Eine Zeile pro Eintrag: Zeilenumbrüche als ⏎, Tabs als Leerzeichen, lange Texte gekürzt."""
+    one = " ⏎ ".join(part.strip() for part in text.strip().splitlines() if part.strip())
+    one = one.replace("\t", " ")
+    return one if len(one) <= width else one[: width - 1] + "…"
+
+
+def set_clipboard(text):
+    """Text in die Zwischenablage (xclip, sonst xsel); beide halten die Auswahl im Hintergrund."""
+    for cmd in (["xclip", "-selection", "clipboard", "-in"], ["xsel", "--clipboard", "--input"]):
+        if shutil.which(cmd[0]):
+            try:
+                p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                                     stderr=subprocess.DEVNULL, start_new_session=True)
+                p.communicate(text.encode("utf-8"), timeout=5)
+                if p.returncode == 0:
+                    return True
+            except (OSError, subprocess.SubprocessError):
+                pass
+    return False
+
+
+def pick():
+    items = load()
+    if not items:
+        notify("Nothing copied yet. Copy some text and press Super+V again.")
+        return
+    rows = [label(i) for i in items] + ["Clear history"]
+    rofi = ROFI_RETRY if os.access(ROFI_RETRY, os.X_OK) else shutil.which("rofi")
+    if not rofi:
+        notify("The clipboard history could not open (rofi missing).", "critical")
+        return
+    env = dict(os.environ, SOS_NAME="simpleos-clipboard", SOS_TITLE=TITLE)
+    out = subprocess.run(
+        [rofi, "-dmenu", "-i", "-no-custom", "-format", "i", "-p", TITLE,
+         "-mesg", "<b>Clipboard history</b>   ·   Enter pastes into the clipboard", "-markup",
+         "-theme-str", "window { width: 640px; location: center; anchor: center; } "
+                       "listview { lines: 12; } element-icon { enabled: false; }"],
+        input="\n".join(rows) + "\n", capture_output=True, text=True, env=env, check=False).stdout.strip()
+    if not out.isdigit():
+        return
+    idx = int(out)
+    if idx == len(items):
+        save([])
+        notify("Clipboard history cleared.", "low")
+    elif 0 <= idx < len(items):
+        if set_clipboard(items[idx]):
+            add(items[idx])
+        else:
+            notify("The text could not be copied (xclip missing).", "critical")
+
+
+def daemon():
+    import fcntl
+    if not os.environ.get("DISPLAY"):
+        return  # nur in der X-Sitzung (Openbox-Autostart)
+    os.environ["GDK_BACKEND"] = "x11"
+    os.makedirs(os.path.dirname(HISTORY), exist_ok=True)
+    lock = open(HISTORY + ".lock", "w")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return  # läuft schon
+    try:
+        import gi
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        from gi.repository import Gdk, Gtk
+    except (ImportError, ValueError):
+        return
+    if not Gtk.init_check(sys.argv[:1])[0]:  # kein Bildschirm
+        return
+    clip = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+
+    def on_text(_clip, text):
+        if text:
+            add(text)
+
+    def on_targets(_clip, atoms, ok):
+        names = [a.name() for a in (atoms or [])] if ok else []
+        if "x-kde-passwordManagerHint" in names:
+            return
+        clip.request_text(on_text)
+
+    clip.connect("owner-change", lambda c, _ev: c.request_targets(on_targets))
+    Gtk.main()
+
+
+def main(argv):
+    cmd = argv[1] if len(argv) > 1 else ""
+    if cmd == "":
+        pick()
+    elif cmd == "--daemon":
+        daemon()
+    elif cmd == "--list":
+        print(json.dumps(load(), ensure_ascii=False))
+    elif cmd == "--add" and len(argv) > 2:
+        add(argv[2])
+    elif cmd == "--clear":
+        save([])
+    else:
+        print("Aufruf: simpleos-clipboard [--daemon | --list | --add TEXT | --clear]", file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv))
+    except Exception as e:  # nie stumm abbrechen
+        notify(f"The clipboard history ran into a problem: {e}", "critical")
+        sys.exit(0)

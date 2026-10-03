@@ -1,0 +1,106 @@
+#!/bin/sh
+# Simple OS – Fn-Tasten mit OSD (Openbox: XF86Audio*/XF86MonBrightness*). Kleine Meldung mit Balken, die sich bei
+# jedem Tastendruck ersetzt statt zu stapeln (dunst: Kategorie x-simpleos-osd, Stack-Tag simpleos-osd, Balken
+# in Catppuccin Mocha, kurz sichtbar, nicht im Verlauf – Regel [simpleos-osd] in ~/.config/dunst/dunstrc).
+#   simpleos-osd volume up|down|mute     ±5 %, höchstens 100 % (pactl, pipewire-pulse); stumm an/aus
+#   simpleos-osd brightness up|down      ±5 % der Bildschirmhelligkeit, mindestens 5 % (nie ganz schwarz)
+# Helligkeit: /sys/class/backlight (bevorzugt "raw"/"platform" wie intel_backlight, amdgpu_bl0, sonst "firmware"
+# wie acpi_video0), gesetzt über logind (org.freedesktop.login1.Session.SetBrightness) – das darf die angemeldete
+# Sitzung ohne root und ohne udev-Regeln. Ohne Hintergrundbeleuchtung (Desktop-Monitor, VM): kurzer Hinweis.
+# Kein set -e, Exit 0; Details in ~/.cache/simpleos-osd.log.
+# Tests: SIMPLEOS_BACKLIGHT ersetzt /sys/class/backlight, SIMPLEOS_ICONS /usr/share/icons.
+
+SOS_NAME=simpleos-osd SOS_TITLE=OSD SOS_ICON=audio-volume-high
+LIB=/usr/local/lib/simpleos/common.sh
+[ -r "$LIB" ] || exit 0
+. "$LIB"
+sos_log_init "$@"
+BL=${SIMPLEOS_BACKLIGHT:-/sys/class/backlight}
+STEP=5
+
+# Symbol als Dateipfad: Papirus hat die Meldungssymbole nur in 48 px, dunst sucht Namen nur bis max_icon_size (40)
+icon_path() {
+    for d in "${SIMPLEOS_ICONS:-/usr/share/icons}"/Papirus-Dark/48x48/*/ "${SIMPLEOS_ICONS:-/usr/share/icons}"/Papirus/48x48/*/; do
+        [ -f "$d$1.svg" ] && { echo "$d$1.svg"; return; }
+    done
+    echo "$1"
+}
+osd() {  # $1 Titel, $2 Text, $3 Wert 0–100, $4 Symbol
+    command -v notify-send >/dev/null || return 0
+    # gleicher App-Name für alle OSDs: dunst ersetzt per Stack-Tag nur innerhalb derselben App
+    notify-send -u low -t 1500 -c x-simpleos-osd -a simpleos-osd -i "$(icon_path "$4")" \
+        -h string:x-dunst-stack-tag:simpleos-osd -h "int:value:$3" "$1" "$2" 2>/dev/null || true
+}
+
+volume() {
+    command -v pactl >/dev/null || { sos_log "pactl fehlt"; exit 0; }
+    case "$1" in
+        up|down)
+            pactl set-sink-mute @DEFAULT_SINK@ 0 2>/dev/null
+            cur=$(pactl get-sink-volume @DEFAULT_SINK@ 2>/dev/null | grep -o '[0-9]*%' | head -n 1 | tr -d %)
+            sos_is_num "$cur" || cur=0
+            if [ "$1" = up ]; then new=$((cur + STEP)); else new=$((cur - STEP)); fi
+            [ "$new" -gt 100 ] && new=100      # wie Windows: nie über 100 % (verzerrt sonst)
+            [ "$new" -lt 0 ] && new=0
+            pactl set-sink-volume @DEFAULT_SINK@ "$new%" 2>/dev/null ;;
+        mute)
+            pactl set-sink-mute @DEFAULT_SINK@ toggle 2>/dev/null ;;
+        *) echo "Aufruf: simpleos-osd volume up|down|mute" >&2; exit 2 ;;
+    esac
+    vol=$(pactl get-sink-volume @DEFAULT_SINK@ 2>/dev/null | grep -o '[0-9]*%' | head -n 1 | tr -d %)
+    sos_is_num "$vol" || vol=0
+    if pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null | grep -q 'yes'; then
+        osd Volume "Muted" 0 notification-audio-volume-muted
+    else
+        # notification-*: Papirus hat diese in Meldungsgröße (48 px); audio-volume-* nur als 16–24-px-Panelsymbole
+        if [ "$vol" -eq 0 ]; then icon=notification-audio-volume-muted
+        elif [ "$vol" -lt 34 ]; then icon=notification-audio-volume-low
+        elif [ "$vol" -lt 67 ]; then icon=notification-audio-volume-medium
+        else icon=notification-audio-volume-high; fi
+        osd Volume "$vol%" "$vol" "$icon"
+    fi
+}
+
+# Bestes Backlight-Gerät: raw/platform vor firmware (acpi_video ist oft wirkungslos, wenn es beide gibt)
+backlight() {
+    best= rank=9
+    for d in "$BL"/*; do
+        [ -r "$d/max_brightness" ] || continue
+        case "$(cat "$d/type" 2>/dev/null)" in raw) r=1 ;; platform) r=2 ;; firmware) r=3 ;; *) r=4 ;; esac
+        [ "$r" -lt "$rank" ] && { best=$d; rank=$r; }
+    done
+    echo "$best"
+}
+
+brightness() {
+    case "$1" in up|down) ;; *) echo "Aufruf: simpleos-osd brightness up|down" >&2; exit 2 ;; esac
+    dev=$(backlight)
+    if [ -z "$dev" ]; then
+        osd Brightness "This screen's brightness can't be changed here – use the buttons on the monitor." 0 notification-display-brightness
+        exit 0
+    fi
+    max=$(cat "$dev/max_brightness" 2>/dev/null) cur=$(cat "$dev/brightness" 2>/dev/null)
+    sos_is_num "$max" && sos_is_num "$cur" && [ "$max" -gt 0 ] || { sos_log "unlesbar: $dev"; exit 0; }
+    step=$((max * STEP / 100)); [ "$step" -lt 1 ] && step=1
+    floor=$((max * 5 / 100)); [ "$floor" -lt 1 ] && floor=1
+    if [ "$1" = up ]; then new=$((cur + step)); else new=$((cur - step)); fi
+    [ "$new" -gt "$max" ] && new=$max
+    [ "$new" -lt "$floor" ] && new=$floor
+    name=${dev##*/}
+    if busctl call org.freedesktop.login1 /org/freedesktop/login1/session/auto org.freedesktop.login1.Session \
+        SetBrightness ssu backlight "$name" "$new" >&2 2>&1; then
+        :
+    else
+        sos_log "SetBrightness $name $new fehlgeschlagen"
+        new=$cur
+    fi
+    pct=$(( (new * 100 + max / 2) / max ))
+    osd Brightness "$pct%" "$pct" notification-display-brightness
+}
+
+case "${1:-}" in
+    volume)     volume "${2:-}" ;;
+    brightness) brightness "${2:-}" ;;
+    *) echo "Aufruf: simpleos-osd volume up|down|mute | brightness up|down" >&2; exit 2 ;;
+esac
+exit 0

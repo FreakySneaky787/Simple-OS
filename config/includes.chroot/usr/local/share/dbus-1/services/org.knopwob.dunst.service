@@ -1,0 +1,6 @@
+# Simple OS: dunst per D-Bus nur über simpleos-dunst (Akku-Filter in VMs / ohne echten Akku).
+# /usr/local/share steht in XDG_DATA_DIRS vor /usr/share -> diese Datei ersetzt die von dunst.
+[D-BUS Service]
+Name=org.freedesktop.Notifications
+Exec=/usr/local/bin/simpleos-dunst
+SystemdService=dunst.service

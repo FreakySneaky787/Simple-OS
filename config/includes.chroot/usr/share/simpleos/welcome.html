@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simple OS</title>
+<!-- Simple OS – Willkommensseite: offline, eigenes WebKit-Fenster (simpleos-welcome), Catppuccin Mocha.
+     Ruhige Karten statt Kästen-Raster; keine Verläufe, Schatten oder Animationen. -->
+<style>
+  :root {
+    --crust:#11111b; --mantle:#181825; --base:#1e1e2e; --surface0:#313244; --surface1:#45475a;
+    --overlay:#7f849c; --subtext:#bac2de; --text:#cdd6f4; --blue:#89b4fa; --green:#a6e3a1; --lavender:#b4befe;
+  }
+  * { box-sizing:border-box; }
+  html { background:var(--crust); }
+  body { margin:0; color:var(--text); font:16px/1.65 Inter, Cantarell, "Noto Sans", sans-serif;
+         -webkit-font-smoothing:antialiased; }
+  main { max-width:820px; margin:0 auto; padding:40px 24px 56px; }
+
+  header { display:flex; align-items:center; gap:18px; padding:4px 8px 28px; }
+  header img { width:52px; height:52px; border-radius:14px; }
+  h1 { margin:0; font-size:1.75rem; font-weight:700; letter-spacing:-.01em; line-height:1.2; }
+  header p { margin:3px 0 0; color:var(--subtext); }
+
+  section { background:var(--base); border:1px solid var(--surface0); border-radius:16px;
+            padding:24px 28px; margin-top:16px; }
+  h2 { margin:0 0 14px; font-size:1.15rem; font-weight:650; }
+  h3 { margin:20px 0 4px; font-size:1rem; font-weight:600; }
+  h3:first-of-type { margin-top:4px; }
+  p { margin:0 0 8px; }
+  .note { color:var(--subtext); font-size:.95rem; }
+  a { color:var(--blue); text-decoration:none; border-bottom:1px solid rgba(137,180,250,.35); }
+  a:focus-visible { outline:2px solid var(--blue); outline-offset:3px; border-radius:4px; }
+
+  /* Schritte mit runden Nummern */
+  ol { list-style:none; counter-reset:step; margin:0; padding:0; }
+  ol li { counter-increment:step; position:relative; padding:2px 0 14px 46px; }
+  ol li:last-child { padding-bottom:0; }
+  ol li::before { content:counter(step); position:absolute; left:0; top:1px; width:30px; height:30px;
+                  border-radius:50%; background:var(--surface0); color:var(--lavender);
+                  font-weight:700; font-size:.9rem; display:flex; align-items:center; justify-content:center; }
+
+  code { font:.88em "JetBrains Mono", monospace; color:var(--green); background:var(--mantle);
+         border:1px solid var(--surface0); border-radius:6px; padding:2px 7px; }
+  kbd { font:600 .82em Inter, Cantarell, sans-serif; color:var(--text); white-space:nowrap;
+        background:var(--surface0); border:1px solid var(--surface1); border-bottom-width:2px;
+        border-radius:6px; padding:2px 8px; }
+
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:10px 4px; border-bottom:1px solid var(--surface0); }
+  tr:last-child td { border-bottom:0; }
+  th { color:var(--overlay); font-weight:600; font-size:.88rem; }
+  td:first-child { width:42%; }
+
+  footer { margin-top:28px; padding:0 8px; color:var(--overlay); font-size:.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="logo.png" alt="Simple OS logo">
+    <div>
+      <h1>Simple OS</h1>
+      <p>Debian 12 with Openbox. Here's what you need to get going.</p>
+    </div>
+  </header>
+
+  <section id="start">
+    <h2>Quick start</h2>
+    <ol>
+      <li><strong>Connect to Wi-Fi.</strong> Click the network icon or the IP address in the taskbar, pick your
+          network and enter the password. From a terminal: <code>simpleos-wifi</code>. Cable connections work on their own.
+          The Setup Wizard also helps you with this on your first login.
+          <br><span class="note">VPN, fixed IP and other extras: right-click the network icon in the system tray and choose Edit Connections.</span></li>
+      <li><strong>Install your software.</strong> Run <code>simpleos-setup</code> to pick a browser, an office suite,
+          gaming tools and dark or light mode. It also opens once after your first login.</li>
+      <li><strong>That's it.</strong> Updates take care of themselves: when some are ready, a message appears –
+          click it to install. You can also check any time under Settings → Software Updates.</li>
+    </ol>
+  </section>
+
+  <section id="keys">
+    <h2>Keyboard shortcuts</h2>
+    <table>
+      <thead><tr><th scope="col">Keys</th><th scope="col">What it does</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>Super</kbd></td><td>Search apps and files, calculate (42*12)</td></tr>
+        <tr><td><kbd>Super</kbd>+<kbd>←</kbd> / <kbd>→</kbd></td><td>Snap a window to the left or right half</td></tr>
+        <tr><td><kbd>Super</kbd>+<kbd>Enter</kbd></td><td>Open a terminal</td></tr>
+        <tr><td><kbd>Super</kbd>+<kbd>B</kbd></td><td>Open the web browser</td></tr>
+        <tr><td><kbd>Super</kbd>+<kbd>E</kbd></td><td>Open the file manager</td></tr>
+        <tr><td><kbd>Super</kbd>+<kbd>H</kbd></td><td>Show all shortcuts</td></tr>
+        <tr><td><kbd>Super</kbd>+<kbd>X</kbd></td><td>Shut down, restart or log out</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="tools">
+    <h2>System tools</h2>
+    <h3>Taskbar designer</h3>
+    <p>Right-click the desktop and go to Settings → Taskbar &amp; Panel, or run <code>simpleos-taskbar-select</code>.
+       You can change position, size, style and whether the clock and network display are shown.</p>
+    <h3>Openbox settings</h3>
+    <p>Run <code>obconf</code> for window theme, fonts and desktop count. Shortcuts and window rules live in
+       <code>~/.config/openbox/rc.xml</code>. After editing that file, apply it with <code>openbox --reconfigure</code>.</p>
+    <h3>Network info</h3>
+    <p><kbd>Super</kbd>+<kbd>N</kbd> shows your LAN IP, gateway, hostname, VPN status and public IP.
+       For the same output in a terminal, run <code>simpleos-netinfo --text</code>.</p>
+  </section>
+
+  <footer>To open this page again, right-click the desktop and choose Help → Welcome to Simple OS.</footer>
+</main>
+</body>
+</html>

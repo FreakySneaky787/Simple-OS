@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Task Manager
+Comment=See running programs and end the ones that hang
+Exec=/usr/local/bin/simpleos-taskmanager
+Icon=utilities-system-monitor
+Categories=System;Monitor;
+Keywords=task;process;kill;end;hang;cpu;memory;taskmanager;

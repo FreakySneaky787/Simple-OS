@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+THEME=/usr/share/plymouth/themes/spinner/spinner.plymouth
+sed -i -e 's/^BackgroundStartColor=.*/BackgroundStartColor=0x1e1e2e/' \
+       -e 's/^BackgroundEndColor=.*/BackgroundEndColor=0x1e1e2e/' "$THEME"
+plymouth-set-default-theme spinner
+update-initramfs -u -k all

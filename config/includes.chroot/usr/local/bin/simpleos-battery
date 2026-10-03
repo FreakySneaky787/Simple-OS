@@ -1,0 +1,45 @@
+#!/bin/sh
+# Simple OS – Akku-Prüfung für die Taskleiste
+#   simpleos-battery --present    Exit 0 nur mit echtem Akku (Akkuanzeige in tint2, simpleos-taskbar-select)
+#   simpleos-battery --low-alert  "Battery low"-Meldung (battery_low_cmd in tint2rc), nur bei entladendem Akku
+#   simpleos-battery --run CMD…   CMD nur mit echtem Akku starten (XDG-Autostart von Akku-Programmen wie
+#                                 xfce4-power-manager, cbatticon – Hook 10_battery_guard), sonst Exit 0
+# Echter Akku = /sys/class/power_supply/BAT* mit type "Battery" und present "1". VMs und Desktop-PCs haben
+# keinen oder nur eine Attrappe (present 0) -> kein Akku-Symbol, keine Meldung. Akkus von Maus/Tastatur
+# (hidpp_battery_0, …) und USVs (type "UPS") zählen nicht. Die Meldung kommt zusätzlich nur bei Status
+# "Discharging". In einer VM gibt es grundsätzlich keinen Akku: QEMU/VirtualBox/Hyper-V reichen teils
+# Attrappen oder den Akku des Gastgebers mit present 1 durch.
+# Tests: SIMPLEOS_POWER_SUPPLY ersetzt /sys/class/power_supply, SIMPLEOS_VIRT das Ergebnis von
+# systemd-detect-virt --vm ("none" = echte Hardware).
+PS=${SIMPLEOS_POWER_SUPPLY:-/sys/class/power_supply}
+
+in_vm() {
+    if [ -n "${SIMPLEOS_VIRT:-}" ]; then [ "$SIMPLEOS_VIRT" != none ]; return; fi
+    command -v systemd-detect-virt >/dev/null && systemd-detect-virt -q --vm
+}
+
+# Echte Akkus, ein Verzeichnis pro Zeile
+batteries() {
+    in_vm && return 0
+    for b in "$PS"/BAT*; do
+        [ -d "$b" ] || continue
+        [ "$(cat "$b/type" 2>/dev/null)" = Battery ] && [ "$(cat "$b/present" 2>/dev/null)" = 1 ] && echo "$b"
+    done
+}
+
+case "${1:-}" in
+    --present) [ -n "$(batteries)" ] ;;
+    --low-alert)
+        for b in $(batteries); do
+            [ "$(cat "$b/status" 2>/dev/null)" = Discharging ] || continue
+            notify-send -u critical -i battery-caution "Battery low" "Plug in your charger soon." 2>/dev/null
+            exit 0
+        done
+        exit 0 ;;
+    --run)
+        shift
+        [ $# -gt 0 ] || exit 2
+        [ -n "$(batteries)" ] || exit 0
+        exec "$@" ;;
+    *) echo "Aufruf: simpleos-battery --present | --low-alert | --run CMD…" >&2; exit 2 ;;
+esac

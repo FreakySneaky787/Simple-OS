@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Screenshot (Area)
+Comment=Drag to capture part of the screen – saved to Pictures/Screenshots and copied
+Exec=/usr/local/bin/simpleos-screenshot --area
+Icon=applets-screenshooter
+Categories=Utility;Graphics;
+Keywords=screenshot;capture;print;snip;
