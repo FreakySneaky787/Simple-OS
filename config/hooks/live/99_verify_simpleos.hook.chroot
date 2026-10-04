@@ -348,6 +348,8 @@ case "$*" in
             *) printf ' :80:WPA2:Home\n :60:WPA2:Office\n :30::Cafe\n' ;;
         esac ;;
     "-t -f NAME connection show") echo "Home" ;;
+    *"connection modify"*) touch "$WT/modified" ;;
+    *"connection up"*) [ "$UPFAIL" = 1 ] && [ ! -e "$WT/modified" ] && { echo "Error: Secrets were required" >&2; exit 4; } ;;
     *"device connect eth0"*) [ "$NET" = eth-fail ] && { echo "Error: no carrier" >&2; exit 4; }; touch "$WT/eth-up" ;;
     *"device wifi connect"*) [ "$BADPW" = 1 ] && { echo "Error: Secrets were required" >&2; exit 4; } ;;
 esac
@@ -421,6 +423,9 @@ wcase "WLAN: wechseln (Passwort per Rofi)" "" "NET=wifi" "1 secret" \
 wcase "WLAN: falsches Passwort" "" "NET=wifi BADPW=1" "1 wrong" \
     'grep -q "password may be wrong" $S/notify && grep -q "connection delete id Office" $S/calls'
 wcase "WLAN: Passwort abgebrochen" "" "NET=wifi" "1 -" '! grep -q "device wifi connect" $S/calls'
+wcase "WLAN: gespeichertes Netz, Passwort falsch -> neues Passwort ins Profil" "" "NET=wifi-down UPFAIL=1" "1 neu" \
+    'grep -q "connection modify id Home wifi-sec.psk neu" $S/calls && grep -q "Connected to Home" $S/notify &&
+     ! grep -q "device wifi connect Home" $S/calls'
 wcase "WLAN: offenes Netz ohne Passwort" "" "NET=wifi" "2" \
     '! grep -q "\-password" $S/rofi.args && grep -q "device wifi connect Cafe ifname wlan0$" $S/calls'
 wcase "WLAN: Turn Off Wi-Fi" "" "NET=wifi" "3" 'grep -q "radio wifi off" $S/calls && grep -q "Wi-Fi is off" $S/notify'
@@ -493,6 +498,8 @@ assert s['wifi'] is None and s['kind'] == 'ethernet' and v['online'] and 'no Wi-
 check "Wizard: Netzwerkwechsel (verbunden mit Home -> Office) klappt nicht" "wiz NET=wifi python3 -c \"$WZ; ok, msg = w.connect_wifi('wlan0', 'Office', 'secret'); assert ok and 'Office' in msg, msg\" && grep -q 'device wifi connect Office ifname wlan0 password secret' $S/calls"
 check "Wizard: Trennen klappt nicht" "wiz NET=wifi python3 -c \"$WZ; ok, msg = w.disconnect_wifi('wlan0'); assert ok, msg\" && grep -q 'device disconnect wlan0' $S/calls"
 check "Wizard: falsches Passwort ohne verständliche Meldung" "wiz NET=wifi BADPW=1 python3 -c \"$WZ; ok, msg = w.connect_wifi('wlan0', 'Office', 'x'); assert not ok and 'password may be wrong' in msg, msg\" && grep -q 'connection delete id Office' $S/calls"
+check "Wizard: gespeichertes Netz, neues Passwort wird nicht ins Profil übernommen" "wiz NET=wifi-down UPFAIL=1 python3 -c \"$WZ; ok, msg = w.connect_wifi('wlan0', 'Home', 'neu', True); assert ok, msg\" && grep -q 'connection modify id Home wifi-sec.psk neu' $S/calls && ! grep -q 'device wifi connect' $S/calls"
+check "Wizard: gespeichertes Passwort falsch -> irreführende Meldung" "wiz NET=wifi-down UPFAIL=1 BADPW=1 python3 -c \"$WZ; ok, msg = w.connect_wifi('wlan0', 'Home', '', True); assert not ok and 'saved password may be wrong' in msg, msg\""
 check "Wizard: ohne nmcli Absturz statt 'nicht verbunden'" "$ENV -i HOME=$wt/home PATH=$wt/py:$wt/sys python3 -c \"$WZ; s = w.network_state(); assert s['kind'] is None and s['wifi'] is None, s\" 2>/dev/null"
 
 # ---- Alltags-Helfer: USB (udiskie), Power-Menü, System-Update, Tastenkürzel-Übersicht
@@ -525,8 +532,47 @@ check "apt: Paketlisten werden nicht täglich geladen" "grep -q 'Update-Package-
 check "apt: automatische Installation aktiv" "grep -q 'Unattended-Upgrade \"0\"' /etc/apt/apt.conf.d/20simpleos-periodic"
 check "Update-Starter fehlt" "grep -qx 'Exec=/usr/local/bin/simpleos-update' /usr/share/applications/simpleos-update.desktop"
 check "Helfer: --upgrade fehlt" "grep -q -- '--upgrade)' /usr/local/sbin/simpleos-system-setup"
-check "Helfer: Update könnte Pakete entfernen (nur upgrade --with-new-pkgs erlaubt)" \
-      "grep -q 'aptget upgrade --with-new-pkgs' /usr/local/sbin/simpleos-system-setup && ! grep -qE 'aptget (full|dist)-upgrade' /usr/local/sbin/simpleos-system-setup"
+check "Helfer: Update könnte Pakete entfernen (upgrade --with-new-pkgs, full-upgrade nur mit --no-remove)" \
+      "grep -q 'aptget upgrade --with-new-pkgs' /usr/local/sbin/simpleos-system-setup && grep -q 'aptget --no-remove full-upgrade' /usr/local/sbin/simpleos-system-setup &&
+       ! grep -qE 'aptget (full|dist)-upgrade' /usr/local/sbin/simpleos-system-setup"
+# Wahl des apt-Kommandos, zurückgehaltene Updates, Neustart-Markierung und Treiber-Erfolg: Funktionen des Helfers
+# mit einer apt-get-Attrappe (APTSIM: Simulation mit Entfernen = "remove"; APTRC = Exit-Code der Installation)
+uw=$(mktemp -d)
+sed -n '/^REBOOT_PKGS=/p;/^mark_reboot() {/,/^}/p;/^sim_pkgs() /p;/^step() /p;/^upgrade_mode() {/,/^}/p;/^report_held() {/,/^}/p;/^upgrade_sim() {/,/^}/p;/^install_drivers() {/,/^}/p' \
+    /usr/local/sbin/simpleos-system-setup > "$uw/fn.sh"
+cat > "$uw/apt-get" <<'MOCK'
+#!/bin/sh
+case "$*" in -s*) [ "$APTSIM" = none ] && exit 0 ;; esac
+case "$*" in
+    "-s full-upgrade")
+        echo "Inst linux-image-amd64 [6.12.48] (6.12.57 Debian Backports [amd64])"
+        echo "Inst linux-image-6.12.57+deb12-amd64 (6.12.57 Debian Backports [amd64])"
+        [ "$APTSIM" = remove ] && { echo "Inst firmware-misc-nonfree [1] (2 Debian Backports [all])"; echo "Remv firmware-old [1]"; } ;;
+    "-s upgrade --with-new-pkgs")
+        echo "Inst linux-image-amd64 [6.12.48] (6.12.57 Debian Backports [amd64])" ;;
+    *) exit "${APTRC:-0}" ;;
+esac
+exit 0
+MOCK
+chmod 0755 "$uw/apt-get"
+urun() { env APTSIM="$1" APTRC="${2:-0}" UPD="${3:-0}" sh -c ". $uw/fn.sh; REBOOT_FLAG=$uw/reboot APT_GET=$uw/apt-get dry=0
+    apt_get_update() { [ \"\$UPD\" = 0 ]; }; installed() { return 0; }; $4" > "$uw/out" 2>&1; }
+check "Helfer: Updates mit neuen Abhängigkeiten blieben liegen (full-upgrade, wenn nichts entfernt wird)" \
+      "urun '' 0 0 upgrade_mode && [ \"\$(cat $uw/out)\" = full ]"
+check "Helfer: full-upgrade obwohl es Pakete entfernen würde" "urun remove 0 0 upgrade_mode && [ \"\$(cat $uw/out)\" = safe ]"
+check "Helfer: zurückgehaltene Updates nicht gemeldet (HELD:)" \
+      "urun remove 0 0 report_held && grep -qx 'HELD: 2' $uw/out && urun none 0 0 'echo; report_held' && ! grep -q HELD $uw/out"
+check "Helfer: Kernel-Update ohne Neustart-Markierung (/run/reboot-required)" \
+      "rm -f $uw/reboot*; urun '' 0 0 'upgrade_sim full | sim_pkgs | mark_reboot' && [ -e $uw/reboot ] && grep -qx 'linux-image-6.12.57+deb12-amd64' $uw/reboot.pkgs &&
+       rm -f $uw/reboot*; urun '' 0 0 'printf \"tzdata\\ncurl\\n\" | mark_reboot' && [ ! -e $uw/reboot ]"
+check "Treiber: gescheitertes apt-get meldet Erfolg (linux-image-amd64 ist immer installiert)" \
+      "! urun '' 100 0 'install_drivers linux-image-amd64' && ! grep -q 'STEP: Done' $uw/out && grep -q 'apt-get fehlgeschlagen' $uw/out"
+check "Treiber: Paketlisten nicht geladen, trotzdem Erfolg" "! urun '' 0 1 'install_drivers linux-image-amd64' && ! grep -q 'STEP: Done' $uw/out"
+check "Treiber: Erfolg nicht erkannt oder ohne Neustart-Markierung" \
+      "rm -f $uw/reboot*; urun '' 0 0 'install_drivers linux-image-amd64' && grep -qx 'STEP: Done' $uw/out && [ -e $uw/reboot ]"
+check "Helfer: --refresh fehlt oder lässt sich mischen" \
+      "grep -q -- '--refresh)' /usr/local/sbin/simpleos-system-setup && ! /usr/local/sbin/simpleos-system-setup --refresh --gaming >/dev/null 2>&1"
+rm -rf "${uw:?}"
 check "Helfer: --upgrade läuft auch ohne anstehende Updates komplett mit Ladebalken durch" \
       "grep -q 'flatpak remote-ls --updates --system' /usr/local/sbin/simpleos-system-setup && grep -q 'echo \"DONE: Already up to date\"' /usr/local/sbin/simpleos-system-setup"
 check "simpleos-progress: Abschlusstext DONE: des Helfers wird nicht übernommen" \
@@ -569,16 +615,22 @@ printf '#!/bin/sh\necho "openbox $*" >> "$WT/power"\n' > "$wt/mock/openbox"
 printf '#!/bin/sh\necho "$*" >> "$WT/pkexec"\n[ -n "$PKEXEC_OUT" ] && echo "$PKEXEC_OUT" | tr _ " "\nexit ${PKEXEC_RC:-0}\n' > "$wt/mock/pkexec"
 printf '#!/bin/sh\necho "thunar $*" > "$WT/opened"\n' > "$wt/mock/thunar"
 printf '#!/bin/sh\necho "xdg-open $*" > "$WT/opened"\n' > "$wt/mock/xdg-open"
-cat > "$wt/mock/apt" <<'MOCK'
+# apt-get -s: UPDATES Pakete mit neuer Version (+ ein neues Kernel-Paket, das nicht zählt); NEEDREMOVE=1: ein
+# weiteres Update ginge nur mit dem Entfernen eines Pakets -> zählt nicht (der Helfer installiert es nicht)
+cat > "$wt/mock/apt-get" <<'MOCK'
 #!/bin/sh
-[ "$*" = "list --upgradable" ] || exit 0
-echo "Listing..."
+case "$*" in "-s full-upgrade"|"-s upgrade --with-new-pkgs") ;; *) exit 0 ;; esac
 i=0
 for p in firefox-esr libc6 openssl tzdata linux-image-amd64 curl; do
     [ "$i" -lt "${UPDATES:-0}" ] || break
-    echo "$p/bookworm-security 1.1 amd64 [upgradable from: 1.0]"
+    echo "Inst $p [1.0] (1.1 Debian-Security:12/stable-security [amd64])"
     i=$((i + 1))
 done
+[ "${UPDATES:-0}" -gt 0 ] && echo "Inst linux-image-6.12.57+deb12-amd64 (6.12.57 Debian Backports [amd64])"
+if [ "$*" = "-s full-upgrade" ] && [ "$NEEDREMOVE" = 1 ]; then
+    echo "Inst firmware-misc-nonfree [1] (2 Debian Backports [all])"; echo "Remv firmware-old [1]"
+fi
+exit 0
 MOCK
 chmod 0755 "$wt/mock/"*
 for t in id tr date; do [ -e "$wt/sys/$t" ] || ln -s "$(command -v $t)" "$wt/sys/$t"; done
@@ -600,8 +652,9 @@ hcase "$P" "Menü" "" "" "-" \
     '[ "$(row 0 1)" = "Lock" ] && [ "$(row 0 2)" = "Sleep" ] && [ "$(row 0 3)" = "Restart" ] &&
      [ "$(row 0 4)" = "Shut down" ] && [ "$(row 0 5)" = "Sign out" ] && [ $(grep -c . $S/rofi.0) -eq 5 ] && [ ! -s $S/power ]'
 hcase "$P" "Lock" "" "" "0" 'grep -qx "dm-tool lock" $S/power'
-hcase "$P" "Sleep sperrt vorher" "" "" "1" '[ "$(cat $S/power)" = "dm-tool lock
+hcase "$P" "Sleep sperrt vorher" "" "SIMPLEOS_LIVE=0" "1" '[ "$(cat $S/power)" = "dm-tool lock
 systemctl suspend" ]'
+hcase "$P" "Sleep in der Live-Session sperrt nicht (Passwort unbekannt)" "" "SIMPLEOS_LIVE=1" "1" '[ "$(cat $S/power)" = "systemctl suspend" ]'
 hcase "$P" "Restart" "" "" "2" 'grep -qx "systemctl reboot" $S/power'
 hcase "$P" "Shut down" "" "" "3" 'grep -qx "systemctl poweroff" $S/power'
 hcase "$P" "Sign out" "" "" "4" 'grep -qx "openbox --exit" $S/power'
@@ -623,10 +676,25 @@ hcase "$U --check" "Meldung angeklickt -> Fenster -> Installation" "" "UPDATES=3
      grep -qx "/usr/local/sbin/simpleos-system-setup --upgrade" $S/pkexec && grep -q "Your system is up to date" $S/notify'
 hcase "$U" "Fenster: Not now" "" "UPDATES=2" "1" '[ ! -e $S/pkexec ] && [ "$(row 0 2)" = "Not now" ]'
 hcase "$U" "Fenster: viele Updates gekürzt" "" "UPDATES=6" "-" 'grep -q "6 updates available" $S/rofi.args && grep -q "tzdata, …" $S/rofi.args'
-hcase "$U" "Fenster ohne Updates" "" "UPDATES=0" "0" \
+hcase "$U" "Fenster ohne Updates: Check now lädt nur die Listen, installiert nichts" "" "UPDATES=0" "0" \
     'grep -q "You.re up to date" $S/rofi.args && [ "$(row 0 1)" = "Check now" ] &&
-     grep -q -- "--upgrade" $S/pkexec'
-hcase "$U" "Nichts zu tun -> eigene Meldung" "" "UPDATES=0 PKEXEC_OUT=UPTODATE:_1" "0" 'grep -q "there was nothing to install" $S/notify'
+     grep -qx "/usr/local/sbin/simpleos-system-setup --refresh" $S/pkexec && ! grep -q -- "--upgrade" $S/pkexec &&
+     grep -q "Your system is up to date" $S/notify'
+hcase "$U" "Update, das nur mit Entfernen ginge, zählt nicht mit" "" "UPDATES=2 NEEDREMOVE=1" "-" \
+    'grep -q "<b>2 updates available</b>" $S/rofi.args && ! grep -q "firmware-misc-nonfree\|linux-image-6" $S/rofi.args'
+hcase "$U" "zurückgehaltene Updates -> ehrliche Meldung statt 'up to date'" "" "UPDATES=1 PKEXEC_OUT=HELD:_2" "0" \
+    'grep -q "2 updates could not be installed automatically" $S/notify && ! grep -q "up to date" $S/notify'
+# Neustart: nie direkt aus der Meldung, erst nach Rückfrage ("Restart now" / "Later")
+touch "$wt/reboot-required"
+hcase "$U" "Neustart: Meldung angeklickt, dann Later -> kein Neustart" "" \
+    "UPDATES=1 NOTIFY_ACTION=default SIMPLEOS_REBOOT_FLAG=$wt/reboot-required" "0 1" \
+    '[ "$(row 1 1)" = "Restart now" ] && [ "$(row 1 2)" = "Later" ] && grep -q "Save your work first" $S/rofi.args && [ ! -s $S/power ]'
+hcase "$U" "Neustart: erst nach 'Restart now'" "" "UPDATES=1 NOTIFY_ACTION=default SIMPLEOS_REBOOT_FLAG=$wt/reboot-required" "0 0" \
+    'grep -qx "systemctl reboot" $S/power'
+hcase "$U" "Neustart: Meldung weggeklickt -> nichts" "" "UPDATES=1 SIMPLEOS_REBOOT_FLAG=$wt/reboot-required" "0" \
+    '[ ! -e $S/rofi.1 ] && [ ! -s $S/power ] && grep -q "needs a restart" $S/notify'
+rm -f "$wt/reboot-required"
+hcase "$U" "Nichts zu tun -> eigene Meldung" "" "UPDATES=1 PKEXEC_OUT=UPTODATE:_1" "0" 'grep -q "there was nothing to install" $S/notify'
 hcase "$U" "Passwort abgebrochen" "" "UPDATES=1 PKEXEC_RC=126" "0" 'grep -q "No password entered" $S/notify'
 hcase "$U" "Installation scheitert" "" "UPDATES=1 PKEXEC_RC=1" "0" 'grep -q "could not be installed. Details: ~/.cache/simpleos-update.log" $S/notify'
 hcase "$U" "Installation scheitert: kein Netz -> Internet-Meldung" "" "UPDATES=1 PKEXEC_RC=1 PKEXEC_OUT=E:_Failed_to_fetch_http://deb.debian.org/x" "0" \
@@ -634,7 +702,7 @@ hcase "$U" "Installation scheitert: kein Netz -> Internet-Meldung" "" "UPDATES=1
 hcase "$U" "Installation scheitert: Platte voll -> Platz-Meldung statt Internet" "" "UPDATES=1 PKEXEC_RC=1 PKEXEC_OUT=No_space_left_on_device" "0" \
     'grep -q "not enough free disk space" $S/notify && ! grep -qi "internet" $S/notify'
 hcase "$U" "pkexec fehlt" "pkexec" "UPDATES=1" "0" 'grep -q "cannot be installed" $S/notify'
-hcase "$U" "apt fehlt" "apt" "" "" 'grep -q "apt missing" $S/notify'
+hcase "$U" "apt fehlt" "apt-get" "" "" 'grep -q "apt missing" $S/notify'
 hcase "$U" "rofi fehlt" "rofi" "UPDATES=1" "" 'grep -q "could not open" $S/notify && [ ! -e $S/pkexec ]'
 # Firmware (fwupd): FIRMWARE=1 -> BIOS- und dbx-Update in der JSON-Ausgabe (Gerätename vor "Releases", danach
 # Release-Namen, die nicht als Gerät zählen dürfen); sonst leere Liste mit Exit 2 wie fwupdmgr ohne Updates
@@ -656,6 +724,18 @@ hcase "$U" "Firmware braucht das Netzteil -> Hinweis statt 'up to date'" "" "UPD
 hcase "$U" "Firmware-Update scheitert -> eigene Meldung" "" "UPDATES=0 FIRMWARE=1 PKEXEC_OUT=FIRMWARE:_failed" "0" \
     'grep -q "firmware update could not be installed" $S/notify && ! grep -q "up to date" $S/notify'
 hcase "$U" "fwupdmgr fehlt -> nur Pakete" "fwupdmgr" "UPDATES=1" "-" 'grep -q "<b>1 update available</b>" $S/rofi.args'
+# BIOS-Update eingespielt, nach dem Neustart steht es noch an -> einmal ehrlich melden, Merker weg
+mkdir -p "$wt/home/.cache/simpleos"
+echo "System Firmware" > "$wt/home/.cache/simpleos/firmware-installed"
+hcase "$U --check" "BIOS-Update beim Neustart nicht eingespielt -> Meldung" "" "UPDATES=0 FIRMWARE=1 SIMPLEOS_REBOOT_FLAG=$wt/none" "" \
+    'grep -q "System Firmware) was not applied during the restart" $S/notify && [ ! -e '"$wt"'/home/.cache/simpleos/firmware-installed ]'
+echo "System Firmware" > "$wt/home/.cache/simpleos/firmware-installed"
+hcase "$U --check" "BIOS-Update eingespielt -> keine Fehlermeldung" "" "UPDATES=0 FIRMWARE=0 SIMPLEOS_REBOOT_FLAG=$wt/none" "" \
+    '! grep -q "was not applied" $S/notify && [ ! -e '"$wt"'/home/.cache/simpleos/firmware-installed ]'
+hcase "$U" "Firmware eingespielt -> Merker für die Prüfung nach dem Neustart" "" \
+    "UPDATES=0 FIRMWARE=1 PKEXEC_OUT=FIRMWARE:_installed SIMPLEOS_REBOOT_FLAG=$wt/none" "0" \
+    'grep -qx "System Firmware" '"$wt"'/home/.cache/simpleos/firmware-installed'
+rm -f "$wt/home/.cache/simpleos/firmware-installed"
 USB=/usr/local/bin/simpleos-usb-notify
 hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "Stick eingesteckt, Open geklickt" "" "NOTIFY_ACTION=yes" "" \
     'grep -q "\"STICK\" is ready" $S/notify && grep -q "yes=Open" $S/notify && grep -qx "thunar /media/simple/STICK" $S/opened'
@@ -729,7 +809,7 @@ echo "pactl $*" >> "$WT/pactl"
 def=$(cat "$WT/default-sink" 2>/dev/null || echo alsa_output.pci.analog-stereo)
 case "$*" in
     "get-default-sink") echo "$def" ;;
-    "get-sink-volume @DEFAULT_SINK@") echo "Volume: front-left: 32768 /  50% / -18.06 dB,   front-right: 32768 /  50% / -18.06 dB" ;;
+    "get-sink-volume @DEFAULT_SINK@") echo "Volume: front-left: 32768 /  ${VOL:-50}% / -18.06 dB,   front-right: 32768 /  ${VOL:-50}% / -18.06 dB" ;;
     "get-sink-mute @DEFAULT_SINK@") if [ "$MUTED" = 1 ]; then echo "Mute: yes"; else echo "Mute: no"; fi ;;
     "list sinks")
         phones="not available"; [ "$PHONES" = 1 ] && phones="availability unknown"
@@ -760,8 +840,10 @@ hcase "$VOL" "Menü" "" "" "-" \
      [ "$(row 0 7)" = "Advanced Audio Settings" ] && [ $(grep -c . $S/rofi.0) -eq 7 ] &&
      grep -q "<b>Sound</b>.*Built-in Audio · 50%" $S/rofi.args && ! grep -q "set-" $S/pactl'
 hcase "$VOL" "Lauter: Menü bleibt offen" "" "" "0 -" \
-    'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ +10%" $S/pactl && [ -s $S/rofi.1 ]'
-hcase "$VOL" "Leiser" "" "" "1 -" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ -10%" $S/pactl'
+    'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 60%" $S/pactl && [ -s $S/rofi.1 ]'
+hcase "$VOL" "Lauter bei 95 %: höchstens 100 %" "" "VOL=95" "0 -" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 100%" $S/pactl'
+hcase "$VOL" "Leiser" "" "" "1 -" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 40%" $S/pactl'
+hcase "$VOL" "Leiser bei 5 %: nicht unter 0 %" "" "VOL=5" "1 -" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 0%" $S/pactl'
 hcase "$VOL" "Lautstärke 50 %" "" "" "2 3 -" \
     '[ "$(row 1 1)" = "100%" ] && grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 50%" $S/pactl'
 hcase "$VOL" "Stumm schalten" "" "" "3 -" 'grep -qx "pactl set-sink-mute @DEFAULT_SINK@ toggle" $S/pactl'
@@ -1861,6 +1943,13 @@ for c in "__import__('os').system('true')" 'report' '2**99999' 'open(1)' '9-'; d
     check "Rechner: '$c' als Rechnung ausgewertet" "! python3 $SR --calc \"$c\" >/dev/null 2>&1"
 done
 check "Rechner: Division durch null ohne verständliche Meldung" "python3 $SR --calc '1/0' | grep -q \"can't divide by zero\""
+for c in '9^999*9^999*9^999*9^999*9^999' '((9^999)^999)^999'; do
+    check "Rechner: '$c' stürzt ab oder rechnet ewig statt 'too large'" "timeout 5 python3 $SR --calc '$c' | grep -q 'the number is too large'"
+done
+SARG="9^999*9^999*9^999*9^999*9^999" srch ROFI_RETV=2
+check "Suche: riesige Rechnung bringt das Fenster zum Absturz" "grep -q 'too large|info~back:' $S/out"
+SARG=x srch ROFI_RETV=1 ROFI_INFO=sys:sleep SIMPLEOS_LIVE=1
+check "Suche: Sleep sperrt in der Live-Session (Passwort unbekannt)" "[ \"\$(cat $S/power)\" = 'systemctl suspend' ]"
 SARG=report srch ROFI_RETV=2
 check "Suche: Dateisuche falsch (versteckte Ordner, Reihenfolge: Ordner, dann Dateien; Anzahl)" \
       "grep -q '3 files and folders matching' $S/out && ! grep -q report-hidden $S/out &&
@@ -1958,6 +2047,7 @@ for k, p in ((\"org.simpleos.backup\", \"/usr/local/sbin/simpleos-backup-helper\
 TM=/usr/local/bin/simpleos-taskmanager
 TMH=/usr/local/sbin/simpleos-taskmanager-helper
 check "simpleos-taskmanager: Python-Syntaxfehler" "python3 -m py_compile $TM"
+check "simpleos-taskmanager: Startzeit in 32-Bit-Spalte (Überlauf nach ~248 Tagen Laufzeit)" "grep -q 'GObject.TYPE_INT64, int)' $TM"
 cat > "$wt/tmtest.py" <<'TMTEST'
 import importlib.machinery, importlib.util, signal, subprocess, sys, time
 ld = importlib.machinery.SourceFileLoader("tm", sys.argv[1])
@@ -2574,6 +2664,8 @@ hcase "$CL --clean all" "alles aufräumen: ein pkexec-Aufruf + Vorschaubilder" "
 head -c 1234 /dev/zero > "$wt/home/.cache/thumbnails/x.png"
 hcase "$CL --clean thumbnails" "nur Vorschaubilder: kein Passwort" "" "$CV" "" '[ ! -e $S/pkexec ] && [ ! -e '"$wt"'/home/.cache/thumbnails/x.png ]'
 hcase "$CL --clean journal" "Passwort abgebrochen" "" "$CV PKEXEC_RC=126" "" 'grep -q "No password entered" $S/notify'
+hcase "$CL --clean journal" "Helfer scheitert -> genau eine Meldung" "" "$CV PKEXEC_RC=1" "" \
+    '[ "$(grep -c . $S/notify)" -eq 1 ] && grep -q "could not be cleaned (.* freed)" $S/notify && ! grep -q "Done" $S/notify'
 check "Cleaner: unbekannter Posten angenommen" "! $CL --clean everything-else >/dev/null 2>&1"
 head -c 1234 /dev/zero > "$wt/home/.cache/thumbnails/y.png"
 hcase "$CL" "Fenster: Übersicht + einzelner Posten" "" "$CV" "1 0 -" \

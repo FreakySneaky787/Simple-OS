@@ -30,6 +30,10 @@ Schon erledigt (4. Oktober, mit der ISO vom 3. Oktober plus neuem Bootbild):
   - Firewall im Control Center → System → Security steht auf an.
   - Power mode bietet drei Profile an.
   - Software Updates zeigt ein eventuelles BIOS-Update.
+  - Updates installieren: Die Meldung „Updates installed“ startet beim Anklicken **nicht** sofort neu, sondern fragt
+    erst („Restart now“ / „Later“). Nach dem Neustart bietet Software Updates nicht dieselben Updates wieder an.
+    War ein BIOS-Update dabei und kommt es trotzdem wieder, erscheint eine Meldung, dass es nicht übernommen wurde.
+    Bei Problemen `~/.cache/simpleos-update.log` aufheben.
   - Report a Problem erstellt eine Datei auf dem Desktop.
 - [ ] **Secure Boot an** (im BIOS einschalten): Das installierte System startet trotzdem.
 - [ ] **Dual-Boot mit Windows:** Im Installer „Install alongside“ wählen. Danach zeigt das GRUB-Menü Simple OS **und**

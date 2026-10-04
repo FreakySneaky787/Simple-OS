@@ -7,7 +7,11 @@
 #                                    Firmware/BIOS vom LVFS (fwupd; nicht in VMs). Vorher ein Wiederherstellungspunkt,
 #                                    falls in simpleos-backup eingeschaltet. Firmware-Ergebnis als Zeile
 #                                    "FIRMWARE: installed|needs-power|failed" – ein Firmware-Fehler macht das
-#                                    System-Update nicht ungültig (Exit-Code bleibt 0)
+#                                    System-Update nicht ungültig (Exit-Code bleibt 0). Updates, die nur mit dem
+#                                    Entfernen anderer Pakete gingen, bleiben liegen: Zeile "HELD: <Anzahl>".
+#                                    Kernel, Microcode, Firmware, libc, systemd aktualisiert -> /run/reboot-required
+#   pkexec simpleos-system-setup --refresh   nur nachsehen (simpleos-update "Check now"): Paketlisten und
+#                                    Firmware-Metadaten laden, nichts installieren
 #   pkexec simpleos-system-setup --firewall on|off   Firewall (ufw) ein-/ausschalten (Control Center → System)
 #   pkexec simpleos-system-setup --drivers PAKET…   Treiber/Firmware/Microcode installieren (simpleos-drivers
 #                                    --install); nur Pakete der festen Liste DRIVER_PACKAGES, Quellen werden um
@@ -24,7 +28,7 @@ set -u
 export DEBIAN_FRONTEND=noninteractive
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-usage() { echo "Aufruf: $0 [--browser firefox|chromium|mullvad] [--purge-firefox] [--office libreoffice|onlyoffice|none] [--gaming] | --repos | --upgrade | --firewall on|off | --drivers PAKET…" >&2; exit 2; }
+usage() { echo "Aufruf: $0 [--browser firefox|chromium|mullvad] [--purge-firefox] [--office libreoffice|onlyoffice|none] [--gaming] | --repos | --upgrade | --refresh | --firewall on|off | --drivers PAKET…" >&2; exit 2; }
 # Einzige Pakete, die --drivers installieren darf (dieselbe Liste wie ALLOWED in simpleos-drivers)
 # Kernel/Header/Firmware kommen per Pinning aus bookworm-backports (/etc/apt/preferences.d/simpleos-backports.pref)
 DRIVER_PACKAGES="firmware-linux-nonfree firmware-misc-nonfree firmware-intel-graphics firmware-amd-graphics
@@ -33,7 +37,7 @@ nvidia-tesla-470-driver linux-image-amd64 linux-headers-amd64 intel-microcode am
 
 [ "$(id -u)" -eq 0 ] || [ "${SIMPLEOS_SETUP_DRYRUN:-}" = 1 ] || { echo "simpleos-system-setup: muss als root laufen (pkexec)" >&2; exit 1; }
 
-browser= purge_firefox=0 office=none gaming=0 repos_only=0 upgrade=0 drivers=0 firewall=
+browser= purge_firefox=0 office=none gaming=0 repos_only=0 upgrade=0 refresh=0 drivers=0 firewall=
 while [ $# -gt 0 ]; do
     case "$1" in
         --drivers)       [ $# -ge 2 ] || usage; drivers=1; shift; break ;;   # Rest = Paketnamen
@@ -43,6 +47,7 @@ while [ $# -gt 0 ]; do
         --gaming)        gaming=1 ;;
         --repos)         repos_only=1 ;;
         --upgrade)       upgrade=1 ;;
+        --refresh)       refresh=1 ;;
         --firewall)      [ $# -ge 2 ] || usage; firewall=$2; shift ;;
         *)               usage ;;
     esac
@@ -84,11 +89,25 @@ apt_wait() {
 # apt-get update nach apt_wait; scheitert es (Sperre, kurzer Netz-Aussetzer), nach 5 s ein zweiter Versuch
 apt_get_update() {
     apt_wait
-    apt-get -o DPkg::Lock::Timeout=300 update && return 0
+    ${APT_GET:-apt-get} -o DPkg::Lock::Timeout=300 update && return 0
     sleep 5
     apt_wait
-    apt-get -o DPkg::Lock::Timeout=300 update
+    ${APT_GET:-apt-get} -o DPkg::Lock::Timeout=300 update
 }
+# Neustart nötig? stdin = Paketnamen, die gerade aktualisiert/installiert wurden. Debian legt /run/reboot-required
+# nur bei dbus selbst an (unattended-upgrades fehlt) – ohne diese Markierung meldete simpleos-update nach einem
+# Kernel-Update "up to date" statt um einen Neustart zu bitten.
+REBOOT_FLAG=/var/run/reboot-required
+REBOOT_PKGS='^(linux-image-|intel-microcode|amd64-microcode|firmware-|nvidia-|libc6|systemd|libsystemd0|udev|dbus)'
+mark_reboot() {
+    _pk=$(grep -E "$REBOOT_PKGS" | sort -u)
+    [ -n "$_pk" ] || return 0
+    : > "$REBOOT_FLAG" 2>/dev/null
+    printf '%s\n' "$_pk" >> "$REBOOT_FLAG.pkgs" 2>/dev/null
+    return 0
+}
+# Was "apt-get -s" installieren würde: Paketnamen (stdin = Simulation, nur "Inst"-Zeilen)
+sim_pkgs() { awk '$1 == "Inst" { print $2 }'; }
 installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q 'install ok installed'; }
 # Flatpak ohne --noninteractive: nur so gibt es Fortschritt aus (-y beantwortet alle Rückfragen); der Filter macht
 # daraus STAGE/PROGRESS (gewichtet nach Größe der Teile) und reicht Fehlertexte durch.
@@ -146,13 +165,40 @@ if [ "$repos_only" -eq 1 ]; then
     exit 0
 fi
 
+# install_drivers PAKET…: Paketlisten laden, installieren; Erfolg = apt ohne Fehler UND alle Pakete installiert.
+# Der Exit-Code von apt zählt mit: linux-image-amd64 (neuerer Kernel aus Backports) ist als Metapaket immer schon
+# installiert – ein gescheitertes Update meldete sonst "Drivers installed". Exit-Code über eine Datei, weil die
+# Gruppe in der Pipe eine Subshell ist (ein "exit" dort beendete nur sie).
+install_drivers() {
+    _drc=$(mktemp)
+    echo 1 > "$_drc"
+    {
+        if [ "${dry:-0}" = 1 ]; then $APT_GET update >&2; else apt_get_update >&2; fi || { echo "Paketlisten konnten nicht geladen werden" >&2; exit 1; }
+        echo "STAGE: Downloading drivers" >&3
+        $APT_GET -y -o DPkg::Lock::Timeout=300 -o Dpkg::Options::=--force-confdef \
+            -o Dpkg::Options::=--force-confold -o APT::Status-Fd=3 install "$@" >&2
+        echo $? > "$_drc"
+    } 3>&1 | /usr/local/lib/simpleos/progress-filter apt --dl 5 40 --inst 40 100
+    _arc=$(cat "$_drc" 2>/dev/null); rm -f "$_drc"
+    _rc=0
+    [ "${_arc:-1}" -eq 0 ] || { echo "apt-get fehlgeschlagen (Exit ${_arc:-?})" >&2; _rc=1; }
+    if [ "${dry:-0}" != 1 ]; then
+        for _p in "$@"; do
+            installed "$_p" || { echo "nicht installiert: $_p" >&2; _rc=1; }
+        done
+        [ "$_rc" -eq 0 ] && printf '%s\n' "$@" | mark_reboot
+    fi
+    [ "$_rc" -eq 0 ] && { echo "PROGRESS: 100"; step "Done"; }
+    return "$_rc"
+}
+
 # ------------------------------------------------------------ Treiber (simpleos-drivers --install)
 # Nur Pakete aus DRIVER_PACKAGES; nvidia-driver/broadcom-sta-dkms liegen in non-free/contrib -> Quellen ergänzen.
 # apt meldet Fortschritt über Status-Fd 3 ("dlstatus:…:<Prozent>:…", "pmstatus:<Paket>:<Prozent>:…") ->
 # "STAGE:"/"PROGRESS:" (Download 5–40 %, Installation 40–100 %; progress-filter streamt sofort). Erfolg = alle
 # Pakete wirklich installiert.
 if [ "$drivers" -eq 1 ]; then
-    [ "$browser$purge_firefox$gaming$upgrade" = "000" ] && [ "$office" = none ] && [ -z "$firewall" ] || usage  # nur allein erlaubt
+    [ "$browser$purge_firefox$gaming$upgrade$refresh" = "0000" ] && [ "$office" = none ] && [ -z "$firewall" ] || usage  # nur allein erlaubt
     [ $# -ge 1 ] || usage
     for p in "$@"; do
         case " $(echo $DRIVER_PACKAGES) " in *" $p "*) ;; *) echo "Paket nicht erlaubt: $p" >&2; exit 2 ;; esac
@@ -163,26 +209,14 @@ if [ "$drivers" -eq 1 ]; then
     echo "STAGE: Checking package sources"
     echo "PROGRESS: 2"
     [ "$dry" = 1 ] || ensure_repos >&2 || true
-    rc=0
-    {
-        if [ "$dry" = 1 ]; then $APT_GET update >&2; else apt_get_update >&2; fi || exit 1
-        echo "STAGE: Downloading drivers" >&3
-        $APT_GET -y -o DPkg::Lock::Timeout=300 -o Dpkg::Options::=--force-confdef \
-            -o Dpkg::Options::=--force-confold -o APT::Status-Fd=3 install "$@" >&2
-    } 3>&1 | /usr/local/lib/simpleos/progress-filter apt --dl 5 40 --inst 40 100
-    if [ "$dry" != 1 ]; then
-        for p in "$@"; do
-            installed "$p" || { echo "nicht installiert: $p" >&2; rc=1; }
-        done
-    fi
-    [ "$rc" -eq 0 ] && { echo "PROGRESS: 100"; step "Done"; }
-    exit "$rc"
+    install_drivers "$@"
+    exit $?
 fi
 
 # ------------------------------------------------------------ Firewall (ufw)
 # Nur allein erlaubt. "ufw --force enable" fragt nicht nach (bestehende SSH-Verbindungen gibt es hier nicht)
 if [ -n "$firewall" ]; then
-    [ "$browser$purge_firefox$gaming$upgrade$repos_only$drivers" = "00000" ] && [ "$office" = none ] || usage
+    [ "$browser$purge_firefox$gaming$upgrade$refresh$repos_only$drivers" = "000000" ] && [ "$office" = none ] || usage
     command -v ufw >/dev/null || { echo "FEHLER: ufw fehlt" >&2; exit 1; }
     if [ "$firewall" = on ]; then
         step "Turning on the firewall"
@@ -199,7 +233,6 @@ fi
 # scheitert es – dann gelten die vom fwupd-refresh.timer). In VMs gibt es nichts zu aktualisieren.
 # fw_update: spielt alle ein und meldet "FIRMWARE: …"; BIOS-Kapseln (UEFI) laufen beim nächsten Neustart ->
 # Neustart-Hinweis über $REBOOT_FLAG. Ohne Netzteil/zu leerem Akku verweigert fwupd selbst -> needs-power.
-REBOOT_FLAG=/var/run/reboot-required
 FWUPD_OPTS="--assume-yes --no-unreported-check --no-reboot-check --no-device-prompt --no-security-fix"
 fw_pending() {
     command -v fwupdmgr >/dev/null || return 1
@@ -230,16 +263,52 @@ fw_update() {
 # Sicher: unterbrochene Installationen zuerst reparieren, bei belegtem apt warten (aptget: Lock-Timeout),
 # "upgrade --with-new-pkgs" entfernt nie Pakete, geänderte Konfigurationsdateien bleiben (force-confold).
 # Exit != 0 -> simpleos-update meldet "Some updates could not be installed".
+# ------------------------------------------------------------ Nur nachsehen (simpleos-update "Check now")
+if [ "$refresh" -eq 1 ]; then
+    [ "$browser$purge_firefox$gaming$upgrade" = "000" ] && [ "$office" = none ] || usage  # nur allein erlaubt
+    step "Checking for updates"
+    apt_get_update || { fail "Paketlisten konnten nicht geladen werden"; exit 1; }
+    if command -v fwupdmgr >/dev/null && ! systemd-detect-virt -q --vm 2>/dev/null; then
+        # shellcheck disable=SC2086
+        timeout 120 fwupdmgr refresh $FWUPD_OPTS >/dev/null 2>&1
+    fi
+    exit 0
+fi
+
+# Welches apt-Kommando installiert alles, ohne etwas zu entfernen? "full-upgrade" zieht auch Updates nach, die
+# neue oder geänderte Abhängigkeiten haben (z.B. aufgeteilte Firmware-Pakete aus Backports) – "upgrade
+# --with-new-pkgs" hielt sie zurück, simpleos-update zählte sie aber mit: nach dem Update (und Neustart) standen
+# dieselben Updates wieder an. Nur wenn die Simulation nichts entfernt (und zur Sicherheit mit --no-remove);
+# sonst "upgrade --with-new-pkgs", das nie entfernt. Ausgabe: "full" oder "safe".
+upgrade_mode() {
+    _sim=$(LC_ALL=C ${APT_GET:-apt-get} -s full-upgrade 2>/dev/null) || { echo safe; return 0; }
+    if printf '%s\n' "$_sim" | grep -q '^Remv '; then echo safe; else echo full; fi
+}
+# Was danach noch ansteht, ginge nur mit dem Entfernen anderer Pakete -> "HELD: <Anzahl>" (simpleos-update sagt das
+# ehrlich, statt "up to date" zu melden und dieselben Updates beim nächsten Login wieder anzubieten)
+report_held() {
+    _held=$(LC_ALL=C ${APT_GET:-apt-get} -s full-upgrade 2>/dev/null | awk '$1 == "Inst" && $3 ~ /^\[/ { print $2 }')
+    [ -n "$_held" ] || return 0
+    echo "Zurückgehalten (bräuchten das Entfernen anderer Pakete):" $_held >&2
+    echo "HELD: $(printf '%s\n' "$_held" | grep -c .)"
+}
+upgrade_sim() {  # $1 full|safe -> Simulation auf stdout
+    if [ "$1" = full ]; then LC_ALL=C ${APT_GET:-apt-get} -s full-upgrade 2>/dev/null
+    else LC_ALL=C ${APT_GET:-apt-get} -s upgrade --with-new-pkgs 2>/dev/null; fi
+}
+
 if [ "$upgrade" -eq 1 ]; then
-    [ "$browser$purge_firefox$gaming" = "00" ] && [ "$office" = none ] || usage  # nur allein erlaubt
+    [ "$browser$purge_firefox$gaming$refresh" = "0000" ] && [ "$office" = none ] || usage  # nur allein erlaubt
     step "Checking for updates"
     dpkg --configure -a || fail "Unterbrochene Installation konnte nicht repariert werden"
     apt_get_update || { fail "Paketlisten konnten nicht geladen werden"; exit 1; }
     # Erst nachsehen, was ansteht: ohne System- und App-Updates gleich fertig ("UPTODATE: 1", Ladefenster zeigt
     # "Already up to date") – vorher lief trotzdem alles mit Ladebalken durch ("Nothing to do").
     # Kann Flatpak nicht nachsehen (Netz), lieber normal aktualisieren.
+    mode=$(upgrade_mode)
+    planned=$(upgrade_sim "$mode" | sim_pkgs)
     apt_pending=0
-    apt-get -s upgrade --with-new-pkgs 2>/dev/null | grep -q '^Inst ' && apt_pending=1
+    [ -n "$planned" ] && apt_pending=1
     fp_pending=0
     if command -v flatpak >/dev/null && flatpak remotes --system 2>/dev/null | grep -q .; then
         _ls=$(flatpak remote-ls --updates --system --columns=ref 2>/dev/null) || _ls=unbekannt
@@ -249,6 +318,7 @@ if [ "$upgrade" -eq 1 ]; then
     fw_pending && fw=1
     if [ "$apt_pending$fp_pending$fw" = 000 ] && [ "$failed" -eq 0 ]; then
         echo "UPTODATE: 1"
+        report_held
         echo "DONE: Already up to date"
         step "Done"
         exit 0
@@ -261,8 +331,14 @@ if [ "$upgrade" -eq 1 ]; then
                 echo "Wiederherstellungspunkt vor dem Update fehlgeschlagen – Update läuft trotzdem" >&2
         fi
         step "Installing updates"
-        aptget upgrade --with-new-pkgs || fail "Updates konnten nicht installiert werden"
+        if [ "$mode" = full ]; then
+            aptget --no-remove full-upgrade || fail "Updates konnten nicht installiert werden"
+        else
+            aptget upgrade --with-new-pkgs || fail "Updates konnten nicht installiert werden"
+        fi
+        printf '%s\n' "$planned" | mark_reboot
     fi
+    report_held
     if [ "$fp_pending" -eq 1 ]; then
         step "Updating apps from the Software Store"
         _rcf=$(mktemp)

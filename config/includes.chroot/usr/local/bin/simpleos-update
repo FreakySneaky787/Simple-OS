@@ -3,10 +3,20 @@
 #   simpleos-update           Rofi-Fenster: verfügbare Updates, "Install now" -> pkexec (Passwortdialog)
 #   simpleos-update --check   Hintergrund (Openbox-Autostart): zählt Updates; gibt es welche, erscheint eine
 #                             Meldung mit "Install" -> öffnet das Fenster oben. Nicht in der Live-Session.
-# Gezählt wird "apt list --upgradable" aus den Paketlisten, die apt-daily.timer täglich lädt
-# (/etc/apt/apt.conf.d/20simpleos-periodic), dazu Firmware-/BIOS-Updates von fwupd (Metadaten: fwupd-refresh.timer).
+# Gezählt wird, was der Root-Helfer wirklich installieren würde ("apt-get -s full-upgrade", wenn es nichts entfernt,
+# sonst "apt-get -s upgrade --with-new-pkgs" – dieselbe Wahl wie der Helfer; nur neue Versionen, keine neuen
+# Abhängigkeiten) aus den Paketlisten, die apt-daily.timer täglich lädt (/etc/apt/apt.conf.d/20simpleos-periodic),
+# dazu Firmware-/BIOS-Updates von fwupd (Metadaten: fwupd-refresh.timer). Früher zählte "apt list --upgradable"
+# auch Updates, die der Helfer gar nicht installiert -> nach Update und Neustart standen sie wieder da.
 # Installiert wird nur über den festen Root-Helfer "simpleos-system-setup --upgrade" (Polkit-Aktion, keine freien
-# Paketnamen, entfernt nie Pakete); er meldet "FIRMWARE: installed|needs-power|failed".
+# Paketnamen, entfernt nie Pakete); er meldet "FIRMWARE: installed|needs-power|failed" und "HELD: <Anzahl>".
+# "Check now" (nichts angezeigt): "simpleos-system-setup --refresh" lädt nur die Listen, danach entscheidet man
+# im Fenster selbst, ob installiert wird.
+# Neustart: nie direkt aus der Meldung – ein Klick darauf fragt erst nach ("Restart now" / "Later"), damit niemand
+# mitten in der Arbeit unterbrochen wird.
+# BIOS-Updates laufen beim Neustart; steht dasselbe Gerät danach wieder in der Liste, ist das Einspielen gescheitert
+# -> eine ehrliche Meldung (Merker ~/.cache/simpleos/firmware-installed).
+# Tests: SIMPLEOS_REBOOT_FLAG ersetzt /var/run/reboot-required.
 # Robust wie simpleos-wifi: kein set -e, jeder Pfad endet mit Exit 0 und einer verständlichen Meldung;
 # Ausgabe der Installation in ~/.cache/simpleos-update.log.
 
@@ -39,8 +49,16 @@ trap 'rm -rf "$LOCK"' EXIT
 trap 'exit 0' INT TERM HUP
 
 is_live() { grep -qw 'boot=live' /proc/cmdline 2>/dev/null; }
-# Paketnamen mit Updates (eine Zeile pro Paket); "Listing..." hat keinen "/"
-upgradable() { LC_ALL=C apt list --upgradable 2>/dev/null | awk -F/ 'NF > 1 && $1 != "" { print $1 }'; }
+REBOOT_FLAG=${SIMPLEOS_REBOOT_FLAG:-/var/run/reboot-required}
+FW_MARK=${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}/simpleos/firmware-installed
+# Paketnamen mit Updates (eine Zeile pro Paket): was der Helfer installieren würde (siehe oben). "Inst paket [alt]
+# (neu …)" = neue Version; neue Pakete ohne "[alt]" (z.B. das Kernel-Paket hinter linux-image-amd64) zählen nicht.
+# apt-get -s braucht kein root.
+upgradable() {
+    sim=$(LC_ALL=C apt-get -s full-upgrade 2>/dev/null) || sim=
+    printf '%s\n' "$sim" | grep -q '^Remv ' && sim=$(LC_ALL=C apt-get -s upgrade --with-new-pkgs 2>/dev/null)
+    printf '%s\n' "$sim" | awk '$1 == "Inst" && $3 ~ /^\[/ { print $2 }'
+}
 # Geräte mit Firmware-Update (eine Zeile pro Gerät). --json fragt nie nach, --no-authenticate: kein Passwortdialog
 # nur fürs Nachsehen. In der JSON-Ausgabe steht der Gerätename vor "Releases" (Release-Namen folgen erst danach).
 firmware() {
@@ -52,6 +70,26 @@ firmware() {
 }
 # Alles, was ansteht: Firmware zuerst (mit Hinweis), dann Pakete
 pending() { firmware | sed 's/$/ (firmware)/'; upgradable; }
+# Nach einem Neustart: BIOS-/Firmware-Update, das der Helfer eingespielt hatte, steht noch an -> beim Neustart
+# nicht übernommen. Eine Meldung, dann ist der Merker weg (das Update bleibt wie gewohnt in der Liste).
+firmware_check() {
+    [ -s "$FW_MARK" ] || return 0
+    # Merker aus dieser Sitzung (noch kein Neustart): nichts sagen
+    [ -e "$REBOOT_FLAG" ] && return 0
+    still=$(firmware | grep -Fxf "$FW_MARK")
+    rm -f "$FW_MARK"
+    [ -n "$still" ] || return 0
+    sos_notify "The firmware update ($(printf '%s' "$still" | head -n 1)) was not applied during the restart. Keep the charger plugged in and try again from Settings → Software Updates. Details: ~/.cache/simpleos-update.log" critical
+}
+# Neustart anbieten: Meldung mit "Restart…"; ein Klick fragt erst nach – nie sofort neu starten
+offer_restart() {  # $1 Text
+    sos_ask "Updates installed" "$1" "Restart…" || return 0
+    sos_add "$(sos_fa '\357\200\241')  Restart now" "restart"
+    sos_add "$(sos_fa '\357\200\215')  Later" "later"
+    sos_pick "<b>Restart now?</b>${SOS_NL}$(sos_dim "Save your work first – open windows will close.")" 440
+    [ "$action" = restart ] || return 0
+    systemctl reboot >&2 2>&1 || loginctl reboot >&2 2>&1 || sos_notify "Please restart your computer to finish the update."
+}
 last_checked() {
     for f in /var/lib/apt/periodic/update-success-stamp /var/lib/apt/lists; do
         [ -e "$f" ] && { date -r "$f" '+%b %d, %H:%M' 2>/dev/null; return 0; }
@@ -93,14 +131,21 @@ install_updates() {
                     fwnote="The firmware update could not be installed. Details: ~/.cache/simpleos-update.log" ;;
             esac
             [ -n "$fwnote" ] && sos_notify "$fwnote" critical
-            restart="Restart your computer to finish the update."
-            printf '%s\n' "$log" | grep -qx 'FIRMWARE: installed' &&
-                restart="Restart your computer to finish the update. Firmware is installed during the restart – keep the charger plugged in."
-            if [ -e /var/run/reboot-required ]; then
-                if sos_ask "Updates installed" "$restart" "Restart now"; then
-                    systemctl reboot >&2 2>&1 || sos_notify "Please restart your computer to finish the update."
-                fi
-            elif [ -n "$fwnote" ]; then
+            # Updates, die nur mit dem Entfernen anderer Software gingen – nie still übergehen
+            held=$(printf '%s\n' "$log" | sed -n 's/^HELD: *\([0-9][0-9]*\)$/\1/p' | head -n 1)
+            if [ -n "$held" ]; then
+                if [ "$held" -eq 1 ]; then n="1 update"; else n="$held updates"; fi
+                sos_notify "$n could not be installed automatically: they would remove other software. Details: ~/.cache/simpleos-update.log" critical
+            fi
+            restart="Your computer needs a restart to finish the update. Restart when it suits you."
+            if printf '%s\n' "$log" | grep -qx 'FIRMWARE: installed'; then
+                restart="Your computer needs a restart to finish the update. Firmware is installed during the restart – keep the charger plugged in."
+                # Geräte merken: stehen sie nach dem Neustart noch an, hat das Einspielen nicht geklappt
+                mkdir -p "${FW_MARK%/*}" 2>/dev/null && firmware > "$FW_MARK" 2>/dev/null
+            fi
+            if [ -e "$REBOOT_FLAG" ]; then
+                offer_restart "$restart"
+            elif [ -n "$fwnote$held" ]; then
                 :
             elif printf '%s\n' "$log" | grep -qx 'UPTODATE: 1'; then
                 sos_notify "Your system is up to date – there was nothing to install."
@@ -119,10 +164,29 @@ install_updates() {
     esac
 }
 
+# "Check now": nur Paketlisten/Firmware-Metadaten laden (Passwort), danach zeigt das Fenster, was ansteht
+refresh_lists() {
+    if [ ! -x "$HELPER" ] || ! command -v pkexec >/dev/null; then
+        sos_notify "Updates cannot be checked on this system (update helper missing)." critical
+        return 1
+    fi
+    sos_notify "Checking for updates…" low
+    pkexec "$HELPER" --refresh >>"$SOS_LOG" 2>&1
+    rc=$?
+    sos_log "refresh exit $rc"
+    case "$rc" in
+        0) return 0 ;;
+        126|127) sos_notify "No password entered – nothing was checked." ;;
+        *) sos_notify "Updates could not be checked: no internet connection? Details: ~/.cache/simpleos-update.log" critical ;;
+    esac
+    return 1
+}
+
 # ---- Hintergrund-Prüfung (Autostart)
 if [ "${1:-}" = --check ]; then
     is_live && exit 0
-    command -v apt >/dev/null || exit 0
+    command -v apt-get >/dev/null || exit 0
+    firmware_check
     count=$(pending | grep -c . || true)
     sos_is_num "$count" || count=0
     [ "$count" -gt 0 ] || exit 0
@@ -138,25 +202,36 @@ if is_live; then
     sos_notify "Updates can be installed after Simple OS is installed on your computer."
     exit 0
 fi
-command -v apt >/dev/null || { sos_notify "Updates are not available on this system (apt missing)." critical; exit 0; }
+command -v apt-get >/dev/null || { sos_notify "Updates are not available on this system (apt missing)." critical; exit 0; }
+firmware_check
 
-pkgs=$(pending)
-count=$(printf '%s\n' "$pkgs" | grep -c . || true)
-sos_is_num "$count" || count=0
-# FontAwesome 4: download U+F019, refresh U+F021, times U+F00D
-if [ "$count" -gt 0 ]; then
-    # Zeilen mit ", " verbinden – Firmware-Namen enthalten Leerzeichen ("System Firmware (firmware)")
-    names=$(printf '%s\n' "$pkgs" | head -n 4 | awk 'NR > 1 { printf ", " } { printf "%s", $0 }')
-    [ "$count" -gt 4 ] && names="$names, …"
-    if [ "$count" -eq 1 ]; then head="1 update available"; else head="$count updates available"; fi
-    sos_add "$(sos_fa '\357\200\231')  Install now" "install"
-    sos_add "$(sos_fa '\357\200\215')  Not now" "close"
-    sos_pick "<b>$head</b>${SOS_NL}$(sos_esc "$names")" 480
-else
-    sos_add "$(sos_fa '\357\200\241')  Check now" "install"
-    sos_add "$(sos_fa '\357\200\215')  Close" "close"
-    sos_pick "<b>You're up to date</b>${SOS_NL}Last checked $(last_checked)" 480
-fi
-
-[ "$action" = install ] && install_updates
+# Fenster; nach "Check now" (frische Listen) noch einmal mit dem neuen Stand
+checked=0
+while :; do
+    pkgs=$(pending)
+    count=$(printf '%s\n' "$pkgs" | grep -c . || true)
+    sos_is_num "$count" || count=0
+    # FontAwesome 4: download U+F019, refresh U+F021, times U+F00D
+    if [ "$count" -gt 0 ]; then
+        # Zeilen mit ", " verbinden – Firmware-Namen enthalten Leerzeichen ("System Firmware (firmware)")
+        names=$(printf '%s\n' "$pkgs" | head -n 4 | awk 'NR > 1 { printf ", " } { printf "%s", $0 }')
+        [ "$count" -gt 4 ] && names="$names, …"
+        if [ "$count" -eq 1 ]; then head="1 update available"; else head="$count updates available"; fi
+        sos_add "$(sos_fa '\357\200\231')  Install now" "install"
+        sos_add "$(sos_fa '\357\200\215')  Not now" "close"
+        sos_pick "<b>$head</b>${SOS_NL}$(sos_esc "$names")" 480
+    elif [ "$checked" = 1 ]; then
+        sos_notify "Your system is up to date."
+        exit 0
+    else
+        sos_add "$(sos_fa '\357\200\241')  Check now" "check"
+        sos_add "$(sos_fa '\357\200\215')  Close" "close"
+        sos_pick "<b>You're up to date</b>${SOS_NL}Last checked $(last_checked)" 480
+    fi
+    case "$action" in
+        install) install_updates ;;
+        check)   refresh_lists || exit 0; checked=1; continue ;;
+    esac
+    break
+done
 exit 0

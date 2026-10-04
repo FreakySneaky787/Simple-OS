@@ -37,7 +37,13 @@ sos_pick "<b>Power</b>" 300
 
 case "$action" in
     lock)     lock_screen || sos_notify "The screen could not be locked." critical ;;
-    sleep)    lock_screen || sos_log "lock before suspend failed"  # beim Aufwachen gesperrt, wie bei Windows
+    # beim Aufwachen gesperrt, wie bei Windows – nur nicht in der Live-Session: dort kennt niemand das Passwort
+    # (wie /usr/lib/systemd/system-sleep/simpleos-lock)
+    sleep)    if [ -x /usr/local/bin/simpleos-live ] && /usr/local/bin/simpleos-live --check; then
+                  sos_log "Live-Session: vor dem Schlafen nicht gesperrt"
+              else
+                  lock_screen || sos_log "lock before suspend failed"
+              fi
               power suspend "Sleep is not available on this computer." ;;
     restart)  power reboot "The computer could not restart. Please save your work and try again." ;;
     shutdown) power poweroff "The computer could not shut down. Please save your work and try again." ;;

@@ -399,10 +399,14 @@ def battery_text():
     return ""
 
 
+def live_session():
+    return cmd("/usr/local/bin/simpleos-live", "--check").returncode == 0
+
+
 def power_action(what):
     if what == "lock":
         return cmd("dm-tool", "lock").returncode == 0 or cmd("loginctl", "lock-session").returncode == 0
-    if what == "sleep":
+    if what == "sleep" and not live_session():   # Live-Session: Passwort unbekannt -> nicht sperren
         cmd("dm-tool", "lock")
     verb = {"sleep": "suspend", "restart": "reboot", "shutdown": "poweroff"}[what]
     return cmd("systemctl", verb).returncode == 0 or cmd("loginctl", verb).returncode == 0
@@ -671,17 +675,23 @@ def main(argv):
                             button("Open", lambda: spawn("nm-connection-editor")))]))
             self.show_all_now()
 
-        def click(self, ssid, secured, in_use):
+        def click(self, ssid, secured, in_use, ask=False):
             dev = self.w.network_state()["wifi"]
             if in_use:
                 return bg(lambda: self.w.disconnect_wifi(dev), self.done)
-            saved = ssid in self.w.nmcli("-t", "-f", "NAME", "connection", "show").stdout.splitlines()
             password = ""
-            if secured and not saved:
+            # Passwort abfragen: neues Netz – oder das gespeicherte Passwort hat gerade nicht geklappt (ask)
+            if secured and (ask or ssid not in self.w.saved_networks()):
                 password = self.win.ask_password(ssid)
                 if password is None:
-                    return
-            bg(lambda: self.w.connect_wifi(dev, ssid, password), self.done)
+                    return self.refresh()
+            retry = secured and not password   # gespeichertes Profil ohne neues Passwort versucht
+
+            def done(res):
+                if retry and isinstance(res, tuple) and not res[0]:
+                    return self.click(ssid, secured, False, ask=True)
+                self.done(res)
+            bg(lambda: self.w.connect_wifi(dev, ssid, password, secured), done)
 
         def done(self, res):
             if isinstance(res, tuple) and not res[0]:
@@ -913,7 +923,7 @@ def main(argv):
                            ("Scan a document", "Scanners and printers with a scanner",
                             button("Scan", lambda: spawn("simple-scan")))]))
             self.put(label("<b>Backups</b>", markup=True))
-            if cmd("simpleos-live", "--check").returncode == 0:
+            if live_session():
                 self.note("Backups can only be created on an installed system.")
             else:
                 self.put(card([("Restore points", "Undo system changes – your personal files are not touched",

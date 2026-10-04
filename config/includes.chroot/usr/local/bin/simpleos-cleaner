@@ -119,7 +119,7 @@ free_bytes() { df -B1 --output=avail / 2>/dev/null | tail -n 1 | tr -d ' '; }
 # ---- Aufräumen: $@ = Posten. Thumbnails selbst, der Rest mit einem pkexec-Aufruf
 clean() {
     before=$(free_bytes)
-    flags= user=0
+    flags= user=0 failed=0
     for it in "$@"; do
         case "$it" in
             thumbnails) user=1 ;;
@@ -138,14 +138,19 @@ clean() {
             case "$rc" in
                 0) ;;
                 126|127) sos_notify "No password entered – system files were not cleaned."; return ;;
-                *) sos_notify "Some items could not be cleaned. Details: ~/.cache/simpleos-cleaner.log" critical ;;
+                *) failed=1 ;;
             esac
         fi
     fi
     after=$(free_bytes)
     gained=$(( ${after:-0} - ${before:-0} ))
     [ "$gained" -lt 0 ] && gained=0
-    sos_notify "Done – $(human "$gained") freed." low
+    # genau eine Ergebnismeldung (vorher kam nach dem Fehler zusätzlich "Done – … freed")
+    if [ "$failed" = 1 ]; then
+        sos_notify "Some items could not be cleaned ($(human "$gained") freed). Details: ~/.cache/simpleos-cleaner.log" critical
+    else
+        sos_notify "Done – $(human "$gained") freed." low
+    fi
 }
 
 case "${1:-}" in

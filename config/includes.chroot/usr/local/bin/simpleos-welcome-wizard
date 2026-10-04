@@ -312,12 +312,20 @@ def signal_word(signal):
     return "Strong signal" if signal >= 70 else "Good signal" if signal >= 40 else "Weak signal"
 
 
-def connect_wifi(dev, ssid, password):
-    """(ok, Meldung in Alltagssprache)"""
+def saved_networks():
+    """Namen der gespeicherten Verbindungen (nmcli -t maskiert ':' und '\\')."""
+    return [split_terse(line)[0] for line in nmcli("-t", "-f", "NAME", "connection", "show").stdout.splitlines()]
+
+
+def connect_wifi(dev, ssid, password, secured=False):
+    """(ok, Meldung in Alltagssprache). Gespeichertes Netz + neues Passwort: das Passwort des Profils ersetzen
+    (sonst versuchte NetworkManager es weiter mit dem alten, falschen)."""
     if DRYRUN:
         print(f"DRYRUN: nmcli device wifi connect {ssid} ifname {dev}", flush=True)
         return True, f"Connected to {ssid}. You're online."
-    saved = ssid in nmcli("-t", "-f", "NAME", "connection", "show").stdout.splitlines()
+    saved = ssid in saved_networks()
+    if saved and password:
+        nmcli("connection", "modify", "id", ssid, "wifi-sec.psk", password)
     if saved and nmcli("--wait", "20", "connection", "up", "id", ssid, timeout=40).returncode == 0:
         return True, f"Connected to {ssid}. You're online."
     cmd = ["--wait", "30", "device", "wifi", "connect", ssid, "ifname", dev]
@@ -331,6 +339,8 @@ def connect_wifi(dev, ssid, password):
         nmcli("connection", "delete", "id", ssid)
     if password:
         return False, "That didn't work. The password may be wrong – please check it and try again."
+    if saved and secured:
+        return False, "That didn't work. The saved password may be wrong – please type the password and try again."
     return False, "That didn't work. Move closer to your router and try again."
 
 
@@ -561,12 +571,11 @@ class Wizard(Gtk.Window):
             self.net_status.set_text(f"Disconnecting from {ssid} ...")
         else:
             password = self.net_password.get_text() if secured else ""
-            if secured and not password and \
-                    ssid not in nmcli("-t", "-f", "NAME", "connection", "show").stdout.splitlines():
+            if secured and not password and ssid not in saved_networks():
                 self.net_hint.set_text(f"Please type the password for \"{ssid}\", then click Connect.")
                 self.net_password.grab_focus()
                 return
-            work = lambda: connect_wifi(dev, ssid, password)  # noqa: E731
+            work = lambda: connect_wifi(dev, ssid, password, secured)  # noqa: E731
             self.net_status.set_text(f"Connecting to {ssid} ...")
         self.net_busy = True
         self.net_connect_btn.set_sensitive(False)

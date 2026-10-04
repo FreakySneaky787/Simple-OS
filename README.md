@@ -51,7 +51,7 @@ leer ins Image sollen, legt ein Hook an (z.B. die Standardordner in `00_skel_bas
 | `usr/local/bin/simpleos-*` | Hilfsprogramme: Setup-Wizard, Theme, Browser-Wahl, Software-Store, Screenshot, Sound (simpleos-volume), Display (simpleos-display), Zwischenablage (simpleos-clipboard), dunst-Starter mit Akku-Filter (simpleos-dunst), Control Center (simpleos-control-center, Super+I), Software Center (simpleos-software-center), Bluetooth (simpleos-bluetooth), Nachtmodus (simpleos-nightlight), Energie (simpleos-power), Thunar-Aktionen (simpleos-wallpaper, simpleos-copy-file, simpleos-admin-open), Keybindings, Welcome, Netzwerk-Info, Taskleisten-Designer |
 | `usr/local/bin/simpleos-powermenu` | Power-Menü (Super+X, roter Knopf in der Taskleiste): Lock, Sleep, Restart, Shut Down, Log Out |
 | `usr/local/bin/simpleos-help` | Tastenkürzel-Übersicht (Super+H); `simpleos-keybindings` leitet dorthin weiter |
-| `usr/local/bin/simpleos-update` | System-Update: Prüfung nach dem Login, Meldung „Install“, Rofi-Fenster, pkexec-Helfer `--upgrade` |
+| `usr/local/bin/simpleos-update` | System-Update: Prüfung nach dem Login, Meldung „Install“, Rofi-Fenster, pkexec-Helfer `--upgrade`/`--refresh`, Neustart nur nach Rückfrage |
 | `usr/local/bin/simpleos-usb-notify` | USB-Meldungen für udiskie („"STICK" is ready“ – Klick öffnet den Dateimanager) |
 | `usr/local/lib/simpleos/common.sh` | gemeinsame Helfer der Rofi-Werkzeuge: Log, Meldungen, Rofi mit Grab-Wiederholung, Menü mit Aktionen |
 | `etc/apt/apt.conf.d/20simpleos-periodic` | Paketlisten täglich laden (nur prüfen, nichts automatisch installieren) |
@@ -243,10 +243,16 @@ leer ins Image sollen, legt ein Hook an (z.B. die Standardordner in `00_skel_bas
 - Rechtsklick-Menü: Catppuccin Mocha, Inter 11, einfarbige Symbole (`/usr/share/simpleos/menu-icons`, Hook
   `11_menu_icons`), runde Ecken und Schatten über picom.
 - Updates: `simpleos-update --check` läuft 2 Minuten nach dem Login (nicht in der Live-Session) und meldet sich nur,
-  wenn es Updates gibt; Klick → Rofi-Fenster („5 updates available · firefox-esr, …“) → „Install updates now“ →
-  ein Passwortdialog → `simpleos-system-setup --upgrade` (dpkg reparieren, apt-get update,
-  `upgrade --with-new-pkgs` – entfernt nie Pakete –, danach Flatpak-Apps). Ergebnis als Meldung, bei Bedarf
-  „Restart now“. Auch über Settings → Software Updates.
+  wenn es Updates gibt; Klick → Rofi-Fenster („5 updates available · firefox-esr, …“) → „Install now“ →
+  ein Passwortdialog → `simpleos-system-setup --upgrade` (dpkg reparieren, apt-get update, `full-upgrade
+  --no-remove`, wenn die Simulation nichts entfernt – sonst `upgrade --with-new-pkgs`; entfernt nie Pakete –,
+  danach Flatpak-Apps und Firmware). Gezählt wird genau das, was der Helfer installiert (`apt-get -s`), damit nach
+  dem Update nicht dieselben Updates wieder angeboten werden; was nur mit Entfernen ginge, meldet der Helfer als
+  `HELD: n` und das Fenster sagt es ehrlich. Kernel, Microcode, Firmware, libc, systemd → `/run/reboot-required`
+  (Debian legt die Markierung ohne unattended-upgrades nicht selbst an). Neustart nie direkt aus der Meldung:
+  „Restart…“ fragt erst nach („Restart now“ / „Later“). „Check now“ lädt nur die Paketlisten
+  (`--refresh`) und zeigt dann, was ansteht. Steht ein eingespieltes BIOS-Update nach dem Neustart noch an, kommt
+  eine Meldung, dass es nicht übernommen wurde. Auch über Settings → Software Updates.
 - Alle Rofi-Werkzeuge nutzen `usr/local/lib/simpleos/common.sh`: kein `set -e`, Exit 0 in jedem Pfad,
   Details in `~/.cache/<werkzeug>.log`. Der Verify-Hook simuliert alle Klick-Pfade unter dash.
 - Netzwerk: `/usr/local/bin/simpleos-wifi` (Settings → Network & Wi-Fi, Klick auf die IP in der Taskleiste; überall

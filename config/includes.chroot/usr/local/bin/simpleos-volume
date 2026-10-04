@@ -2,7 +2,7 @@
 # Simple OS – Sound-Flyout (Super+A, Settings → Sound)
 # Rofi-Menü wie bei Windows 11 rechts über der Taskleiste:
 #   Kopfzeile   aktiver Ausgang und Lautstärke ("Speakers · 40%")
-#   Lautstärke  "Volume up" / "Volume down" (±10 %, Menü bleibt offen), "Set volume…" (0–100 %), Mute/Unmute
+#   Lautstärke  "Volume up" / "Volume down" (±10 %, höchstens 100 %, Menü bleibt offen), "Set volume…" (0–100 %), Mute/Unmute
 #   Ausgänge    alle Ausgabegeräte (HDMI, USB, Bluetooth) und Anschlüsse eines Geräts (Lautsprecher /
 #               Kopfhörer); Klick schaltet um und verschiebt laufende Wiedergaben mit
 #   ganz unten  "Advanced Audio Settings" -> pavucontrol
@@ -41,6 +41,14 @@ muted() { LC_ALL=C pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null | grep -q 'yes
 set_volume() {
     pactl set-sink-mute @DEFAULT_SINK@ 0 >&2 2>&1
     pactl set-sink-volume @DEFAULT_SINK@ "$1" >&2 2>&1 || sos_notify "The volume could not be changed." critical
+}
+# ±10 %, wie die Fn-Tasten (simpleos-osd) nie über 100 % (verzerrt sonst) und nie unter 0 %
+step_volume() {  # $1 = +10 | -10
+    v=$(volume); sos_is_num "$v" || v=0
+    v=$((v + $1))
+    [ "$v" -gt 100 ] && v=100
+    [ "$v" -lt 0 ] && v=0
+    set_volume "$v%"
 }
 # Ausgänge: "Gerät<TAB>Anschluss<TAB>Bezeichnung<TAB>aktiv(1/0)", ein Eintrag pro Anschluss bzw. pro Gerät
 # ohne Anschlüsse; nicht verfügbare Anschlüsse (Kopfhörer nicht eingesteckt) fehlen
@@ -114,8 +122,8 @@ EOF
     sos_pick "<b>Sound</b>   $(sos_dim "${current:-No output} · $state")" 420
 
     case "$action" in
-        up)       set_volume +10% ;;
-        down)     set_volume -10% ;;
+        up)       step_volume 10 ;;
+        down)     step_volume -10 ;;
         mute)     pactl set-sink-mute @DEFAULT_SINK@ toggle >&2 2>&1 || sos_notify "Mute could not be changed." critical ;;
         level)
             for l in 100 80 60 50 40 30 20 10 0; do sos_add "$l%" "set$TAB$l"; done

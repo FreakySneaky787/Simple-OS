@@ -155,7 +155,7 @@ def run_gui(selftest=False):
     import gi
     gi.require_version("Gtk", "3.0")
     gi.require_version("Gdk", "3.0")
-    from gi.repository import Gdk, GLib, Gtk
+    from gi.repository import Gdk, GLib, GObject, Gtk
 
     COLS = ("pid", "name", "user", "cpu", "mem", "cpu_s", "mem_s", "start", "uid")
 
@@ -184,7 +184,9 @@ def run_gui(selftest=False):
             box.pack_start(top, False, False, 0)
 
             # pid, Name, Benutzer, CPU (Sortierwert), Speicher (Sortierwert), CPU-Text, Speicher-Text, Start, uid
-            self.store = Gtk.ListStore(int, str, str, float, float, str, str, int, int)
+            # Start (Takte seit dem Booten) 64 Bit: in einer 32-Bit-Spalte lief er nach ~248 Tagen Laufzeit über
+            # (OverflowError, die Liste blieb stehen)
+            self.store = Gtk.ListStore(int, str, str, float, float, str, str, GObject.TYPE_INT64, int)
             self.filter = self.store.filter_new()
             self.filter.set_visible_func(self.visible)
             self.sorted = Gtk.TreeModelSort(model=self.filter)
