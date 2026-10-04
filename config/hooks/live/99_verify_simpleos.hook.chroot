@@ -571,6 +571,21 @@ check "Treiber: Paketlisten nicht geladen, trotzdem Erfolg" "! urun '' 0 1 'inst
 check "Treiber: Erfolg nicht erkannt oder ohne Neustart-Markierung" \
       "rm -f $uw/reboot*; urun '' 0 0 'install_drivers linux-image-amd64' && grep -qx 'STEP: Done' $uw/out && [ -e $uw/reboot ]"
 RR=/etc/polkit-1/rules.d/50-simpleos-update-refresh.rules
+# WLAN: Stromsparen aus (Einbrüche auf wenige kB/s) – NetworkManager muss die Datei wirklich übernehmen, und jede
+# Treiber-Option muss es im Kernel des Images geben (sonst ignoriert der Kernel sie still)
+check "WLAN: Stromsparmodus nicht aus (NetworkManager übernimmt 30-simpleos-wifi-powersave.conf nicht)" \
+      "NetworkManager --print-config 2>/dev/null | grep -A3 '^\\[connection-simpleos-wifi-powersave\\]' | grep -q '^wifi.powersave=2'"
+check "WLAN: Treiber-Optionen nicht wirksam (modprobe.d)" \
+      "modprobe -c 2>/dev/null | grep -qx 'options rtw89_core disable_ps_mode=y' && modprobe -c 2>/dev/null | grep -qx 'options mt7921e disable_aspm=y'"
+KV=$(ls /lib/modules | sort -V | tail -n 1)
+while read -r kw mod params; do
+    [ "$kw" = options ] || continue
+    for kv in $params; do
+        check "WLAN: Treiber $mod ($KV) kennt die Option ${kv%%=*} nicht" \
+              "modinfo -k $KV -F parm $mod 2>/dev/null | cut -d: -f1 | grep -qx '${kv%%=*}'"
+    done
+done < /etc/modprobe.d/simpleos-wifi.conf
+check "WLAN: iw fehlt (Report a Problem zeigt keine WLAN-Rate/Stromsparmodus)" "command -v iw >/dev/null"
 check "Polkit: Nachsehen nach Updates braucht ein Passwort (Regel fehlt)" \
       "grep -q 'action.lookup(\"command_line\") == \"/usr/local/sbin/simpleos-system-setup --refresh\"' $RR &&
        grep -q 'subject.isInGroup(\"sudo\")' $RR && grep -q 'subject.active' $RR && [ \"\$(stat -c %a $RR)\" = 644 ]"

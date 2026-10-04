@@ -47,6 +47,8 @@ leer ins Image sollen, legt ein Hook an (z.B. die Standardordner in `00_skel_bas
 | `etc/skel/.config/` | Openbox (autostart, menu.xml, rc.xml), tint2, rofi, picom, dunst, kitty, fastfetch, GTK 2/3/4, pcmanfm/libfm |
 | `etc/fonts/local.conf` | systemweite Schriften: Inter (auch für „sans-serif“/„system-ui“), JetBrains Mono, Cantarell als Ersatz |
 | `etc/NetworkManager/conf.d/20-simpleos-route-metric.conf` | Routen-Priorität: Kabel Metrik 100 vor WLAN 600 (auch vor simulierten/virtuellen Netzen) |
+| `etc/NetworkManager/conf.d/30-simpleos-wifi-powersave.conf` | WLAN-Stromsparmodus aus (Einbrüche auf wenige kB/s) |
+| `etc/modprobe.d/simpleos-wifi.conf` | Realtek rtw89/rtw88, MediaTek mt7921e: PCIe-/Firmware-Stromsparen aus (nur wenn der Treiber geladen ist) |
 | `usr/local/lib/simpleos/welcome-viewer` | eigenes Welcome-Fenster (GTK3 + WebKit2GTK 4.1), unabhängig vom Standardbrowser |
 | `usr/local/bin/simpleos-*` | Hilfsprogramme: Setup-Wizard, Theme, Browser-Wahl, Software-Store, Screenshot, Sound (simpleos-volume), Display (simpleos-display), Zwischenablage (simpleos-clipboard), dunst-Starter mit Akku-Filter (simpleos-dunst), Control Center (simpleos-control-center, Super+I), Software Center (simpleos-software-center), Bluetooth (simpleos-bluetooth), Nachtmodus (simpleos-nightlight), Energie (simpleos-power), Thunar-Aktionen (simpleos-wallpaper, simpleos-copy-file, simpleos-admin-open), Keybindings, Welcome, Netzwerk-Info, Taskleisten-Designer |
 | `usr/local/bin/simpleos-powermenu` | Power-Menü (Super+X, roter Knopf in der Taskleiste): Lock, Sleep, Restart, Shut Down, Log Out |

@@ -4,6 +4,8 @@ locales
 network-manager
 wpasupplicant
 wireless-regdb
+# iw: WLAN-Zustand (Verbindungsrate, Stromsparmodus) für Report a Problem und zur Fehlersuche
+iw
 libpam-systemd
 polkitd
 # pkexec: grafische Passwortabfrage (lxpolkit) für Installationen aus dem Setup-Wizard

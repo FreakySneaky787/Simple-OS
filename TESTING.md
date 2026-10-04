@@ -34,6 +34,9 @@ Schon erledigt (4. Oktober, mit der ISO vom 3. Oktober plus neuem Bootbild):
     erst („Restart now“ / „Later“). Nach dem Neustart bietet Software Updates nicht dieselben Updates wieder an.
     War ein BIOS-Update dabei und kommt es trotzdem wieder, erscheint eine Meldung, dass es nicht übernommen wurde.
     Bei Problemen `~/.cache/simpleos-update.log` aufheben.
+  - WLAN: Einen großen Download (z. B. ein Flatpak) laufen lassen. Die Rate darf nicht immer wieder auf wenige
+    kB/s einbrechen. Falls doch: Menü → Help → Report a Problem; im Abschnitt „Network“ stehen Treiber,
+    Verbindungsrate und Stromsparmodus (`Power save: off` erwartet).
   - Report a Problem erstellt eine Datei auf dem Desktop.
 - [ ] **Secure Boot an** (im BIOS einschalten): Das installierte System startet trotzdem.
 - [ ] **Dual-Boot mit Windows:** Im Installer „Install alongside“ wählen. Danach zeigt das GRUB-Menü Simple OS **und**

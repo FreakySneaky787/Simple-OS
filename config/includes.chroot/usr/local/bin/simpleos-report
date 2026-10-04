@@ -108,6 +108,18 @@ collect() {
     section "Network & Bluetooth"
     run lspci -nnk | grep -A3 -E 'Network controller|Ethernet controller'
     run nmcli -f DEVICE,TYPE,STATE device
+    # WLAN: Verbindungsrate/Signal, Stromsparmodus und Treiber-Optionen (Einbrüche auf wenige kB/s)
+    for w in "$SYS"/sys/class/net/*/wireless; do
+        [ -d "$w" ] || continue
+        i=${w%/wireless}; i=${i##*/}
+        echo "--- Wi-Fi $i: driver $(basename "$(readlink -f "$SYS/sys/class/net/$i/device/driver" 2>/dev/null)" 2>/dev/null)"
+        run iw dev "$i" link | grep -E 'signal|bitrate|freq'
+        run iw dev "$i" get power_save
+    done
+    for p in "$SYS"/sys/module/rtw89_core/parameters/disable_ps_mode "$SYS"/sys/module/rtw89_pci/parameters/disable_aspm_l1 \
+             "$SYS"/sys/module/rtw88_pci/parameters/disable_aspm "$SYS"/sys/module/mt7921e/parameters/disable_aspm; do
+        [ -r "$p" ] && echo "${p#"$SYS"/sys/module/} = $(cat "$p")"
+    done
     run rfkill list
     run lsusb
 
