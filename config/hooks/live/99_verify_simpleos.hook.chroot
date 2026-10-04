@@ -577,6 +577,8 @@ check "Polkit: Nachsehen nach Updates braucht ein Passwort (Regel fehlt)" \
 check "Polkit: Update-Regel erlaubt mehr als --refresh" "! grep -qE 'upgrade|drivers|indexOf|startsWith' $RR"
 check "simpleos-update: Nachsehen nicht mit genau der erlaubten Befehlszeile" \
       "grep -q 'pkexec \"\$HELPER\" --refresh' /usr/local/bin/simpleos-update && grep -qx 'HELPER=/usr/local/sbin/simpleos-system-setup' /usr/local/bin/simpleos-update"
+check "Helfer: Neustart-Markierung auch nach gescheitertem Update" \
+      "awk '/planned.*mark_reboot/ { ok = (prev ~ /-eq 0 \\]; then/) } { prev = \$0 } END { exit !ok }' /usr/local/sbin/simpleos-system-setup"
 check "Helfer: --refresh fehlt oder lässt sich mischen" \
       "grep -q -- '--refresh)' /usr/local/sbin/simpleos-system-setup && ! /usr/local/sbin/simpleos-system-setup --refresh --gaming >/dev/null 2>&1"
 rm -rf "${uw:?}"
@@ -628,7 +630,10 @@ check "Altes Power-Menü /usr/bin/simpleos-powermenu noch vorhanden" "[ ! -e /us
 cat > "$wt/mock/notify-send" <<'MOCK'
 #!/bin/sh
 echo "$*" >> "$WT/notify"
-case " $* " in *" -A "*) [ -n "$NOTIFY_ACTION" ] && echo "$NOTIFY_ACTION" ;; esac
+case " $* " in *" -A "*)
+    [ -d "/tmp/simpleos-update.$(id -u).lock" ] && echo "$*" >> "$WT/lockheld"
+    [ -n "$NOTIFY_ACTION" ] && echo "$NOTIFY_ACTION" ;;
+esac
 exit 0
 MOCK
 for m in systemctl loginctl; do
@@ -725,6 +730,8 @@ hcase "$U" "Neustart: Meldung angeklickt, dann Later -> kein Neustart" "" \
     '[ "$(row 1 1)" = "Restart now" ] && [ "$(row 1 2)" = "Later" ] && grep -q "Save your work first" $S/rofi.args && [ ! -s $S/power ]'
 hcase "$U" "Neustart: erst nach 'Restart now'" "" "UPDATES=1 NOTIFY_ACTION=default SIMPLEOS_REBOOT_FLAG=$wt/reboot-required" "0 0" \
     'grep -qx "systemctl reboot" $S/power'
+hcase "$U" "Neustart-Meldung offen: Sperre freigegeben (Software Updates geht wieder auf)" "" \
+    "UPDATES=1 SIMPLEOS_REBOOT_FLAG=$wt/reboot-required" "0" 'grep -q "Restart…" $S/notify && ! grep -q "Restart…" $S/lockheld 2>/dev/null'
 hcase "$U" "Neustart: Meldung weggeklickt -> nichts" "" "UPDATES=1 SIMPLEOS_REBOOT_FLAG=$wt/reboot-required" "0" \
     '[ ! -e $S/rofi.1 ] && [ ! -s $S/power ] && grep -q "needs a restart" $S/notify'
 rm -f "$wt/reboot-required"
@@ -738,6 +745,8 @@ touch "$wt/reboot-required"
 hcase "$U" "Installation scheitert, Neustart steht aus -> Hinweis" "" \
     "UPDATES=1 PKEXEC_RC=1 SIMPLEOS_REBOOT_FLAG=$wt/reboot-required" "0" 'grep -q "Restart your computer first, then try again" $S/notify'
 rm -f "$wt/reboot-required"
+hcase "$U" "Installation scheitert: Fehlerzeile mit <, & maskiert" "" \
+    "UPDATES=1 PKEXEC_RC=1 PKEXEC_OUT=E:_a<b&c" "0" 'grep -q "could not be installed: a&lt;b&amp;c" $S/notify'
 hcase "$U" "Installation scheitert: andere Installation läuft" "" \
     "UPDATES=1 PKEXEC_RC=1 PKEXEC_OUT=E:_Could_not_get_lock_/var/lib/dpkg/lock-frontend" "0" 'grep -q "another installation was still running" $S/notify'
 hcase "$U" "Installation scheitert: kein Netz -> Internet-Meldung" "" "UPDATES=1 PKEXEC_RC=1 PKEXEC_OUT=E:_Failed_to_fetch_http://deb.debian.org/x" "0" \
@@ -774,7 +783,7 @@ hcase "$U --check" "BIOS-Update beim Neustart nicht eingespielt -> Meldung" "" "
     'grep -q "System Firmware) was not applied during the restart" $S/notify && [ ! -e '"$wt"'/home/.cache/simpleos/firmware-installed ]'
 echo "System Firmware" > "$wt/home/.cache/simpleos/firmware-installed"
 hcase "$U --check" "BIOS-Update eingespielt -> keine Fehlermeldung" "" "UPDATES=0 FIRMWARE=0 SIMPLEOS_REBOOT_FLAG=$wt/none" "" \
-    '! grep -q "was not applied" $S/notify && [ ! -e '"$wt"'/home/.cache/simpleos/firmware-installed ]'
+    '! grep -qs "was not applied" $S/notify && [ ! -e '"$wt"'/home/.cache/simpleos/firmware-installed ]'
 hcase "$U" "Firmware eingespielt -> Merker für die Prüfung nach dem Neustart" "" \
     "UPDATES=0 FIRMWARE=1 PKEXEC_OUT=FIRMWARE:_installed SIMPLEOS_REBOOT_FLAG=$wt/none" "0" \
     'grep -qx "System Firmware" '"$wt"'/home/.cache/simpleos/firmware-installed'
@@ -885,6 +894,7 @@ hcase "$VOL" "Menü" "" "" "-" \
 hcase "$VOL" "Lauter: Menü bleibt offen" "" "" "0 -" \
     'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 60%" $S/pactl && [ -s $S/rofi.1 ]'
 hcase "$VOL" "Lauter bei 95 %: höchstens 100 %" "" "VOL=95" "0 -" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 100%" $S/pactl'
+hcase "$VOL" "Lauter bei 150 % (pavucontrol): nicht leiser" "" "VOL=150" "0 -" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 150%" $S/pactl'
 hcase "$VOL" "Leiser" "" "" "1 -" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 40%" $S/pactl'
 hcase "$VOL" "Leiser bei 5 %: nicht unter 0 %" "" "VOL=5" "1 -" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 0%" $S/pactl'
 hcase "$VOL" "Lautstärke 50 %" "" "" "2 3 -" \

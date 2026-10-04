@@ -44,10 +44,12 @@ set_volume() {
 }
 # ±10 %, wie die Fn-Tasten (simpleos-osd) nie über 100 % (verzerrt sonst) und nie unter 0 %
 step_volume() {  # $1 = +10 | -10
-    v=$(volume); sos_is_num "$v" || v=0
-    v=$((v + $1))
+    old=$(volume); sos_is_num "$old" || old=0
+    v=$((old + $1))
     [ "$v" -gt 100 ] && v=100
     [ "$v" -lt 0 ] && v=0
+    # schon über 100 % (z.B. in pavucontrol gesetzt): "Volume up" lässt sie, statt sie auf 100 % zu senken
+    [ "$1" -gt 0 ] && [ "$v" -lt "$old" ] && v=$old
     set_volume "$v%"
 }
 # Ausgänge: "Gerät<TAB>Anschluss<TAB>Bezeichnung<TAB>aktiv(1/0)", ein Eintrag pro Anschluss bzw. pro Gerät

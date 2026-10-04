@@ -88,6 +88,8 @@ firmware_check() {
 }
 # Neustart anbieten: Meldung mit "Restart…"; ein Klick fragt erst nach – nie sofort neu starten
 offer_restart() {  # $1 Text
+    # Sperre vorher freigeben: die Meldung kann lange offen bleiben, Software Updates soll trotzdem aufgehen
+    rm -rf "$LOCK"; trap - EXIT
     sos_ask "Updates installed" "$1" "Restart…" || return 0
     sos_add "$(sos_fa '\357\200\241')  Restart now" "restart"
     sos_add "$(sos_fa '\357\200\215')  Later" "later"
@@ -172,6 +174,7 @@ install_updates() {
                 *)  # erste apt-/dpkg-Fehlerzeile mitschicken, statt nur aufs Protokoll zu verweisen; steht ein Neustart
                     # aus (neuer Kernel), hilft oft erst der
                     reason=$(printf '%s\n' "$log" | sed -n 's/^E: //p; s/^dpkg: error[^:]*: //p; s/^error: //p' | head -n 1 | cut -c1-140)
+                    reason=$(sos_esc "$reason")
                     hint=
                     [ -e "$REBOOT_FLAG" ] && hint=" Restart your computer first, then try again."
                     sos_notify "Some updates could not be installed${reason:+: $reason}.$hint Details: ~/.cache/simpleos-update.log" critical ;;

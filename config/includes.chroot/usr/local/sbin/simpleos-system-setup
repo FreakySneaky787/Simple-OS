@@ -347,11 +347,16 @@ if [ "$upgrade" -eq 1 ]; then
         fi
         step "Installing updates"
         if [ "$mode" = full ]; then
-            aptget --no-remove full-upgrade || fail "Updates konnten nicht installiert werden"
+            aptget --no-remove full-upgrade
         else
-            aptget upgrade --with-new-pkgs || fail "Updates konnten nicht installiert werden"
+            aptget upgrade --with-new-pkgs
         fi
-        printf '%s\n' "$planned" | mark_reboot
+        # Neustart-Markierung nur nach Erfolg – sonst hieße es in der Fehlermeldung fälschlich "Restart first"
+        if [ $? -eq 0 ]; then
+            printf '%s\n' "$planned" | mark_reboot
+        else
+            fail "Updates konnten nicht installiert werden"
+        fi
     fi
     report_held
     if [ "$fp_pending" -eq 1 ]; then
