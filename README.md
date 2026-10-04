@@ -51,7 +51,7 @@ leer ins Image sollen, legt ein Hook an (z.B. die Standardordner in `00_skel_bas
 | `usr/local/bin/simpleos-*` | Hilfsprogramme: Setup-Wizard, Theme, Browser-Wahl, Software-Store, Screenshot, Sound (simpleos-volume), Display (simpleos-display), Zwischenablage (simpleos-clipboard), dunst-Starter mit Akku-Filter (simpleos-dunst), Control Center (simpleos-control-center, Super+I), Software Center (simpleos-software-center), Bluetooth (simpleos-bluetooth), Nachtmodus (simpleos-nightlight), Energie (simpleos-power), Thunar-Aktionen (simpleos-wallpaper, simpleos-copy-file, simpleos-admin-open), Keybindings, Welcome, Netzwerk-Info, Taskleisten-Designer |
 | `usr/local/bin/simpleos-powermenu` | Power-Menü (Super+X, roter Knopf in der Taskleiste): Lock, Sleep, Restart, Shut Down, Log Out |
 | `usr/local/bin/simpleos-help` | Tastenkürzel-Übersicht (Super+H); `simpleos-keybindings` leitet dorthin weiter |
-| `usr/local/bin/simpleos-update` | System-Update: Prüfung nach dem Login, Meldung „Install“, Rofi-Fenster, pkexec-Helfer `--upgrade`/`--refresh`, Neustart nur nach Rückfrage |
+| `usr/local/bin/simpleos-update` | System-Update: Prüfung nach dem Login, Meldung „Install“, Rofi-Fenster, pkexec-Helfer `--upgrade`/`--refresh` (Nachsehen ohne Passwort), Neustart nur nach Rückfrage |
 | `usr/local/bin/simpleos-usb-notify` | USB-Meldungen für udiskie („"STICK" is ready“ – Klick öffnet den Dateimanager) |
 | `usr/local/lib/simpleos/common.sh` | gemeinsame Helfer der Rofi-Werkzeuge: Log, Meldungen, Rofi mit Grab-Wiederholung, Menü mit Aktionen |
 | `etc/apt/apt.conf.d/20simpleos-periodic` | Paketlisten täglich laden (nur prüfen, nichts automatisch installieren) |
@@ -250,8 +250,10 @@ leer ins Image sollen, legt ein Hook an (z.B. die Standardordner in `00_skel_bas
   dem Update nicht dieselben Updates wieder angeboten werden; was nur mit Entfernen ginge, meldet der Helfer als
   `HELD: n` und das Fenster sagt es ehrlich. Kernel, Microcode, Firmware, libc, systemd → `/run/reboot-required`
   (Debian legt die Markierung ohne unattended-upgrades nicht selbst an). Neustart nie direkt aus der Meldung:
-  „Restart…“ fragt erst nach („Restart now“ / „Later“). „Check now“ lädt nur die Paketlisten
-  (`--refresh`) und zeigt dann, was ansteht. Steht ein eingespieltes BIOS-Update nach dem Neustart noch an, kommt
+  „Restart…“ fragt erst nach („Restart now“ / „Later“). Öffnen von Software Updates sieht selbst nach
+  (`--refresh`, wenn die Listen älter als 30 Minuten sind; ohne Passwort über die Polkit-Regel aus Hook
+  `14_update_refresh`) und zeigt gleich „Install now“ – ohne Updates nur eine Meldung. Scheitert die
+  Installation, steht die apt-Fehlerzeile in der Meldung (bei ausstehendem Neustart: „Restart … first“). Steht ein eingespieltes BIOS-Update nach dem Neustart noch an, kommt
   eine Meldung, dass es nicht übernommen wurde. Auch über Settings → Software Updates.
 - Alle Rofi-Werkzeuge nutzen `usr/local/lib/simpleos/common.sh`: kein `set -e`, Exit 0 in jedem Pfad,
   Details in `~/.cache/<werkzeug>.log`. Der Verify-Hook simuliert alle Klick-Pfade unter dash.

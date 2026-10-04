@@ -10,13 +10,16 @@
 # auch Updates, die der Helfer gar nicht installiert -> nach Update und Neustart standen sie wieder da.
 # Installiert wird nur über den festen Root-Helfer "simpleos-system-setup --upgrade" (Polkit-Aktion, keine freien
 # Paketnamen, entfernt nie Pakete); er meldet "FIRMWARE: installed|needs-power|failed" und "HELD: <Anzahl>".
-# "Check now" (nichts angezeigt): "simpleos-system-setup --refresh" lädt nur die Listen, danach entscheidet man
-# im Fenster selbst, ob installiert wird.
+# Fenster öffnen = selbst nachsehen: sind die Paketlisten älter als 30 Minuten, lädt "simpleos-system-setup
+# --refresh" sie neu (ohne Passwort: Polkit-Regel /etc/polkit-1/rules.d/50-simpleos-update-refresh.rules, Hook
+# 14_update_refresh), dann kommt gleich das Ergebnis mit "Install now" – vorher musste man das Fenster zweimal
+# öffnen (einmal "Check now", einmal installieren). Ohne Updates nur eine Meldung "up to date".
 # Neustart: nie direkt aus der Meldung – ein Klick darauf fragt erst nach ("Restart now" / "Later"), damit niemand
 # mitten in der Arbeit unterbrochen wird.
 # BIOS-Updates laufen beim Neustart; steht dasselbe Gerät danach wieder in der Liste, ist das Einspielen gescheitert
 # -> eine ehrliche Meldung (Merker ~/.cache/simpleos/firmware-installed).
-# Tests: SIMPLEOS_REBOOT_FLAG ersetzt /var/run/reboot-required.
+# Tests: SIMPLEOS_REBOOT_FLAG ersetzt /var/run/reboot-required, SIMPLEOS_APT_STAMPS die Zeitstempel des letzten
+# Nachsehens (Liste; leer/alt = neu nachsehen).
 # Robust wie simpleos-wifi: kein set -e, jeder Pfad endet mit Exit 0 und einer verständlichen Meldung;
 # Ausgabe der Installation in ~/.cache/simpleos-update.log.
 
@@ -51,6 +54,8 @@ trap 'exit 0' INT TERM HUP
 is_live() { grep -qw 'boot=live' /proc/cmdline 2>/dev/null; }
 REBOOT_FLAG=${SIMPLEOS_REBOOT_FLAG:-/var/run/reboot-required}
 FW_MARK=${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}/simpleos/firmware-installed
+# Zuletzt nachgesehen: der Helfer (apt-get update) bzw. apt-daily
+APT_STAMPS=${SIMPLEOS_APT_STAMPS-/var/lib/simpleos/apt-refreshed /var/lib/apt/periodic/update-success-stamp}
 # Paketnamen mit Updates (eine Zeile pro Paket): was der Helfer installieren würde (siehe oben). "Inst paket [alt]
 # (neu …)" = neue Version; neue Pakete ohne "[alt]" (z.B. das Kernel-Paket hinter linux-image-amd64) zählen nicht.
 # apt-get -s braucht kein root.
@@ -90,11 +95,14 @@ offer_restart() {  # $1 Text
     [ "$action" = restart ] || return 0
     systemctl reboot >&2 2>&1 || loginctl reboot >&2 2>&1 || sos_notify "Please restart your computer to finish the update."
 }
-last_checked() {
-    for f in /var/lib/apt/periodic/update-success-stamp /var/lib/apt/lists; do
-        [ -e "$f" ] && { date -r "$f" '+%b %d, %H:%M' 2>/dev/null; return 0; }
+# Paketlisten in den letzten 30 Minuten geladen?
+lists_fresh() {
+    now=$(date +%s)
+    for f in $APT_STAMPS; do
+        t=$(date -r "$f" +%s 2>/dev/null) || continue
+        [ $((now - t)) -lt 1800 ] && return 0
     done
-    echo "never"
+    return 1
 }
 
 install_updates() {
@@ -159,27 +167,30 @@ install_updates() {
                     sos_notify "Some updates could not be installed: not enough free disk space. Free up space with the Storage Cleaner and try again." critical ;;
                 *"Temporary failure resolving"*|*"Could not resolve"*|*"Failed to fetch"*|*"Could not connect"*|*"Network is unreachable"*)
                     sos_notify "Some updates could not be installed: no internet connection. Check your network and try again from Settings → Software Updates." critical ;;
-                *)  sos_notify "Some updates could not be installed. Details: ~/.cache/simpleos-update.log" critical ;;
+                *"Could not get lock"*|*"Unable to acquire"*|*"is locked by another process"*)
+                    sos_notify "Some updates could not be installed: another installation was still running. Try again in a few minutes." critical ;;
+                *)  # erste apt-/dpkg-Fehlerzeile mitschicken, statt nur aufs Protokoll zu verweisen; steht ein Neustart
+                    # aus (neuer Kernel), hilft oft erst der
+                    reason=$(printf '%s\n' "$log" | sed -n 's/^E: //p; s/^dpkg: error[^:]*: //p; s/^error: //p' | head -n 1 | cut -c1-140)
+                    hint=
+                    [ -e "$REBOOT_FLAG" ] && hint=" Restart your computer first, then try again."
+                    sos_notify "Some updates could not be installed${reason:+: $reason}.$hint Details: ~/.cache/simpleos-update.log" critical ;;
             esac ;;
     esac
 }
 
-# "Check now": nur Paketlisten/Firmware-Metadaten laden (Passwort), danach zeigt das Fenster, was ansteht
+# Nachsehen: Paketlisten/Firmware-Metadaten laden (ohne Passwort, Polkit-Regel). Scheitert es (kein Netz),
+# zeigt das Fenster den letzten bekannten Stand. Exit 0 = frisch geladen
 refresh_lists() {
     if [ ! -x "$HELPER" ] || ! command -v pkexec >/dev/null; then
-        sos_notify "Updates cannot be checked on this system (update helper missing)." critical
+        sos_log "refresh: helper/pkexec missing"
         return 1
     fi
     sos_notify "Checking for updates…" low
     pkexec "$HELPER" --refresh >>"$SOS_LOG" 2>&1
     rc=$?
     sos_log "refresh exit $rc"
-    case "$rc" in
-        0) return 0 ;;
-        126|127) sos_notify "No password entered – nothing was checked." ;;
-        *) sos_notify "Updates could not be checked: no internet connection? Details: ~/.cache/simpleos-update.log" critical ;;
-    esac
-    return 1
+    [ "$rc" -eq 0 ]
 }
 
 # ---- Hintergrund-Prüfung (Autostart)
@@ -205,33 +216,28 @@ fi
 command -v apt-get >/dev/null || { sos_notify "Updates are not available on this system (apt missing)." critical; exit 0; }
 firmware_check
 
-# Fenster; nach "Check now" (frische Listen) noch einmal mit dem neuen Stand
-checked=0
-while :; do
-    pkgs=$(pending)
-    count=$(printf '%s\n' "$pkgs" | grep -c . || true)
-    sos_is_num "$count" || count=0
-    # FontAwesome 4: download U+F019, refresh U+F021, times U+F00D
-    if [ "$count" -gt 0 ]; then
-        # Zeilen mit ", " verbinden – Firmware-Namen enthalten Leerzeichen ("System Firmware (firmware)")
-        names=$(printf '%s\n' "$pkgs" | head -n 4 | awk 'NR > 1 { printf ", " } { printf "%s", $0 }')
-        [ "$count" -gt 4 ] && names="$names, …"
-        if [ "$count" -eq 1 ]; then head="1 update available"; else head="$count updates available"; fi
-        sos_add "$(sos_fa '\357\200\231')  Install now" "install"
-        sos_add "$(sos_fa '\357\200\215')  Not now" "close"
-        sos_pick "<b>$head</b>${SOS_NL}$(sos_esc "$names")" 480
-    elif [ "$checked" = 1 ]; then
+# Erst selbst nachsehen (Listen älter als 30 Minuten), dann gleich das Ergebnis – ein Aufruf für alles
+online=1
+lists_fresh || refresh_lists || online=0
+pkgs=$(pending)
+count=$(printf '%s\n' "$pkgs" | grep -c . || true)
+sos_is_num "$count" || count=0
+if [ "$count" -eq 0 ]; then
+    if [ "$online" = 1 ]; then
         sos_notify "Your system is up to date."
-        exit 0
     else
-        sos_add "$(sos_fa '\357\200\241')  Check now" "check"
-        sos_add "$(sos_fa '\357\200\215')  Close" "close"
-        sos_pick "<b>You're up to date</b>${SOS_NL}Last checked $(last_checked)" 480
+        sos_notify "Updates could not be checked right now – are you connected to the internet? Details: ~/.cache/simpleos-update.log" critical
     fi
-    case "$action" in
-        install) install_updates ;;
-        check)   refresh_lists || exit 0; checked=1; continue ;;
-    esac
-    break
-done
+    exit 0
+fi
+# FontAwesome 4: download U+F019, times U+F00D
+# Zeilen mit ", " verbinden – Firmware-Namen enthalten Leerzeichen ("System Firmware (firmware)")
+names=$(printf '%s\n' "$pkgs" | head -n 4 | awk 'NR > 1 { printf ", " } { printf "%s", $0 }')
+[ "$count" -gt 4 ] && names="$names, …"
+if [ "$count" -eq 1 ]; then head="1 update available"; else head="$count updates available"; fi
+[ "$online" = 1 ] || head="$head $(sos_dim "(could not check online – last known state)")"
+sos_add "$(sos_fa '\357\200\231')  Install now" "install"
+sos_add "$(sos_fa '\357\200\215')  Not now" "close"
+sos_pick "<b>$head</b>${SOS_NL}$(sos_esc "$names")" 480
+[ "$action" = install ] && install_updates
 exit 0

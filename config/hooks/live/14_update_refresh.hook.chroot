@@ -1,0 +1,20 @@
+#!/bin/sh
+set -e
+# Software Updates darf ohne Passwort nach Updates suchen: "pkexec simpleos-system-setup --refresh" lädt nur
+# Paketlisten und Firmware-Metadaten, installiert nichts. Erlaubt für die aktive, lokale Sitzung eines
+# Administrators (Gruppe sudo) – genau diese Befehlszeile, alles andere (Installieren, --upgrade, Treiber …) fragt
+# weiter nach dem Passwort. Datei per Hook statt includes.chroot: rules.d gehört polkitd (0700), das Kopieren der
+# includes würde die Rechte des Ordners ändern.
+RULES=/etc/polkit-1/rules.d/50-simpleos-update-refresh.rules
+cat > "$RULES" <<'RULE'
+// Simple OS – Software Updates: nach Updates suchen ohne Passwort (nur Paketlisten laden, nichts installieren)
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.simpleos.system-setup" &&
+        action.lookup("command_line") == "/usr/local/sbin/simpleos-system-setup --refresh" &&
+        subject.active && subject.local && subject.isInGroup("sudo")) {
+        return polkit.Result.YES;
+    }
+});
+RULE
+chmod 0644 "$RULES"
+grep -q 'simpleos-system-setup --refresh' "$RULES"

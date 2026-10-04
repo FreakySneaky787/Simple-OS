@@ -570,6 +570,13 @@ check "Treiber: gescheitertes apt-get meldet Erfolg (linux-image-amd64 ist immer
 check "Treiber: Paketlisten nicht geladen, trotzdem Erfolg" "! urun '' 0 1 'install_drivers linux-image-amd64' && ! grep -q 'STEP: Done' $uw/out"
 check "Treiber: Erfolg nicht erkannt oder ohne Neustart-Markierung" \
       "rm -f $uw/reboot*; urun '' 0 0 'install_drivers linux-image-amd64' && grep -qx 'STEP: Done' $uw/out && [ -e $uw/reboot ]"
+RR=/etc/polkit-1/rules.d/50-simpleos-update-refresh.rules
+check "Polkit: Nachsehen nach Updates braucht ein Passwort (Regel fehlt)" \
+      "grep -q 'action.lookup(\"command_line\") == \"/usr/local/sbin/simpleos-system-setup --refresh\"' $RR &&
+       grep -q 'subject.isInGroup(\"sudo\")' $RR && grep -q 'subject.active' $RR && [ \"\$(stat -c %a $RR)\" = 644 ]"
+check "Polkit: Update-Regel erlaubt mehr als --refresh" "! grep -qE 'upgrade|drivers|indexOf|startsWith' $RR"
+check "simpleos-update: Nachsehen nicht mit genau der erlaubten Befehlszeile" \
+      "grep -q 'pkexec \"\$HELPER\" --refresh' /usr/local/bin/simpleos-update && grep -qx 'HELPER=/usr/local/sbin/simpleos-system-setup' /usr/local/bin/simpleos-update"
 check "Helfer: --refresh fehlt oder lässt sich mischen" \
       "grep -q -- '--refresh)' /usr/local/sbin/simpleos-system-setup && ! /usr/local/sbin/simpleos-system-setup --refresh --gaming >/dev/null 2>&1"
 rm -rf "${uw:?}"
@@ -592,10 +599,27 @@ check "Helfer: apt-get update wartet nicht auf laufendes apt-daily" \
       "awrun busy BUSY=3 && [ \$(cat $aw/busy/ag) -eq 1 ] && grep -q '^STAGE: Waiting for a background update' $aw/busy/out"
 check "Helfer: apt-get update ohne zweiten Versuch" "awrun retry FAIL=1 && [ \$(cat $aw/retry/ag) -eq 2 ]"
 check "Helfer: apt-get update meldet dauerhaften Fehler nicht" "! awrun fail FAIL=2"
+mkdir -p "$aw/st"
+check "Helfer: kein Zeitstempel nach erfolgreichem apt-get update (simpleos-update sähe jedes Mal neu nach)" \
+      "env T=$aw/st PATH=$aw/bin:/usr/bin:/bin sh -c '. $aw/fn.sh; APT_STAMP=$aw/st/stamp; apt_get_update' >/dev/null && [ -e $aw/st/stamp ]"
+check "Helfer: Zeitstempel trotz gescheitertem apt-get update" \
+      "rm -f $aw/st/stamp $aw/st/ag; ! env T=$aw/st FAIL=2 PATH=$aw/bin:/usr/bin:/bin sh -c '. $aw/fn.sh; APT_STAMP=$aw/st/stamp; apt_get_update' >/dev/null && [ ! -e $aw/st/stamp ]"
 check "Helfer: Gaming installiert trotz fehlgeschlagener Paketlisten" \
       "grep -q 'if ! apt_update; then' /usr/local/sbin/simpleos-system-setup && ! grep -q 'apt-get -o DPkg::Lock::Timeout=300 update ||' /usr/local/sbin/simpleos-system-setup"
 rm -rf "${aw:?}"
 check "Helfer: --upgrade lässt sich mit anderen Aktionen mischen" "! /usr/local/sbin/simpleos-system-setup --upgrade --gaming >/dev/null 2>&1"
+# Jeder Aufruf, den ein Werkzeug wirklich macht, muss angenommen werden (simpleos-update --upgrade/--refresh,
+# Wizard/Software Center, Browser-Auswahl, Control Center Firewall, Treiber, simpleos-post-install --repos) – ein
+# falscher Kombinations-Check lehnte einmal JEDES Update als ungültigen Aufruf ab (Exit 2)
+for a in "--upgrade" "--refresh" "--repos" "--firewall on" "--firewall off" "--drivers intel-microcode nvidia-driver" \
+         "--browser chromium --purge-firefox" "--browser mullvad --office onlyoffice --gaming" "--office libreoffice" "--gaming"; do
+    check "Helfer: gültiger Aufruf '$a' abgelehnt" \
+          "SIMPLEOS_SETUP_ARGCHECK=1 /usr/local/sbin/simpleos-system-setup $a 2>/dev/null | grep -qx 'ARGS: ok'"
+done
+for a in "--upgrade --refresh" "--repos --upgrade" "--refresh --browser mullvad" "--upgrade --office libreoffice" "--drivers"; do
+    check "Helfer: ungültiger Aufruf '$a' angenommen" "! SIMPLEOS_SETUP_ARGCHECK=1 /usr/local/sbin/simpleos-system-setup $a >/dev/null 2>&1"
+done
+check "simpleos-update ruft den Helfer nicht mit --upgrade auf" "grep -q 'pkexec \"\$HELPER\" --upgrade' /usr/local/bin/simpleos-update"
 check "Altes Power-Menü /usr/bin/simpleos-powermenu noch vorhanden" "[ ! -e /usr/bin/simpleos-powermenu ]"
 
 # Klick-Pfade mit denselben Attrappen wie oben (+ Power, apt, pkexec, Dateimanager); jeder Fall: Exit 0.
@@ -674,12 +698,22 @@ hcase "$U --check" "Prüfung mit Updates, Meldung weggeklickt" "" "UPDATES=3" ""
 hcase "$U --check" "Meldung angeklickt -> Fenster -> Installation" "" "UPDATES=3 NOTIFY_ACTION=yes" "0" \
     '[ "$(row 0 1)" = "Install now" ] && grep -q "<b>3 updates available</b>" $S/rofi.args && grep -q "^firefox-esr, libc6, openssl" $S/rofi.args &&
      grep -qx "/usr/local/sbin/simpleos-system-setup --upgrade" $S/pkexec && grep -q "Your system is up to date" $S/notify'
-hcase "$U" "Fenster: Not now" "" "UPDATES=2" "1" '[ ! -e $S/pkexec ] && [ "$(row 0 2)" = "Not now" ]'
+hcase "$U" "Fenster: Not now" "" "UPDATES=2" "1" '! grep -q -- "--upgrade" $S/pkexec && [ "$(row 0 2)" = "Not now" ]'
 hcase "$U" "Fenster: viele Updates gekürzt" "" "UPDATES=6" "-" 'grep -q "6 updates available" $S/rofi.args && grep -q "tzdata, …" $S/rofi.args'
-hcase "$U" "Fenster ohne Updates: Check now lädt nur die Listen, installiert nichts" "" "UPDATES=0" "0" \
-    'grep -q "You.re up to date" $S/rofi.args && [ "$(row 0 1)" = "Check now" ] &&
-     grep -qx "/usr/local/sbin/simpleos-system-setup --refresh" $S/pkexec && ! grep -q -- "--upgrade" $S/pkexec &&
-     grep -q "Your system is up to date" $S/notify'
+# Fenster öffnen = selbst nachsehen (Listen älter als 30 Minuten), dann gleich das Ergebnis – kein zweiter Aufruf
+hcase "$U" "Öffnen sucht selbst nach; ohne Updates nur eine Meldung" "" "UPDATES=0" "" \
+    'grep -qx "/usr/local/sbin/simpleos-system-setup --refresh" $S/pkexec && ! grep -q -- "--upgrade" $S/pkexec &&
+     [ ! -e $S/rofi.0 ] && grep -q "Your system is up to date" $S/notify'
+hcase "$U" "Öffnen: nachgesehen, Updates da -> gleich Install now" "" "UPDATES=2" "0" \
+    'grep -qx "/usr/local/sbin/simpleos-system-setup --refresh" $S/pkexec && [ "$(row 0 1)" = "Install now" ] &&
+     [ "$(sed -n 2p $S/pkexec)" = "/usr/local/sbin/simpleos-system-setup --upgrade" ]'
+touch "$wt/apt-stamp"
+hcase "$U" "Listen gerade erst geladen -> nicht noch einmal nachsehen" "" "UPDATES=1 SIMPLEOS_APT_STAMPS=$wt/apt-stamp" "1" '[ ! -e $S/pkexec ]'
+rm -f "$wt/apt-stamp"
+hcase "$U" "Nachsehen scheitert, Updates bekannt -> Fenster mit Hinweis" "" "UPDATES=1 PKEXEC_RC=1" "1" \
+    'grep -q "could not check online" $S/rofi.args && [ "$(row 0 1)" = "Install now" ]'
+hcase "$U" "Nachsehen scheitert, nichts bekannt -> Meldung statt 'up to date'" "" "UPDATES=0 PKEXEC_RC=1" "" \
+    'grep -q "could not be checked right now" $S/notify && ! grep -q "up to date" $S/notify'
 hcase "$U" "Update, das nur mit Entfernen ginge, zählt nicht mit" "" "UPDATES=2 NEEDREMOVE=1" "-" \
     'grep -q "<b>2 updates available</b>" $S/rofi.args && ! grep -q "firmware-misc-nonfree\|linux-image-6" $S/rofi.args'
 hcase "$U" "zurückgehaltene Updates -> ehrliche Meldung statt 'up to date'" "" "UPDATES=1 PKEXEC_OUT=HELD:_2" "0" \
@@ -697,13 +731,22 @@ rm -f "$wt/reboot-required"
 hcase "$U" "Nichts zu tun -> eigene Meldung" "" "UPDATES=1 PKEXEC_OUT=UPTODATE:_1" "0" 'grep -q "there was nothing to install" $S/notify'
 hcase "$U" "Passwort abgebrochen" "" "UPDATES=1 PKEXEC_RC=126" "0" 'grep -q "No password entered" $S/notify'
 hcase "$U" "Installation scheitert" "" "UPDATES=1 PKEXEC_RC=1" "0" 'grep -q "could not be installed. Details: ~/.cache/simpleos-update.log" $S/notify'
+hcase "$U" "Installation scheitert: apt-Fehler steht in der Meldung" "" \
+    "UPDATES=1 PKEXEC_RC=1 PKEXEC_OUT=E:_Sub-process_/usr/bin/dpkg_returned_an_error_code_(1)" "0" \
+    'grep -q "could not be installed: Sub-process /usr/bin/dpkg returned an error code (1). Details" $S/notify'
+touch "$wt/reboot-required"
+hcase "$U" "Installation scheitert, Neustart steht aus -> Hinweis" "" \
+    "UPDATES=1 PKEXEC_RC=1 SIMPLEOS_REBOOT_FLAG=$wt/reboot-required" "0" 'grep -q "Restart your computer first, then try again" $S/notify'
+rm -f "$wt/reboot-required"
+hcase "$U" "Installation scheitert: andere Installation läuft" "" \
+    "UPDATES=1 PKEXEC_RC=1 PKEXEC_OUT=E:_Could_not_get_lock_/var/lib/dpkg/lock-frontend" "0" 'grep -q "another installation was still running" $S/notify'
 hcase "$U" "Installation scheitert: kein Netz -> Internet-Meldung" "" "UPDATES=1 PKEXEC_RC=1 PKEXEC_OUT=E:_Failed_to_fetch_http://deb.debian.org/x" "0" \
     'grep -q "could not be installed: no internet connection" $S/notify'
 hcase "$U" "Installation scheitert: Platte voll -> Platz-Meldung statt Internet" "" "UPDATES=1 PKEXEC_RC=1 PKEXEC_OUT=No_space_left_on_device" "0" \
     'grep -q "not enough free disk space" $S/notify && ! grep -qi "internet" $S/notify'
 hcase "$U" "pkexec fehlt" "pkexec" "UPDATES=1" "0" 'grep -q "cannot be installed" $S/notify'
 hcase "$U" "apt fehlt" "apt-get" "" "" 'grep -q "apt missing" $S/notify'
-hcase "$U" "rofi fehlt" "rofi" "UPDATES=1" "" 'grep -q "could not open" $S/notify && [ ! -e $S/pkexec ]'
+hcase "$U" "rofi fehlt" "rofi" "UPDATES=1" "" 'grep -q "could not open" $S/notify && ! grep -q -- "--upgrade" $S/pkexec'
 # Firmware (fwupd): FIRMWARE=1 -> BIOS- und dbx-Update in der JSON-Ausgabe (Gerätename vor "Releases", danach
 # Release-Namen, die nicht als Gerät zählen dürfen); sonst leere Liste mit Exit 2 wie fwupdmgr ohne Updates
 cat > "$wt/mock/fwupdmgr" <<'MOCK'

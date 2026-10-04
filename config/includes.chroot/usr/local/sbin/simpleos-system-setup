@@ -10,8 +10,9 @@
 #                                    System-Update nicht ungültig (Exit-Code bleibt 0). Updates, die nur mit dem
 #                                    Entfernen anderer Pakete gingen, bleiben liegen: Zeile "HELD: <Anzahl>".
 #                                    Kernel, Microcode, Firmware, libc, systemd aktualisiert -> /run/reboot-required
-#   pkexec simpleos-system-setup --refresh   nur nachsehen (simpleos-update "Check now"): Paketlisten und
-#                                    Firmware-Metadaten laden, nichts installieren
+#   pkexec simpleos-system-setup --refresh   nur nachsehen (simpleos-update beim Öffnen): Paketlisten und
+#                                    Firmware-Metadaten laden, nichts installieren. Ohne Passwort für aktive
+#                                    Administratoren (Polkit-Regel 50-simpleos-update-refresh.rules, Hook 14)
 #   pkexec simpleos-system-setup --firewall on|off   Firewall (ufw) ein-/ausschalten (Control Center → System)
 #   pkexec simpleos-system-setup --drivers PAKET…   Treiber/Firmware/Microcode installieren (simpleos-drivers
 #                                    --install); nur Pakete der festen Liste DRIVER_PACKAGES, Quellen werden um
@@ -56,6 +57,19 @@ done
 case "$browser" in ""|firefox|chromium|mullvad) ;; *) usage ;; esac
 case "$office" in libreoffice|onlyoffice|none) ;; *) usage ;; esac
 case "$firewall" in ""|on|off) ;; *) usage ;; esac
+# Erlaubte Kombinationen an EINER Stelle: höchstens eine Aktion (--repos, --upgrade, --refresh, --firewall,
+# --drivers), und die nie zusammen mit Wizard-Optionen (--browser, --purge-firefox, --office, --gaming).
+# Vorher prüfte jeder Abschnitt selbst per Zeichenkette ("$browser$gaming…" = "000") – nach dem Hinzufügen von
+# --refresh stimmte eine Nullenzahl nicht mehr, und jedes --upgrade endete als "ungültiger Aufruf" (Exit 2).
+actions=0
+for a in "$repos_only" "$upgrade" "$refresh" "$drivers"; do [ "$a" = 1 ] && actions=$((actions + 1)); done
+[ -n "$firewall" ] && actions=$((actions + 1))
+wizard=0
+if [ -n "$browser" ] || [ "$purge_firefox" = 1 ] || [ "$office" != none ] || [ "$gaming" = 1 ]; then wizard=1; fi
+[ "$actions" -le 1 ] || usage
+[ "$actions" -eq 0 ] || [ "$wizard" -eq 0 ] || usage
+# Test (Verify-Hook): nur die Argumente prüfen; pkexec leert die Umgebung
+[ "${SIMPLEOS_SETUP_ARGCHECK:-}" = 1 ] && { echo "ARGS: ok"; exit 0; }
 
 failed=0
 step() { echo "STEP: $*"; }
@@ -87,12 +101,17 @@ apt_wait() {
     done
 }
 # apt-get update nach apt_wait; scheitert es (Sperre, kurzer Netz-Aussetzer), nach 5 s ein zweiter Versuch
+# Erfolg -> Zeitstempel $APT_STAMP (simpleos-update sieht beim Öffnen nur neu nach, wenn er älter als 30 Minuten ist)
+APT_STAMP=/var/lib/simpleos/apt-refreshed
 apt_get_update() {
     apt_wait
-    ${APT_GET:-apt-get} -o DPkg::Lock::Timeout=300 update && return 0
-    sleep 5
-    apt_wait
-    ${APT_GET:-apt-get} -o DPkg::Lock::Timeout=300 update
+    if ! ${APT_GET:-apt-get} -o DPkg::Lock::Timeout=300 update; then
+        sleep 5
+        apt_wait
+        ${APT_GET:-apt-get} -o DPkg::Lock::Timeout=300 update || return 1
+    fi
+    [ -n "${APT_STAMP:-}" ] && mkdir -p "${APT_STAMP%/*}" 2>/dev/null && : > "$APT_STAMP" 2>/dev/null
+    return 0
 }
 # Neustart nötig? stdin = Paketnamen, die gerade aktualisiert/installiert wurden. Debian legt /run/reboot-required
 # nur bei dbus selbst an (unattended-upgrades fehlt) – ohne diese Markierung meldete simpleos-update nach einem
@@ -198,7 +217,6 @@ install_drivers() {
 # "STAGE:"/"PROGRESS:" (Download 5–40 %, Installation 40–100 %; progress-filter streamt sofort). Erfolg = alle
 # Pakete wirklich installiert.
 if [ "$drivers" -eq 1 ]; then
-    [ "$browser$purge_firefox$gaming$upgrade$refresh" = "0000" ] && [ "$office" = none ] && [ -z "$firewall" ] || usage  # nur allein erlaubt
     [ $# -ge 1 ] || usage
     for p in "$@"; do
         case " $(echo $DRIVER_PACKAGES) " in *" $p "*) ;; *) echo "Paket nicht erlaubt: $p" >&2; exit 2 ;; esac
@@ -216,7 +234,6 @@ fi
 # ------------------------------------------------------------ Firewall (ufw)
 # Nur allein erlaubt. "ufw --force enable" fragt nicht nach (bestehende SSH-Verbindungen gibt es hier nicht)
 if [ -n "$firewall" ]; then
-    [ "$browser$purge_firefox$gaming$upgrade$refresh$repos_only$drivers" = "000000" ] && [ "$office" = none ] || usage
     command -v ufw >/dev/null || { echo "FEHLER: ufw fehlt" >&2; exit 1; }
     if [ "$firewall" = on ]; then
         step "Turning on the firewall"
@@ -263,9 +280,8 @@ fw_update() {
 # Sicher: unterbrochene Installationen zuerst reparieren, bei belegtem apt warten (aptget: Lock-Timeout),
 # "upgrade --with-new-pkgs" entfernt nie Pakete, geänderte Konfigurationsdateien bleiben (force-confold).
 # Exit != 0 -> simpleos-update meldet "Some updates could not be installed".
-# ------------------------------------------------------------ Nur nachsehen (simpleos-update "Check now")
+# ------------------------------------------------------------ Nur nachsehen (simpleos-update beim Öffnen)
 if [ "$refresh" -eq 1 ]; then
-    [ "$browser$purge_firefox$gaming$upgrade" = "000" ] && [ "$office" = none ] || usage  # nur allein erlaubt
     step "Checking for updates"
     apt_get_update || { fail "Paketlisten konnten nicht geladen werden"; exit 1; }
     if command -v fwupdmgr >/dev/null && ! systemd-detect-virt -q --vm 2>/dev/null; then
@@ -298,7 +314,6 @@ upgrade_sim() {  # $1 full|safe -> Simulation auf stdout
 }
 
 if [ "$upgrade" -eq 1 ]; then
-    [ "$browser$purge_firefox$gaming$refresh" = "0000" ] && [ "$office" = none ] || usage  # nur allein erlaubt
     step "Checking for updates"
     dpkg --configure -a || fail "Unterbrochene Installation konnte nicht repariert werden"
     apt_get_update || { fail "Paketlisten konnten nicht geladen werden"; exit 1; }
