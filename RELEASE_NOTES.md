@@ -1,5 +1,7 @@
 # Simple OS 1.0
 
+**SOS – Simple Operating System. Keep it Simple.**
+
 Simple OS is a fast, quiet desktop built on Debian 12 "bookworm". It boots straight into a calm dark desktop
 (Openbox, Catppuccin colors), sets itself up with a short wizard and keeps itself up to date. You don't
 need a terminal.

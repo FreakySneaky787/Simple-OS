@@ -1,6 +1,11 @@
 # Simple OS
 
+<p align="center"><img src="docs/sos-banner.png" alt="SOS – Simple Operating System. Keep it Simple." width="100%"></p>
+
 Minimaler Desktop auf Basis von Debian 12 „Bookworm“ mit Openbox, gebaut mit live-build.
+
+Marke: **SOS** – Simple Operating System. Das „O“ ist ein Rettungsring (rot-weiß, Rettung vor Big Tech), der Spruch
+lautet **„Keep it Simple“**. Der Name bleibt „Simple OS“ (IDs, Pakete, Pfade `simpleos`); SOS ist Logo und Kurzform.
 
 ## Befehle
 
@@ -21,6 +26,7 @@ simple-os/
 ├── build_iso.sh, test_vm.sh, test_installed_vm.sh   Einstiegspunkte
 ├── LICENSE, RELEASE_NOTES.md, TESTING.md            GPL-3.0, Download-Text, Release-Testliste
 ├── Containerfile                                   Build-Umgebung (Debian bookworm + live-build)
+├── docs/sos-banner.png   README-Banner (tools/gen_branding.py --readme docs)
 ├── tools/
 │   ├── lb_config.sh      lb config + Build-Zeit-Teile (Branding, fastfetch-Download)
 │   └── gen_branding.py   erzeugt Wallpaper, Logos, Calamares- und Plymouth-Grafiken, Bootmenü-Bild der ISO
@@ -150,6 +156,8 @@ leer ins Image sollen, legt ein Hook an (z.B. die Standardordner in `00_skel_bas
   Eintrag; Netzwerk und Power öffnen wie bei Windows 11 rechts über der Taskleiste. Picom: weiche Schatten und runde
   Ecken für Fenster; Rofi ohne picom-Schatten (picom 9.1 zeichnet ihn eckig, er schiene durch die runden Ecken).
   Wallpaper: geschichtete Dünen in Mocha-Tönen mit feiner Lavender-Kante, ohne Logo (`gen_branding.py`).
+  Logo: Rettungsring (weiß, vier Streifen in Catppuccin Red); Wortmarke „SOS“ mit dem Ring als „O“ und den beiden
+  „S“ im Verlauf Blau → Pink, Spruch „Keep it Simple“ – Calamares, Bootmenü, Plymouth, Wizard, Welcome-Seite.
   Tooltips deutsch/englisch; Tray-Icons (nm-applet, blueman, volumeicon, Energie) bringen ihre eigenen Tooltips mit.
 - `simpleos-taskbar-select` (Settings → Taskbar & Panel): Position oben/unten, Layout (Full/Compact,
   Icons + text/Icons only), Look (Dark, Dark transparent, Match theme), Netzwerk-/Uhranzeige an/aus.
