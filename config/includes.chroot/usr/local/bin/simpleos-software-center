@@ -14,7 +14,6 @@ und Debian-Programme). Installationen laufen im Hintergrund mit Fortschrittsanze
 Test: SIMPLEOS_SC_SELFTEST=1 (Fenster aufbauen, Suche/Kategorien durchschalten, Exit 1 bei Python-Ausnahme).
 """
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -76,9 +75,16 @@ def run(*args, timeout=30):
 
 
 def flatpak_installed():
+    """{App-ID: "system" | "user"} – woher die App kommt, entscheidet, womit sie entfernt wird (eine nur für den
+    Benutzer installierte App ließ sich mit "--system" nicht entfernen)"""
     if not shutil.which("flatpak"):
-        return set()
-    return set(run("flatpak", "list", "--app", "--columns=application").stdout.split())
+        return {}
+    apps = {}
+    for line in run("flatpak", "list", "--app", "--columns=application,installation").stdout.splitlines():
+        ident, _, where = line.partition("\t")
+        if ident.strip() and apps.get(ident.strip()) != "system":
+            apps[ident.strip()] = "user" if where.strip() == "user" else "system"
+    return apps
 
 
 def deb_installed(pkg):
@@ -102,11 +108,13 @@ def install_cmd(app):
     return ["pkexec", HELPER] + ident.split("|")[0].split()
 
 
-def remove_cmd(app):
-    """System-Pakete entfernt das Software Center nicht (Steam/LibreOffice hängen an mehreren Paketen)."""
+def remove_cmd(app, installation="system"):
+    """System-Pakete entfernt das Software Center nicht (Steam/LibreOffice hängen an mehreren Paketen).
+    installation: "system" oder "user" (aus flatpak_installed)"""
     _k, _n, _d, _c, _i, source, ident = app
     if source == "flatpak":
-        return ["flatpak", "uninstall", "--system", "-y", "--noninteractive", ident]
+        scope = "--user" if installation == "user" else "--system"
+        return ["flatpak", "uninstall", scope, "-y", "--noninteractive", ident]
     return None
 
 
@@ -199,6 +207,7 @@ def main(argv):
             self.busy = None        # Schlüssel der laufenden Installation
             self.category = "All"
             self.states = {}
+            self.flatpaks = {}      # App-ID -> "system" | "user"
             hb = Gtk.HeaderBar(show_close_button=True, title="Software Center")
             self.search = Gtk.SearchEntry(placeholder_text="Search apps")
             self.search.connect("search-changed", lambda *_: self.fill())
@@ -250,10 +259,10 @@ def main(argv):
         def reload(self):
             def work():
                 fl = flatpak_installed()
-                return {app[0]: status(app, fl) for app in CATALOG}
+                return fl, {app[0]: status(app, fl) for app in CATALOG}
 
-            def done(states):
-                self.states = states
+            def done(res):
+                self.flatpaks, self.states = res
                 self.fill()
             threading.Thread(target=lambda: (lambda r: GLib.idle_add(done, r))(work()), daemon=True).start()
 
@@ -309,7 +318,7 @@ def main(argv):
             ok = d.run() == Gtk.ResponseType.OK
             d.destroy()
             if ok:
-                self.do(app, remove_cmd(app), "Removing")
+                self.do(app, remove_cmd(app, self.flatpaks.get(app[6], "system")), "Removing")
 
         def install(self, app):
             # wenig Platz (v.a. Live-Betrieb: RAM-Overlay) -> vorher ehrlich fragen statt nach Minuten scheitern

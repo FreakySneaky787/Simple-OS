@@ -17,6 +17,7 @@ und endet mit Exit 0 nur, wenn beide verschwunden sind und die Liste ohne zweite
 """
 import os
 import pwd
+import re
 import signal
 import subprocess
 import sys
@@ -53,6 +54,11 @@ def is_alive(pid, start):
     return bool(st) and st[0] not in ("Z", "X") and st[3] == start
 
 
+def is_interpreter(exe):
+    """python, python3, python3.11, sh, bash, dash – nicht shotwell, bashtop, …"""
+    return exe in ("sh", "bash", "dash") or re.fullmatch(r"python\d*(\.\d+)?", exe) is not None
+
+
 def processes(all_users=False):
     """Benutzerprozesse (ohne Kernel-Threads): Liste von dicts."""
     me = os.getuid()
@@ -83,8 +89,9 @@ def processes(all_users=False):
         except KeyError:
             user = str(uid)
         exe = os.path.basename(cmd[0].decode(errors="replace"))
-        # Skripte (python3 /usr/local/bin/simpleos-…) unter ihrem eigenen Namen zeigen
-        if exe.startswith(("python", "sh", "bash", "dash")) and len(cmd) > 1 and cmd[1] and not cmd[1].startswith(b"-"):
+        # Skripte (python3 /usr/local/bin/simpleos-…) unter ihrem eigenen Namen zeigen – nur echte Interpreter:
+        # startswith("sh") traf auch shotwell/shutter/shotcut, die dann als ihr erstes Argument ("foto.jpg") erschienen
+        if is_interpreter(exe) and len(cmd) > 1 and cmd[1] and not cmd[1].startswith(b"-"):
             label = os.path.basename(cmd[1].decode(errors="replace"))
         else:
             label = comm or exe

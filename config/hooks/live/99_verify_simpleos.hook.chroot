@@ -556,7 +556,7 @@ exit 0
 MOCK
 chmod 0755 "$uw/apt-get"
 urun() { env APTSIM="$1" APTRC="${2:-0}" UPD="${3:-0}" sh -c ". $uw/fn.sh; REBOOT_FLAG=$uw/reboot APT_GET=$uw/apt-get dry=0
-    apt_get_update() { [ \"\$UPD\" = 0 ]; }; installed() { return 0; }; $4" > "$uw/out" 2>&1; }
+    apt_wait() { :; }; apt_get_update() { [ \"\$UPD\" = 0 ]; }; installed() { return 0; }; $4" > "$uw/out" 2>&1; }
 check "Helfer: Updates mit neuen Abhängigkeiten blieben liegen (full-upgrade, wenn nichts entfernt wird)" \
       "urun '' 0 0 upgrade_mode && [ \"\$(cat $uw/out)\" = full ]"
 check "Helfer: full-upgrade obwohl es Pakete entfernen würde" "urun remove 0 0 upgrade_mode && [ \"\$(cat $uw/out)\" = safe ]"
@@ -1408,7 +1408,7 @@ assert [(x[1], x[2], x[3]) for x in d] == [('WH-1000XM4', True, 'Headphones'), (
 assert [x[1] for x in c.bt_scan(1)] == ['Xbox Controller']\""
 check "Control Center: ohne Bluetooth-Adapter falsch" "ccpy BT=none python3 -c \"$CCL; assert c.bt_state() == (False, False)\""
 SCL="import importlib.machinery as m; s = m.SourceFileLoader('s', '$SC').load_module()"
-printf '#!/bin/sh\n[ "$1 $2" = "list --app" ] && echo com.discordapp.Discord\nexit 0\n' > "$wt/mock/flatpak"
+printf '#!/bin/sh\n[ "$1 $2" = "list --app" ] && printf "com.discordapp.Discord\\tsystem\\nus.zoom.Zoom\\tuser\\n"\nexit 0\n' > "$wt/mock/flatpak"
 printf '#!/bin/sh\ncase "$*" in *libreoffice-writer*) echo "install ok installed" ;; esac\n' > "$wt/mock/dpkg-query"
 chmod 0755 "$wt/mock/flatpak" "$wt/mock/dpkg-query"
 check "Software Center: Status/Befehle falsch" "ccpy python3 -c \"$SCL
@@ -1421,6 +1421,11 @@ assert s.install_cmd(by['steam']) == ['pkexec', '/usr/local/sbin/simpleos-system
 assert s.install_cmd(by['libreoffice']) == ['pkexec', '/usr/local/sbin/simpleos-system-setup', '--office', 'libreoffice']
 assert s.install_cmd(by['spotify']) == ['flatpak', 'install', '--system', '-y', 'flathub', 'com.spotify.Client']
 assert s.remove_cmd(by['discord'])[:2] == ['flatpak', 'uninstall'] and s.remove_cmd(by['steam']) is None
+fl = s.flatpak_installed()
+assert fl == {'com.discordapp.Discord': 'system', 'us.zoom.Zoom': 'user'}, fl
+assert s.status(by['zoom'], fl) == 'installed'
+assert s.remove_cmd(by['discord'], fl['com.discordapp.Discord'])[2] == '--system'
+assert s.remove_cmd(by['zoom'], fl['us.zoom.Zoom'])[2] == '--user'
 assert s.matches(by['discord'], 'chat', 'All') and not s.matches(by['discord'], '', 'Games')
 assert 'password' in s.explain(126, '') and 'internet' in s.explain(1, 'Could not resolve host')
 perm = 'org.onlyoffice.desktopeditors permissions:\\n    ipc  network  pulseaudio\\nerror: something else'
@@ -1703,6 +1708,9 @@ dcase show "Wi-Fi" "Connection established" "NetworkManager" "nm-signal-100" ""
 dcase show "Software Updates" "3 updates are ready to install" "Software Updates" "system-software-update" "x-simpleos"
 check "dunst-Filter: Laptop-Konfiguration verwirft 'Battery low'" "python3 $tb/dunsim.py $tb/.config/dunst/dunstrc show 'Battery low' 'Plug in your charger soon.' notify-send battery-caution ''"
 check "dunst-Filter: Ausnahme x-simpleos steht nicht am Ende" "[ \"\$(grep '^\\[' $FLT | tail -n 1)\" = '[simpleos-keep-own]' ]"
+dcase show "Volume" "55%" "simpleos-osd" "notification-audio-volume-high" "x-simpleos-osd"
+check "dunst-Filter: Ausnahme x-simpleos überschreibt die OSD-Regel (zweizeilig, im Verlauf)" \
+      "awk '/^\\[simpleos-keep-own\\]/,0' $FLT | grep -qx '    category = \"x-simpleos\"'"
 
 # Verursacher: kein Startweg darf ein Akku-Programm ohne Akku-Prüfung starten
 #   XDG-Autostart  Hidden=true oder Exec über "simpleos-battery --run" (Hook 10_battery_guard)
@@ -2004,7 +2012,8 @@ check "Suche: App-Name nicht übersetzt (LANG=de)" "grep -q '^Rechner|' $S/out"
 SARG="42 * 12" srch ROFI_RETV=2
 check "Suche: '42 * 12' + Enter rechnet nicht" "grep -q '^42 \\* 12 = 504|info~calc:504' $S/out && grep -q 'Enter copies the result' $S/out"
 for c in '42*12=|42 * 12 = 504' '2^10|2 ^ 10 = 1024' '3,5*2|3,5 * 2 = 7' '(1+2)/3|(1 + 2) / 3 = 1' '10 % 3|10 % 3 = 1' \
-         'sqrt(16)|sqrt(16) = 4'; do
+         'sqrt(16)|sqrt(16) = 4' '6×7|6 × 7 = 42' '8÷2|8 ÷ 2 = 4' '-3+4|-3 + 4 = 1' \
+         '(-8)^(1/3)|(-8)^(1/3) – no result'; do
     check "Rechner: '${c%%|*}' ergibt nicht '${c#*|}'" "[ \"\$(python3 $SR --calc '${c%%|*}')\" = '${c#*|}' ]"
 done
 for c in "__import__('os').system('true')" 'report' '2**99999' 'open(1)' '9-'; do
@@ -2872,6 +2881,7 @@ echo "xrandr $*" >> "$WT/xrandr"
   '   2560x1440     59.95*+ 143.97   120.00   99.95' '   1920x1080     60.00    144.00' \
   'eDP-1 connected 1920x1080+2560+0 (normal left inverted right x axis y axis) 344mm x 194mm' \
   '   1920x1080    165.00*+  60.00' 'HDMI-1 disconnected (normal left inverted right x axis y axis)'
+case "$*" in *GONE-1*) echo "warning: output GONE-1 not found; ignoring" >&2; exit 1 ;; esac
 exit 0
 MOCK
 chmod 0755 "$wt/mock/xrandr"
@@ -2881,6 +2891,9 @@ hcase "$DSP --restore" "ohne Einstellung: höchste Rate (144 Hz statt 60), schon
 mkdir -p "$wt/home/.config/simpleos"; echo "--output DP-1 --mode 1920x1080 --rate 60.00" > "$wt/home/.config/simpleos/display"
 hcase "$DSP --restore" "eigene Einstellung hat Vorrang vor der Automatik" "" "" "" \
     'grep -qx "xrandr --output DP-1 --mode 1920x1080 --rate 60.00" $S/xrandr && ! grep -q "143.97" $S/xrandr'
+echo "--output GONE-1 --mode 1920x1080 --rate 60.00" > "$wt/home/.config/simpleos/display"
+hcase "$DSP --restore" "gespeicherter Monitor abgesteckt: keine höchste Rate als Ersatz" "" "" "" \
+    'grep -q "GONE-1" $S/xrandr && grep -qx "xrandr --output DP-1 --mode 2560x1440 --rate 143.97" $S/xrandr'
 rm -f "$wt/home/.config/simpleos/display"
 hcase "$DSP --best" "--best ohne rofi (Autostart)" "rofi" "" "" 'grep -q -- "--rate 143.97" $S/xrandr && [ ! -s $S/notify ]'
 check "Control Center: Auswahl der Bildwiederholrate fehlt" "grep -q 'rate.append(r, f\"{round(float(r))} Hz\")' /usr/local/bin/simpleos-control-center"
@@ -2972,6 +2985,8 @@ hcase "$OSD volume up" "Lautstärke +5 % mit Balken" "" "" "" \
     '[ "$(cat $S/vol)" = 55 ] && grep -q "x-dunst-stack-tag:simpleos-osd" $S/notify && grep -q "int:value:55 Volume 55%" $S/notify && grep -q -- "-c x-simpleos-osd" $S/notify'
 check "simpleos-osd: Lautstärke über 100 %" \
       "rm -rf $S; mkdir -p $S; echo 98 > $S/vol; $ENV -i HOME=$wt/home WT=$S PATH=$wt/mock:$wt/sys $wt/sys/sh $OSD volume up >/dev/null 2>&1; [ \"\$(cat $S/vol)\" = 100 ]"
+check "simpleos-osd: 'lauter' senkt eine Lautstärke über 100 % auf 100 %" \
+      "rm -rf $S; mkdir -p $S; echo 120 > $S/vol; $ENV -i HOME=$wt/home WT=$S PATH=$wt/mock:$wt/sys $wt/sys/sh $OSD volume up >/dev/null 2>&1; [ \"\$(cat $S/vol)\" = 120 ]"
 check "simpleos-osd: Stumm zeigt keinen 'Muted'-Hinweis" \
       "rm -rf $S; mkdir -p $S; $ENV -i HOME=$wt/home WT=$S PATH=$wt/mock:$wt/sys $wt/sys/sh $OSD volume mute >/dev/null 2>&1; grep -q 'Volume Muted' $S/notify && grep -q 'notification-audio-volume-muted' $S/notify"
 bl=$wt/backlight; mkdir -p "$bl/acpi_video0" "$bl/intel_backlight"

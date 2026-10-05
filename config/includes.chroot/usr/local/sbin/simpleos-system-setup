@@ -192,7 +192,10 @@ install_drivers() {
     _drc=$(mktemp)
     echo 1 > "$_drc"
     {
-        if [ "${dry:-0}" = 1 ]; then $APT_GET update >&2; else apt_get_update >&2; fi || { echo "Paketlisten konnten nicht geladen werden" >&2; exit 1; }
+        # apt_wait vorab auf stdout: sein "STAGE: Waiting for a background update" soll ins Ladefenster, die Ausgabe
+        # von apt-get update dagegen ins Protokoll (stderr)
+        if [ "${dry:-0}" = 1 ]; then $APT_GET update >&2; else apt_wait; apt_get_update >&2; fi ||
+            { echo "Paketlisten konnten nicht geladen werden" >&2; exit 1; }
         echo "STAGE: Downloading drivers" >&3
         $APT_GET -y -o DPkg::Lock::Timeout=300 -o Dpkg::Options::=--force-confdef \
             -o Dpkg::Options::=--force-confold -o APT::Status-Fd=3 install "$@" >&2
@@ -423,12 +426,9 @@ if [ "$purge_firefox" -eq 1 ] && installed firefox-esr; then
             aptget autoremove --purge
             rm -rf /usr/share/firefox-esr
             # Systemweite Vorgaben auf den neuen Browser umstellen (für neue Benutzer und xdg-mime)
+            # (Das Openbox-Menü braucht nichts: "Web Browser" startet simpleos-browser, also den Standard-Browser)
             for f in /etc/xdg/mimeapps.list /usr/share/applications/defaults.list; do
                 [ -f "$f" ] && sed -i "s|=firefox-esr\.desktop|=$new_id|" "$f"
-            done
-            # Menüeintrag "Firefox ESR" aus skel und allen User-Homes entfernen (sed -i behält den Besitzer)
-            for f in /etc/skel/.config/openbox/menu.xml /home/*/.config/openbox/menu.xml; do
-                [ -f "$f" ] && sed -i '/<item label="Firefox ESR">/,/<\/item>/d' "$f"
             done
         else
             fail "Firefox ESR konnte nicht entfernt werden"

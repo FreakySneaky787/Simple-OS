@@ -83,9 +83,13 @@ best() {
 case "${1:-}" in
     --restore)
         if [ -s "$SAVED" ]; then
-            # Gespeicherte Ausgänge, die es nicht mehr gibt (Monitor abgesteckt) -> xrandr scheitert, alles bleibt
+            # Gespeicherte Ausgänge, die es nicht mehr gibt (Monitor abgesteckt) -> xrandr scheitert, alles bleibt;
+            # dann wenigstens die höchste Bildwiederholrate wie ohne gespeicherte Einstellung (sonst oft 60 Hz)
             # shellcheck disable=SC2046
-            xrandr $(head -n 1 "$SAVED") >&2 2>&1 || sos_log "restore failed: $(head -n 1 "$SAVED")"
+            if ! xrandr $(head -n 1 "$SAVED") >&2 2>&1; then
+                sos_log "restore failed: $(head -n 1 "$SAVED")"
+                best
+            fi
         else
             best
         fi

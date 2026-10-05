@@ -42,6 +42,9 @@ volume() {
             if [ "$1" = up ]; then new=$((cur + STEP)); else new=$((cur - STEP)); fi
             [ "$new" -gt 100 ] && new=100      # wie Windows: nie über 100 % (verzerrt sonst)
             [ "$new" -lt 0 ] && new=0
+            # schon über 100 % (z.B. in pavucontrol gesetzt): "lauter" lässt sie, statt sie auf 100 % zu senken
+            # (wie "Volume up" im Sound-Menü, simpleos-volume)
+            [ "$1" = up ] && [ "$new" -lt "$cur" ] && new=$cur
             pactl set-sink-volume @DEFAULT_SINK@ "$new%" 2>/dev/null ;;
         mute)
             pactl set-sink-mute @DEFAULT_SINK@ toggle 2>/dev/null ;;

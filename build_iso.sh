@@ -26,7 +26,8 @@ fi
 
 # Frische Kopie der Quell-Konfiguration; lb clean --purge entfernt auch den Stage-Marker .build/config,
 # daher muss lb config (tools/lb_config.sh) danach und direkt vor lb build laufen.
-PREPARE='rm -rf config && cp -a ../config config'
+# Python-Bytecode (__pycache__, *.pyc von lokalen Syntaxprüfungen) gehört nicht ins Image – cp -a nähme ihn mit.
+PREPARE='rm -rf config && cp -a ../config config && find config -name __pycache__ -prune -exec rm -rf {} + && find config -name "*.pyc" -delete'
 if [[ $CONFIG_ONLY == 1 ]]; then
     STEPS="$PREPARE && ../tools/lb_config.sh"
 else

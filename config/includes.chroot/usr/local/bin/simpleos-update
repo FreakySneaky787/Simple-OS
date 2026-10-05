@@ -112,6 +112,10 @@ install_updates() {
         sos_notify "Updates cannot be installed on this system (update helper missing)." critical
         return 0
     fi
+    # Geräte mit Firmware-Update VOR dem Einspielen merken: ein vorgemerktes UEFI-Kapsel-Update führt fwupd danach
+    # nicht mehr unter get-updates (wartet auf den Neustart) – hinterher gelesen blieb die Liste leer und die
+    # Prüfung nach dem Neustart (firmware_check) griff nie. Die Liste steht schon im Fenster ($pkgs, "… (firmware)").
+    fw_before=$(printf '%s\n' "${pkgs:-}" | sed -n 's/ (firmware)$//p')
     # Ladefenster mit echtem Fortschritt (PROGRESS/STAGE vom Helfer); erscheint erst nach dem Passwortdialog.
     # Ohne --title: die STEP-Zeilen des Helfers sind die Überschrift ("Checking for updates" -> "Installing updates"),
     # sonst hieß es auch beim bloßen Nachsehen "Installing updates". Nichts zu tun -> Helfer meldet "DONE: Already up to date"
@@ -151,7 +155,8 @@ install_updates() {
             if printf '%s\n' "$log" | grep -qx 'FIRMWARE: installed'; then
                 restart="Your computer needs a restart to finish the update. Firmware is installed during the restart – keep the charger plugged in."
                 # Geräte merken: stehen sie nach dem Neustart noch an, hat das Einspielen nicht geklappt
-                mkdir -p "${FW_MARK%/*}" 2>/dev/null && firmware > "$FW_MARK" 2>/dev/null
+                [ -n "$fw_before" ] && mkdir -p "${FW_MARK%/*}" 2>/dev/null &&
+                    printf '%s\n' "$fw_before" > "$FW_MARK" 2>/dev/null
             fi
             if [ -e "$REBOOT_FLAG" ]; then
                 offer_restart "$restart"

@@ -95,7 +95,7 @@ def calculate(text):
     words = set(re.findall(r"[A-Za-z_]+", expr))
     if not expr or not re.search(r"\d", expr) or words - set(_FUNCS) - set(_CONST):
         return None
-    if not re.fullmatch(r"[\d\s.,+\-*/%^()A-Za-z_]+", expr) or not re.search(r"[+\-*/%^(]", expr):
+    if not re.fullmatch(r"[\d\s.,+\-*/%^()×÷A-Za-z_]+", expr) or not re.search(r"[+\-*/%^(×÷]", expr):
         return None
     py = re.sub(r"(\d),(\d)", r"\1.\2", expr).replace("^", "**").replace("×", "*").replace("÷", "/")
     try:
@@ -106,12 +106,17 @@ def calculate(text):
         return f"{expr} – the number is too large", None
     except (ValueError, TypeError, SyntaxError, OverflowError, RecursionError):
         return None
+    # negative Basis mit gebrochenem Exponenten ((-8)^(1/3)) ergibt in Python eine komplexe Zahl
+    if isinstance(value, complex):
+        return f"{expr} – no result", None
     if isinstance(value, float):
         if math.isnan(value) or math.isinf(value):
             return f"{expr} – no result", None
         value = int(value) if value.is_integer() and abs(value) < 1e15 else float(f"{value:.12g}")
-    pretty = re.sub(r"\s*([+\-*/%^])\s*", r" \1 ", expr).strip()
+    pretty = re.sub(r"\s*([+\-*/%^×÷])\s*", r" \1 ", expr).strip()
     pretty = re.sub(r"\s+", " ", pretty).replace("( ", "(").replace(" )", ")")
+    # Vorzeichen (am Anfang, nach "(" oder nach einem Operator) ohne Leerzeichen: "(-8)" statt "(- 8)"
+    pretty = re.sub(r"(^|[(+\-*/%^×÷] ?)([+-]) (?=[\d(.a-z])", r"\1\2", pretty)
     return f"{pretty} = {value}", str(value)
 
 

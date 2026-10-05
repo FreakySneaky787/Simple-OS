@@ -513,9 +513,14 @@ def main(argv):
             vol = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 5)
             vol.set_value(volume())
             vol.set_size_request(260, -1)
-            vol.connect("value-changed", lambda s: set_volume(s.get_value()))
             mute = Gtk.Switch(active=muted())
             mute.connect("notify::active", lambda s, _p: set_mute(s.get_active()))
+
+            def vol_changed(s):
+                set_volume(s.get_value())          # hebt die Stummschaltung auf -> Schalter nachziehen
+                if mute.get_active():
+                    mute.set_active(False)
+            vol.connect("value-changed", vol_changed)
             outs = outputs()
             combo = Gtk.ComboBoxText()
             for i, (sink, port, lab, active) in enumerate(outs):
@@ -595,8 +600,19 @@ def main(argv):
             warm.set_inverted(True)
             warm.set_value(temp)
             warm.set_size_request(220, -1)
-            warm.connect("button-release-event",
-                         lambda s, _e: cmd("simpleos-nightlight", "--temp", str(int(s.get_value())), timeout=20))
+            # jede Änderung (Maus, Tastatur, Mausrad) – kurz verzögert, damit Ziehen nicht jeden Zwischenwert anwendet
+            pending = [None]
+
+            def apply_warmth():
+                pending[0] = None
+                cmd("simpleos-nightlight", "--temp", str(int(warm.get_value())), timeout=20)
+                return False
+
+            def warm_changed(_s):
+                if pending[0]:
+                    GLib.source_remove(pending[0])
+                pending[0] = GLib.timeout_add(400, apply_warmth)
+            warm.connect("value-changed", warm_changed)
             self.put(label("<b>Night light</b>", markup=True))
             self.put(card([("Night light", "Warmer colors in the evening", nl),
                            ("Warmth", "Right = warmer", warm)]))
@@ -826,7 +842,11 @@ def main(argv):
             off = Gtk.ComboBoxText()
             for minutes, text in SCREEN_OFF:
                 off.append(str(minutes), text)
-            off.set_active_id(str(screen_off()))
+            cur_off = screen_off()
+            # anderer Wert (z.B. "simpleos-power --screen-off 20" im Terminal): als eigener Eintrag statt leerer Auswahl
+            if not off.set_active_id(str(cur_off)):
+                off.append(str(cur_off), f"{cur_off} minutes")
+                off.set_active_id(str(cur_off))
             off.connect("changed", lambda c: cmd("simpleos-power", "--screen-off", c.get_active_id() or "10"))
             self.put(card([("Turn off the screen after", "When the computer is not used", off)]))
             cur, avail = power_profile()

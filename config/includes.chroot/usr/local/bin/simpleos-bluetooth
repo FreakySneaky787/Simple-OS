@@ -111,7 +111,9 @@ device_menu() {
     sos_pick "<b>$(sos_esc "$2")</b>   $(sos_dim "$(kind "$1")")" 360
     case "$action" in
         connect)    connect "$1" "$2" ;;
-        disconnect) bt disconnect "$1" >&2; sos_notify "Disconnected from $2." low ;;
+        # bluetoothctl: "Successful disconnected"; sonst (Gerät reagiert nicht, Zeitüberschreitung) ehrlich melden
+        disconnect) if bt disconnect "$1" | grep -qi 'successful'; then sos_notify "Disconnected from $2." low
+                    else sos_notify "Could not disconnect from $2. Please try again." critical; fi ;;
         remove)     if bt remove "$1" | grep -qi 'removed'; then sos_notify "$2 was removed." low
                     else sos_notify "$2 could not be removed." critical; fi ;;
     esac
