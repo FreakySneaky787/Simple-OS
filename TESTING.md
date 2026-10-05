@@ -1,63 +1,63 @@
-# Release-Tests Simple OS 1.0
+# Release tests Simple OS 1.0
 
-Abhaken vor dem Hochladen. Gefundene Fehler am besten gleich mit **Menü → Help → Report a Problem**
-festhalten. So wird das Werkzeug nebenbei mitgetestet.
+Tick these off before uploading. Ideally record any bug you find right away with **Menu → Help → Report a
+Problem** – that tests the tool at the same time.
 
-## 0. Bauen
+## 0. Build
 
-- [ ] `./build_iso.sh` läuft ohne Fehler durch. Der Verify-Hook meldet am Ende `Simple OS verify: OK` (steht in `build/build.log`).
-- [ ] In `output/` liegen `Simple-OS.iso`, `Simple-OS.iso.sha256` und `Simple-OS.packages.txt`.
-- [ ] `cd output && sha256sum -c Simple-OS.iso.sha256` meldet `Simple-OS.iso: OK`.
+- [ ] `./build_iso.sh` runs without errors. At the end the verify hook reports `Simple OS verify: OK` (in `build/build.log`).
+- [ ] `output/` contains `Simple-OS.iso`, `Simple-OS.iso.sha256` and `Simple-OS.packages.txt`.
+- [ ] `cd output && sha256sum -c Simple-OS.iso.sha256` reports `Simple-OS.iso: OK`.
 
-## 1. In der VM (ohne zusätzliche Hardware)
+## 1. In the VM (no extra hardware)
 
-`./test_vm.sh` startet die ISO, `./test_installed_vm.sh` danach das installierte System, jeweils mit demselben Modus.
+`./test_vm.sh` boots the ISO, `./test_installed_vm.sh` then boots the installed system, each in the same mode.
 
-| Modus | Befehl | Was prüfen |
+| Mode | Command | What to check |
 |---|---|---|
-| BIOS | `./test_vm.sh` | Bootmenü zeigt Simple OS (kein Debian-Helm), Installation, Neustart von der Platte |
-| UEFI + Secure Boot | `./test_vm.sh --secureboot` | wie oben, **und** nach der Installation im Terminal: `mokutil --sb-state` → `SecureBoot enabled` |
-| UEFI + Verschlüsselung | `./test_vm.sh --uefi` | im Installer „Encrypt system“ ankreuzen. Nach dem Neustart fragt das System nach dem Passwort und startet danach normal |
+| BIOS | `./test_vm.sh` | the boot menu shows Simple OS (no Debian helmet), installation, restart from the disk |
+| UEFI + Secure Boot | `./test_vm.sh --secureboot` | as above, **and** after the installation in a terminal: `mokutil --sb-state` → `SecureBoot enabled` |
+| UEFI + encryption | `./test_vm.sh --uefi` | tick "Encrypt system" in the installer. After the restart the system asks for the password and then starts normally |
 
-Schon erledigt (4. Oktober, mit der ISO vom 3. Oktober plus neuem Bootbild):
+Already done (October 4, with the ISO from October 3 plus the new boot image):
 
-- Das Live-System startet unter UEFI mit Secure Boot (Microsoft-Schlüssel, `SecureBoot enabled`) und unter BIOS bis zum Desktop.
-- Die Installation selbst ist noch nicht getestet.
+- The live system boots under UEFI with Secure Boot (Microsoft keys, `SecureBoot enabled`) and under BIOS to the desktop.
+- The installation itself has not been tested yet.
 
-## 2. Auf echter Hardware
+## 2. On real hardware
 
-- [ ] **ThinkBook (UEFI):** Installation, dann:
-  - Firewall im Control Center → System → Security steht auf an.
-  - Power mode bietet drei Profile an.
-  - Software Updates zeigt ein eventuelles BIOS-Update.
-  - Updates installieren: Die Meldung „Updates installed“ startet beim Anklicken **nicht** sofort neu, sondern fragt
-    erst („Restart now“ / „Later“). Nach dem Neustart bietet Software Updates nicht dieselben Updates wieder an.
-    War ein BIOS-Update dabei und kommt es trotzdem wieder, erscheint eine Meldung, dass es nicht übernommen wurde.
-    Bei Problemen `~/.cache/simpleos-update.log` aufheben.
-  - WLAN: Einen großen Download (z. B. ein Flatpak) laufen lassen. Die Rate darf nicht immer wieder auf wenige
-    kB/s einbrechen. Falls doch: Menü → Help → Report a Problem; im Abschnitt „Network“ stehen Treiber,
-    Verbindungsrate und Stromsparmodus (`Power save: off` erwartet).
-  - Report a Problem erstellt eine Datei auf dem Desktop.
-- [ ] **Secure Boot an** (im BIOS einschalten): Das installierte System startet trotzdem.
-- [ ] **Dual-Boot mit Windows:** Im Installer „Install alongside“ wählen. Danach zeigt das GRUB-Menü Simple OS **und**
-      Windows, und Windows startet noch. Vorher ein Windows-Backup machen oder einen Rechner nehmen, auf dem nichts verloren gehen kann.
-- [ ] **NVIDIA-Rechner:** Control Center → System → Hardware & Drivers schlägt den Treiber vor. Mit Secure Boot
-      **aus** installieren, neu starten, dann in `glxinfo -B` „NVIDIA“ als Renderer prüfen.
-- [ ] **AMD-Rechner:** Grafik, WLAN und Ton funktionieren. Hardware & Drivers meldet nichts Fehlendes.
+- [ ] **ThinkBook (UEFI):** install, then:
+  - The firewall in Control Center → System → Security is on.
+  - Power mode offers three profiles.
+  - Software Updates shows a BIOS update, if there is one.
+  - Install updates: clicking the "Updates installed" notification does **not** restart right away but asks
+    first ("Restart now" / "Later"). After the restart Software Updates does not offer the same updates again.
+    If a BIOS update was included and it shows up again anyway, a notification says it was not applied.
+    If there are problems, keep `~/.cache/simpleos-update.log`.
+  - Wi-Fi: run a large download (e.g. a Flatpak). The rate must not keep dropping to a few kB/s. If it does:
+    Menu → Help → Report a Problem; the "Network" section lists the driver, link rate and power saving mode
+    (`Power save: off` expected).
+  - Report a Problem creates a file on the desktop.
+- [ ] **Secure Boot on** (enable it in the BIOS): the installed system still starts.
+- [ ] **Dual boot with Windows:** choose "Install alongside" in the installer. Afterwards the GRUB menu shows Simple OS
+      **and** Windows, and Windows still starts. Make a Windows backup first or use a computer where nothing can be lost.
+- [ ] **NVIDIA computer:** Control Center → System → Hardware & Drivers suggests the driver. Install it with Secure Boot
+      **off**, restart, then check that `glxinfo -B` shows "NVIDIA" as the renderer.
+- [ ] **AMD computer:** graphics, Wi-Fi and sound work. Hardware & Drivers reports nothing missing.
 
 ## 3. Report a Problem
 
-- [ ] Menü → Help → Report a Problem → „Create report“ → Passwort eingeben.
-- [ ] Die Datei auf dem Desktop öffnen und prüfen: Darin dürfen **nicht** vorkommen:
-  - dein Name, dein Benutzername, dein Rechnername
-  - dein WLAN-Name
-  - deine IP-Adressen
-- [ ] Die GitHub-Seite für einen neuen Fehlerbericht öffnet sich (erst, wenn das Repo öffentlich ist).
+- [ ] Menu → Help → Report a Problem → "Create report" → enter the password.
+- [ ] Open the file on the desktop and check that it does **not** contain:
+  - your name, your user name, your computer name
+  - your Wi-Fi name
+  - your IP addresses
+- [ ] The GitHub page for a new bug report opens (only once the repo is public).
 
-## 4. Veröffentlichen
+## 4. Publish
 
-1. Auf GitHub ein öffentliches Repo **`simple-os`** unter `FreakySneaky787` anlegen. Der Name muss stimmen, weil
-   Installer und Report a Problem auf `github.com/FreakySneaky787/simple-os` verlinken.
+1. Create a public repo **`simple-os`** under `FreakySneaky787` on GitHub. The name must match, because the
+   installer and Report a Problem link to `github.com/FreakySneaky787/simple-os`.
 2. `git remote add origin https://github.com/FreakySneaky787/simple-os.git && git push -u origin main`
-3. Releases → „Draft a new release“ → Tag `v1.0`. Den Text von `RELEASE_NOTES.md` als Beschreibung einfügen. Die drei Dateien
-   aus `output/` anhängen (GitHub erlaubt bis 2 GB pro Datei).
+3. Releases → "Draft a new release" → tag `v1.0`. Paste the text of `RELEASE_NOTES.md` as the description. Attach the
+   three files from `output/` (GitHub allows up to 2 GB per file).
