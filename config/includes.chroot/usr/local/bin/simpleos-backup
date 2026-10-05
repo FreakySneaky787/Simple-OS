@@ -1,23 +1,23 @@
 #!/bin/sh
-# Simple OS – Backups / Wiederherstellungspunkte (Menü → System → Backups, Control Center → System)
-# Rofi-Fenster:
-#   "Create restore point now"                   fragt nach einem Namen (optional), dann pkexec-Passwort
-#   "Restore point before updates: On/Off"       Punkt vor jedem System-Update (Settings → Software Updates)
-#   darunter die vorhandenen Punkte ("1 Oct 2026, 14:30 · Before system update"); Klick -> Restore…,
-#   Check, Delete, Back. Restore fragt zweimal und erklärt: System wird zurückgesetzt, persönliche Dateien
-#   in /home bleiben, der PC startet danach neu.
-# Die eigentliche Arbeit macht der root-Helfer /usr/local/sbin/simpleos-backup-helper (timeshift).
-# Live-Session: "Backups can only be created on an installed system." statt Menü (simpleos-live --check).
-# Beim ersten Öffnen richtet der Helfer timeshift selbst ein (Zielgerät = Partition von "/", RSYNC).
-# Fehler werden unterschieden: Live-System, kein Zielgerät, zu wenig Speicherplatz, sonstiger Fehler (dann ohne
-# Vermutung über den Speicherplatz, Details im Protokoll). Pro Vorgang höchstens EINE Ergebnismeldung: zu wenig
-# Platz -> nur die Platzwarnung (vor dem Anlegen geprüft, "helper --space"), anderer Fehler -> nur der Hinweis
-# aufs Protokoll; danach keine weiteren Fehlermeldungen in diesem Lauf.
-# Lange Vorgänge (anlegen, zurückspielen, löschen) zeigt simpleos-progress als schlichtes Ladefenster mit Live-Balken
-# (Prozent und Restzeit von timeshift, Abschnitt, Dauer), ohne Anzeige als dunst-Balken.
-# Robust wie simpleos-wifi: kein set -e, Exit 0, Fehler als Meldung, Details in ~/.cache/simpleos-backup.log.
-#   simpleos-backup              Fenster
-#   simpleos-backup --create     sofort einen Punkt anlegen (Control Center "Create now")
+# Simple OS – backups / restore points (Menu → System → Backups, Control Center → System)
+# Rofi window:
+#   "Create restore point now"                   asks for a name (optional), then the pkexec password
+#   "Restore point before updates: On/Off"       a point before every system update (Settings → Software Updates)
+#   below the existing points ("1 Oct 2026, 14:30 · Before system update"); click -> Restore…,
+#   Check, Delete, Back. Restore asks twice and explains: the system is reset, personal files
+#   in /home stay, the PC restarts afterwards.
+# The root helper /usr/local/sbin/simpleos-backup-helper (timeshift) does the actual work.
+# Live session: "Backups can only be created on an installed system." instead of the menu (simpleos-live --check).
+# The first time it is opened the helper sets up timeshift itself (target device = partition of "/", RSYNC).
+# Errors are told apart: live system, no target device, not enough space, other error (then without
+# a guess about the space, details in the log). At most ONE result notification per action: not enough
+# space -> only the space warning (checked before creating, "helper --space"), other error -> only the hint
+# to the log; after that no further error notifications in this run.
+# simpleos-progress shows long actions (create, restore, delete) as a plain progress window with a live bar
+# (percent and time left from timeshift, section, duration), without showing a dunst bar.
+# Robust like simpleos-wifi: no set -e, exit 0, errors as a notification, details in ~/.cache/simpleos-backup.log.
+#   simpleos-backup              window
+#   simpleos-backup --create     create a point right away (Control Center "Create now")
 
 SOS_NAME=simpleos-backup SOS_TITLE=Backups SOS_ICON=document-save SOS_PROMPT=Backups
 TAB=$(printf '\t')
@@ -34,15 +34,15 @@ if [ -x /usr/local/bin/simpleos-live ] && /usr/local/bin/simpleos-live --check; 
 fi
 command -v pkexec >/dev/null || { sos_notify "Backups are not available (pkexec missing)." critical; exit 0; }
 
-# helper ARGS… -> Ausgabe in $HOUT, Exit-Code in $hrc (126 = Passwort abgebrochen). Nicht in $(…) aufrufen,
-# sonst gingen beide in der Subshell verloren.
+# helper ARGS… -> output in $HOUT, exit code in $hrc (126 = password cancelled). Do not call it in $(…),
+# otherwise both would be lost in the subshell.
 helper() {
     HOUT=$(pkexec "$HELPER" "$@" 2>>"$SOS_LOG"); hrc=$?
 }
-# helper_live "Titel" "Erfolgstitel" "Hinweis" ARGS… – wie helper, aber mit Ladefenster
-# (simpleos-progress liest die Live-Zeilen STEP/STAGE/PROGRESS des Helfers aus $pout; ohne Anzeige als
-# dunst-Meldung mit Balken). Das Fenster zeigt keine Fehler – die eine Ergebnismeldung kommt von explain.
-# Rückgabe 1 = ohne Fortschrittsanzeige gelaufen (Aufrufer meldet dann selbst "läuft…").
+# helper_live "title" "success title" "hint" ARGS… – like helper, but with a progress window
+# (simpleos-progress reads the helper's live lines STEP/STAGE/PROGRESS from $pout; without a display as a
+# dunst notification with a bar). The window shows no errors – the one result notification comes from explain.
+# Returns 1 = ran without a progress display (the caller then reports "running…" itself).
 PROGRESS=/usr/local/bin/simpleos-progress
 helper_live() {
     ptitle=$1 pdone=$2 phint=$3; shift 3
@@ -53,21 +53,21 @@ helper_live() {
     pkexec "$HELPER" "$@" >"$pout" 2>>"$SOS_LOG"; hrc=$?
     HOUT=$(cat "$pout")
     echo "EXIT: $hrc" >> "$pout"
-    wait "$ppid" 2>/dev/null   # Erfolg: vollen Balken kurz stehen lassen, erst dann "Restore point created."
+    wait "$ppid" 2>/dev/null   # success: let the full bar stand briefly, only then "Restore point created."
     rm -f "$pout"
     return 0
 }
-# Bytes -> "3.2 GB" (ab 999,5 MB, eine Nachkommastelle, kaufmännisch gerundet, ".0" entfällt) bzw. "480 MB"
-# – nie "0.0 GB"
+# Bytes -> "3.2 GB" (from 999.5 MB, one decimal place, rounded half up, ".0" dropped) or "480 MB"
+# – never "0.0 GB"
 size() {
     awk -v b="$1" 'BEGIN {
         if (b >= 999.5e6) { v = int(b / 1e8 + 0.5) / 10; s = sprintf("%.1f", v); sub(/\.0$/, "", s); printf "%s GB", s }
         else printf "%d MB", int(b / 1e6 + 0.5) }'
 }
-REPORTED=0   # schon eine Fehlermeldung gezeigt -> keine zweite in diesem Lauf
-explain() {  # Exit-Code des Helfers -> genau eine Meldung ($1 = Text für sonstige Fehler, ohne Vermutung zur Ursache)
+REPORTED=0   # an error notification was already shown -> no second one in this run
+explain() {  # the helper's exit code -> exactly one notification ($1 = text for other errors, without guessing the cause)
     [ "$hrc" -eq 0 ] && return 0
-    [ "$REPORTED" = 1 ] && { sos_log "weitere Meldung unterdrückt (Exit $hrc): $1"; return 1; }
+    [ "$REPORTED" = 1 ] && { sos_log "further notification suppressed (exit $hrc): $1"; return 1; }
     REPORTED=1
     case "$hrc" in
         126|127) sos_notify "No password entered – nothing was changed." ;;
@@ -93,7 +93,7 @@ pretty() {
     date -d "$d $hm" '+%-d %b %Y, %H:%M' 2>/dev/null || echo "$1"
 }
 create() {
-    # Erst Platz/Gerät prüfen (ein Passwort, pkexec merkt es sich), dann erst "Creating…" melden
+    # Check space/device first (one password, pkexec remembers it), only then report "Creating…"
     helper --space
     explain "The restore point could not be created." || return 1
     helper_live "Creating a restore point" "Restore point created" \
@@ -111,7 +111,7 @@ command -v rofi >/dev/null || { sos_log "rofi missing"; sos_rofi_failed; }
 I_PLUS='\357\201\247' I_HIST='\357\207\232' I_CLOCK='\357\200\227' I_CHECK='\357\200\214' I_TRASH='\357\207\270'
 I_BACK='\357\201\240' I_UNDO='\357\203\242' I_SHIELD='\357\204\262'
 
-point_menu() {  # $1 Name, $2 Anzeige
+point_menu() {  # $1 name, $2 display text
     sos_add "$(sos_fa "$I_UNDO")  Restore this point…" "restore"
     sos_add "$(sos_fa "$I_CHECK")  Check" "check"
     sos_add "$(sos_fa "$I_TRASH")  Delete" "delete"
@@ -142,7 +142,7 @@ point_menu() {  # $1 Name, $2 Anzeige
 
 while :; do
     helper --list
-    # nach einer Fehlermeldung (z. B. zu wenig Platz) still beenden statt einer zweiten Meldung
+    # after an error notification (e.g. not enough space) end silently instead of a second notification
     explain "The restore points could not be read." || exit 0
     points=$HOUT
     helper --auto status
@@ -168,7 +168,7 @@ EOF
         create)
             name=$(printf '' | sos_rofi -dmenu -p "Name" -mesg "<b>Name for the restore point</b>   $(sos_dim "optional, e.g. Before installing drivers")" -markup \
                    -theme-str 'window { width: 520px; } listview { lines: 0; } mainbox { children: [ message, inputbar ]; }')
-            # nur erlaubte Zeichen, höchstens 60
+            # only allowed characters, at most 60
             name=$(printf '%s' "$name" | tr -cd '[:alnum:] .,:()_-' | cut -c1-60)
             create "${name:-Restore point}" ;;
         auto)  helper --auto "$arg1"; explain "The setting could not be changed." ;;

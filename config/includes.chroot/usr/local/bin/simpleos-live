@@ -1,18 +1,18 @@
 #!/bin/sh
-# Simple OS – Live-Modus erkennen und den Desktop darauf einstellen
-#   simpleos-live --check   Exit 0 = Live-Session (vom USB-Stick/ISO gestartet), sonst 1
-#   simpleos-live --setup   Openbox-Autostart, bei jedem Login:
-#     Live:       Desktop-Icon "Install Simple OS" (~/Desktop/simpleos-install.desktop), Welcome-Fenster
-#                 einmal pro Sitzung öffnen (mit Installations-Banner); Debians "Install Debian"-Icon entfernen
-#     installiert: Installer-Icons vom Desktop und den Installer-Eintrag aus dem Openbox-Menü entfernen
-#                 (falls simpleos-post-install das nicht erledigen konnte)
-# Taskleisten-Badge: simpleos-taskbar-select --apply (fragt --check). Menüeintrag: menu.xml zwischen
+# Simple OS – detect live mode and set up the desktop for it
+#   simpleos-live --check   exit 0 = live session (started from a USB stick/ISO), otherwise 1
+#   simpleos-live --setup   Openbox autostart, at every login:
+#     live:       desktop icon "Install Simple OS" (~/Desktop/simpleos-install.desktop), open the Welcome window
+#                 once per session (with the install banner); remove Debian's "Install Debian" icon
+#     installed:  remove installer icons from the desktop and the installer entry from the Openbox menu
+#                 (in case simpleos-post-install could not do that)
+# Taskbar badge: simpleos-taskbar-select --apply (asks --check). Menu entry: menu.xml between
 # simpleos-installer-begin/-end.
-# Erkennung: Kernel-Parameter boot=live (live-boot) oder eingebundenes Live-Medium (/run/live/medium,
-# ältere live-boot-Versionen /lib/live/mount/medium). Der Benutzername allein beweist nichts (auch ein
-# installiertes System kann einen Benutzer "simple" haben).
-# Tests: SIMPLEOS_LIVE=1/0 erzwingt das Ergebnis, SIMPLEOS_CMDLINE ersetzt /proc/cmdline.
-# Kein set -e, Exit 0 (außer --check).
+# Detection: kernel parameter boot=live (live-boot) or a mounted live medium (/run/live/medium,
+# older live-boot versions /lib/live/mount/medium). The user name alone proves nothing (an installed
+# system can also have a user "simple").
+# Tests: SIMPLEOS_LIVE=1/0 forces the result, SIMPLEOS_CMDLINE replaces /proc/cmdline.
+# No set -e, exit 0 (except --check).
 
 is_live() {
     case "${SIMPLEOS_LIVE:-}" in 1) return 0 ;; 0) return 1 ;; esac
@@ -23,7 +23,7 @@ is_live() {
 desktop_dir() {
     d=
     command -v xdg-user-dir >/dev/null && d=$(xdg-user-dir DESKTOP 2>/dev/null)
-    # xdg-user-dir liefert ohne Konfiguration $HOME selbst – dann ~/Desktop
+    # without configuration xdg-user-dir returns $HOME itself – then ~/Desktop
     [ -n "$d" ] && [ "$d" != "$HOME" ] || d=$HOME/Desktop
     echo "$d"
 }
@@ -39,7 +39,7 @@ case "${1:-}" in
                 cp /usr/share/applications/simpleos-install.desktop "$desk/simpleos-install.desktop"
                 chmod 0755 "$desk/simpleos-install.desktop"
             fi
-            # Welcome einmal pro Sitzung (Banner "Install Simple OS Now")
+            # Welcome once per session (banner "Install Simple OS Now")
             run=${XDG_RUNTIME_DIR:-${HOME:-/tmp}/.cache}
             if [ ! -e "$run/simpleos-live-welcome" ] && [ -n "${DISPLAY:-}" ]; then
                 touch "$run/simpleos-live-welcome" 2>/dev/null
@@ -54,5 +54,5 @@ case "${1:-}" in
             fi
         fi
         exit 0 ;;
-    *) echo "Aufruf: simpleos-live --check | --setup" >&2; exit 2 ;;
+    *) echo "Usage: simpleos-live --check | --setup" >&2; exit 2 ;;
 esac

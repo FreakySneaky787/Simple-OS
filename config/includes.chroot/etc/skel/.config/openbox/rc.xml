@@ -24,8 +24,8 @@
     <popupTime>875</popupTime>
   </desktops>
   <resize><drawContents>yes</drawContents></resize>
-  <!-- Menüs ohne Verzögerung: Untermenüs öffnen/schließen sofort. hideDelay: kurzer Klick lässt das
-       Menü offen (bei 0 würde es sich beim Loslassen der Maustaste sofort wieder schließen). -->
+  <!-- Menus without delay: submenus open/close immediately. hideDelay: a short click keeps the
+       menu open (with 0 it would close again as soon as the mouse button is released). -->
   <menu>
     <file>menu.xml</file>
     <hideDelay>200</hideDelay>
@@ -39,8 +39,8 @@
   <keyboard>
     <chainQuitKey>C-g</chainQuitKey>
 
-    <!-- Suche (Spotlight): Super antippen (xcape schickt XF86Search – eigene Taste, kein künstliches Super+Space),
-         Super+Space oder Alt+F2 – Apps, Dateien, Rechnen, Systembefehle (simpleos-search) -->
+    <!-- Search (Spotlight): tap Super (xcape sends XF86Search – its own key, no synthetic Super+Space),
+         Super+Space or Alt+F2 – apps, files, calculations, system commands (simpleos-search) -->
     <keybind key="XF86Search">
       <action name="Execute"><command>/usr/local/bin/simpleos-search</command></action>
     </keybind>
@@ -50,8 +50,8 @@
     <keybind key="A-F2">
       <action name="Execute"><command>/usr/local/bin/simpleos-search</command></action>
     </keybind>
-    <!-- Fenster andocken wie bei Windows 11 (simpleos-snap): Super+Pfeile = Hälften/Maximieren/Wiederherstellen,
-         Super+Alt+Pfeile = Viertel (Links/Rechts wählt die Spalte, Oben/Unten die Zeile) -->
+    <!-- Window snapping like Windows 11 (simpleos-snap): Super+arrows = halves/maximize/restore,
+         Super+Alt+arrows = quarters (left/right chooses the column, up/down the row) -->
     <keybind key="W-Left"><action name="Execute"><command>/usr/local/bin/simpleos-snap left</command></action></keybind>
     <keybind key="W-Right"><action name="Execute"><command>/usr/local/bin/simpleos-snap right</command></action></keybind>
     <keybind key="W-Up"><action name="Execute"><command>/usr/local/bin/simpleos-snap up</command></action></keybind>
@@ -64,26 +64,26 @@
     <keybind key="W-Return">
       <action name="Execute"><command>kitty</command></action>
     </keybind>
-    <!-- Browser: Super+B, Dateimanager: Super+E -->
+    <!-- Browser: Super+B, file manager: Super+E -->
     <keybind key="W-b">
       <action name="Execute"><command>simpleos-browser</command></action>
     </keybind>
     <keybind key="W-e">
       <action name="Execute"><command>thunar</command></action>
     </keybind>
-    <!-- Keybinding-Hilfe: Super+H oder Super+Shift+? -->
+    <!-- Keybinding help: Super+H or Super+Shift+? -->
     <keybind key="W-h">
       <action name="Execute"><command>/usr/local/bin/simpleos-help</command></action>
     </keybind>
     <keybind key="W-S-question">
       <action name="Execute"><command>/usr/local/bin/simpleos-help</command></action>
     </keybind>
-    <!-- Netzwerk-Info (LAN-IP, Gateway, Hostname, VPN, öffentliche IP): Super+N -->
+    <!-- Network info (LAN IP, gateway, hostname, VPN, public IP): Super+N -->
     <keybind key="W-n">
       <action name="Execute"><command>simpleos-netinfo</command></action>
     </keybind>
 
-    <!-- Fenster -->
+    <!-- Windows -->
     <keybind key="A-F4"><action name="Close" /></keybind>
     <keybind key="W-q"><action name="Close" /></keybind>
     <keybind key="A-Escape">
@@ -94,7 +94,7 @@
     <keybind key="A-S-Tab"><action name="PreviousWindow" /></keybind>
     <keybind key="W-d"><action name="ToggleShowDesktop" /></keybind>
 
-    <!-- Power-Menü, Screenshot, Medientasten -->
+    <!-- Power menu, screenshot, media keys -->
     <keybind key="W-x">
       <action name="Execute"><command>/usr/local/bin/simpleos-powermenu</command></action>
     </keybind>
@@ -104,7 +104,7 @@
     <keybind key="S-Print">
       <action name="Execute"><command>/usr/local/bin/simpleos-screenshot --area</command></action>
     </keybind>
-    <!-- Zwischenablage-Verlauf, Sound-Flyout, Bildschirm (wie Windows+V / +A / +P) -->
+    <!-- Clipboard history, sound flyout, display (like Windows+V / +A / +P) -->
     <keybind key="W-v">
       <action name="Execute"><command>/usr/local/bin/simpleos-clipboard</command></action>
     </keybind>
@@ -114,14 +114,14 @@
     <keybind key="W-p">
       <action name="Execute"><command>/usr/local/bin/simpleos-display</command></action>
     </keybind>
-    <!-- Control Center (wie Windows+I), Task-Manager (wie Windows) -->
+    <!-- Control Center (like Windows+I), Task Manager (like Windows) -->
     <keybind key="W-i">
       <action name="Execute"><command>/usr/local/bin/simpleos-control-center</command></action>
     </keybind>
     <keybind key="C-S-Escape">
       <action name="Execute"><command>/usr/local/bin/simpleos-taskmanager</command></action>
     </keybind>
-    <!-- Fn-Tasten: Lautstärke (höchstens 100 %) und Bildschirmhelligkeit mit kurzem OSD-Balken (simpleos-osd) -->
+    <!-- Fn keys: volume (at most 100 %) and screen brightness with a short OSD bar (simpleos-osd) -->
     <keybind key="XF86AudioRaiseVolume">
       <action name="Execute"><command>/usr/local/bin/simpleos-osd volume up</command></action>
     </keybind>
@@ -138,7 +138,7 @@
       <action name="Execute"><command>/usr/local/bin/simpleos-osd brightness down</command></action>
     </keybind>
 
-    <!-- Arbeitsflächen -->
+    <!-- Workspaces -->
     <keybind key="C-A-Left"><action name="GoToDesktop"><to>left</to><wrap>no</wrap></action></keybind>
     <keybind key="C-A-Right"><action name="GoToDesktop"><to>right</to><wrap>no</wrap></action></keybind>
     <keybind key="S-A-Left"><action name="SendToDesktop"><to>left</to><wrap>no</wrap></action></keybind>
@@ -213,18 +213,18 @@
     </context>
   </mouse>
 
-  <!-- Startregeln für große Apps: zentriert und maximiert bzw. mit fester Startgröße, damit sie nicht in
-       winzigen, beschnittenen Fenstern aufgehen. Nur type="normal": Dialoge (Login, Einstellungen,
-       Datei öffnen) behalten ihre eigene Größe. class = zweiter Teil von WM_CLASS (xprop WM_CLASS). -->
+  <!-- Start rules for large apps: centered and maximized or with a fixed start size, so they do not open in
+       tiny, cropped windows. Only type="normal": dialogs (login, settings,
+       open file) keep their own size. class = second part of WM_CLASS (xprop WM_CLASS). -->
   <applications>
-    <!-- Menü/Suche/Flyouts (Rofi) immer im Vordergrund, auch über Vollbild-Spielen und -Apps. Rofi öffnet als
-         override-redirect-Fenster (liegt dann von sich aus ganz oben); die Regel greift, sobald Openbox es verwaltet
+    <!-- Menu/search/flyouts (Rofi) always in front, also over full-screen games and apps. Rofi opens as an
+         override-redirect window (then it is on top by itself); the rule applies as soon as Openbox manages it
          (rofi -normal-window). -->
     <application class="Rofi">
       <layer>above</layer>
       <focus>yes</focus>
     </application>
-    <!-- Browser (Debian: firefox-esr), ONLYOFFICE (Flatpak), Lutris: maximiert -->
+    <!-- Browser (Debian: firefox-esr), ONLYOFFICE (Flatpak), Lutris: maximized -->
     <application class="Chromium" type="normal">
       <position force="no"><x>center</x><y>center</y></position>
       <maximized>yes</maximized>
@@ -245,17 +245,17 @@
       <position force="no"><x>center</x><y>center</y></position>
       <maximized>yes</maximized>
     </application>
-    <!-- Mullvad Browser: bewusst nicht maximiert (Anti-Fingerprinting rundet die Fenstergröße) -->
+    <!-- Mullvad Browser: deliberately not maximized (anti-fingerprinting rounds the window size) -->
     <application class="*ullvad*" type="normal">
       <position force="no"><x>center</x><y>center</y></position>
       <size><width>1100</width><height>750</height></size>
     </application>
-    <!-- Steam: nur das Hauptfenster; Login- und Update-Fenster haben andere Titel -->
+    <!-- Steam: only the main window; login and update windows have other titles -->
     <application class="steam" title="Steam" type="normal">
       <position force="no"><x>center</x><y>center</y></position>
       <size><width>1100</width><height>750</height></size>
     </application>
-    <!-- Setup-Wizard: feste Größe (760x540), nur zentrieren -->
+    <!-- Setup Wizard: fixed size (760x540), only centered -->
     <application title="Simple OS Setup" type="normal">
       <position force="yes"><x>center</x><y>center</y></position>
     </application>

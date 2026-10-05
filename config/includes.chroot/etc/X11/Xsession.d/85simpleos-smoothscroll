@@ -1,2 +1,2 @@
-# Simple OS: Smooth Scrolling in Firefox (X11)
+# Simple OS: smooth scrolling in Firefox (X11)
 export MOZ_USE_XINPUT2=1

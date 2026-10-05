@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Simple OS – Software Center (Menü → Software Store, Launcher "Software Center").
+"""Simple OS – Software Center (Menu → Software Store, launcher "Software Center").
 
-Ausgewählte Programme per Klick installieren, öffnen und entfernen – ohne Terminal, ohne apt/flatpak-Befehle:
-  Flatpak (Flathub)   systemweit; Flatpaks Polkit-Regel erlaubt das Mitgliedern der Gruppe sudo ohne Passwort,
-                      sonst fragt lxpolkit grafisch
-  System-Pakete       nur über feste Aktionen von "pkexec simpleos-system-setup" (Steam = --gaming,
-                      LibreOffice = --office libreoffice) – grafische Passwortabfrage, keine freien Paketnamen
-Oben Suche und Kategorien, unten "More apps": Bazaar (simpleos-software) und GNOME Software (alle Flathub-
-und Debian-Programme). Installationen laufen im Hintergrund mit Fortschrittsanzeige; Fehler als Klartext.
+Install, open and remove selected programs with a click – without a terminal, without apt/flatpak commands:
+  Flatpak (Flathub)   system-wide; Flatpak's polkit rule allows that for members of the sudo group without a password,
+                      otherwise lxpolkit asks graphically
+  system packages     only via fixed actions of "pkexec simpleos-system-setup" (Steam = --gaming,
+                      LibreOffice = --office libreoffice) – graphical password prompt, no free package names
+Search and categories at the top, "More apps" below: Bazaar (simpleos-software) and GNOME Software (all Flathub
+and Debian programs). Installations run in the background with a progress display; errors in plain language.
 
-  simpleos-software-center            Fenster
-  simpleos-software-center --list     Katalog mit Status (installed/available) als Text (Tests)
-Test: SIMPLEOS_SC_SELFTEST=1 (Fenster aufbauen, Suche/Kategorien durchschalten, Exit 1 bei Python-Ausnahme).
+  simpleos-software-center            window
+  simpleos-software-center --list     catalog with status (installed/available) as text (tests)
+Test: SIMPLEOS_SC_SELFTEST=1 (build the window, switch through search/categories, exit 1 on a Python exception).
 """
 import os
 import shutil
@@ -22,11 +22,11 @@ import time
 
 HELPER = "/usr/local/sbin/simpleos-system-setup"
 FP_PROGRESS = "/usr/local/lib/simpleos/flatpak-progress"
-# Unter so viel freiem Platz (MB) vor einer Flatpak-Installation nachfragen (große Apps samt Laufzeit: 1–3 GB)
+# Ask before a Flatpak installation when there is less free space (MB) than this (large apps with runtime: 1–3 GB)
 LOW_SPACE_MB = 3000
-# (Schlüssel, Name, Beschreibung, Kategorie, Symbol, Quelle, Kennung)
-#   Quelle flatpak: Kennung = Flathub-ID
-#   Quelle system:  Kennung = "Helfer-Argumente|Paket zur Erkennung|Startbefehl"
+# (key, name, description, category, icon, source, identifier)
+#   source flatpak: identifier = Flathub ID
+#   source system:  identifier = "helper arguments|package for detection|start command"
 CATALOG = [
     ("steam", "Steam", "Play thousands of games (with Lutris and MangoHud)", "Games", "steam", "system",
      "--gaming|steam-installer|steam"),
@@ -75,8 +75,8 @@ def run(*args, timeout=30):
 
 
 def flatpak_installed():
-    """{App-ID: "system" | "user"} – woher die App kommt, entscheidet, womit sie entfernt wird (eine nur für den
-    Benutzer installierte App ließ sich mit "--system" nicht entfernen)"""
+    """{app ID: "system" | "user"} – where the app comes from decides how it is removed (an app installed
+    only for the user could not be removed with "--system")"""
     if not shutil.which("flatpak"):
         return {}
     apps = {}
@@ -103,14 +103,14 @@ def status(app, flatpaks=None):
 def install_cmd(app):
     _k, _n, _d, _c, _i, source, ident = app
     if source == "flatpak":
-        # ohne --noninteractive: nur so meldet Flatpak Fortschritt (-y beantwortet alle Rückfragen)
+        # without --noninteractive: only then does Flatpak report progress (-y answers all questions)
         return ["flatpak", "install", "--system", "-y", "flathub", ident]
     return ["pkexec", HELPER] + ident.split("|")[0].split()
 
 
 def remove_cmd(app, installation="system"):
-    """System-Pakete entfernt das Software Center nicht (Steam/LibreOffice hängen an mehreren Paketen).
-    installation: "system" oder "user" (aus flatpak_installed)"""
+    """The Software Center does not remove system packages (Steam/LibreOffice depend on several packages).
+    installation: "system" or "user" (from flatpak_installed)"""
     _k, _n, _d, _c, _i, source, ident = app
     if source == "flatpak":
         scope = "--user" if installation == "user" else "--system"
@@ -131,7 +131,7 @@ def matches(app, query, category):
 
 
 def remaining(pct, t0):
-    """' · about 3 min left' aus bisherigem Tempo (erst ab 3 %, vorher zu ungenau)"""
+    """' · about 3 min left' from the speed so far (only from 3 %, before that too inaccurate)"""
     if pct < 3 or pct >= 100:
         return ""
     left = (time.monotonic() - t0) * (100 - pct) / pct
@@ -149,14 +149,14 @@ def free_mb(path="/var/lib/flatpak"):
 
 
 def explain(rc, output):
-    """Fehler in Alltagssprache"""
+    """Errors in plain language"""
     text = output.lower()
     if rc == 126 or "dismissed" in text or "not authorized" in text:
         return "No password entered – nothing was installed."
     if rc == 127:
         return "This could not start (a required program is missing)."
-    # Platz zuerst; NICHT nach "network" suchen – Flatpak listet bei jeder Installation die Berechtigungen der App
-    # (fast immer "network"), sonst hieße jeder Fehler "kein Internet"
+    # Space first; do NOT search for "network" – Flatpak lists the app's permissions on every installation
+    # (almost always "network"), otherwise every error would be "no internet"
     if "min-free-space" in text or "no space left" in text or ("space" in text and "not enough" in text):
         return "Not enough free space. In Live mode, apps are kept in memory – install Simple OS first."
     if any(k in text for k in ("could not resolve", "unable to connect", "could not connect", "temporary failure",
@@ -204,7 +204,7 @@ def main(argv):
             self.set_icon_name("system-software-install")
             self.set_position(Gtk.WindowPosition.CENTER)
             self.connect("destroy", Gtk.main_quit)
-            self.busy = None        # Schlüssel der laufenden Installation
+            self.busy = None        # key of the running installation
             self.category = "All"
             self.states = {}
             self.flatpaks = {}      # App-ID -> "system" | "user"
@@ -228,7 +228,7 @@ def main(argv):
             group = None
             for c in CATEGORIES:
                 rb = Gtk.RadioButton.new_with_label_from_widget(group, c)
-                rb.set_mode(False)          # wie Knöpfe aussehen
+                rb.set_mode(False)          # look like buttons
                 group = group or rb
                 rb.connect("toggled", lambda b, c=c: b.get_active() and self.set_category(c))
                 cats.pack_start(rb, False, False, 0)
@@ -321,7 +321,7 @@ def main(argv):
                 self.do(app, remove_cmd(app, self.flatpaks.get(app[6], "system")), "Removing")
 
         def install(self, app):
-            # wenig Platz (v.a. Live-Betrieb: RAM-Overlay) -> vorher ehrlich fragen statt nach Minuten scheitern
+            # little space (especially live mode: RAM overlay) -> ask honestly beforehand instead of failing after minutes
             free = free_mb() if app[5] == "flatpak" else None
             if free is not None and free < LOW_SPACE_MB:
                 d = Gtk.MessageDialog(transient_for=self, modal=True, message_type=Gtk.MessageType.WARNING,
@@ -339,7 +339,7 @@ def main(argv):
             self.fill()
             self.progress.set_text(f"{verb} {app[1]}… (this can take a few minutes)")
             self.progress.show()
-            # pulsieren, bis echte Prozentzahlen kommen (PROGRESS-Zeilen), dann fester Balken + Restzeit
+            # pulse until real percentages arrive (PROGRESS lines), then a fixed bar + time left
             state = {"pct": None, "t0": time.monotonic(), "label": f"{verb} {app[1]}"}
             pulse = GLib.timeout_add(150, lambda: (state["pct"] is None and self.progress.pulse(), True)[1])
 
@@ -349,7 +349,7 @@ def main(argv):
                     state["pct"], state["t0"] = None, time.monotonic()
                     self.progress.set_text(state["label"])
                 elif line.startswith("PROGRESS: "):
-                    # "PROGRESS: <Prozent> [<Rest>]": Rest = Restzeit aus dem Download-Tempo (progress-filter)
+                    # "PROGRESS: <percent> [<rest>]": rest = time left from the download speed (progress-filter)
                     num, _, rest = line[10:].partition(" ")
                     try:
                         pct = max(0, min(100, int(float(num))))

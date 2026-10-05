@@ -1,9 +1,9 @@
 #!/bin/sh
 set -e
-# Meta-Pakete für den Bootloader des installierten Systems als .deb ins Image legen: grub-pc (BIOS) und
-# grub-efi-amd64 (UEFI) schließen sich aus und können nicht beide vorinstalliert sein; cryptsetup-initramfs
-# nur bei Verschlüsselung. /usr/sbin/bootloader-config installiert sie offline per dpkg -i,
-# simpleos-post-install löscht das Verzeichnis danach. Versionen passend zu den installierten *-bin-Paketen.
+# Put the bootloader meta packages of the installed system into the image as .deb: grub-pc (BIOS) and
+# grub-efi-amd64 (UEFI) exclude each other and cannot both be preinstalled; cryptsetup-initramfs
+# only with encryption. /usr/sbin/bootloader-config installs them offline with dpkg -i,
+# simpleos-post-install deletes the directory afterwards. Versions matching the installed *-bin packages.
 DEBS=/usr/share/simpleos/bootloader-debs
 GRUB_VER=$(dpkg-query -W -f='${Version}' grub-pc-bin)
 CRYPT_VER=$(dpkg-query -W -f='${Version}' cryptsetup)

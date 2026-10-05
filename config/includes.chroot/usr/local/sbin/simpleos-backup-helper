@@ -1,64 +1,64 @@
 #!/bin/sh
-# Simple OS – Wiederherstellungspunkte (root-Teil von simpleos-backup, Aufruf per pkexec; Polkit-Aktion
-# org.simpleos.backup). Wrapper um timeshift (RSYNC-Modus auf der Systempartition, Btrfs wenn das System
-# darauf liegt). Persönliche Dateien in /home sichert timeshift standardmäßig NICHT – nur das System.
-#   simpleos-backup-helper --list                 Punkte: "Name<TAB>Markierung<TAB>Beschreibung", neueste zuerst
-#   simpleos-backup-helper --create TEXT          neuen Punkt anlegen (Beschreibung: Buchstaben, Ziffern, . , : - _ ( ) Leerzeichen)
-#   simpleos-backup-helper --restore NAME         Punkt zurückspielen (danach startet timeshift den PC neu)
-#   simpleos-backup-helper --delete NAME          Punkt löschen
-#   simpleos-backup-helper --check NAME           Integrität: Punkt gelistet, Ordner + info.json + Systemdateien da
-#   simpleos-backup-helper --auto on|off|status   Punkt vor jedem System-Update (simpleos-system-setup --upgrade)
-#   simpleos-backup-helper --before-update        von simpleos-system-setup: Punkt anlegen, falls --auto on;
-#                                                 behält die 3 neuesten "Before system update"-Punkte
-#   simpleos-backup-helper --setup                Ersteinrichtung (läuft vor --list/--create/--restore von selbst)
-#   simpleos-backup-helper --space                Platz prüfen, ohne etwas anzulegen: "FREE: <Bytes>", "NEED: <Bytes>",
-#                                                 "PATH: <Mountpoint>"; Exit 0 = genug (oder nicht messbar), 6 = zu wenig
-# Freier Platz: Python shutil.disk_usage() am Ziel von timeshift – Mountpoint des eingetragenen Zielgeräts
-# (findmnt), sonst "/" (Zielgerät = Systempartition), sonst timeshifts eigene Einhängepunkte
-# /run/timeshift/*/backup. Liefert ein Pfad einen Fehler oder 0 Byte Gesamtgröße, kommt der nächste dran; sind
-# alle unbrauchbar, gilt der Platz als "nicht messbar" und es gibt KEINE Platzwarnung (timeshift entscheidet).
-# Mindestens frei: 5 GB vor dem ersten Punkt (vollständige Kopie des Systems), 1 GB vor weiteren (nur Änderungen).
-# Ersteinrichtung: Hat timeshift kein (gültiges) Zielgerät, wird /etc/timeshift/timeshift.json minimal angelegt
-# bzw. ergänzt: RSYNC-Modus auf der Partition von "/" (UUID per findmnt; bei LUKS zusätzlich die UUID des
-# verschlüsselten Containers), keine Zeitpläne, Home-Ordner ausgeschlossen (/home/*/**, /root/**) – sonst
-# würde timeshift persönliche Dateien mitsichern und beim Zurückspielen überschreiben.
-# Nur feste Aktionen; NAME muss genau wie timeshift-Namen aussehen (JJJJ-MM-TT_hh-mm-ss) und existieren.
-# Zeilen "STEP: <Text>", "STAGE: <Text>", "PROGRESS: <Prozent> [<Rest>]" zeigt simpleos-backup live im
-# Fortschrittsfenster (simpleos-progress), "FREE:/NEED: <Bytes>" den Platz bei Exit 6.
-# timeshift endet auch bei Fehlschlägen mit Exit 0 -> Erfolg von --create/--delete wird an der Snapshot-Liste
-# geprüft, Fehlertexte von timeshift werden eingeordnet (damit nie "zu wenig Platz" erscheint, wenn es
-# eigentlich an etwas anderem liegt):
-# Exit 0 ok, 1 sonstiger Fehler, 2 ungültiger Aufruf, 3 timeshift fehlt, 4 Live-Session,
-#      5 kein Zielgerät (Systempartition nicht ermittelbar/nicht verfügbar), 6 zu wenig Speicherplatz.
-# Tests: SIMPLEOS_BACKUP_ROOT ersetzt "/" für Zustandsdatei, timeshift.json und Snapshot-Ordner; dessen bin/
-# kommt zuerst in PATH (Attrappen für timeshift/findmnt/lsblk/blkid). Nur dann gilt auch SIMPLEOS_FAKE_DISK
-# ("Pfad=Gesamt:Frei;…", Pfad fehlt = Fehler beim Abfragen) statt shutil.disk_usage. pkexec leert die Umgebung.
+# Simple OS – restore points (root part of simpleos-backup, called via pkexec; polkit action
+# org.simpleos.backup). Wrapper around timeshift (RSYNC mode on the system partition, Btrfs if the system
+# is on it). By default timeshift does NOT back up personal files in /home – only the system.
+#   simpleos-backup-helper --list                 points: "name<TAB>tags<TAB>description", newest first
+#   simpleos-backup-helper --create TEXT          create a new point (description: letters, digits, . , : - _ ( ) spaces)
+#   simpleos-backup-helper --restore NAME         restore a point (timeshift restarts the PC afterwards)
+#   simpleos-backup-helper --delete NAME          delete a point
+#   simpleos-backup-helper --check NAME           integrity: point listed, folder + info.json + system files present
+#   simpleos-backup-helper --auto on|off|status   a point before every system update (simpleos-system-setup --upgrade)
+#   simpleos-backup-helper --before-update        from simpleos-system-setup: create a point if --auto on;
+#                                                 keeps the 3 newest "Before system update" points
+#   simpleos-backup-helper --setup                first-time setup (runs by itself before --list/--create/--restore)
+#   simpleos-backup-helper --space                check space without creating anything: "FREE: <bytes>", "NEED: <bytes>",
+#                                                 "PATH: <mount point>"; exit 0 = enough (or not measurable), 6 = too little
+# Free space: Python shutil.disk_usage() at timeshift's target – mount point of the configured target device
+# (findmnt), otherwise "/" (target device = system partition), otherwise timeshift's own mount points
+# /run/timeshift/*/backup. If a path returns an error or a total size of 0 bytes, the next one is tried; if
+# all are unusable, the space counts as "not measurable" and there is NO space warning (timeshift decides).
+# Minimum free: 5 GB before the first point (full copy of the system), 1 GB before further ones (changes only).
+# First-time setup: if timeshift has no (valid) target device, /etc/timeshift/timeshift.json is created minimally
+# or completed: RSYNC mode on the partition of "/" (UUID via findmnt; with LUKS also the UUID of the
+# encrypted container), no schedules, home folders excluded (/home/*/**, /root/**) – otherwise
+# timeshift would back up personal files too and overwrite them when restoring.
+# Only fixed actions; NAME must look exactly like timeshift names (YYYY-MM-DD_hh-mm-ss) and exist.
+# simpleos-backup shows the lines "STEP: <text>", "STAGE: <text>", "PROGRESS: <percent> [<rest>]" live in the
+# progress window (simpleos-progress), "FREE:/NEED: <bytes>" the space on exit 6.
+# timeshift exits with 0 even on failures -> success of --create/--delete is checked against the snapshot
+# list, timeshift's error texts are classified (so "not enough space" never appears when the cause
+# is actually something else):
+# Exit 0 ok, 1 other error, 2 invalid usage, 3 timeshift missing, 4 live session,
+#      5 no target device (system partition cannot be determined/not available), 6 not enough space.
+# Tests: SIMPLEOS_BACKUP_ROOT replaces "/" for the state file, timeshift.json and snapshot folder; its bin/
+# comes first in PATH (dummies for timeshift/findmnt/lsblk/blkid). Only then SIMPLEOS_FAKE_DISK applies too
+# ("path=total:free;…", path missing = error when querying) instead of shutil.disk_usage. pkexec clears the environment.
 set -u
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ROOT=${SIMPLEOS_BACKUP_ROOT:-}
-# Test-Wurzel: deren bin/ (timeshift-Attrappe) zuerst – nur direkt als root setzbar, pkexec leert die Umgebung
+# Test root: its bin/ (timeshift dummy) first – can only be set directly as root, pkexec clears the environment
 [ -n "$ROOT" ] && PATH=$ROOT/bin:$PATH
 AUTO=$ROOT/etc/simpleos/backup-before-updates
 SNAPDIR=$ROOT/timeshift/snapshots
 KEEP_UPDATE=3
 UPDATE_COMMENT="Before system update"
 CONF=$ROOT/etc/timeshift/timeshift.json
-MIN_FIRST=5000000000   # 5 GB vor dem ersten Punkt (vollständige Kopie)
-MIN_NEXT=1000000000    # 1 GB vor weiteren Punkten (rsync-Hardlinks: nur Geänderte belegen Platz)
+MIN_FIRST=5000000000   # 5 GB before the first point (full copy)
+MIN_NEXT=1000000000    # 1 GB before further points (rsync hard links: only changed files take space)
 TSOUT=$(mktemp) || exit 1
 trap 'rm -f "$TSOUT" "$TSOUT.rc"' EXIT
 
 step() { echo "STEP: $*"; }
 die() { echo "simpleos-backup-helper: $*" >&2; exit "${2:-1}"; }
-usage() { die "Aufruf: --list | --create TEXT | --restore NAME | --delete NAME | --check NAME | --auto on|off|status | --before-update" 2; }
+usage() { die "Usage: --list | --create TEXT | --restore NAME | --delete NAME | --check NAME | --auto on|off|status | --before-update" 2; }
 
-[ "$(id -u)" -eq 0 ] || [ -n "$ROOT" ] || die "muss als root laufen (pkexec)"
+[ "$(id -u)" -eq 0 ] || [ -n "$ROOT" ] || die "must run as root (pkexec)"
 live() { [ -x /usr/local/bin/simpleos-live ] && /usr/local/bin/simpleos-live --check; }
-need_ts() { command -v timeshift >/dev/null || die "timeshift fehlt" 3; }
+need_ts() { command -v timeshift >/dev/null || die "timeshift missing" 3; }
 valid_name() { printf '%s' "$1" | grep -qxE '[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}'; }
 valid_text() { [ ${#1} -le 60 ] && printf '%s' "$1" | grep -qxE "[[:alnum:] .,:()_-]*"; }
 
-# timeshift --list -> TSV (neueste zuerst). Zeilen: "0    >  2026-10-01_14-30-00  O     Before update"
+# timeshift --list -> TSV (newest first). Lines: "0    >  2026-10-01_14-30-00  O     Before update"
 list() {
     need_ts
     timeshift --list --scripted 2>/dev/null |
@@ -67,9 +67,9 @@ list() {
 }
 exists() { list | cut -f1 | grep -qx "$1"; }
 
-# ---- Ersteinrichtung: Zielgerät = Partition von "/"
-# Exit 0 = Zielgerät vorhanden/eingetragen, 5 = keins ermittelbar (Overlay/Live, kein UUID)
-device_ok() {  # UUID existiert als Gerät
+# ---- First-time setup: target device = partition of "/"
+# Exit 0 = target device present/configured, 5 = none determinable (overlay/live, no UUID)
+device_ok() {  # the UUID exists as a device
     [ -n "$1" ] || return 1
     [ -e "/dev/disk/by-uuid/$1" ] && return 0
     command -v blkid >/dev/null && blkid -U "$1" >/dev/null 2>&1
@@ -79,15 +79,15 @@ ensure_config() {
 try: print(json.load(open(sys.argv[1])).get("backup_device_uuid", ""))
 except Exception: print("")' "$CONF" 2>/dev/null)
     device_ok "$current" && return 0
-    # -P: SOURCE="…" UUID="…" FSTYPE="…" (leere Felder verschieben sonst die Spalten)
+    # -P: SOURCE="…" UUID="…" FSTYPE="…" (empty fields would otherwise shift the columns)
     SOURCE= UUID= FSTYPE=
     eval "$(findmnt -n -P -o SOURCE,UUID,FSTYPE --target / 2>/dev/null | grep -E '^SOURCE="[^"`$\\]*" UUID="[^"`$\\]*" FSTYPE="[^"`$\\]*"$')"
     src=$SOURCE uuid=$UUID fstype=$FSTYPE
-    case "$fstype" in ''|overlay|squashfs|tmpfs|aufs|ramfs) echo "Systempartition nicht ermittelbar ($fstype)" >&2; return 5 ;; esac
-    [ -n "$uuid" ] || { echo "Systempartition $src ohne UUID" >&2; return 5; }
+    case "$fstype" in ''|overlay|squashfs|tmpfs|aufs|ramfs) echo "system partition cannot be determined ($fstype)" >&2; return 5 ;; esac
+    [ -n "$uuid" ] || { echo "system partition $src without UUID" >&2; return 5; }
     parent=
     case "$src" in
-        /dev/mapper/*|/dev/dm-*)  # LUKS/LVM: timeshift will zusätzlich den Container kennen
+        /dev/mapper/*|/dev/dm-*)  # LUKS/LVM: timeshift also wants to know the container
             pk=$(lsblk -ndo PKNAME "$src" 2>/dev/null | head -n 1)
             [ -n "$pk" ] && parent=$(lsblk -ndo UUID "/dev/$pk" 2>/dev/null | head -n 1) ;;
     esac
@@ -116,10 +116,10 @@ with open(tmp, "w") as f:
 import os
 os.replace(tmp, path)
 PY
-    echo "timeshift: Zielgerät $src ($uuid) eingetragen" >&2
+    echo "timeshift: target device $src ($uuid) configured" >&2
     return 0
 }
-# Mountpoints des Sicherungsziels (beste zuerst), eine Zeile je Pfad
+# Mount points of the backup target (best first), one line per path
 target_paths() {
     uuid=$(python3 -c 'import json, sys
 try: print(json.load(open(sys.argv[1])).get("backup_device_uuid", ""))
@@ -133,7 +133,7 @@ except Exception: print("")' "$CONF" 2>/dev/null)
     fi
     for d in /run/timeshift/*/backup /run/timeshift/backup; do [ -d "$d" ] && echo "$d"; done
 }
-# Platz am Ziel: "FREE: n" "NEED: n" "PATH: p" (FREE leer = nicht messbar). Exit 0 genug/unbekannt, 6 zu wenig
+# Space at the target: "FREE: n" "NEED: n" "PATH: p" (FREE empty = not measurable). Exit 0 enough/unknown, 6 too little
 space_report() {
     if [ -n "$(list | head -n 1)" ]; then need=$MIN_NEXT; else need=$MIN_FIRST; fi
     target_paths | FAKE=$( [ -n "$ROOT" ] && printf '%s' "${SIMPLEOS_FAKE_DISK:-}" ) python3 -c '
@@ -163,9 +163,9 @@ for path in (line.strip() for line in sys.stdin):
         print(f"{path}: {err}", file=sys.stderr)
         continue
     if total <= 0:
-        print(f"{path}: Gesamtgröße 0 – nächster Pfad", file=sys.stderr)
+        print(f"{path}: total size 0 – next path", file=sys.stderr)
         continue
-    if free <= 0:            # wirklich voll – oder ein Ausreißer: weitere Pfade desselben Geräts prüfen
+    if free <= 0:            # really full – or an outlier: check further paths of the same device
         full = full or path
         continue
     print(f"FREE: {free}\nNEED: {need}\nPATH: {path}")
@@ -173,34 +173,34 @@ for path in (line.strip() for line in sys.stdin):
 if full:
     print(f"FREE: 0\nNEED: {need}\nPATH: {full}")
     sys.exit(6)
-print(f"FREE: \nNEED: {need}\nPATH: ")   # nicht messbar -> keine Platzwarnung
+print(f"FREE: \nNEED: {need}\nPATH: ")   # not measurable -> no space warning
 sys.exit(0)
 ' "$need"
 }
-# timeshift-Ausgabe ($TSOUT) einordnen -> Exit-Code 4/5/6/1
+# Classify timeshift's output ($TSOUT) -> exit code 4/5/6/1
 classify() {
-    if grep -qiE 'Live CD mode|live (session|mode)' "$TSOUT"; then echo "timeshift: Live-System" >&2; return 4; fi
+    if grep -qiE 'Live CD mode|live (session|mode)' "$TSOUT"; then echo "timeshift: live system" >&2; return 4; fi
     if grep -qiE 'not enough (disk )?space|no space left|space.*required|low disk space|insufficient (disk )?space' "$TSOUT"; then
-        # timeshift hat das letzte Wort: Exit 6 auch dann, wenn unsere Mindestgrenze erfüllt wäre – dann ohne
-        # NEED (unsere Grenze wäre ja erfüllt; wie viel timeshift genau will, steht im Protokoll)
+        # timeshift has the last word: exit 6 even if our minimum would be met – then without
+        # NEED (our limit would be met; how much timeshift exactly wants is in the log)
         if space_report >/dev/null 2>&1; then space_report 2>/dev/null | grep -v '^NEED:'; else space_report 2>/dev/null; fi
         return 6
     fi
     if grep -qiE 'device not (selected|available|found|mounted|specified)|location not (selected|available)|Device *: *Not Selected|failed to (find|mount) (device|backup)' "$TSOUT"; then
-        echo "timeshift: kein Zielgerät" >&2; return 5
+        echo "timeshift: no target device" >&2; return 5
     fi
     return 1
 }
-# timeshift-Ausgabe (Zeilen mit \r) -> Live-Zeilen für das Fortschrittsfenster (simpleos-progress):
-#   "STAGE: <Text>"                  Abschnitt in Alltagssprache
-#   "PROGRESS: <Prozent> [<Rest>]"   aus "12.34% complete (5m 10s remaining)"
+# timeshift output (lines with \r) -> live lines for the progress window (simpleos-progress):
+#   "STAGE: <text>"                  section in plain language
+#   "PROGRESS: <percent> [<rest>]"   from "12.34% complete (5m 10s remaining)"
 progress_filter() {
-    # Python statt awk: mawk puffert Pipes – der Fortschritt kam erst am Ende an
+    # Python instead of awk: mawk buffers pipes – the progress only arrived at the end
     /usr/local/lib/simpleos/progress-filter timeshift
 }
-# timeshift ARGS… -> Ausgabe in $TSOUT (und ins Protokoll des Aufrufers über stderr), Exit-Code von timeshift.
-# Läuft gleichzeitig durch progress_filter, damit das Fenster live mitzählt (stdbuf: timeshift schreibt sonst
-# in die Pipe erst am Ende).
+# timeshift ARGS… -> output in $TSOUT (and into the caller's log via stderr), exit code of timeshift.
+# Runs through progress_filter at the same time so the window counts along live (stdbuf: otherwise timeshift
+# only writes into the pipe at the end).
 ts() {
     rcf=$TSOUT.rc
     unbuf=; command -v stdbuf >/dev/null && unbuf="stdbuf -o0 -e0"
@@ -209,18 +209,18 @@ ts() {
     cat "$TSOUT" >&2
     return "${trc:-1}"
 }
-create_point() {  # $1 Beschreibung -> 0 nur, wenn danach wirklich ein neuer Punkt in der Liste steht
+create_point() {  # $1 description -> 0 only if there really is a new point in the list afterwards
     before=$(list | cut -f1)
-    # ohne --tags: timeshift 22.11 lehnt "--tags O" ab ("Unknown value"), Vorgabe ist ohnehin O (on demand)
+    # without --tags: timeshift 22.11 rejects "--tags O" ("Unknown value"), the default is O (on demand) anyway
     ts --create --comments "${1:-Restore point}" --scripted
     after=$(list | cut -f1)
     [ -n "$(printf '%s\n' "$after" | grep -vxF -e "$before" -e '' | head -n 1)" ] && return 0
     [ -z "$before" ] && [ -n "$after" ] && return 0
     classify; rc=$?
-    echo "timeshift --create: kein neuer Punkt (Grund $rc)" >&2
+    echo "timeshift --create: no new point (reason $rc)" >&2
     return "$rc"
 }
-precheck() {  # vor dem Anlegen: Live, Zielgerät, Mindestplatz
+precheck() {  # before creating: live, target device, minimum space
     live && { echo "Live-Session" >&2; return 4; }
     ensure_config || return $?
     report=$(space_report) || { printf '%s\n' "$report"; return 6; }
@@ -241,12 +241,12 @@ case "${1:-}" in
     --list)
         [ $# -eq 1 ] || usage
         need_ts
-        # Ersteinrichtung nebenbei (Live/kein Gerät: Liste bleibt einfach leer)
+        # first-time setup on the side (live/no device: the list simply stays empty)
         live || ensure_config 2>/dev/null
         list ;;
     --create)
         [ $# -eq 2 ] || usage
-        valid_text "$2" || die "ungültige Beschreibung" 2
+        valid_text "$2" || die "invalid description" 2
         need_ts
         precheck || exit $?
         step "Creating a restore point (the first one can take 10–20 minutes)"
@@ -257,34 +257,34 @@ case "${1:-}" in
         live && die "Live-Session" 4
         need_ts
         ensure_config || exit $?
-        exists "$2" || die "Punkt $2 nicht gefunden"
+        exists "$2" || die "point $2 not found"
         step "Restoring $2 – the computer restarts when it is done"
-        # Zielgerät = laufendes System (Vorgabe), GRUB bleibt, wie er ist; --yes beantwortet die Rückfrage
+        # target device = running system (default), GRUB stays as it is; --yes answers the question
         ts --restore --snapshot "$2" --scripted --yes --skip-grub; trc=$?
-        # Eingeordnete Fehler (Live, Gerät, Platz) zählen auch bei Exit 0; sonst entscheidet der Exit-Code
+        # Classified errors (live, device, space) count even with exit 0; otherwise the exit code decides
         classify; rc=$?
         [ "$rc" -eq 1 ] || exit "$rc"
-        [ "$trc" -eq 0 ] || die "timeshift --restore fehlgeschlagen"
+        [ "$trc" -eq 0 ] || die "timeshift --restore failed"
         step "Done" ;;
     --delete)
         [ $# -eq 2 ] && valid_name "$2" || usage
-        exists "$2" || die "Punkt $2 nicht gefunden"
+        exists "$2" || die "point $2 not found"
         step "Deleting $2"
         ts --delete --snapshot "$2" --scripted --yes
-        exists "$2" && { classify; rc=$?; die "timeshift --delete: $2 noch da" "$rc"; }
+        exists "$2" && { classify; rc=$?; die "timeshift --delete: $2 still there" "$rc"; }
         step "Done" ;;
     --check)
         [ $# -eq 2 ] && valid_name "$2" || usage
-        exists "$2" || die "Punkt $2 nicht gefunden"
+        exists "$2" || die "point $2 not found"
         d=$SNAPDIR/$2
         if [ -d "$d" ]; then
-            [ -s "$d/info.json" ] || die "$2: info.json fehlt"
-            python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$d/info.json" 2>/dev/null || die "$2: info.json beschädigt"
-            [ -s "$d/localhost/etc/os-release" ] || die "$2: Systemdateien fehlen (localhost/etc/os-release)"
-            [ -d "$d/localhost/usr/bin" ] || die "$2: Systemdateien fehlen (localhost/usr/bin)"
+            [ -s "$d/info.json" ] || die "$2: info.json missing"
+            python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$d/info.json" 2>/dev/null || die "$2: info.json damaged"
+            [ -s "$d/localhost/etc/os-release" ] || die "$2: system files missing (localhost/etc/os-release)"
+            [ -d "$d/localhost/usr/bin" ] || die "$2: system files missing (localhost/usr/bin)"
             echo "ok"
         else
-            # anderes Gerät oder Btrfs: Ordner nur während timeshift läuft eingebunden -> Liste genügt
+            # another device or Btrfs: the folder is only mounted while timeshift runs -> the list is enough
             echo "listed"
         fi ;;
     --auto)
@@ -303,10 +303,10 @@ case "${1:-}" in
         precheck || exit $?
         step "Creating a restore point before the update"
         create_point "$UPDATE_COMMENT" || exit $?
-        # Nur die neuesten Punkte vor Updates behalten (eigene, manuelle Punkte bleiben unberührt)
+        # Keep only the newest points before updates (own, manual points stay untouched)
         list | awk -F'\t' -v c="$UPDATE_COMMENT" '$3 == c { n++; if (n > '"$KEEP_UPDATE"') print $1 }' |
             while read -r old; do
-                timeshift --delete --snapshot "$old" --scripted --yes >/dev/null 2>&1 || echo "Löschen $old fehlgeschlagen" >&2
+                timeshift --delete --snapshot "$old" --scripted --yes >/dev/null 2>&1 || echo "deleting $old failed" >&2
             done ;;
     *) usage ;;
 esac

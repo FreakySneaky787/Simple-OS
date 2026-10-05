@@ -1,24 +1,24 @@
 #!/bin/sh
-# Simple OS – Fehler melden (Menü → Help → Report a Problem, Control Center → System)
-# Rofi-Fenster mit drei Wegen:
-#   "Create report"                   Systeminfos + Protokolle inkl. Systemprotokoll (pkexec-Helfer, Passwort)
-#   "Create report without system logs"  dasselbe ohne Passwort (nur, was der Nutzer selbst lesen darf)
-#   "Open the issue page only"        nur die Seite für Fehlerberichte
-# Der Bericht landet als Textdatei auf dem Desktop (simpleos-report-JJJJMMTT-HHMM.txt); danach öffnet sich
-# die Seite für einen neuen Fehlerbericht mit Vorlage – die Datei zieht man dort hinein.
-# Datenschutz: vor dem Speichern werden Benutzername, echter Name, Rechnername, WLAN-/Verbindungsnamen,
-# IP- und MAC-Adressen, Seriennummern und E-Mail-Adressen ersetzt (redact()). Seriennummern des Rechners
-# (/sys/class/dmi/id/*_serial) werden gar nicht erst gelesen.
-# Die Adresse kommt aus BUG_REPORT_URL in /etc/os-release – die einzige Stelle, an der sie steht. Ohne Adresse
-# wird der Bericht nur gespeichert. GitHub-Adressen (…/issues) bekommen /new mit Titel und Vorlage.
-#   simpleos-report                    Fenster
-#   simpleos-report --collect [--system]   Bericht (bereinigt) auf stdout, ohne Fenster
-#   simpleos-report --url              Adresse für einen neuen Fehlerbericht (Exit 1, wenn keine eingetragen ist)
-#   simpleos-report --redact           stdin bereinigt auf stdout (Test der Bereinigung, 99_verify)
-# Robust wie die übrigen Rofi-Werkzeuge: kein set -e, Exit 0 (außer bei falschem Aufruf),
-# Details in ~/.cache/simpleos-report.log.
-# Tests: SIMPLEOS_REPORT_OSRELEASE ersetzt /etc/os-release, SIMPLEOS_REPORT_DIR den Desktop-Ordner,
-# SIMPLEOS_REPORT_SYS die Wurzel für /sys- und /var/log-Pfade.
+# Simple OS – report a problem (Menu → Help → Report a Problem, Control Center → System)
+# Rofi window with three ways:
+#   "Create report"                   system info + logs including the system log (pkexec helper, password)
+#   "Create report without system logs"  the same without a password (only what the user may read)
+#   "Open the issue page only"        only the page for bug reports
+# The report is saved as a text file on the desktop (simpleos-report-YYYYMMDD-HHMM.txt); then the page for
+# a new bug report opens with a template – you drag the file into it.
+# Privacy: before saving, user name, real name, computer name, Wi-Fi/connection names,
+# IP and MAC addresses, serial numbers and email addresses are replaced (redact()). The computer's serial numbers
+# (/sys/class/dmi/id/*_serial) are not even read.
+# The address comes from BUG_REPORT_URL in /etc/os-release – the only place where it is set. Without an address
+# the report is only saved. GitHub addresses (…/issues) get /new with a title and template.
+#   simpleos-report                    window
+#   simpleos-report --collect [--system]   report (cleaned) on stdout, without a window
+#   simpleos-report --url              address for a new bug report (exit 1 if none is set)
+#   simpleos-report --redact           stdin cleaned on stdout (test of the cleaning, 99_verify)
+# Robust like the other Rofi tools: no set -e, exit 0 (except on wrong usage),
+# details in ~/.cache/simpleos-report.log.
+# Tests: SIMPLEOS_REPORT_OSRELEASE replaces /etc/os-release, SIMPLEOS_REPORT_DIR the desktop folder,
+# SIMPLEOS_REPORT_SYS the root for /sys and /var/log paths.
 
 SOS_NAME=simpleos-report SOS_TITLE="Report a Problem" SOS_ICON=dialog-warning SOS_PROMPT=Report
 TAB=$(printf '\t')
@@ -32,7 +32,7 @@ sos_log_init "$@"
 export LC_ALL=C
 
 osr() { sed -n "s/^$1=//p" "$OS_RELEASE" 2>/dev/null | head -n 1 | sed 's/^"//; s/"$//'; }
-# Befehl mit Zeitlimit; fehlt er, steht das im Bericht statt einer leeren Stelle
+# Command with a time limit; if it is missing, the report says so instead of an empty spot
 run() {
     command -v "$1" >/dev/null || { echo "($1 not installed)"; return 0; }
     timeout 15 "$@" 2>&1 || true
@@ -40,7 +40,7 @@ run() {
 section() { printf '\n==== %s ====\n' "$1"; }
 dmi() { cat "$SYS/sys/class/dmi/id/$1" 2>/dev/null || echo "?"; }
 
-# Adresse für einen neuen Fehlerbericht. GitHub: …/issues -> …/issues/new?title=…&body=… (Vorlage)
+# Address for a new bug report. GitHub: …/issues -> …/issues/new?title=…&body=… (template)
 issue_url() {
     base=$(osr BUG_REPORT_URL)
     case "$base" in http://*|https://*) ;; *) return 1 ;; esac
@@ -74,7 +74,7 @@ PY
     esac
 }
 
-# ---- Bericht
+# ---- Report
 collect() {
     section "Simple OS"
     echo "Version:      $(osr PRETTY_NAME)"
@@ -108,7 +108,7 @@ collect() {
     section "Network & Bluetooth"
     run lspci -nnk | grep -A3 -E 'Network controller|Ethernet controller'
     run nmcli -f DEVICE,TYPE,STATE device
-    # WLAN: Verbindungsrate/Signal, Stromsparmodus und Treiber-Optionen (Einbrüche auf wenige kB/s)
+    # Wi-Fi: link rate/signal, power saving mode and driver options (drops to a few kB/s)
     for w in "$SYS"/sys/class/net/*/wireless; do
         [ -d "$w" ] || continue
         i=${w%/wireless}; i=${i##*/}
@@ -168,7 +168,7 @@ collect() {
     run journalctl --user -b -p warning -n 150 --no-pager -o short-monotonic
 }
 
-# Persönliches ersetzen. Wörter: Benutzername, echter Name, Rechnername, gespeicherte Verbindungen (WLAN-Namen)
+# Replace personal data. Words: user name, real name, computer name, saved connections (Wi-Fi names)
 redact() {
     real=$(getent passwd "$(id -un 2>/dev/null)" 2>/dev/null | cut -d: -f5 | cut -d, -f1)
     conns=$(timeout 10 nmcli -t -f NAME connection show 2>/dev/null)
@@ -176,9 +176,9 @@ redact() {
 import ipaddress, os, re, sys
 
 text = sys.stdin.read()
-# E-Mail zuerst – sonst bliebe von "name.x@example.org" nach dem Ersetzen des Namens ein Rest
+# Email first – otherwise a rest of "name.x@example.org" would remain after replacing the name
 text = re.sub(r"[\w.+-]+@[\w-]+\.[\w.-]+", "<email>", text)
-# Wörter, die im Bericht auch sonst vorkommen: nie ersetzen ("simple" ist der Live-Benutzer)
+# Words that also appear elsewhere in the report: never replace them ("simple" is the live user)
 keep = {"", "simple", "simple-os", "root", "user", "live", "debian", "localhost", "lo"}
 words = [(os.environ.get("R_HOME", ""), "/home/<user>")]
 words += [(os.environ.get(k, ""), r) for k, r in (("R_REAL", "<name>"), ("R_USER", "<user>"), ("R_HOST", "<hostname>"))]
@@ -187,7 +187,7 @@ for w, r in sorted(words, key=lambda x: -len(x[0])):
     w = w.strip()
     if len(w) < 3 or w.lower() in keep or w in ("/home", "/root"):
         continue
-    # Ganze Wörter; Pfade (/home/name) auch mitten in der Zeile
+    # Whole words; paths (/home/name) also in the middle of a line
     pat = re.escape(w) if w.startswith("/") else r"(?<![\w-])" + re.escape(w) + r"(?![\w-])"
     text = re.sub(pat, r, text)
 
@@ -201,8 +201,8 @@ def v4(m):
     except ValueError:
         return s
     return s if a.is_loopback or a.is_unspecified or s.startswith("255.") else "<ip>"
-# keine Versionsnummern (1.2.5.1-2, v1.2.3.4, 1.2.3.4.5): davor/danach weder Buchstabe noch Bindestrich noch
-# eine weitere Zahl mit Punkt; ein Satzpunkt am Ende ("from 192.168.1.1.") zählt nicht
+# no version numbers (1.2.5.1-2, v1.2.3.4, 1.2.3.4.5): neither a letter nor a hyphen nor another number with a
+# dot before/after it; a full stop at the end ("from 192.168.1.1.") does not count
 text = re.sub(r"(?<![\w-])(?<!\d\.)\d{1,3}(?:\.\d{1,3}){3}(?![\w-])(?!\.\d)", v4, text)
 
 def v6(m):
@@ -218,7 +218,7 @@ sys.stdout.write(text)
 '
 }
 
-# $1 = 1: mit Systemprotokoll (pkexec). Ausgabe bereinigt auf stdout.
+# $1 = 1: with the system log (pkexec). Output cleaned on stdout.
 report() {
     tmp=$(mktemp) || return 1
     collect > "$tmp" 2>&1
@@ -238,7 +238,7 @@ report() {
     if command -v python3 >/dev/null; then
         redact < "$tmp"
     else
-        # Ohne python3 lieber nichts speichern als unbereinigt
+        # Without python3 better save nothing than something uncleaned
         sos_log "python3 missing – report not created"
         rm -f "$tmp"; return 1
     fi
@@ -258,12 +258,12 @@ open_url() { command -v simpleos-browser >/dev/null && setsid simpleos-browser "
 case "${1:-}" in
     --collect)
         sys=0
-        case "${2:-}" in --system) sys=1 ;; "") ;; *) echo "Aufruf: simpleos-report --collect [--system]" >&2; exit 2 ;; esac
+        case "${2:-}" in --system) sys=1 ;; "") ;; *) echo "Usage: simpleos-report --collect [--system]" >&2; exit 2 ;; esac
         report "$sys"; exit 0 ;;
     --url) issue_url || exit 1; exit 0 ;;
     --redact) redact; exit 0 ;;
     "") ;;
-    *) echo "Aufruf: simpleos-report [--collect [--system] | --url | --redact]" >&2; exit 2 ;;
+    *) echo "Usage: simpleos-report [--collect [--system] | --url | --redact]" >&2; exit 2 ;;
 esac
 
 command -v rofi >/dev/null || { sos_log "rofi missing"; sos_rofi_failed; }

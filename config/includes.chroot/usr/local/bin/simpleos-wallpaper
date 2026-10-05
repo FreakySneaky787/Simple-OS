@@ -1,24 +1,24 @@
 #!/bin/sh
-# Simple OS – Hintergrundbild setzen (Thunar: Rechtsklick → Set as Wallpaper, Control Center → Appearance)
-#   simpleos-wallpaper BILD       als Hintergrund (füllend), bleibt nach dem Neustart
-#   simpleos-wallpaper --default  Simple-OS-Hintergrund
-# Den Desktop zeichnet pcmanfm (Desktop-Symbole) – es speichert das Bild selbst in
-# ~/.config/pcmanfm/default/desktop-items-0.conf. feh zusätzlich, falls pcmanfm --desktop nicht läuft.
+# Simple OS – set the wallpaper (Thunar: right-click → Set as Wallpaper, Control Center → Appearance)
+#   simpleos-wallpaper PICTURE    as wallpaper (filling), stays after a restart
+#   simpleos-wallpaper --default  the Simple OS wallpaper
+# pcmanfm draws the desktop (desktop icons) – it stores the picture itself in
+# ~/.config/pcmanfm/default/desktop-items-0.conf. feh as well, in case pcmanfm --desktop is not running.
 DEFAULT=/usr/share/backgrounds/simpleos/wallpaper.png
 note() { notify-send -c x-simpleos -i preferences-desktop-wallpaper "Wallpaper" "$1" 2>/dev/null; }
 file=${1:-}
 [ "$file" = --default ] && file=$DEFAULT
-[ -n "$file" ] || { echo "Aufruf: simpleos-wallpaper BILD | --default" >&2; exit 2; }
+[ -n "$file" ] || { echo "Usage: simpleos-wallpaper PICTURE | --default" >&2; exit 2; }
 case "$file" in file://*) file=${file#file://} ;; esac
 case "$file" in /*) ;; *) file=$PWD/$file ;; esac
 [ -r "$file" ] || { note "This picture could not be opened."; exit 0; }
-# Bild? (Kopf statt Endung: Fotos ohne/mit falscher Endung gehen auch)
+# A picture? (header instead of extension: photos without or with a wrong extension work too)
 case "$(file -b --mime-type "$file" 2>/dev/null)" in image/*|"") ;; *) note "This file is not a picture."; exit 0 ;; esac
 ok=0
 command -v pcmanfm >/dev/null && timeout 5 pcmanfm --set-wallpaper="$file" --wallpaper-mode=crop >/dev/null 2>&1 && ok=1
 command -v feh >/dev/null && feh --no-fehbg --bg-fill "$file" >/dev/null 2>&1 && ok=1
 if [ "$ok" = 1 ]; then
-    # pcmanfm-Konfiguration für neue Sitzungen sicherstellen (auch wenn --set-wallpaper ohne Desktop lief)
+    # Make sure the pcmanfm configuration is right for new sessions (also if --set-wallpaper ran without a desktop)
     conf=${XDG_CONFIG_HOME:-$HOME/.config}/pcmanfm/default/desktop-items-0.conf
     if [ -f "$conf" ]; then
         esc=$(printf '%s' "$file" | sed 's/[\\&|]/\\&/g')

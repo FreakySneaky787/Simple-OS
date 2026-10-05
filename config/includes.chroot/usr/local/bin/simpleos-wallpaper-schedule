@@ -1,21 +1,21 @@
 #!/bin/sh
-# Simple OS – Dynamic Wallpaper (Control Center → Appearance "Dynamic wallpaper (day/night)")
-# Tagsüber das helle Wallpaper (Catppuccin Latte), abends und sobald der Nachtmodus aktiv ist das dunkle
-# (Catppuccin Mocha) – gekoppelt an simpleos-nightlight:
-#   dunkel, wenn  simpleos-nightlight --status "on" meldet (Nachtmodus gerade aktiv, auch tagsüber von Hand)
-#            oder es 20:00–07:00 ist (gleicher Abend wie der automatische Nachtmodus, ohne Standortdienst)
-#   simpleos-wallpaper-schedule --on        einschalten (merkt sich das bisherige Hintergrundbild)
-#   simpleos-wallpaper-schedule --off       ausschalten (bisheriges Bild zurück)
-#   simpleos-wallpaper-schedule --theme on|off   Hell/Dunkel-Modus mitschalten (simpleos-theme --mode light|dark:
-#                                           GTK live per XSETTINGS, Openbox, Rofi, Taskleiste) – Vorgabe aus
-#   simpleos-wallpaper-schedule --status    "on"/"off", Zeile 2: "day"/"night" (was gerade gelten soll),
-#                                           Zeile 3: "theme=on"/"theme=off"
-#   simpleos-wallpaper-schedule --apply     jetzt prüfen und wechseln (simpleos-nightlight ruft das bei jeder
-#                                           Änderung auf -> Wechsel sofort beim Ein-/Ausschalten des Nachtmodus)
-#   simpleos-wallpaper-schedule --daemon    Openbox-Autostart: alle 5 Minuten prüfen (läuft nur einmal)
-# Gesetzt wird über simpleos-wallpaper (pcmanfm-Desktop, bleibt nach dem Neustart). Kein set -e, Exit 0.
-# Tests: SIMPLEOS_HOUR ersetzt die Stunde, SIMPLEOS_NIGHTLIGHT das Nachtmodus-Programm,
-#        SIMPLEOS_WALLPAPER das Programm zum Setzen, SIMPLEOS_THEME das Design-Programm.
+# Simple OS – dynamic wallpaper (Control Center → Appearance "Dynamic wallpaper (day/night)")
+# During the day the light wallpaper (Catppuccin Latte), in the evening and as soon as night light is active the dark
+# one (Catppuccin Mocha) – coupled to simpleos-nightlight:
+#   dark if  simpleos-nightlight --status reports "on" (night light active right now, also by hand during the day)
+#            or it is 20:00–07:00 (the same evening as the automatic night light, without a location service)
+#   simpleos-wallpaper-schedule --on        switch on (remembers the previous wallpaper)
+#   simpleos-wallpaper-schedule --off       switch off (previous picture back)
+#   simpleos-wallpaper-schedule --theme on|off   switch light/dark mode along (simpleos-theme --mode light|dark:
+#                                           GTK live via XSETTINGS, Openbox, Rofi, taskbar) – default off
+#   simpleos-wallpaper-schedule --status    "on"/"off", line 2: "day"/"night" (what should apply right now),
+#                                           line 3: "theme=on"/"theme=off"
+#   simpleos-wallpaper-schedule --apply     check and switch now (simpleos-nightlight calls this on every
+#                                           change -> switches immediately when night light is turned on/off)
+#   simpleos-wallpaper-schedule --daemon    Openbox autostart: check every 5 minutes (runs only once)
+# Set via simpleos-wallpaper (pcmanfm desktop, stays after a restart). No set -e, exit 0.
+# Tests: SIMPLEOS_HOUR replaces the hour, SIMPLEOS_NIGHTLIGHT the night light program,
+#        SIMPLEOS_WALLPAPER the program that sets it, SIMPLEOS_THEME the theme program.
 DAY=/usr/share/backgrounds/simpleos/wallpaper-day.png
 NIGHT=/usr/share/backgrounds/simpleos/wallpaper.png
 CONF=${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/simpleos/wallpaper-schedule
@@ -34,7 +34,7 @@ save() {
     mkdir -p "${CONF%/*}" 2>/dev/null
     printf 'mode=%s\nprevious="%s"\ntheme=%s\n' "$mode" "$(printf '%s' "$previous" | tr -d '"$`\\')" "$theme" > "$CONF" 2>/dev/null
 }
-# Design passend zur Tageszeit (nur wenn eingeschaltet und abweichend); Hintergrund setzt dieses Skript selbst
+# Theme matching the time of day (only if switched on and different); this script sets the wallpaper itself
 switch_theme() {  # $1 day|night
     [ "$theme" = on ] || return 0
     if [ "$1" = night ]; then want_mode=dark; else want_mode=light; fi
@@ -74,7 +74,7 @@ case "${1:-}" in
         else "$SETWP" "$NIGHT" >/dev/null 2>&1; fi ;;
     --status) echo "$mode"; wanted; echo "theme=$theme" ;;
     --theme)
-        case "${2:-}" in on|off) theme=$2 ;; *) echo "Aufruf: --theme on|off" >&2; exit 2 ;; esac
+        case "${2:-}" in on|off) theme=$2 ;; *) echo "Usage: --theme on|off" >&2; exit 2 ;; esac
         save
         [ "$theme" = on ] && [ "$mode" = on ] && switch_theme "$(wanted)" ;;
     --apply)  apply ;;
@@ -89,6 +89,6 @@ case "${1:-}" in
             apply
             sleep 300
         done ;;
-    *) echo "Aufruf: simpleos-wallpaper-schedule --on|--off|--status|--apply|--daemon" >&2; exit 2 ;;
+    *) echo "Usage: simpleos-wallpaper-schedule --on|--off|--status|--apply|--daemon" >&2; exit 2 ;;
 esac
 exit 0

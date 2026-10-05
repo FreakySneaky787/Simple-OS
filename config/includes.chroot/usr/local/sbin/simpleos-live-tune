@@ -1,14 +1,14 @@
 #!/bin/sh
-# Simple OS – Live-Session beim Start anpassen (systemd: simpleos-live-tune.service, nur mit boot=live).
-# Im Live-Betrieb liegt jede Änderung – auch jede installierte App – in einem RAM-Overlay (tmpfs), das live-boot
-# auf die Hälfte des Arbeitsspeichers begrenzt. Flatpak-Apps brauchen samt Laufzeit schnell 1–3 GB (Software Store
-# Bazaar + GNOME-Laufzeit: ~2,3 GB); mit 4 GB RAM (2 GB Overlay) scheiterten Installationen "trotz Internet".
-#   1. Overlay auf 85 % des RAM vergrößern – zram-Swap (zram-tools) nimmt selten genutzte Seiten komprimiert auf,
-#      belegt wird nur, was wirklich geschrieben wird
-#   2. Flatpaks Platzreserve (min-free-space-size, Vorgabe 500 MB, für Festplatten gedacht) auf 100 MB senken
-# Installierte Systeme bleiben unverändert. Kein Fehler-Exit (der Start soll nie daran hängen).
-# Tests: SIMPLEOS_TUNE_OVERLAY / SIMPLEOS_TUNE_FLATPAK ersetzen Mountpoint und Repo-Konfiguration,
-#        SIMPLEOS_TUNE_DRYRUN=1 gibt den mount-Befehl nur aus.
+# Simple OS – adjust the live session at boot (systemd: simpleos-live-tune.service, only with boot=live).
+# In live mode every change – also every installed app – lives in a RAM overlay (tmpfs), which live-boot
+# limits to half of the RAM. Flatpak apps with their runtime quickly need 1–3 GB (Software Store
+# Bazaar + GNOME runtime: ~2.3 GB); with 4 GB RAM (2 GB overlay) installations failed "despite internet".
+#   1. enlarge the overlay to 85 % of the RAM – zram swap (zram-tools) takes rarely used pages compressed,
+#      only what is really written is used
+#   2. lower Flatpak's space reserve (min-free-space-size, default 500 MB, meant for hard disks) to 100 MB
+# Installed systems stay unchanged. No error exit (booting should never depend on it).
+# Tests: SIMPLEOS_TUNE_OVERLAY / SIMPLEOS_TUNE_FLATPAK replace the mount point and repo configuration,
+#        SIMPLEOS_TUNE_DRYRUN=1 only prints the mount command.
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 OVERLAY=${SIMPLEOS_TUNE_OVERLAY:-/run/live/overlay}
 REPO_CONF=${SIMPLEOS_TUNE_FLATPAK:-/var/lib/flatpak/repo/config}
@@ -16,31 +16,31 @@ SIZE=85%
 RESERVE=100MB
 
 if ! { [ -x /usr/local/bin/simpleos-live ] && /usr/local/bin/simpleos-live --check; }; then
-    echo "simpleos-live-tune: kein Live-System – nichts zu tun"
+    echo "simpleos-live-tune: not a live system – nothing to do"
     exit 0
 fi
 
-# 1. Overlay (nur wenn es wirklich ein tmpfs ist)
+# 1. Overlay (only if it really is a tmpfs)
 fstype=$(awk -v m="$OVERLAY" '$2 == m { print $3; exit }' /proc/mounts 2>/dev/null)
 [ -n "${SIMPLEOS_TUNE_OVERLAY:-}" ] && fstype=tmpfs
 if [ "$fstype" = tmpfs ]; then
     if [ "${SIMPLEOS_TUNE_DRYRUN:-0}" = 1 ]; then
         echo "mount -o remount,size=$SIZE $OVERLAY"
     elif mount -o remount,size=$SIZE "$OVERLAY"; then
-        echo "simpleos-live-tune: Overlay auf $SIZE des Arbeitsspeichers vergrößert"
+        echo "simpleos-live-tune: overlay enlarged to $SIZE of the RAM"
     else
-        echo "simpleos-live-tune: Overlay konnte nicht vergrößert werden"
+        echo "simpleos-live-tune: overlay could not be enlarged"
     fi
 else
-    echo "simpleos-live-tune: $OVERLAY ist kein tmpfs (${fstype:-nicht eingebunden}) – unverändert"
+    echo "simpleos-live-tune: $OVERLAY is not a tmpfs (${fstype:-not mounted}) – unchanged"
 fi
 
-# 2. Flatpak-Reserve: vorhandenen Wert ersetzen (zwei Einträge -> ostree nähme den letzten)
+# 2. Flatpak reserve: replace an existing value (two entries -> ostree would take the last one)
 if [ -f "$REPO_CONF" ] && grep -q '^\[core\]' "$REPO_CONF"; then
     tmp=$(mktemp) || exit 0
     awk -v r="$RESERVE" '/^min-free-space-(size|percent)=/ { next }
                          { print } /^\[core\]$/ { print "min-free-space-size=" r }' "$REPO_CONF" > "$tmp" &&
-        cat "$tmp" > "$REPO_CONF" && echo "simpleos-live-tune: Flatpak-Platzreserve $RESERVE"
+        cat "$tmp" > "$REPO_CONF" && echo "simpleos-live-tune: Flatpak space reserve $RESERVE"
     rm -f "$tmp"
 fi
 exit 0

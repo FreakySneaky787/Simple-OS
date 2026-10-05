@@ -1,5 +1,5 @@
 #!/bin/sh
 set -e
-# Branding in der Paket-settings.conf umstellen
+# Switch the branding in the package's settings.conf
 sed -i 's/^branding:.*/branding: simpleos/' /etc/calamares/settings.conf
 grep -q '^branding: simpleos$' /etc/calamares/settings.conf

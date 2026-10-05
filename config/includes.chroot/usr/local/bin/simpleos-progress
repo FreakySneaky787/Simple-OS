@@ -1,33 +1,33 @@
 #!/usr/bin/python3
-"""Simple OS – schlichtes Ladefenster für jedes Werkzeug (Backups, Updates, eigene Skripte).
+"""Simple OS – plain progress window for every tool (backups, updates, own scripts).
 
     simpleos-progress --title TEXT [--message TEXT] [--percent X | --indeterminate] [--hint TEXT]
-                      [--done TEXT] [--follow DATEI] [--pid PID] [--timeout SEK] [--notify]
+                      [--done TEXT] [--follow FILE] [--pid PID] [--timeout SEC] [--notify]
                       [--app NAME] [--icon-name ICON]
 
-Aussehen: abgerundetes Fenster ohne Rahmen (GTK, eigener Rahmen per Cairo), links ein schlanker Bogen (3 px) auf
-einem dezenten Ring, der sich gleichmäßig dreht; darunter ein Balken in Pillenform, solide in der Akzentfarbe.
-Ohne Prozentzahl gleitet ein abgerundeter Block ruhig hin und her. Farben strikt aus simpleos-theme
+Look: rounded window without a frame (GTK, own frame via Cairo), on the left a slim arc (3 px) on
+a subtle ring that turns evenly; below it a pill-shaped bar, solid in the accent color.
+Without a percentage a rounded block glides calmly back and forth. Colors strictly from simpleos-theme
 (~/.config/simpleos/theme: mode=dark -> Catppuccin Mocha, light -> Latte; accent=…).
 
-Eingabe (optional) – STDIN als Pipe/Datei oder --follow DATEI (wächst, Ende erst mit "EXIT:"):
-    TITLE: <Text>  / STEP: <Text>      Überschrift (STEP nur, wenn kein --title gegeben ist)
-    MESSAGE: <Text> / STAGE: <Text>    Beschreibung
-    PERCENT: <X> / PROGRESS: <X> [<Rest>]   Prozent (+ Restzeit)
-    DONE: <Text>                       Abschlusstext statt --done (z.B. "Already up to date")
-    EXIT: <Code>                       Ende: 0 -> Balken voll, kurz stehen lassen, schließen; sonst sofort schließen
-    <Zahl>  bzw.  # <Text>             wie zenity --progress
-    sonstige Zeilen                    "45%" irgendwo -> Prozent (apt "Progress: [ 45%]", pacman "… 40%",
-                                       timeshift "47.30% complete (7m 40s remaining)"); der Rest (ohne
-                                       Fortschrittsbalken aus #/=/-) wird zur Beschreibung
-    KEY: Wert (Großbuchstaben, unbekannt, z. B. FREE:/NEED:)  wird ignoriert (Maschinenzeilen der Helfer)
-STDIN-Ende ohne EXIT = Erfolg. STDIN als Terminal oder /dev/null = keine Eingabe: das Fenster zeigt --message und
---percent/--indeterminate, bis Esc, --timeout oder Ende von --pid. Mit --follow erscheint es erst mit der ersten
-Zeile (damit es den pkexec-Passwortdialog nicht verdeckt). Esc/Klick auf × blendet nur aus.
-KEINE eigenen Fehlermeldungen: die Ergebnismeldung schickt der Aufrufer.
-Ohne Anzeige (kein DISPLAY, GTK nicht ladbar, --notify) -> dunst-Meldung mit Balken (int:value, gleicher
-x-dunst-stack-tag), am Ende unsichtbar geschlossen. Exit 0 (2 = falscher Aufruf).
-paint() zeichnet ohne Fenster (Cairo-Kontext genügt) – der Verify-Hook prüft damit das Rendering.
+Input (optional) – STDIN as a pipe/file or --follow FILE (grows, ends only with "EXIT:"):
+    TITLE: <text>  / STEP: <text>      heading (STEP only if no --title is given)
+    MESSAGE: <text> / STAGE: <text>    description
+    PERCENT: <X> / PROGRESS: <X> [<rest>]   percent (+ time left)
+    DONE: <text>                       final text instead of --done (e.g. "Already up to date")
+    EXIT: <code>                       end: 0 -> bar full, let it stand briefly, close; otherwise close immediately
+    <number>  or  # <text>             like zenity --progress
+    other lines                        "45%" anywhere -> percent (apt "Progress: [ 45%]", pacman "… 40%",
+                                       timeshift "47.30% complete (7m 40s remaining)"); the rest (without
+                                       progress bars made of #/=/-) becomes the description
+    KEY: value (upper case, unknown, e.g. FREE:/NEED:)  is ignored (machine lines of the helpers)
+End of STDIN without EXIT = success. STDIN as a terminal or /dev/null = no input: the window shows --message and
+--percent/--indeterminate until Esc, --timeout or the end of --pid. With --follow it only appears with the first
+line (so it does not cover the pkexec password dialog). Esc/click on × only hides it.
+NO own error messages: the caller sends the result notification.
+Without a display (no DISPLAY, GTK cannot be loaded, --notify) -> dunst notification with a bar (int:value, the same
+x-dunst-stack-tag), closed invisibly at the end. Exit 0 (2 = wrong usage).
+paint() draws without a window (a Cairo context is enough) – the verify hook checks the rendering with it.
 """
 import argparse
 import math
@@ -40,8 +40,8 @@ import sys
 import time
 
 TAG = "simpleos-progress"
-STROKE = 3          # Bogen und Ring
-BAR_H = 6           # Pillenhöhe
+STROKE = 3          # arc and ring
+BAR_H = 6           # pill height
 W = 420
 ACCENTS = {  # Mocha, Latte
     "blue": ("#89b4fa", "#1e66f5"), "mauve": ("#cba6f7", "#8839ef"), "pink": ("#f5c2e7", "#ea76cb"),
@@ -81,7 +81,7 @@ def clock(sec):
     return f"{sec // 3600}:{sec // 60 % 60:02d}:{sec % 60:02d}" if sec >= 3600 else f"{sec // 60}:{sec % 60:02d}"
 
 
-# ---------------------------------------------------------------- Zustand + Eingabe
+# ---------------------------------------------------------------- State + input
 PCT = re.compile(r"(\d{1,3}(?:\.\d+)?)\s?%")
 REMAIN = re.compile(r"\(([^()]*?) remaining\)")
 BARS = re.compile(r"\[[#=\-.>*\s]*\]|\[\s*\d{1,3}%\s*\]")
@@ -91,9 +91,9 @@ MACHINE = re.compile(r"^[A-Z_]{2,}: ")
 class State:
     def __init__(self, title="Working", message="", percent=None, fixed_title=False):
         self.title, self.message, self.pct, self.remaining = title, message, percent, ""
-        self.fixed = fixed_title  # --title gegeben: STEP-Texte der Helfer (rohe Punktnamen) ersetzen ihn nicht
+        self.fixed = fixed_title  # --title given: the helpers' STEP texts (raw point names) do not replace it
         self.exit, self.started = None, False
-        self.done_text = ""  # "DONE: <Text>" des Helfers ersetzt --done
+        self.done_text = ""  # the helper's "DONE: <text>" replaces --done
 
     def set_pct(self, val):
         try:
@@ -111,8 +111,8 @@ class State:
         if sep and key in ("TITLE", "STEP"):
             self.started = True
             if key == "STEP" and val != "Done":
-                # neuer Schritt (z.B. Update: Wiederherstellungspunkt -> apt -> Flatpak): eigener Fortschritt ab 0,
-                # bis dahin pendelt der Balken – sonst stünde er auf 100 % und spränge zurück
+                # new step (e.g. update: restore point -> apt -> Flatpak): its own progress from 0,
+                # until then the bar swings – otherwise it would stand at 100 % and jump back
                 self.pct, self.remaining = None, ""
             if val and val != "Done" and (key == "TITLE" or not self.fixed):
                 self.title = val
@@ -130,10 +130,10 @@ class State:
             except ValueError:
                 self.exit = 1
         elif MACHINE.match(line):
-            return  # FREE:/NEED:/PATH: … der Helfer
-        elif re.fullmatch(r"\d{1,3}(\.\d+)?", line):  # zenity: nackte Zahl
+            return  # FREE:/NEED:/PATH: … of the helpers
+        elif re.fullmatch(r"\d{1,3}(\.\d+)?", line):  # zenity: bare number
             self.started = self.set_pct(line) or self.started
-        elif line.startswith("#"):  # zenity: "# Text"
+        elif line.startswith("#"):  # zenity: "# text"
             self.started, self.message = True, line.lstrip("# ").strip()
         else:
             self.started = True
@@ -152,7 +152,7 @@ class State:
 
 
 class Source:
-    """Zeilen aus --follow DATEI (wächst) oder STDIN (Pipe/Datei, nicht blockierend). \\r trennt wie \\n."""
+    """Lines from --follow FILE (grows) or STDIN (pipe/file, non-blocking). \\r separates like \\n."""
 
     def __init__(self, follow=None):
         self.follow, self.pos, self.rest, self.eof = follow, 0, "", False
@@ -225,7 +225,7 @@ def alive(pid):
         return True
 
 
-# ---------------------------------------------------------------- Zeichnen (ohne GTK)
+# ---------------------------------------------------------------- Drawing (without GTK)
 def height(view):
     return 132 if view.get("hint") else 112
 
@@ -241,12 +241,12 @@ def rounded(cr, x, y, w, h, r):
 
 
 def layout_geometry(view):
-    """Positionen (für Zeichnen und Tests): Spinner-Mitte/-Radius, Balken x/y/w/h, Schließen-Feld."""
+    """Positions (for drawing and tests): spinner center/radius, bar x/y/w/h, close field."""
     return {"spin": (32, 32, 10), "bar": (20, 66, W - 40, BAR_H), "close": (W - 36, 12, 24, 24)}
 
 
 def paint(cr, view, pal, t):
-    """view: title, message, pct (angezeigter Wert oder None), done, remaining, elapsed, hint, rounded, hover_close"""
+    """view: title, message, pct (displayed value or None), done, remaining, elapsed, hint, rounded, hover_close"""
     import cairo
     import gi
     gi.require_version("Pango", "1.0")
@@ -281,7 +281,7 @@ def paint(cr, view, pal, t):
         cr.move_to(x - tw if right else x, y)
         PangoCairo.show_layout(cr, lay)
 
-    # Spinner: dezenter Ring + ein schlanker Bogen (Viertelkreis), gleichmäßige Drehung (1 U/s); fertig = voller Ring
+    # Spinner: subtle ring + one slim arc (quarter circle), even rotation (1 turn/s); done = full ring
     cx, cy, r = geo["spin"]
     cr.set_line_width(STROKE)
     cr.set_line_cap(cairo.LINE_CAP_ROUND)
@@ -296,7 +296,7 @@ def paint(cr, view, pal, t):
         cr.arc(cx, cy, r, a, a + math.pi / 2)
     cr.stroke()
 
-    # Schließen (blendet nur aus)
+    # Close (only hides)
     x, y, w, h = geo["close"]
     if view.get("hover_close"):
         rounded(cr, x, y, w, h, 6)
@@ -312,7 +312,7 @@ def paint(cr, view, pal, t):
     text(view.get("title", ""), 56, 14, 11, pal["fg"], bold=True, width=W - 56 - 44)
     text(view.get("message", ""), 56, 34, 9.5, pal["sub"], width=W - 56 - 20)
 
-    # Balken: Pille, Spur + solide Akzentfüllung; unbestimmt: ruhig pendelnder Block (Sinus, 3 s pro Hin und Zurück)
+    # Bar: pill, track + solid accent fill; indeterminate: a calmly swinging block (sine, 3 s per back and forth)
     bx, by, bw, bh = geo["bar"]
     rounded(cr, bx, by, bw, bh, bh / 2)
     cr.set_source_rgb(*track)
@@ -339,7 +339,7 @@ def paint(cr, view, pal, t):
         text(view["hint"], bx, by + 38, 8.5, pal["dim"], width=bw)
 
 
-# ---------------------------------------------------------------- ohne Anzeige: dunst-Meldung mit Balken
+# ---------------------------------------------------------------- without a display: dunst notification with a bar
 def run_notify(args, st, src):
     last_sent, last_key = 0.0, None
     deadline = time.monotonic() + args.timeout if args.timeout else None
@@ -362,7 +362,7 @@ def run_notify(args, st, src):
         if src.eof and st.exit is None:
             st.exit = 0
         if st.exit is not None:
-            # begonnen: letzter Stand ersetzt die Meldung und läuft sofort ab (-t 1); nie begonnen: nichts
+            # started: the last state replaces the notification and expires immediately (-t 1); never started: nothing
             if st.started:
                 send("1")
             return
@@ -379,7 +379,7 @@ def run_notify(args, st, src):
         src.wait(0.25)
 
 
-# ---------------------------------------------------------------- Fenster
+# ---------------------------------------------------------------- Window
 def run_window(args, st, src):
     import gi
     gi.require_version("Gtk", "3.0")
@@ -420,7 +420,7 @@ def run_window(args, st, src):
             self.hidden_by_user = self.hover_close = False
             self.deadline = self.t0 + args.timeout if args.timeout else None
             GLib.timeout_add(100, self.poll)
-            # eigener Takt statt add_tick_callback: liefert der Compositor keine Frames, bliebe der stehen
+            # own timer instead of add_tick_callback: if the compositor delivers no frames, it would stand still
             GLib.timeout_add(16, self.tick)
             if not args.follow:
                 self.start()
@@ -450,7 +450,7 @@ def run_window(args, st, src):
             return self.on_hide() if ev.keyval == Gdk.KEY_Escape else False
 
         def on_hide(self, *_):
-            self.hidden_by_user = True  # Vorgang läuft weiter; die Ergebnismeldung kommt vom Aufrufer
+            self.hidden_by_user = True  # the operation keeps running; the result notification comes from the caller
             self.hide()
             return True
 
@@ -526,7 +526,7 @@ def main():
     st = State(args.title or "Working", args.message, args.percent, fixed_title=bool(args.title))
     src = Source(args.follow)
     if not src.active:
-        st.started = True  # nichts zu lesen: sofort anzeigen
+        st.started = True  # nothing to read: show immediately
     gui = not args.notify and os.environ.get("DISPLAY") and os.environ.get("SIMPLEOS_PROGRESS", "window") != "notify"
     if gui:
         try:
@@ -534,12 +534,12 @@ def main():
             gi.require_version("Gtk", "3.0")
             from gi.repository import Gtk
             gui = Gtk.init_check(sys.argv)[0]
-        except Exception as err:  # GTK fehlt/kaputt -> Meldung statt Fenster
-            print(f"simpleos-progress: kein Fenster ({err})", file=sys.stderr)
+        except Exception as err:  # GTK missing/broken -> notification instead of a window
+            print(f"simpleos-progress: no window ({err})", file=sys.stderr)
             gui = False
     try:
         (run_window if gui else run_notify)(args, st, src)
-    except Exception as err:  # nie den Aufrufer hängen lassen: Ende abwarten
+    except Exception as err:  # never leave the caller hanging: wait for the end
         print(f"simpleos-progress: {err}", file=sys.stderr)
         while st.exit is None and not src.eof and src.active and alive(args.pid):
             for line in src.lines():

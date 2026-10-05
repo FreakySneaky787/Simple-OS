@@ -1,16 +1,16 @@
 #!/bin/sh
-# Simple OS – Akku-Prüfung für die Taskleiste
-#   simpleos-battery --present    Exit 0 nur mit echtem Akku (Akkuanzeige in tint2, simpleos-taskbar-select)
-#   simpleos-battery --low-alert  "Battery low"-Meldung (battery_low_cmd in tint2rc), nur bei entladendem Akku
-#   simpleos-battery --run CMD…   CMD nur mit echtem Akku starten (XDG-Autostart von Akku-Programmen wie
-#                                 xfce4-power-manager, cbatticon – Hook 10_battery_guard), sonst Exit 0
-# Echter Akku = /sys/class/power_supply/BAT* mit type "Battery" und present "1". VMs und Desktop-PCs haben
-# keinen oder nur eine Attrappe (present 0) -> kein Akku-Symbol, keine Meldung. Akkus von Maus/Tastatur
-# (hidpp_battery_0, …) und USVs (type "UPS") zählen nicht. Die Meldung kommt zusätzlich nur bei Status
-# "Discharging". In einer VM gibt es grundsätzlich keinen Akku: QEMU/VirtualBox/Hyper-V reichen teils
-# Attrappen oder den Akku des Gastgebers mit present 1 durch.
-# Tests: SIMPLEOS_POWER_SUPPLY ersetzt /sys/class/power_supply, SIMPLEOS_VIRT das Ergebnis von
-# systemd-detect-virt --vm ("none" = echte Hardware).
+# Simple OS – battery check for the taskbar
+#   simpleos-battery --present    exit 0 only with a real battery (battery display in tint2, simpleos-taskbar-select)
+#   simpleos-battery --low-alert  "Battery low" notification (battery_low_cmd in tint2rc), only while discharging
+#   simpleos-battery --run CMD…   start CMD only with a real battery (XDG autostart of battery programs like
+#                                 xfce4-power-manager, cbatticon – hook 10_battery_guard), otherwise exit 0
+# Real battery = /sys/class/power_supply/BAT* with type "Battery" and present "1". VMs and desktop PCs have
+# none or only a dummy (present 0) -> no battery icon, no notification. Batteries of mice/keyboards
+# (hidpp_battery_0, …) and UPSs (type "UPS") do not count. The notification additionally only comes with status
+# "Discharging". A VM never has a battery: QEMU/VirtualBox/Hyper-V sometimes pass through
+# dummies or the host's battery with present 1.
+# Tests: SIMPLEOS_POWER_SUPPLY replaces /sys/class/power_supply, SIMPLEOS_VIRT the result of
+# systemd-detect-virt --vm ("none" = real hardware).
 PS=${SIMPLEOS_POWER_SUPPLY:-/sys/class/power_supply}
 
 in_vm() {
@@ -18,7 +18,7 @@ in_vm() {
     command -v systemd-detect-virt >/dev/null && systemd-detect-virt -q --vm
 }
 
-# Echte Akkus, ein Verzeichnis pro Zeile
+# Real batteries, one directory per line
 batteries() {
     in_vm && return 0
     for b in "$PS"/BAT*; do
@@ -41,5 +41,5 @@ case "${1:-}" in
         [ $# -gt 0 ] || exit 2
         [ -n "$(batteries)" ] || exit 0
         exec "$@" ;;
-    *) echo "Aufruf: simpleos-battery --present | --low-alert | --run CMD…" >&2; exit 2 ;;
+    *) echo "Usage: simpleos-battery --present | --low-alert | --run CMD…" >&2; exit 2 ;;
 esac

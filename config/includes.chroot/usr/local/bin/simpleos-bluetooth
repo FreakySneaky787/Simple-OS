@@ -1,15 +1,15 @@
 #!/bin/sh
-# Simple OS – Bluetooth-Flyout (Settings → Bluetooth, Control Center → Bluetooth)
-# Rofi-Menü wie bei Windows 11 rechts über der Taskleiste:
-#   Kopfzeile     "Bluetooth" + On/Off
-#   1. Zeile      "Turn off Bluetooth" / "Turn on Bluetooth"
-#   darunter      gekoppelte Geräte ("Sony WH-1000XM4  Headphones · Connected"); Klick -> Connect/Disconnect,
+# Simple OS – Bluetooth flyout (Settings → Bluetooth, Control Center → Bluetooth)
+# Rofi menu like Windows 11 on the right above the taskbar:
+#   heading       "Bluetooth" + On/Off
+#   first row     "Turn off Bluetooth" / "Turn on Bluetooth"
+#   below         paired devices ("Sony WH-1000XM4  Headphones · Connected"); click -> Connect/Disconnect,
 #                 Remove device, Back
-#   ganz unten    "Add device…" (10 s suchen, Klick koppelt + vertraut + verbindet),
+#   at the bottom "Add device…" (search for 10 s, a click pairs + trusts + connects),
 #                 "More Bluetooth settings" -> blueman-manager
-# Kein Bluetooth-Adapter (z.B. VM) -> eine verständliche Meldung statt leerem Menü.
-# Robust wie simpleos-wifi: kein set -e, Exit 0, Fehler als Meldung, Details in ~/.cache/simpleos-bluetooth.log.
-# Tests: SIMPLEOS_BT_SCAN = Suchdauer in Sekunden.
+# No Bluetooth adapter (e.g. VM) -> a clear notification instead of an empty menu.
+# Robust like simpleos-wifi: no set -e, exit 0, errors as a notification, details in ~/.cache/simpleos-bluetooth.log.
+# Tests: SIMPLEOS_BT_SCAN = search time in seconds.
 
 SOS_NAME=simpleos-bluetooth SOS_TITLE=Bluetooth SOS_ICON=bluetooth SOS_PROMPT=Bluetooth SOS_CORNER=1
 TAB=$(printf '\t')
@@ -35,15 +35,15 @@ command -v rofi >/dev/null || { sos_log "rofi missing"; sos_rofi_failed; }
 bt() { timeout "${BT_TIMEOUT:-15}" bluetoothctl "$@" 2>&1; }
 has_adapter() { bt list | grep -q '^Controller '; }
 powered() { bt show | grep -q 'Powered: yes'; }
-# "MAC<TAB>Name" je Gerät; $1 = Paired (gekoppelt) oder leer (alle bekannten)
+# "MAC<TAB>name" per device; $1 = Paired (paired) or empty (all known)
 devices() {
     out=$(bt devices ${1:+"$1"})
-    # bluez < 5.65 kennt "devices Paired" nicht
+    # bluez < 5.65 does not know "devices Paired"
     if [ "$1" = Paired ] && ! printf '%s\n' "$out" | grep -q '^Device '; then out=$(bt paired-devices); fi
     printf '%s\n' "$out" | sed -n 's/^Device \([0-9A-Fa-f:]\{17\}\) \(.*\)$/\1\t\2/p'
 }
 info_field() { bt info "$1" | sed -n "s/^[[:space:]]*$2: //p" | head -n 1; }
-# Gerätetyp in Alltagssprache aus dem bluez-Symbol
+# Device type in plain language from the bluez icon
 kind() {
     case "$(info_field "$1" Icon)" in
         audio-headset|audio-headphones) echo "Headphones" ;;
@@ -59,7 +59,7 @@ kind() {
 }
 power_on() {
     bt power on | grep -qiE 'succeeded|already' && return 0
-    # Per Funkschalter gesperrt (rfkill) -> freigeben und erneut versuchen
+    # Blocked by the radio switch (rfkill) -> unblock and try again
     command -v rfkill >/dev/null && rfkill unblock bluetooth >&2 2>&1 && sleep 1
     bt power on | grep -qiE 'succeeded|already' && return 0
     sos_notify "Bluetooth could not be turned on." critical
@@ -78,7 +78,7 @@ pair_new() {
     bt trust "$1" >&2
     connect "$1" "$2"
 }
-# Suchen: SCAN Sekunden, danach alle bekannten, noch nicht gekoppelten Geräte mit Namen
+# Search: SCAN seconds, then all known devices with a name that are not paired yet
 scan_menu() {
     sos_notify "Searching for devices. Put your device in pairing mode…" low
     BT_TIMEOUT=$((SCAN + 5)) bt --timeout "$SCAN" scan on >&2
@@ -87,7 +87,7 @@ scan_menu() {
     while IFS="$TAB" read -r mac name; do
         [ -n "$mac" ] || continue
         printf '%s\n' "$paired" | grep -qx "$mac" && continue
-        # Geräte ohne echten Namen (bluez zeigt dann die Adresse mit Bindestrichen) überspringen
+        # Skip devices without a real name (bluez then shows the address with hyphens)
         [ "$name" = "$(printf '%s' "$mac" | tr ':' '-')" ] && continue
         sos_add "$(sos_fa "$I_BT")  $(sos_esc "$name")  $(sos_dim "$(kind "$mac")")" "pair$TAB$mac$TAB$name"
         found=1
@@ -111,7 +111,7 @@ device_menu() {
     sos_pick "<b>$(sos_esc "$2")</b>   $(sos_dim "$(kind "$1")")" 360
     case "$action" in
         connect)    connect "$1" "$2" ;;
-        # bluetoothctl: "Successful disconnected"; sonst (Gerät reagiert nicht, Zeitüberschreitung) ehrlich melden
+        # bluetoothctl: "Successful disconnected"; otherwise (device does not respond, timeout) report it honestly
         disconnect) if bt disconnect "$1" | grep -qi 'successful'; then sos_notify "Disconnected from $2." low
                     else sos_notify "Could not disconnect from $2. Please try again." critical; fi ;;
         remove)     if bt remove "$1" | grep -qi 'removed'; then sos_notify "$2 was removed." low

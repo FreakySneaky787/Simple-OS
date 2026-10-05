@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Simple OS – Rechtsklick-Menü: bewusst schlank. Alle Apps findet der Launcher (Super);
-     alle Einstellungen liegen gebündelt unter "Settings". Papirus-Symbole an jedem Eintrag: Openbox 3.6
-     kennt keinen Innenabstand für Menüeinträge, die Symbolspalte rückt den Text vom Rand ab. -->
+<!-- Simple OS – right-click menu: deliberately slim. The launcher (Super) finds all apps;
+     all settings are bundled under "Settings". Papirus icons on every entry: Openbox 3.6
+     has no padding for menu entries, the icon column moves the text away from the edge. -->
 <openbox_menu xmlns="http://openbox.org/3.4/menu">
   <menu id="root-menu" label="Simple OS">
-    <!-- simpleos-installer-begin: nur in der Live-Session. simpleos-post-install (Calamares) und
-         simpleos-live beim Login ohne Live-Medium löschen alles bis zur Ende-Markierung. -->
+    <!-- simpleos-installer-begin: only in the live session. simpleos-post-install (Calamares) and
+         simpleos-live at login without a live medium delete everything up to the end marker. -->
     <item label="Install Simple OS" icon="/usr/share/simpleos/menu-icons/install.svg">
       <action name="Execute"><command>/usr/local/bin/simpleos-install</command></action>
     </item>
@@ -30,7 +30,7 @@
       <item label="PDF Viewer" icon="/usr/share/simpleos/menu-icons/pdf.svg">
         <action name="Execute"><command>atril</command></action>
       </item>
-      <!-- simpleos-office: LibreOffice/ONLYOFFICE trägt simpleos-system-setup nach der Installation hier ein -->
+      <!-- simpleos-office: simpleos-system-setup adds LibreOffice/ONLYOFFICE here after the installation -->
       <item label="Text Editor" icon="/usr/share/simpleos/menu-icons/editor.svg">
         <action name="Execute"><command>mousepad</command></action>
       </item>

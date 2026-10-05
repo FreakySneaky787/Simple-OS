@@ -1,11 +1,11 @@
 #!/bin/sh
-# Simple OS – "Copy to Clipboard" (Thunar: Rechtsklick auf Dateien)
-#   Bild (eine Datei)       -> das Bild selbst (zum Einfügen in Chat, Mail, Office)
-#   Textdatei (eine Datei)  -> der Inhalt (bis 1 MB)
-#   sonst / mehrere Dateien -> die Pfade, eine Zeile pro Datei
-# Über xclip; Meldung, was kopiert wurde.
+# Simple OS – "Copy to Clipboard" (Thunar: right-click on files)
+#   picture (one file)      -> the picture itself (to paste into chats, mail, office)
+#   text file (one file)    -> its content (up to 1 MB)
+#   otherwise / several files -> the paths, one line per file
+# Via xclip; a notification says what was copied.
 note() { notify-send -c x-simpleos -i edit-copy "Clipboard" "$1" 2>/dev/null; }
-[ $# -gt 0 ] || { echo "Aufruf: simpleos-copy-file DATEI…" >&2; exit 2; }
+[ $# -gt 0 ] || { echo "Usage: simpleos-copy-file FILE…" >&2; exit 2; }
 command -v xclip >/dev/null || { note "Copying is not available (xclip missing)."; exit 0; }
 if [ $# -eq 1 ] && [ -f "$1" ]; then
     mime=$(file -b --mime-type "$1" 2>/dev/null)

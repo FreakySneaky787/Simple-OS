@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 CONF=/etc/calamares/settings.conf
-# Im exec-Block: removeuser vor users, Cleanup direkt vor umount
+# In the exec block: removeuser before users, cleanup right before umount
 awk '
 /^- exec:/ { inexec = 1 }
 /^- show:/ { inexec = 0 }

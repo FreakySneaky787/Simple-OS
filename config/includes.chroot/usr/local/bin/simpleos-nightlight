@@ -1,16 +1,16 @@
 #!/bin/sh
-# Simple OS – Nachtmodus / Blaufilter (gammastep, Settings → Night Light, Control Center → Display)
-#   simpleos-nightlight             Rofi-Menü: an / aus / automatisch (abends), Wärme
+# Simple OS – night light / blue light filter (gammastep, Settings → Night Light, Control Center → Display)
+#   simpleos-nightlight             Rofi menu: on / off / automatic (evenings), warmth
 #   simpleos-nightlight --on|--off|--auto|--toggle
-#   simpleos-nightlight --temp K    Farbtemperatur 3000–6000 K (wärmer = kleiner), wirkt sofort
-#   simpleos-nightlight --status    "on" oder "off" (gerade aktiv?), Zeile 2: Modus, Zeile 3: Temperatur
-#   simpleos-nightlight --apply     Zustand anwenden (nach Änderungen, beim Login)
-#   simpleos-nightlight --daemon    Openbox-Autostart: Automatik alle 5 Minuten prüfen (läuft nur einmal)
-# Automatik: 20:00–07:00 warm, sonst normal – ohne Standortdienst (kein geoclue, keine Internetabfrage).
-# Einstellung in ~/.config/simpleos/nightlight (mode=off|on|auto, temp=4000).
-# Robust wie simpleos-wifi: kein set -e, Exit 0, Fehler als Meldung (z.B. VM-Grafik ohne Farbtabellen),
-# Details in ~/.cache/simpleos-nightlight.log.
-# Tests: SIMPLEOS_HOUR ersetzt die aktuelle Stunde.
+#   simpleos-nightlight --temp K    color temperature 3000–6000 K (warmer = smaller), takes effect immediately
+#   simpleos-nightlight --status    "on" or "off" (active right now?), line 2: mode, line 3: temperature
+#   simpleos-nightlight --apply     apply the state (after changes, at login)
+#   simpleos-nightlight --daemon    Openbox autostart: check the automatic mode every 5 minutes (runs only once)
+# Automatic: 20:00–07:00 warm, otherwise normal – without a location service (no geoclue, no internet lookup).
+# Setting in ~/.config/simpleos/nightlight (mode=off|on|auto, temp=4000).
+# Robust like simpleos-wifi: no set -e, exit 0, errors as a notification (e.g. VM graphics without color tables),
+# details in ~/.cache/simpleos-nightlight.log.
+# Tests: SIMPLEOS_HOUR replaces the current hour.
 
 SOS_NAME=simpleos-nightlight SOS_TITLE="Night light" SOS_ICON=weather-clear-night SOS_PROMPT="Night light"
 TAB=$(printf '\t')
@@ -33,7 +33,7 @@ save() {
     mkdir -p "${CONF%/*}" 2>/dev/null
     printf 'mode=%s\ntemp=%s\n' "$mode" "$temp" > "$CONF" 2>/dev/null || sos_log "cannot write $CONF"
 }
-# Soll gerade warm sein?
+# Should it be warm right now?
 wanted() {
     case "$mode" in
         on) return 0 ;;
@@ -46,7 +46,7 @@ wanted() {
 applied=0
 apply() {
     if wanted; then want=$temp; else want=off; fi
-    # Gleicher Zustand wie zuletzt -> nichts tun (Daemon prüft alle 5 Minuten)
+    # Same state as last time -> do nothing (the daemon checks every 5 minutes)
     [ "${1:-}" != force ] && [ "$(cat "$RUN/simpleos-nightlight.state" 2>/dev/null)" = "$want" ] && return 0
     if ! command -v gammastep >/dev/null; then
         [ "$want" = off ] || sos_notify "Night light is not installed (gammastep missing)." critical
@@ -62,8 +62,8 @@ apply() {
     echo "$want" > "$RUN/simpleos-nightlight.state" 2>/dev/null
     applied=1
 }
-# Rückmeldung nach einem Wechsel durch den Benutzer (Menü, Control Center, --on/--off/--auto/--toggle) – nur wenn
-# das Anwenden geklappt hat (Fehler meldet apply selbst); Daemon und --apply bleiben still
+# Feedback after a change by the user (menu, Control Center, --on/--off/--auto/--toggle) – only if
+# applying worked (apply reports errors itself); the daemon and --apply stay silent
 announce() {
     [ "$applied" = 1 ] || return 0
     case "$mode" in
@@ -74,7 +74,7 @@ announce() {
     esac
 }
 
-# Dynamic Wallpaper (simpleos-wallpaper-schedule) sofort mitziehen: Nachtmodus an -> dunkles Wallpaper
+# Pull the dynamic wallpaper (simpleos-wallpaper-schedule) along right away: night light on -> dark wallpaper
 couple() {
     command -v simpleos-wallpaper-schedule >/dev/null && simpleos-wallpaper-schedule --apply >/dev/null 2>&1
     return 0
@@ -91,7 +91,7 @@ case "${1:-}" in
     --status) if wanted; then echo on; else echo off; fi; echo "$mode"; echo "$temp"; exit 0 ;;
     --apply)  apply force; exit 0 ;;
     --daemon)
-        # Nur eine Instanz pro Sitzung
+        # Only one instance per session
         pidf=$RUN/simpleos-nightlight.pid
         if [ -r "$pidf" ] && kill -0 "$(cat "$pidf")" 2>/dev/null; then exit 0; fi
         echo $$ > "$pidf" 2>/dev/null
@@ -101,10 +101,10 @@ case "${1:-}" in
             sleep 300
         done ;;
     "") ;;
-    *) echo "Aufruf: simpleos-nightlight [--on|--off|--auto|--toggle|--temp K|--status|--apply|--daemon]" >&2; exit 2 ;;
+    *) echo "Usage: simpleos-nightlight [--on|--off|--auto|--toggle|--temp K|--status|--apply|--daemon]" >&2; exit 2 ;;
 esac
 
-# ---- Menü. FontAwesome 4: moon U+F186, sun U+F185, clock U+F017, fire U+F06D, check U+F00C
+# ---- Menu. FontAwesome 4: moon U+F186, sun U+F185, clock U+F017, fire U+F06D, check U+F00C
 I_MOON='\357\206\206' I_SUN='\357\206\205' I_CLOCK='\357\200\227' I_FIRE='\357\201\255' I_CHECK='\357\200\214'
 mark() { [ "$1" = "$2" ] && sos_dim "Current"; }
 while :; do

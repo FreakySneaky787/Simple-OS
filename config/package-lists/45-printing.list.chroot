@@ -1,7 +1,7 @@
-# Simple OS – Drucken und Scannen (Control Center → System → Printers & Scanners)
-# Ohne Recommends gebaut, daher alles ausdrücklich. Moderne Drucker brauchen keinen Treiber: CUPS findet sie im
-# Netzwerk über Avahi (IPP Everywhere/AirPrint), per USB über ipp-usb. Ältere Geräte: printer-driver-all
-# (HP, Brother, Epson, Samsung …) und die Foomatic-PPDs.
+# Simple OS – printing and scanning (Control Center → System → Printers & Scanners)
+# Built without Recommends, so everything is explicit. Modern printers need no driver: CUPS finds them on the
+# network via Avahi (IPP Everywhere/AirPrint), over USB via ipp-usb. Older devices: printer-driver-all
+# (HP, Brother, Epson, Samsung …) and the Foomatic PPDs.
 cups
 cups-client
 cups-filters
@@ -11,12 +11,12 @@ foomatic-db-compressed-ppds
 ipp-usb
 avahi-daemon
 libnss-mdns
-# Druckereinstellungen; cups-pk-helper: Drucker hinzufügen mit Passwortdialog statt root-Terminal;
-# -udev richtet per USB angesteckte Drucker ohne IPP automatisch ein
+# Printer settings; cups-pk-helper: add printers with a password dialog instead of a root terminal;
+# -udev sets up printers plugged in via USB without IPP automatically
 system-config-printer
 system-config-printer-udev
 cups-pk-helper
-# Scannen: sane-airscan findet Netzwerk-/USB-Scanner ohne Treiber (eSCL/WSD), simple-scan ist die Oberfläche
+# Scanning: sane-airscan finds network/USB scanners without drivers (eSCL/WSD), simple-scan is the front end
 sane-airscan
 sane-utils
 simple-scan

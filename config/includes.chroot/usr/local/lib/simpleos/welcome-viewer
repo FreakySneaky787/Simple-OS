@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Simple OS – Welcome-Fenster: zeigt /usr/share/simpleos/welcome.html in einem eigenen, schlanken
-GTK3/WebKit2GTK-4.1-Fenster statt im Standardbrowser.
+"""Simple OS – Welcome window: shows /usr/share/simpleos/welcome.html in its own slim
+GTK3/WebKit2GTK 4.1 window instead of the default browser.
 
-Warum nicht xdg-open/$BROWSER: gehärtete Privacy-Browser (Mullvad Browser als Flatpak) sehen /usr/share des
-Hosts nicht bzw. blockieren file://-Seiten; Mullvad VPN kann lokale Verbindungen sperren. Dieses Fenster
-  - lädt nur lokale Dateien aus /usr/share/simpleos (kein Netz, kein localhost-Dienst nötig),
-  - nutzt nie einen Proxy (NO_PROXY für localhost/127.0.0.1/::1, WebKit-Proxymodus NO_PROXY),
-  - speichert nichts (flüchtiges Profil), JavaScript ist aus (die Seite braucht keins),
-  - öffnet externe Links (https:, mailto:) im Standardbrowser – dafür ist er da.
+Why not xdg-open/$BROWSER: hardened privacy browsers (Mullvad Browser as a Flatpak) cannot see the host's
+/usr/share or block file:// pages; Mullvad VPN can block local connections. This window
+  - only loads local files from /usr/share/simpleos (no network, no localhost service needed),
+  - never uses a proxy (NO_PROXY for localhost/127.0.0.1/::1, WebKit proxy mode NO_PROXY),
+  - stores nothing (ephemeral profile), JavaScript is off (the page needs none),
+  - opens external links (https:, mailto:) in the default browser – that is what it is for.
 
-  welcome-viewer [SEITE]     Fenster öffnen (Exit 0 nach dem Schließen)
-  welcome-viewer --probe     ohne Bildschirm prüfen, ob Fenster und Seite verfügbar sind (Exit 0/3);
-                             meldet zusätzlich "live banner: on|off"
-Live-Session (simpleos-live --check): ganz oben ein Mauve-Banner "You are running Simple OS in Live Mode!" mit
-dem großen Knopf "Install Simple OS Now" (startet simpleos-install) – natives GTK, kein JavaScript nötig.
-Exit 3 = WebKit/GTK nicht verfügbar oder kein Bildschirm -> simpleos-welcome nimmt den nächsten Weg.
+  welcome-viewer [PAGE]      open the window (exit 0 after closing)
+  welcome-viewer --probe     check without a screen whether window and page are available (exit 0/3);
+                             also reports "live banner: on|off"
+Live session (simpleos-live --check): at the very top a mauve banner "You are running Simple OS in Live Mode!" with
+the big button "Install Simple OS Now" (starts simpleos-install) – native GTK, no JavaScript needed.
+Exit 3 = WebKit/GTK not available or no screen -> simpleos-welcome takes the next way.
 """
 import os
 import subprocess
@@ -24,11 +24,11 @@ PAGE_DIR = "/usr/share/simpleos"
 DEFAULT_PAGE = PAGE_DIR + "/welcome.html"
 UNAVAILABLE = 3
 
-# Lokale Adressen nie über einen Proxy/VPN-Proxy leiten (vor dem Laden von WebKit setzen)
+# Never route local addresses through a proxy/VPN proxy (set before loading WebKit)
 _local = "localhost,127.0.0.1,::1"
 for _var in ("NO_PROXY", "no_proxy"):
     os.environ[_var] = _local + ("," + os.environ[_var] if os.environ.get(_var) else "")
-# VMs ohne 3D-Beschleunigung: ohne diese Schalter bleibt WebKits Fenster teils leer
+# VMs without 3D acceleration: without these switches WebKit's window sometimes stays empty
 os.environ.setdefault("WEBKIT_DISABLE_COMPOSITING_MODE", "1")
 os.environ.setdefault("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
 
@@ -77,7 +77,7 @@ def install_now(_button=None):
 
 
 def live_banner():
-    """Mauve-Banner mit Text und großem Knopf; None außerhalb der Live-Session."""
+    """Mauve banner with text and a big button; None outside the live session."""
     if not is_live():
         return None
     from gi.repository import Gdk
@@ -102,7 +102,7 @@ def live_banner():
 
 
 if "--probe" in sys.argv:
-    # Bindungen und Proxy-/Beschleunigungs-API vorhanden (ohne Fenster)
+    # Bindings and proxy/acceleration API present (without a window)
     assert hasattr(WebKit2.WebsiteDataManager, "set_network_proxy_settings")
     assert WebKit2.NetworkProxyMode.NO_PROXY is not None
     assert WebKit2.HardwareAccelerationPolicy.NEVER is not None
@@ -120,7 +120,7 @@ def is_local(uri):
 
 
 def on_decide_policy(_view, decision, decision_type):
-    """Nur die eigenen lokalen Seiten im Fenster; alles andere (Links ins Web) im Standardbrowser."""
+    """Only our own local pages in the window; everything else (links to the web) in the default browser."""
     if decision_type not in (WebKit2.PolicyDecisionType.NAVIGATION_ACTION,
                              WebKit2.PolicyDecisionType.NEW_WINDOW_ACTION):
         return False
@@ -131,7 +131,7 @@ def on_decide_policy(_view, decision, decision_type):
     if not is_local(uri):
         try:
             Gio.AppInfo.launch_default_for_uri(uri, None)
-        except Exception as err:  # noqa: BLE001 – ein fehlender Browser darf das Fenster nicht beenden
+        except Exception as err:  # noqa: BLE001 – a missing browser must not end the window
             print(f"welcome-viewer: cannot open {uri}: {err}", file=sys.stderr)
     return True
 
@@ -149,7 +149,7 @@ def main():
     web.set_hardware_acceleration_policy(WebKit2.HardwareAccelerationPolicy.NEVER)
     web.set_default_font_family("Inter")
     view.connect("decide-policy", on_decide_policy)
-    view.connect("context-menu", lambda *_: True)  # kein "Reload/Inspect"-Menü
+    view.connect("context-menu", lambda *_: True)  # no "Reload/Inspect" menu
 
     window = Gtk.Window(title="Welcome to Simple OS")
     window.set_default_size(900, 760)
@@ -165,7 +165,7 @@ def main():
         window.add(view)
     window.connect("destroy", Gtk.main_quit)
     window.connect("key-press-event",
-                   lambda _w, ev: ev.keyval == 0xff1b and window.destroy())  # Esc schließt
+                   lambda _w, ev: ev.keyval == 0xff1b and window.destroy())  # Esc closes
     view.load_uri("file://" + page)
     window.show_all()
     Gtk.main()

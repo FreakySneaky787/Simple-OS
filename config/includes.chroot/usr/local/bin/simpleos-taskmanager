@@ -1,19 +1,19 @@
 #!/usr/bin/python3
-"""Simple OS – Task-Manager (Strg+Umschalt+Esc, Menü → System → Task Manager, Control Center → System).
+"""Simple OS – Task Manager (Ctrl+Shift+Esc, Menu → System → Task Manager, Control Center → System).
 
-Liste der Programme mit CPU (Anteil an allen Kernen, wie bei Windows), Arbeitsspeicher und Benutzer, alle 2 s neu
-aus /proc gelesen. Zeilen werden an Ort und Stelle aktualisiert (Auswahl und Scroll-Position bleiben).
-"End task" (Knopf, Entf-Taste, Rechtsklick) – end_process():
-  1. SIGTERM (Programm darf sauber beenden, z.B. speichern),
-  2. lebt es nach 1,5 s noch: automatisch SIGKILL,
-  3. gehört der Prozess einem anderen Benutzer (z.B. root): dasselbe über
-     pkexec /usr/local/sbin/simpleos-taskmanager-helper (Passwort), statt stumm zu scheitern.
-  Vor jedem Signal wird geprüft, dass die PID noch derselbe Prozess ist (Startzeit, Feld 22 von /proc/PID/stat).
-  Die Liste wird sofort nach dem Signal neu gelesen und das Ergebnis direkt gezeigt; die Auswahl springt auf die
-  nächste Zeile – kein zweiter Klick nötig.
-Systemkritische Prozesse (Xorg, openbox, lightdm, systemd …) nur nach Rückfrage; PID 1 und Kernel-Threads nie.
-Test: SIMPLEOS_TM_SELFTEST=1 startet zwei Testprozesse (einer ignoriert SIGTERM), beendet sie über die Oberfläche
-und endet mit Exit 0 nur, wenn beide verschwunden sind und die Liste ohne zweiten Klick nachgezogen hat.
+List of programs with CPU (share of all cores, like on Windows), memory and user, read again from /proc
+every 2 s. Rows are updated in place (selection and scroll position stay).
+"End task" (button, Delete key, right-click) – end_process():
+  1. SIGTERM (the program may end cleanly, e.g. save),
+  2. if it is still alive after 1.5 s: SIGKILL automatically,
+  3. if the process belongs to another user (e.g. root): the same via
+     pkexec /usr/local/sbin/simpleos-taskmanager-helper (password), instead of failing silently.
+  Before every signal it is checked that the PID is still the same process (start time, field 22 of /proc/PID/stat).
+  The list is read again right after the signal and the result is shown directly; the selection jumps to the
+  next row – no second click needed.
+System-critical processes (Xorg, openbox, lightdm, systemd …) only after a confirmation; PID 1 and kernel threads never.
+Test: SIMPLEOS_TM_SELFTEST=1 starts two test processes (one ignores SIGTERM), ends them via the interface
+and ends with exit 0 only if both are gone and the list has caught up without a second click.
 """
 import os
 import pwd
@@ -36,7 +36,7 @@ PAGE = os.sysconf("SC_PAGE_SIZE")
 
 # ---------------------------------------------------------------- /proc
 def read_stat(pid):
-    """(Zustand, Elternprozess, utime+stime, Startzeit) oder None. Robust gegen ') ' im Programmnamen."""
+    """(state, parent process, utime+stime, start time) or None. Robust against ') ' in the program name."""
     try:
         with open(f"/proc/{pid}/stat") as f:
             s = f.read()
@@ -55,12 +55,12 @@ def is_alive(pid, start):
 
 
 def is_interpreter(exe):
-    """python, python3, python3.11, sh, bash, dash – nicht shotwell, bashtop, …"""
+    """python, python3, python3.11, sh, bash, dash – not shotwell, bashtop, …"""
     return exe in ("sh", "bash", "dash") or re.fullmatch(r"python\d*(\.\d+)?", exe) is not None
 
 
 def processes(all_users=False):
-    """Benutzerprozesse (ohne Kernel-Threads): Liste von dicts."""
+    """User processes (without kernel threads): a list of dicts."""
     me = os.getuid()
     out = []
     for name in os.listdir("/proc"):
@@ -74,7 +74,7 @@ def processes(all_users=False):
             with open(f"/proc/{pid}/cmdline", "rb") as f:
                 cmd = f.read().split(b"\0")
             if not cmd or not cmd[0]:
-                continue  # Kernel-Thread
+                continue  # kernel thread
             with open(f"/proc/{pid}/comm") as f:
                 comm = f.read().strip()
             with open(f"/proc/{pid}/statm") as f:
@@ -89,8 +89,8 @@ def processes(all_users=False):
         except KeyError:
             user = str(uid)
         exe = os.path.basename(cmd[0].decode(errors="replace"))
-        # Skripte (python3 /usr/local/bin/simpleos-…) unter ihrem eigenen Namen zeigen – nur echte Interpreter:
-        # startswith("sh") traf auch shotwell/shutter/shotcut, die dann als ihr erstes Argument ("foto.jpg") erschienen
+        # Show scripts (python3 /usr/local/bin/simpleos-…) under their own name – only real interpreters:
+        # startswith("sh") also matched shotwell/shutter/shotcut, which then appeared as their first argument ("photo.jpg")
         if is_interpreter(exe) and len(cmd) > 1 and cmd[1] and not cmd[1].startswith(b"-"):
             label = os.path.basename(cmd[1].decode(errors="replace"))
         else:
@@ -107,12 +107,12 @@ def human(n):
     return f"{n:.1f} GB"
 
 
-# ---------------------------------------------------------------- Beenden
+# ---------------------------------------------------------------- Ending
 def end_process(pid, start, on_signal=None, kill=os.kill, runner=subprocess.run, term_wait=TERM_WAIT,
                 kill_wait=KILL_WAIT, poll=0.05):
-    """SIGTERM -> nach term_wait SIGKILL; fremde Prozesse über pkexec + Helfer.
-    Rückgabe: "terminated" | "killed" | "gone" | "failed" | "denied" (Passwort abgebrochen/abgelehnt).
-    on_signal() wird direkt nach dem ersten Signal aufgerufen (Oberfläche liest dann sofort neu)."""
+    """SIGTERM -> SIGKILL after term_wait; other users' processes via pkexec + helper.
+    Returns: "terminated" | "killed" | "gone" | "failed" | "denied" (password cancelled/refused).
+    on_signal() is called right after the first signal (the interface then reads again immediately)."""
     if not is_alive(pid, start):
         return "gone"
     try:
@@ -157,7 +157,7 @@ def end_process(pid, start, on_signal=None, kill=os.kill, runner=subprocess.run,
     return "failed"
 
 
-# ---------------------------------------------------------------- Oberfläche
+# ---------------------------------------------------------------- Interface
 def run_gui(selftest=False):
     import gi
     gi.require_version("Gtk", "3.0")
@@ -175,9 +175,9 @@ def run_gui(selftest=False):
             hb = Gtk.HeaderBar(show_close_button=True, title="Task Manager")
             self.set_titlebar(hb)
             self.hb = hb
-            self.prev = {}          # pid -> (ticks, Zeitpunkt) für CPU-Anteil
+            self.prev = {}          # pid -> (ticks, time) for the CPU share
             self.rows = {}          # pid -> Gtk.TreeRowReference
-            self.busy = set()       # pids, die gerade beendet werden
+            self.busy = set()       # pids that are being ended right now
             self.all_users = False
 
             box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, margin=12)
@@ -190,9 +190,9 @@ def run_gui(selftest=False):
             top.pack_start(allu, False, False, 0)
             box.pack_start(top, False, False, 0)
 
-            # pid, Name, Benutzer, CPU (Sortierwert), Speicher (Sortierwert), CPU-Text, Speicher-Text, Start, uid
-            # Start (Takte seit dem Booten) 64 Bit: in einer 32-Bit-Spalte lief er nach ~248 Tagen Laufzeit über
-            # (OverflowError, die Liste blieb stehen)
+            # pid, name, user, CPU (sort value), memory (sort value), CPU text, memory text, start, uid
+            # start (ticks since boot) 64 bit: in a 32-bit column it overflowed after ~248 days of uptime
+            # (OverflowError, the list froze)
             self.store = Gtk.ListStore(int, str, str, float, float, str, str, GObject.TYPE_INT64, int)
             self.filter = self.store.filter_new()
             self.filter.set_visible_func(self.visible)
@@ -230,7 +230,7 @@ def run_gui(selftest=False):
             GLib.timeout_add(2000, self.refresh)
             self.update_button()
 
-        # -------- Liste
+        # -------- List
         def visible(self, model, it, _data):
             q = self.search.get_text().strip().lower()
             return not q or q in model[it][1].lower() or q == str(model[it][0])
@@ -258,7 +258,7 @@ def run_gui(selftest=False):
                         p["uid"])
                 ref = self.rows.get(pid)
                 if ref and ref.valid() and self.store[ref.get_path()][7] != p["start"]:
-                    self.remove_row(pid)  # PID gehört inzwischen einem anderen Prozess
+                    self.remove_row(pid)  # the PID now belongs to another process
                     ref = None
                 if ref and ref.valid():
                     it = self.store.get_iter(ref.get_path())
@@ -289,7 +289,7 @@ def run_gui(selftest=False):
             except (OSError, KeyError, ValueError, IndexError):
                 return ""
 
-        # -------- Auswahl / Beenden
+        # -------- Selection / ending
         def selected(self):
             model, it = self.view.get_selection().get_selected()
             if not it:
@@ -302,7 +302,7 @@ def run_gui(selftest=False):
             self.end_btn.set_sensitive(bool(sel) and sel["pid"] not in self.busy)
 
         def select_neighbour(self):
-            """Auswahl vor dem Entfernen auf die nächste (sonst vorige) Zeile setzen."""
+            """Move the selection to the next (otherwise previous) row before removing."""
             model, it = self.view.get_selection().get_selected()
             if not it:
                 return
@@ -387,15 +387,15 @@ def run_gui(selftest=False):
 
 
 def selftest_run(win, GLib, Gtk):
-    """Zwei Testprozesse beenden – einer reagiert auf SIGTERM, einer ignoriert ihn (SIGKILL nach 1,5 s)."""
-    # absolute Pfade: im Verify-Hook liegt eine sofort endende sleep-Attrappe vorn im PATH
+    """End two test processes – one reacts to SIGTERM, one ignores it (SIGKILL after 1.5 s)."""
+    # absolute paths: in the verify hook a sleep dummy that ends immediately is first in PATH
     soft = subprocess.Popen(["/bin/sleep", "300"])
     hard = subprocess.Popen(["/bin/sh", "-c", "trap '' TERM; while :; do /bin/sleep 0.2; done"])
     time.sleep(0.3)
     win.selftest_results = []
     state = {"rc": 1, "phase": 0, "t": time.monotonic(), "clicks": 0}
     for p in (soft, hard):
-        threading.Thread(target=p.wait, daemon=True).start()  # Zombies einsammeln
+        threading.Thread(target=p.wait, daemon=True).start()  # collect zombies
 
     def select(pid):
         win.refresh()
@@ -413,15 +413,15 @@ def selftest_run(win, GLib, Gtk):
         if ph in (0, 2):
             pid = soft.pid if ph == 0 else hard.pid
             if not select(pid):
-                print(f"selftest: PID {pid} nicht in der Liste", file=sys.stderr)
+                print(f"selftest: PID {pid} not in the list", file=sys.stderr)
                 Gtk.main_quit()
                 return False
             state["sel_before"] = pid
-            win.end_btn.clicked()  # genau EIN Klick
+            win.end_btn.clicked()  # exactly ONE click
             state["clicks"] += 1
             sel = win.selected()
             if sel and sel["pid"] == pid:
-                print("selftest: Auswahl blieb auf dem beendeten Prozess", file=sys.stderr)
+                print("selftest: the selection stayed on the ended process", file=sys.stderr)
                 Gtk.main_quit()
                 return False
             state["phase"] += 1
@@ -435,7 +435,7 @@ def selftest_run(win, GLib, Gtk):
                 res = dict(win.selftest_results)[pid]
                 want = "terminated" if ph == 1 else "killed"
                 if in_list or res != want:
-                    print(f"selftest: PID {pid}: {res} (erwartet {want}), noch in der Liste: {in_list}",
+                    print(f"selftest: PID {pid}: {res} (expected {want}), still in the list: {in_list}",
                           file=sys.stderr)
                     Gtk.main_quit()
                     return False
@@ -446,7 +446,7 @@ def selftest_run(win, GLib, Gtk):
                 state["phase"] += 1
                 return True
             if time.monotonic() - state["t"] > 6:
-                print(f"selftest: PID {pid} nach 6 s nicht beendet", file=sys.stderr)
+                print(f"selftest: PID {pid} not ended after 6 s", file=sys.stderr)
                 Gtk.main_quit()
                 return False
             return True
@@ -458,17 +458,17 @@ def selftest_run(win, GLib, Gtk):
         if p.poll() is None:
             p.kill()
     if state["rc"] == 0:
-        print("selftest: OK (SIGTERM-Prozess beendet, SIGTERM-ignorierender per SIGKILL, je ein Klick)")
+        print("selftest: OK (SIGTERM process ended, SIGTERM-ignoring one via SIGKILL, one click each)")
     return state["rc"]
 
 
 def main(argv):
     if len(argv) > 1 and argv[1] in ("-h", "--help"):
-        print("Aufruf: simpleos-taskmanager")
+        print("Usage: simpleos-taskmanager")
         return 0
     try:
         return run_gui(selftest=os.environ.get("SIMPLEOS_TM_SELFTEST") == "1")
-    except Exception as err:  # z.B. kein Display
+    except Exception as err:  # e.g. no display
         print(f"simpleos-taskmanager: {err}", file=sys.stderr)
         return 1
 

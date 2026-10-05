@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Simple OS – Einrichtungsassistent (Setup Wizard).
+"""Simple OS – Setup Wizard.
 
-  simpleos-welcome-wizard              Assistent anzeigen (Menü: Help -> Setup Wizard)
-  simpleos-welcome-wizard --first-run  nur beim ersten Login: nicht in der Live-Session
-                                       und nicht, wenn ~/.config/simpleos/wizard-done existiert
+  simpleos-welcome-wizard              show the wizard (menu: Help -> Setup Wizard)
+  simpleos-welcome-wizard --first-run  only at the first login: not in the live session
+                                       and not if ~/.config/simpleos/wizard-done exists
 
-Änderungen laufen über die vorhandenen Werkzeuge: simpleos-theme, simpleos-browser-select --set,
-simpleos-software. Installationen/Entfernungen (Browser, Office, Gaming, Firefox-Bereinigung) bündelt
-ein einziger Aufruf von "pkexec simpleos-system-setup" – ein grafischer Passwortdialog, kein Terminal.
-Schritt "Internet": WLAN wählen und Passwort eingeben (nmcli, wie simpleos-wifi) – bevor Software geladen wird.
-Test-Hilfen: SIMPLEOS_WIZARD_PAGE=<0-6> (Startseite), SIMPLEOS_WIZARD_DRYRUN=1.
+Changes go through the existing tools: simpleos-theme, simpleos-browser-select --set,
+simpleos-software. Installations/removals (browser, office, gaming, Firefox cleanup) are bundled into
+a single call of "pkexec simpleos-system-setup" – one graphical password dialog, no terminal.
+Step "Internet": choose Wi-Fi and enter the password (nmcli, like simpleos-wifi) – before software is downloaded.
+Test helpers: SIMPLEOS_WIZARD_PAGE=<0-6> (start page), SIMPLEOS_WIZARD_DRYRUN=1.
 """
 import os
 import platform
@@ -36,7 +36,7 @@ def is_live_session():
 if "--first-run" in sys.argv and (FLAG.exists() or is_live_session()):
     sys.exit(0)
 
-import gi  # noqa: E402  (erst nach dem Schnell-Ausstieg laden)
+import gi  # noqa: E402  (load only after the quick exit)
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
@@ -52,7 +52,7 @@ ACCENTS = [
     ("blue", "#89b4fa"), ("mauve", "#cba6f7"), ("pink", "#f5c2e7"),
     ("green", "#a6e3a1"), ("peach", "#fab387"), ("teal", "#94e2d5"),
 ]
-# Office: (Schlüssel, Name, Beschreibung, Desktop-ID zur Erkennung)
+# Office: (key, name, description, desktop ID for detection)
 OFFICE = [
     ("libreoffice", "LibreOffice", "The classic: Writer, Calc, Impress and Draw. Installed from Debian.",
      "libreoffice-writer.desktop"),
@@ -94,7 +94,7 @@ window.simpleos { background-color: #1e1e2e; }
 """
 
 
-# ---------------------------------------------------------------- Systeminfos
+# ---------------------------------------------------------------- System info
 def read_os_name():
     try:
         for line in Path("/etc/os-release").read_text().splitlines():
@@ -142,7 +142,7 @@ def system_info():
     ]
 
 
-# ------------------------------------------------------- aktueller Zustand
+# ------------------------------------------------------- Current state
 def data_dirs():
     home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share"))
     dirs = os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share").split(":")
@@ -196,9 +196,9 @@ def run(cmd, wait=True):
         print(f"simpleos-welcome-wizard: {cmd[0]}: {err}", file=sys.stderr)
 
 
-# ---------------------------------------------------------- Netzwerk (nmcli)
-# Gleiche Logik wie simpleos-wifi, nur als GTK-Seite. Alle Aufrufe fangen Fehler ab: fehlt nmcli oder
-# hängt es, zeigt die Seite "not connected" statt abzustürzen.
+# ---------------------------------------------------------- Network (nmcli)
+# The same logic as simpleos-wifi, only as a GTK page. All calls catch errors: if nmcli is missing or
+# hangs, the page shows "not connected" instead of crashing.
 def nmcli(*args, timeout=15):
     try:
         return subprocess.run(["nmcli", *args], capture_output=True, text=True, timeout=timeout)
@@ -207,7 +207,7 @@ def nmcli(*args, timeout=15):
 
 
 def split_terse(line):
-    """nmcli -t: Felder durch ':' getrennt, ':' und '\\' in Werten mit '\\' maskiert."""
+    """nmcli -t: fields separated by ':', ':' and '\\' in values escaped with '\\'."""
     fields, cur, escaped = [], "", False
     for ch in line:
         if escaped:
@@ -233,7 +233,7 @@ def ipv4(dev):
 
 
 def network_state():
-    """{'wifi': Gerät|None, 'radio': bool, 'kind': 'wifi'|'ethernet'|None, 'name': Verbindung, 'ip': IPv4}"""
+    """{'wifi': device|None, 'radio': bool, 'kind': 'wifi'|'ethernet'|None, 'name': connection, 'ip': IPv4}"""
     state = {"wifi": None, "radio": True, "kind": None, "name": "", "ip": ""}
     for line in nmcli("-t", "-f", "DEVICE,TYPE,STATE,CONNECTION", "device").stdout.splitlines():
         dev, typ, st, conn = (split_terse(line) + ["", "", "", ""])[:4]
@@ -246,14 +246,14 @@ def network_state():
 
 
 def wifi_networks(dev, rescan="auto"):
-    """[(ssid, signal, secured, in_use)] – eine Zeile pro Netz, verbundenes und stärkstes zuerst."""
+    """[(ssid, signal, secured, in_use)] – one line per network, the connected and strongest first."""
     best = {}
     out = nmcli("-t", "-f", "IN-USE,SIGNAL,SECURITY,SSID", "device", "wifi", "list", "ifname", dev,
                 "--rescan", rescan, timeout=30).stdout
     for line in out.splitlines():
         in_use, signal, security, ssid = (split_terse(line) + ["", "", "", ""])[:4]
         if not ssid:
-            continue  # versteckte Netze
+            continue  # hidden networks
         sig = int(signal) if signal.isdigit() else 0
         old = best.get(ssid)
         if not old or sig > old[1] or in_use == "*":
@@ -263,10 +263,10 @@ def wifi_networks(dev, rescan="auto"):
 
 
 def network_view(state, nets):
-    """Was die Internet-Seite zeigt – wie bei Windows: oben der Status, darunter IMMER die WLAN-Liste
-    (sobald WLAN-Hardware da ist), auch wenn der PC schon online ist. Das verbundene Netz steht oben und
-    bietet "Disconnect", jedes andere "Connect" (= Netz wechseln). Keine Schnittstellennamen.
-    Rückgabe: status, online, hint, show_list, rows [(ssid, info, secured, in_use, button)], action"""
+    """What the Internet page shows – like Windows: the status at the top, below it ALWAYS the Wi-Fi list
+    (as soon as there is Wi-Fi hardware), even if the PC is already online. The connected network is at the top and
+    offers "Disconnect", every other one "Connect" (= switch networks). No interface names.
+    Returns: status, online, hint, show_list, rows [(ssid, info, secured, in_use, button)], action"""
     has_wifi, radio = bool(state.get("wifi")), bool(state.get("radio", True))
     current = next((n[0] for n in nets if n[3]), "")
     kind = state.get("kind")
@@ -313,13 +313,13 @@ def signal_word(signal):
 
 
 def saved_networks():
-    """Namen der gespeicherten Verbindungen (nmcli -t maskiert ':' und '\\')."""
+    """Names of the saved connections (nmcli -t escapes ':' and '\\')."""
     return [split_terse(line)[0] for line in nmcli("-t", "-f", "NAME", "connection", "show").stdout.splitlines()]
 
 
 def connect_wifi(dev, ssid, password, secured=False):
-    """(ok, Meldung in Alltagssprache). Gespeichertes Netz + neues Passwort: das Passwort des Profils ersetzen
-    (sonst versuchte NetworkManager es weiter mit dem alten, falschen)."""
+    """(ok, message in plain language). Saved network + new password: replace the profile's password
+    (otherwise NetworkManager would keep trying the old, wrong one)."""
     if DRYRUN:
         print(f"DRYRUN: nmcli device wifi connect {ssid} ifname {dev}", flush=True)
         return True, f"Connected to {ssid}. You're online."
@@ -335,7 +335,7 @@ def connect_wifi(dev, ssid, password, secured=False):
     if result.returncode == 0:
         return True, f"Connected to {ssid}. You're online."
     print(f"simpleos-welcome-wizard: connect {ssid}: {result.stderr.strip()}", file=sys.stderr)
-    if not saved:  # fehlgeschlagenes, neu angelegtes Profil nicht liegen lassen
+    if not saved:  # do not leave a failed, newly created profile behind
         nmcli("connection", "delete", "id", ssid)
     if password:
         return False, "That didn't work. The password may be wrong – please check it and try again."
@@ -344,7 +344,7 @@ def connect_wifi(dev, ssid, password, secured=False):
     return False, "That didn't work. Move closer to your router and try again."
 
 
-# ------------------------------------------------------------------ Fenster
+# ------------------------------------------------------------------ Window
 class Wizard(Gtk.Window):
     def __init__(self):
         super().__init__(title="Simple OS Setup")
@@ -354,7 +354,7 @@ class Wizard(Gtk.Window):
         self.set_icon_name("preferences-desktop")
         self.get_style_context().add_class("simpleos")
         self.connect("destroy", Gtk.main_quit)
-        self.connect("delete-event", lambda *_: self.busy)  # während der Installation nicht schließen
+        self.connect("delete-event", lambda *_: self.busy)  # do not close during the installation
 
         theme = current_theme()
         self.browser = current_browser()
@@ -373,7 +373,7 @@ class Wizard(Gtk.Window):
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.add(root)
 
-        # Schritt-Anzeige
+        # Step indicator
         steps = Gtk.Box(spacing=20, halign=Gtk.Align.CENTER, margin_top=18, margin_bottom=6)
         self.step_labels = []
         for i, name in enumerate(STEPS):
@@ -388,11 +388,11 @@ class Wizard(Gtk.Window):
         for page in (self.page_welcome(), self.page_network(), self.page_browser(), self.page_appearance(),
                      self.page_office(), self.page_gaming(), self.page_apps()):
             self.stack.add(page)
-        self.progress_page = self.page_progress()  # nicht in STEPS: nur nach "Finish"
+        self.progress_page = self.page_progress()  # not in STEPS: only after "Finish"
         self.stack.add(self.progress_page)
         root.pack_start(self.stack, True, True, 0)
 
-        # Fußleiste
+        # Footer
         footer = Gtk.Box(spacing=8)
         footer.get_style_context().add_class("footer")
         self.skip_btn = Gtk.Button(label="Skip setup")
@@ -414,7 +414,7 @@ class Wizard(Gtk.Window):
         self.go_to(int(os.environ.get("SIMPLEOS_WIZARD_PAGE", "0")))
         self.next_btn.grab_focus()
 
-    # ------------------------------------------------------------ Hilfen
+    # ------------------------------------------------------------ Helpers
     def apply_css(self):
         self.css.load_from_data(CSS.replace("@ACCENT@", dict(ACCENTS)[self.accent]).encode())
 
@@ -442,7 +442,7 @@ class Wizard(Gtk.Window):
         label.get_style_context().add_class("dim")
         return label
 
-    # ------------------------------------------------------------ Seiten
+    # ------------------------------------------------------------ Pages
     def page_welcome(self):
         box = self.page_box("Welcome to Simple OS",
                             "Let's set up a few things. This takes less than a minute.")
@@ -473,8 +473,8 @@ class Wizard(Gtk.Window):
         self.net_hint = self.dim("")
         card.pack_start(self.net_hint, False, False, 0)
 
-        # WLAN-Liste (nur mit WLAN-Adapter sichtbar)
-        # Einfacher Klick wählt aus (Passwortfeld erscheint), Doppelklick/Enter verbindet
+        # Wi-Fi list (only visible with a Wi-Fi adapter)
+        # A single click selects (the password field appears), double click/Enter connects
         self.net_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE, activate_on_single_click=False)
         self.net_list.connect("row-selected", self.on_network_selected)
         self.net_list.connect("row-activated", lambda *_: self.on_network_connect(None))
@@ -489,7 +489,7 @@ class Wizard(Gtk.Window):
         self.net_connect_btn = Gtk.Button(label="Connect")
         self.net_connect_btn.connect("clicked", self.on_network_connect)
         row.pack_start(self.net_connect_btn, False, False, 0)
-        self.net_action_btn = Gtk.Button(label="Search again")  # auch: "Turn on Wi-Fi", "Check again"
+        self.net_action_btn = Gtk.Button(label="Search again")  # also: "Turn on Wi-Fi", "Check again"
         self.net_action_btn.connect("clicked", self.on_network_action)
         row.pack_end(self.net_action_btn, False, False, 0)
         card.pack_start(row, False, False, 0)
@@ -501,7 +501,7 @@ class Wizard(Gtk.Window):
         self.net_message = ""
         return box
 
-    # --- Internet-Seite: Hintergrund-Threads für nmcli, GUI-Updates über GLib.idle_add
+    # --- Internet page: background threads for nmcli, GUI updates via GLib.idle_add
     def refresh_network(self, rescan="auto"):
         if self.net_busy:
             return
@@ -524,7 +524,7 @@ class Wizard(Gtk.Window):
         ctx = self.net_status.get_style_context()
         (ctx.add_class if view["online"] else ctx.remove_class)("online")
         (ctx.remove_class if view["online"] else ctx.add_class)("offline")
-        self.net_hint.set_text(self.net_message or view["hint"])  # Erfolg/Fehler nach Connect hat Vorrang
+        self.net_hint.set_text(self.net_message or view["hint"])  # success/error after Connect takes precedence
         self.net_message = ""
         self.net_action_btn.set_label(view["action"])
         for child in self.net_list.get_children():
@@ -544,7 +544,7 @@ class Wizard(Gtk.Window):
         for widget in (self.net_scroll, self.net_connect_btn):
             widget.set_visible(view["show_list"])
         self.net_list.show_all()
-        self.net_password.set_visible(False)  # erst bei Auswahl eines Netzes mit Passwort
+        self.net_password.set_visible(False)  # only when a network with a password is selected
         self.net_connect_btn.set_label("Connect")
         self.net_connect_btn.set_sensitive(False)
         self.net_action_btn.set_sensitive(True)
@@ -589,7 +589,7 @@ class Wizard(Gtk.Window):
     def network_connected(self, ok, message):
         self.net_busy = False
         if ok:
-            self.net_message = message  # zeigt show_network nach dem Neuladen an
+            self.net_message = message  # show_network shows it after reloading
             self.refresh_network(rescan="no")
         else:
             self.net_status.set_text(message)
@@ -610,7 +610,7 @@ class Wizard(Gtk.Window):
     def page_browser(self):
         box = self.page_box("Choose your web browser",
                             "Links and Super+B open this browser. Missing browsers are installed for you.")
-        self.firefox_note = self.dim("")  # vor den Radios: deren "toggled" aktualisiert den Hinweis
+        self.firefox_note = self.dim("")  # before the radios: their "toggled" updates the hint
         card = self.card()
         group = None
         for desktop_id, name, desc in BROWSERS:
@@ -662,7 +662,7 @@ class Wizard(Gtk.Window):
         for name, _ in ACCENTS:
             swatch = Gtk.RadioButton.new_from_widget(group)
             group = group or swatch
-            swatch.set_mode(False)  # als Button zeichnen, ohne Radio-Kreis
+            swatch.set_mode(False)  # draw as a button, without the radio circle
             swatch.set_tooltip_text(name.capitalize())
             ctx = swatch.get_style_context()
             ctx.add_class("swatch")
@@ -675,7 +675,7 @@ class Wizard(Gtk.Window):
         return box
 
     def option_card(self, options, current, callback, status=None):
-        """Karte mit Radio-Optionen (Schlüssel, Name, Beschreibung, ...)."""
+        """Card with radio options (key, name, description, ...)."""
         card = self.card()
         group = None
         for key, name, desc, *_ in options:
@@ -734,7 +734,7 @@ class Wizard(Gtk.Window):
         self.status_label.get_style_context().add_class("option-name")
         row.pack_start(self.status_label, True, True, 0)
         card.pack_start(row, False, False, 0)
-        # echter Fortschritt (PROGRESS-Zeilen von simpleos-system-setup: apt und Flatpak), sonst nur der Spinner
+        # real progress (PROGRESS lines from simpleos-system-setup: apt and Flatpak), otherwise only the spinner
         self.stage_label = Gtk.Label(label="", xalign=0, wrap=True)
         self.stage_label.get_style_context().add_class("dim-label")
         card.pack_start(self.stage_label, False, False, 0)
@@ -793,7 +793,7 @@ class Wizard(Gtk.Window):
 
     def on_back(self, _btn):
         if self.stack.get_visible_child() is self.progress_page:
-            self.go_to(self.page)  # zurück zur letzten Seite
+            self.go_to(self.page)  # back to the last page
         else:
             self.go_to(self.page - 1)
 
@@ -818,7 +818,7 @@ class Wizard(Gtk.Window):
             self.accent = name
             self.apply_css()
 
-    # ---------------------------------------------------------- Abschluss
+    # ---------------------------------------------------------- Finish
     @staticmethod
     def mark_done():
         if DRYRUN:
@@ -832,11 +832,11 @@ class Wizard(Gtk.Window):
         Gtk.main_quit()
 
     def system_changes(self):
-        """Argumente für simpleos-system-setup; leer = nichts braucht root."""
+        """Arguments for simpleos-system-setup; empty = nothing needs root."""
         args = []
         browser_key = {"firefox-esr.desktop": "firefox", "chromium.desktop": "chromium",
                        "net.mullvad.MullvadBrowser.desktop": "mullvad"}.get(self.browser)
-        # Firefox nur bei Chromium/Mullvad entfernen; der Helfer prüft vorher, ob der neue Browser da ist
+        # Remove Firefox only for Chromium/Mullvad; the helper checks beforehand that the new browser is there
         purge = browser_key in ("chromium", "mullvad") and self.removes_firefox()
         if browser_key and (purge or not is_installed(self.browser)):
             args += ["--browser", browser_key]
@@ -855,7 +855,7 @@ class Wizard(Gtk.Window):
         if not args:
             self.apply_user_settings()
             return
-        # Fortschrittsseite; ein einziger pkexec-Aufruf -> ein grafischer Passwortdialog
+        # Progress page; a single pkexec call -> one graphical password dialog
         self.busy = True
         for btn in (self.back_btn, self.next_btn, self.skip_btn):
             btn.set_sensitive(False)
@@ -869,7 +869,7 @@ class Wizard(Gtk.Window):
         threading.Thread(target=self.run_helper, args=(["pkexec", HELPER, *args],), daemon=True).start()
 
     def run_helper(self, cmd):
-        """Läuft im Hintergrund-Thread; GUI-Updates nur über GLib.idle_add."""
+        """Runs in the background thread; GUI updates only via GLib.idle_add."""
         GLib.idle_add(self.append_log, "$ " + " ".join(cmd))
         if DRYRUN:
             print("DRYRUN:", " ".join(cmd), flush=True)
@@ -891,13 +891,13 @@ class Wizard(Gtk.Window):
         if line.startswith("STEP: "):
             self.status_label.set_text(line[6:])
             self.stage_label.set_text("")
-            self.bar.hide()                       # neuer Schritt: Balken erst mit dessen Prozentzahlen
+            self.bar.hide()                       # new step: the bar only with its percentages
             self.step_t0 = time.monotonic()
         elif line.startswith("STAGE: "):
             self.stage_label.set_text(line[7:])
-            return False                          # Fortschrittszeilen nicht ins Detail-Protokoll
+            return False                          # progress lines not into the detail log
         elif line.startswith("PROGRESS: "):
-            # "PROGRESS: <Prozent> [<Rest>]": Rest = Restzeit aus dem Download-Tempo (progress-filter, Flatpak)
+            # "PROGRESS: <percent> [<rest>]": rest = time left from the download speed (progress-filter, Flatpak)
             num, _, rest = line[10:].partition(" ")
             try:
                 pct = max(0, min(100, int(float(num))))
@@ -919,7 +919,7 @@ class Wizard(Gtk.Window):
         self.spinner.stop()
         for btn in (self.back_btn, self.next_btn, self.skip_btn):
             btn.set_sensitive(True)
-        if code in (126, 127):  # pkexec: Passwortdialog abgebrochen bzw. nicht autorisiert
+        if code in (126, 127):  # pkexec: password dialog cancelled or not authorized
             self.status_label.set_text("No password entered – nothing was installed or removed. "
                                        "Click Finish to try again or Back to change your choices.")
             self.next_btn.set_label("Finish")
@@ -941,10 +941,10 @@ class Wizard(Gtk.Window):
         self.hide()
         while Gtk.events_pending():
             Gtk.main_iteration()
-        # Browser erst setzen, wenn er installiert ist – sonst würde browser-select selbst installieren
+        # Set the browser only once it is installed – otherwise browser-select would install it itself
         if (self.browser != current_browser() and is_installed(self.browser)) or DRYRUN:
             run(["simpleos-browser-select", "--set", self.browser])
-        run(["openbox", "--reconfigure"])  # Menü neu laden (z.B. ohne Firefox-Eintrag)
+        run(["openbox", "--reconfigure"])  # reload the menu (e.g. without the Firefox entry)
         if done:
             self.mark_done()
         if self.open_store:
@@ -952,7 +952,7 @@ class Wizard(Gtk.Window):
         Gtk.main_quit()
 
 def remaining_text(pct, t0):
-    """' · about 4 min left' aus dem bisherigen Tempo dieses Schritts (erst ab 3 %, vorher zu ungenau)."""
+    """' · about 4 min left' from the speed of this step so far (only from 3 %, before that too inaccurate)."""
     if pct < 3 or pct >= 100:
         return ""
     left = (time.monotonic() - t0) * (100 - pct) / pct
@@ -960,11 +960,11 @@ def remaining_text(pct, t0):
 
 
 def failure_text(lines):
-    """Fehlermeldung nach dem tatsächlichen Grund – vorher hieß jeder Fehler "Check your internet connection"."""
+    """Error message by the actual cause – before, every error was "Check your internet connection"."""
     text = "\n".join(lines).lower()
     again = " Run the wizard again from Settings → Setup Wizard."
     if ("not enough free space" in text or "min-free-space" in text or "no space left" in text
-            or "zu wenig speicherplatz" in text):
+            or "not enough disk space" in text):
         return ("Some software could not be installed: not enough free space. In Live mode, apps are kept in "
                 "memory – install Simple OS first." + again)
     if any(k in text for k in ("could not resolve", "temporary failure resolving", "failed to fetch",
@@ -974,7 +974,7 @@ def failure_text(lines):
 
 
 def main():
-    # Der Assistent ist Teil der Simple-OS-Oberfläche und bleibt immer dunkel
+    # The wizard is part of the Simple OS interface and always stays dark
     Gtk.Settings.get_default().set_property("gtk-theme-name", "Arc-Dark")
     Gtk.Settings.get_default().set_property("gtk-application-prefer-dark-theme", True)
     Wizard()

@@ -1,8 +1,8 @@
 #!/bin/sh
-# Simple OS – Browser Selector: Standard-Browser wählen, fehlende Browser installieren
-#   simpleos-browser-select                  Auswahl per Rofi
-#   simpleos-browser-select --set <id>       direkt setzen/installieren (z.B. chromium.desktop; vom Setup-Wizard genutzt)
-# Liste: Name<TAB>Desktop-ID<TAB>Quelle (apt:<paket> | flatpak:<app-id> | leer = nur wählbar, wenn installiert)
+# Simple OS – Browser Selector: choose the default browser, install missing browsers
+#   simpleos-browser-select                  selection via Rofi
+#   simpleos-browser-select --set <id>       set/install directly (e.g. chromium.desktop; used by the Setup Wizard)
+# List: name<TAB>desktop ID<TAB>source (apt:<package> | flatpak:<app-id> | empty = selectable only if installed)
 list=$(mktemp)
 trap 'rm -f "$list"' EXIT
 TAB=$(printf '\t')
@@ -15,13 +15,13 @@ installed() {
     return 1
 }
 
-# Unterstützte Browser – auch wenn sie noch nicht installiert sind
+# Supported browsers – even if they are not installed yet
 printf '%s\t%s\t%s\n' \
     "Firefox ESR"     firefox-esr.desktop               apt:firefox-esr \
     "Chromium"        chromium.desktop                  apt:chromium \
     "Mullvad Browser" net.mullvad.MullvadBrowser.desktop flatpak:net.mullvad.MullvadBrowser >> "$list"
 
-# Weitere installierte Browser (z.B. aus dem Software Store)
+# Other installed browsers (e.g. from the Software Store)
 for dir in $dirs; do
     for f in "$dir"/applications/*.desktop; do
         [ -f "$f" ] || continue
@@ -34,7 +34,7 @@ for dir in $dirs; do
 done
 
 current=$(xdg-mime query default x-scheme-handler/https 2>/dev/null)
-# rofi-retry: Grab-Fehler -> neuer Versuch, rofi fehlt/startet nicht -> Meldung statt stummem Ende
+# rofi-retry: grab error -> new attempt, rofi missing/does not start -> notification instead of a silent end
 rofi_cmd=/usr/local/lib/simpleos/rofi-retry
 [ -x "$rofi_cmd" ] || rofi_cmd=rofi
 count=$(wc -l < "$list")
@@ -64,7 +64,7 @@ name=$(echo "$line" | cut -f1)
 id=$(echo "$line" | cut -f2)
 
 if ! installed "$id"; then
-    # Passwort per grafischem Polkit-Dialog (pkexec), nicht im Terminal
+    # Password via the graphical polkit dialog (pkexec), not in the terminal
     case "$id" in
         firefox-esr.desktop)               cmd="pkexec /usr/local/sbin/simpleos-system-setup --browser firefox" ;;
         chromium.desktop)                  cmd="pkexec /usr/local/sbin/simpleos-system-setup --browser chromium" ;;
@@ -75,7 +75,7 @@ if ! installed "$id"; then
         notify-send -u critical -i dialog-error "Browser Selector" "$name could not be installed (terminal missing)." 2>/dev/null
         exit 1
     fi
-    # kitty zeigt nur den Fortschritt und kehrt erst zurück, wenn das Fenster geschlossen ist
+    # kitty only shows the progress and returns only when the window is closed
     kitty --title "Install $name" sh -c "echo 'Installing $name ...'; echo; $cmd; echo; echo 'Done. Press Enter to close.'; read -r _"
     if ! installed "$id"; then
         notify-send -u critical -i dialog-error "Browser Selector" "$name could not be installed."
@@ -83,10 +83,10 @@ if ! installed "$id"; then
     fi
 fi
 
-# mimeapps.list (GIO-Apps) + eigene defaults.list: xdg-mime 1.1.3 liest ohne Desktop-Umgebung nur
-# defaults.list (Benutzer vor System) und würde sonst weiter die Systemvorgabe melden
+# mimeapps.list (GIO apps) + our own defaults.list: without a desktop environment xdg-mime 1.1.3 only reads
+# defaults.list (user before system) and would otherwise keep reporting the system default
 xdg-mime default "$id" x-scheme-handler/http x-scheme-handler/https text/html 2>/dev/null ||
-    echo "simpleos-browser-select: xdg-mime default $id fehlgeschlagen" >&2
+    echo "simpleos-browser-select: xdg-mime default $id failed" >&2
 user_defaults="${XDG_DATA_HOME:-$HOME/.local/share}/applications/defaults.list"
 mkdir -p "${user_defaults%/*}"
 [ -f "$user_defaults" ] || echo "[Default Applications]" > "$user_defaults"

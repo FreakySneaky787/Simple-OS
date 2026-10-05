@@ -1,14 +1,14 @@
 #!/bin/sh
-# Simple OS – Starter für dunst (Openbox-Autostart, D-Bus-Aktivierung, systemd-User-Dienst dunst.service)
-# Ohne echten Akku (VM oder "simpleos-battery --present" schlägt fehl) hängt er den Akku-Filter
-# /etc/xdg/dunst/simpleos-battery-filter.conf an die dunst-Konfiguration: jede fremde Meldung mit
-# Battery/Akku/Power (Titel, Text, Symbol, Absender) wird verworfen – egal, welcher Dienst sie schickt.
-# Mit echtem Akku startet dunst unverändert (Akku-Warnung über tint2 + simpleos-battery --low-alert).
-#   simpleos-dunst [dunst-Optionen]   dunst starten
-#   simpleos-dunst --print-config     Pfad der Konfiguration ausgeben, die dunst bekäme (Tests)
-# Tests: SIMPLEOS_VIRT (none = echte Hardware) und SIMPLEOS_POWER_SUPPLY wie bei simpleos-battery,
-# SIMPLEOS_DUNST = dunst-Programm.
-# Nie ohne Meldungen: fehlt etwas oder geht das Zusammenbauen schief, startet dunst mit seiner Vorgabe.
+# Simple OS – launcher for dunst (Openbox autostart, D-Bus activation, systemd user service dunst.service)
+# Without a real battery (VM or "simpleos-battery --present" fails) it appends the battery filter
+# /etc/xdg/dunst/simpleos-battery-filter.conf to the dunst configuration: every foreign notification with
+# Battery/Akku/Power (title, text, icon, sender) is discarded – no matter which service sends it.
+# With a real battery dunst starts unchanged (battery warning via tint2 + simpleos-battery --low-alert).
+#   simpleos-dunst [dunst options]    start dunst
+#   simpleos-dunst --print-config     print the path of the configuration dunst would get (tests)
+# Tests: SIMPLEOS_VIRT (none = real hardware) and SIMPLEOS_POWER_SUPPLY as in simpleos-battery,
+# SIMPLEOS_DUNST = dunst program.
+# Never without notifications: if something is missing or assembling fails, dunst starts with its default.
 DUNST=${SIMPLEOS_DUNST:-/usr/bin/dunst}
 FILTER=/etc/xdg/dunst/simpleos-battery-filter.conf
 
@@ -16,14 +16,14 @@ in_vm() {
     if [ -n "${SIMPLEOS_VIRT:-}" ]; then [ "$SIMPLEOS_VIRT" != none ]; return; fi
     command -v systemd-detect-virt >/dev/null && systemd-detect-virt -q --vm
 }
-# Filter nötig: VM, oder kein echter Akku (fehlt simpleos-battery, gilt das als "kein Akku")
+# Filter needed: VM, or no real battery (if simpleos-battery is missing, that counts as "no battery")
 need_filter() {
     in_vm && return 0
     [ -x /usr/local/bin/simpleos-battery ] || return 0
     ! /usr/local/bin/simpleos-battery --present
 }
 
-# Konfiguration wie dunst sie sucht: ~/.config/dunst/dunstrc, sonst /etc/xdg/dunst/dunstrc
+# Configuration as dunst looks for it: ~/.config/dunst/dunstrc, otherwise /etc/xdg/dunst/dunstrc
 base=${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/dunst/dunstrc
 [ -r "$base" ] || base=/etc/xdg/dunst/dunstrc
 
@@ -43,7 +43,7 @@ if [ "${1:-}" = --print-config ]; then
     echo "${config:-$base}"
     exit 0
 fi
-# Eigene -config/-conf des Aufrufers haben Vorrang
+# The caller's own -config/-conf take precedence
 case " $* " in *" -config "*|*" -conf "*) config= ;; esac
 if [ -n "$config" ]; then exec "$DUNST" -config "$config" "$@"; fi
 exec "$DUNST" "$@"

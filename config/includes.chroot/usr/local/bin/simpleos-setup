@@ -1,3 +1,3 @@
 #!/bin/sh
-# Simple OS – kurzer Name für den Setup-Wizard (Paket-Setup: Browser, Office, Gaming, Aussehen)
+# Simple OS – short name for the Setup Wizard (package setup: browser, office, gaming, appearance)
 exec /usr/local/bin/simpleos-welcome-wizard "$@"

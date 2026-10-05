@@ -1,10 +1,10 @@
 #!/bin/sh
 set -e
-# Launcher (Rofi) entrümpeln: doppelte und rohe System-Werkzeuge ausblenden. Kopien mit NoDisplay=true in
-# /usr/local/share/applications haben Vorrang vor /usr/share/applications und überleben Paket-Updates.
-# Einstellungen laufen über Menü → Settings (Display, Sound, Network, Appearance, Setup Wizard).
-#   arandr (doppelt zu lxrandr), lxappearance/obconf/tint2conf (rohe Theme-/WM-Editoren, überschreiben
-#   simpleos-theme), pcmanfm (zweiter Dateimanager, nur für Desktop-Icons), Hilfsprogramme ohne eigenen Nutzen.
+# Tidy up the launcher (Rofi): hide duplicate and raw system tools. Copies with NoDisplay=true in
+# /usr/local/share/applications take precedence over /usr/share/applications and survive package updates.
+# Settings go through Menu → Settings (Display, Sound, Network, Appearance, Setup Wizard).
+#   arandr (duplicate of lxrandr), lxappearance/obconf/tint2conf (raw theme/WM editors, they overwrite
+#   simpleos-theme), pcmanfm (second file manager, only for desktop icons), helper programs of no use on their own.
 DEST=/usr/local/share/applications
 mkdir -p "$DEST"
 for id in arandr lxappearance obconf tint2 tint2conf picom feh pcmanfm blueman-adapters \

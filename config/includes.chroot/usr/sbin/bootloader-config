@@ -1,44 +1,44 @@
 #!/bin/bash
-# Simple OS – ersetzt /usr/sbin/bootloader-config aus calamares-settings-debian (Calamares-Job vor
-# grubcfg/bootloader). Das Original installiert grub-pc/grub-efi-amd64 per apt aus dem Paket-Pool des
-# Mediums; das Simple-OS-ISO hat keinen Pool -> apt schlug (unbemerkt) fehl, danach fehlte update-grub
-# und der Job endete mit Exit 127.
-# Hier: GRUB-Binärpakete (BIOS + UEFI) sind im Image (package-lists/55-bootloader) und damit schon im
-# Zielsystem; die Meta-Pakete liegen als .deb in $DEBS (Hook 08_bootloader_debs) und werden offline installiert.
+# Simple OS – replaces /usr/sbin/bootloader-config from calamares-settings-debian (Calamares job before
+# grubcfg/bootloader). The original installs grub-pc/grub-efi-amd64 with apt from the medium's package
+# pool; the Simple OS ISO has no pool -> apt failed (unnoticed), then update-grub was missing
+# and the job ended with exit 127.
+# Here: the GRUB binary packages (BIOS + UEFI) are in the image (package-lists/55-bootloader) and thus already in the
+# target system; the meta packages are stored as .deb in $DEBS (hook 08_bootloader_debs) and installed offline.
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 DEBS=/usr/share/simpleos/bootloader-debs
 
-die() { echo "bootloader-config: FEHLER: $*" >&2; exit 1; }
+die() { echo "bootloader-config: ERROR: $*" >&2; exit 1; }
 
-# Werkzeuge im Live-System
+# Tools in the live system
 for c in mount findmnt grep awk sed chroot; do
-    command -v "$c" >/dev/null || die "Programm $c fehlt im Live-System"
+    command -v "$c" >/dev/null || die "program $c missing in the live system"
 done
 
 CHROOT=$(mount | grep proc | grep calamares | awk '{print $3}' | sed -e "s#/proc##g" | head -n1 || true)
-[ -n "$CHROOT" ] && [ -d "$CHROOT" ] || die "Zielsystem (Calamares-Chroot) nicht gefunden"
+[ -n "$CHROOT" ] && [ -d "$CHROOT" ] || die "target system (Calamares chroot) not found"
 
-# Befehl im Zielsystem vorhanden? (PATH inkl. sbin, unabhängig von der Calamares-Umgebung)
+# Command available in the target system? (PATH including sbin, independent of the Calamares environment)
 in_target() { chroot "$CHROOT" /usr/bin/env PATH=/usr/sbin:/usr/bin:/sbin:/bin "$@"; }
 need() {
     for c in "$@"; do
-        in_target sh -c "command -v '$c'" >/dev/null || die "Programm $c fehlt im Zielsystem"
+        in_target sh -c "command -v '$c'" >/dev/null || die "program $c missing in the target system"
     done
 }
-# .deb aus $DEBS installieren (ohne Netz, Abhängigkeiten sind vorinstalliert)
+# Install a .deb from $DEBS (without network, dependencies are preinstalled)
 install_deb() {
     local deb
     deb=$(cd "$CHROOT$DEBS" 2>/dev/null && ls "$1"_*.deb 2>/dev/null | head -n1 || true)
-    [ -n "$deb" ] || die "Paketdatei $1_*.deb fehlt in $DEBS"
-    echo " * Installiere $1 (offline: $deb)"
-    in_target dpkg -i "$DEBS/$deb" || die "Installation von $1 fehlgeschlagen"
+    [ -n "$deb" ] || die "package file $1_*.deb missing in $DEBS"
+    echo " * Installing $1 (offline: $deb)"
+    in_target dpkg -i "$DEBS/$deb" || die "installation of $1 failed"
 }
 
 need dpkg sh
 
-# Verschlüsselung: luks-Werkzeuge ins initramfs und sichere Rechte für das initramfs (wird später von
-# Calamares neu erzeugt, hier nur die Einstellung)
+# Encryption: luks tools into the initramfs and safe permissions for the initramfs (Calamares recreates it
+# later, here only the setting)
 if [ "$(findmnt -n -o SOURCE "$CHROOT" | cut -c -16)" = "/dev/mapper/luks" ]; then
     need cryptsetup keyctl update-initramfs
     echo "UMASK=0077" > "$CHROOT/etc/initramfs-tools/conf.d/initramfs-permissions"
@@ -47,19 +47,19 @@ fi
 
 echo "Running bootloader-config..."
 if [ -d /sys/firmware/efi/efivars ]; then
-    echo " * UEFI erkannt"
-    [ -d "$CHROOT/usr/lib/grub/x86_64-efi" ] || die "GRUB-Module für UEFI fehlen (grub-efi-amd64-bin)"
+    echo " * UEFI detected"
+    [ -d "$CHROOT/usr/lib/grub/x86_64-efi" ] || die "GRUB modules for UEFI missing (grub-efi-amd64-bin)"
     install_deb grub-efi-amd64
     need efibootmgr
 else
-    echo " * BIOS erkannt"
-    [ -d "$CHROOT/usr/lib/grub/i386-pc" ] || die "GRUB-Module für BIOS fehlen (grub-pc-bin)"
+    echo " * BIOS detected"
+    [ -d "$CHROOT/usr/lib/grub/i386-pc" ] || die "GRUB modules for BIOS missing (grub-pc-bin)"
     install_deb grub-pc
 fi
-# Befehle, die dieser Job und danach die Calamares-Module grubcfg/bootloader aufrufen
+# Commands that this job and then the Calamares modules grubcfg/bootloader call
 need grub-install grub-mkconfig grub-probe update-grub
 
-# os-prober wieder aktivieren (GRUB 2.06 schaltet ihn standardmäßig ab), damit andere Systeme im Menü landen
+# Re-enable os-prober (GRUB 2.06 disables it by default), so other systems end up in the menu
 GRUB_DEFAULT_FILE="$CHROOT/etc/default/grub"
 if grep -q '^#GRUB_DISABLE_OS_PROBER=false' "$GRUB_DEFAULT_FILE"; then
     sed -i "s/^#GRUB_DISABLE_OS_PROBER=false/# OS_PROBER re-enabled by Debian Calamares installation:\nGRUB_DISABLE_OS_PROBER=false/" "$GRUB_DEFAULT_FILE"
@@ -67,4 +67,4 @@ elif ! grep -q '^GRUB_DISABLE_OS_PROBER=' "$GRUB_DEFAULT_FILE"; then
     echo 'GRUB_DISABLE_OS_PROBER=false' >> "$GRUB_DEFAULT_FILE"
 fi
 
-in_target update-grub || die "update-grub fehlgeschlagen"
+in_target update-grub || die "update-grub failed"

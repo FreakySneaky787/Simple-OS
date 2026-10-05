@@ -1,7 +1,7 @@
 #---- Simple OS – tint2 (Catppuccin Mocha)
 
 #---- Backgrounds
-# 1: Panel (schwebende, abgerundete Leiste mit feiner Kontur)
+# 1: Panel (floating, rounded bar with a fine border)
 rounded = 14
 border_width = 1
 background_color = #1e1e2e 92
@@ -11,7 +11,7 @@ border_color_hover = #313244 100
 background_color_pressed = #1e1e2e 92
 border_color_pressed = #313244 100
 
-# 2: Task (normal / minimiert)
+# 2: Task (normal / minimized)
 rounded = 10
 border_width = 0
 background_color = #313244 50
@@ -21,7 +21,7 @@ border_color_hover = #45475a 0
 background_color_pressed = #585b70 80
 border_color_pressed = #585b70 0
 
-# 3: Task (aktiv)
+# 3: Task (active)
 rounded = 10
 border_width = 1
 background_color = #89b4fa 25
@@ -31,7 +31,7 @@ border_color_hover = #89b4fa 100
 background_color_pressed = #89b4fa 45
 border_color_pressed = #89b4fa 100
 
-# 4: Task (dringend)
+# 4: Task (urgent)
 rounded = 10
 border_width = 1
 background_color = #f38ba8 25
@@ -51,7 +51,7 @@ border_color_hover = #313244 100
 background_color_pressed = #181825 100
 border_color_pressed = #313244 100
 
-# 6: App-Button
+# 6: App button
 rounded = 10
 border_width = 0
 background_color = #313244 0
@@ -61,7 +61,7 @@ border_color_hover = #313244 0
 background_color_pressed = #45475a 80
 border_color_pressed = #45475a 0
 
-# 7: Power-Button (rot beim Drüberfahren)
+# 7: Power button (red on hover)
 rounded = 10
 border_width = 0
 background_color = #f38ba8 0
@@ -71,7 +71,7 @@ border_color_hover = #f38ba8 0
 background_color_pressed = #f38ba8 45
 border_color_pressed = #f38ba8 0
 
-# 8: Live-Badge "Install Simple OS" (Mauve, nur in der Live-Session sichtbar)
+# 8: Live-Badge "Install Simple OS" (mauve, only visible in the live session)
 rounded = 10
 border_width = 0
 background_color = #cba6f7 100
@@ -84,7 +84,7 @@ border_color_pressed = #f5c2e7 0
 #---- Panel
 panel_items = PTEESCP
 panel_size = 100% 40
-# Abstand zum Bildschirmrand (links/rechts, unten) -> die Leiste schwebt
+# Distance from the screen edge (left/right, bottom) -> the bar floats
 panel_margin = 12 10
 panel_padding = 10 5 6
 panel_background_id = 1
@@ -148,7 +148,7 @@ systray_icon_size = 18
 systray_icon_asb = 100 0 0
 systray_monitor = 1
 
-#---- Do Not Disturb (Symbol nur, solange DND an ist; Klick schaltet um; simpleos-taskbar-select --apply setzt den Block)
+#---- Do Not Disturb (icon only while DND is on; a click toggles it; simpleos-taskbar-select --apply sets the block)
 execp = new
 execp_command = /usr/local/bin/simpleos-dnd --panel
 execp_interval = 0
@@ -162,9 +162,9 @@ execp_centered = 1
 execp_tooltip = Do Not Disturb is on – click to turn it off
 execp_lclick_command = /usr/local/bin/simpleos-dnd --toggle
 execp_rclick_command = /usr/local/bin/simpleos-control-center system
-#---- Do Not Disturb Ende
+#---- Do Not Disturb End
 
-#---- Netzwerk (LAN-IP direkt sichtbar, Details im Tooltip = stderr; Klick = WLAN-Menü, Rechtsklick = Super+N)
+#---- Network (LAN IP visible directly, details in the tooltip = stderr; click = Wi-Fi menu, right-click = Super+N)
 execp = new
 execp_command = simpleos-netinfo --panel
 execp_interval = 5
@@ -179,8 +179,8 @@ execp_centered = 1
 execp_lclick_command = /usr/local/bin/simpleos-wifi
 execp_rclick_command = simpleos-netinfo
 
-#---- Akku: "B" in panel_items setzt simpleos-taskbar-select --apply beim Login nur, wenn ein Akku da ist;
-# die Meldung prüft simpleos-battery erneut (echter Akku, entlädt) – in VMs nie
+#---- Battery: simpleos-taskbar-select --apply puts "B" into panel_items at login only if there is a battery;
+# simpleos-battery checks again for the notification (real battery, discharging) – never in VMs
 battery_tooltip = 1
 battery_low_status = 10
 battery_low_cmd = /usr/local/bin/simpleos-battery --low-alert
@@ -196,7 +196,7 @@ battery_hide = 101
 ac_connected_cmd =
 ac_disconnected_cmd =
 
-#---- Clock (zweizeilig wie bei Windows 11: Uhrzeit über Datum)
+#---- Clock (two lines like Windows 11: time above date)
 time1_format = %H:%M
 time1_font = Inter Semibold 10
 time2_format = %a, %b %-d
@@ -204,11 +204,11 @@ time2_font = Inter 8
 clock_font_color = #cdd6f4 100
 clock_padding = 10 0
 clock_background_id = 0
-clock_tooltip = Datum / Date: %A, %B %-d, %Y
+clock_tooltip = %A, %B %-d, %Y
 clock_lclick_command =
 clock_rclick_command =
 
-#---- App-Button (öffnet rofi)
+#---- App button (opens rofi)
 button = new
 button_text = 
 button_font = FontAwesome 13
@@ -217,10 +217,10 @@ button_padding = 10 4
 button_background_id = 6
 button_centered = 1
 button_max_icon_size = 0
-button_tooltip = Anwendungen / Apps (Super)
+button_tooltip = Apps (Super)
 button_lclick_command = rofi -show drun
 
-#---- Power-Button ganz rechts (öffnet das Power-Menü, wie Super+X)
+#---- Power button on the far right (opens the power menu, like Super+X)
 button = new
 button_text = 
 button_font = FontAwesome 13
@@ -229,7 +229,7 @@ button_padding = 10 4
 button_background_id = 7
 button_centered = 1
 button_max_icon_size = 0
-button_tooltip = Beenden / Neustart · Shut down / Restart (Super+X)
+button_tooltip = Shut down / Restart (Super+X)
 button_lclick_command = /usr/local/bin/simpleos-powermenu
 
 #---- Tooltip

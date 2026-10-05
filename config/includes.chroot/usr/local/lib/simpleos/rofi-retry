@@ -1,11 +1,11 @@
 #!/bin/sh
-# Simple OS – Rofi mit Wiederholung für Skripte, die common.sh nicht einbinden können (set -e: sos_rofi
-# würde dort beim ersten Fehlschlag abbrechen). Aufruf wie rofi: Menü auf stdin, Auswahl auf stdout.
-#   Esc                    -> leere Ausgabe
-#   Grab-Fehler / "Rofi already running" -> bis zu 6 Versuche (Klick hält Tastatur/Zeiger fest bzw. das
-#                          Startmenü-Rofi beendet sich gerade)
-#   rofi fehlt / startet nicht -> verständliche Meldung, leere Ausgabe
-# Immer Exit 0; Details in ~/.cache/$SOS_NAME.log (SOS_NAME/SOS_TITLE vom Aufrufer, sonst simpleos-rofi).
+# Simple OS – Rofi with retries for scripts that cannot include common.sh (set -e: sos_rofi
+# would abort there on the first failure). Called like rofi: menu on stdin, selection on stdout.
+#   Esc                    -> empty output
+#   grab error / "Rofi already running" -> up to 6 attempts (a click holds keyboard/pointer, or the
+#                          start menu Rofi is just closing)
+#   rofi missing / does not start -> a clear notification, empty output
+# Always exit 0; details in ~/.cache/$SOS_NAME.log (SOS_NAME/SOS_TITLE from the caller, otherwise simpleos-rofi).
 SOS_NAME=${SOS_NAME:-simpleos-rofi} SOS_TITLE=${SOS_TITLE:-Simple OS}
 LIB=/usr/local/lib/simpleos/common.sh
 if [ ! -r "$LIB" ]; then

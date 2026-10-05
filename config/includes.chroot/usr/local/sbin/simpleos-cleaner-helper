@@ -1,20 +1,20 @@
 #!/bin/sh
-# Simple OS – root-Teil von simpleos-cleaner (Aufruf per pkexec; Polkit-Aktion org.simpleos.cleaner).
-# Nur feste Aufräum-Aktionen, beliebig kombinierbar:
-#   --apt-cache    apt-get clean (heruntergeladene .deb-Dateien)
-#   --autoremove   apt-get autoremove (nicht mehr benötigte Abhängigkeiten; Konfigurationsdateien bleiben)
-#   --flatpak      flatpak uninstall --unused (verwaiste Runtimes der Systeminstallation)
-#   --journal      journalctl --vacuum-time=7d (archivierte Protokolle älter als 7 Tage)
-# Zeilen "STEP: <Text>" = Fortschritt. Exit 0 = alles erledigt, 1 = mindestens ein Schritt fehlgeschlagen,
-# 2 = ungültiger Aufruf.
+# Simple OS – root part of simpleos-cleaner (called via pkexec; polkit action org.simpleos.cleaner).
+# Only fixed cleanup actions, combinable at will:
+#   --apt-cache    apt-get clean (downloaded .deb files)
+#   --autoremove   apt-get autoremove (dependencies no longer needed; configuration files stay)
+#   --flatpak      flatpak uninstall --unused (orphaned runtimes of the system installation)
+#   --journal      journalctl --vacuum-time=7d (archived logs older than 7 days)
+# Lines "STEP: <text>" = progress. Exit 0 = everything done, 1 = at least one step failed,
+# 2 = invalid usage.
 set -u
 export DEBIAN_FRONTEND=noninteractive
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
-[ $# -gt 0 ] || { echo "Aufruf: $0 --apt-cache|--autoremove|--flatpak|--journal …" >&2; exit 2; }
+[ $# -gt 0 ] || { echo "Usage: $0 --apt-cache|--autoremove|--flatpak|--journal …" >&2; exit 2; }
 for a in "$@"; do
-    case "$a" in --apt-cache|--autoremove|--flatpak|--journal) ;; *) echo "unbekannt: $a" >&2; exit 2 ;; esac
+    case "$a" in --apt-cache|--autoremove|--flatpak|--journal) ;; *) echo "unknown: $a" >&2; exit 2 ;; esac
 done
-[ "$(id -u)" -eq 0 ] || { echo "simpleos-cleaner-helper: muss als root laufen (pkexec)" >&2; exit 1; }
+[ "$(id -u)" -eq 0 ] || { echo "simpleos-cleaner-helper: must run as root (pkexec)" >&2; exit 1; }
 failed=0
 for a in "$@"; do
     case "$a" in

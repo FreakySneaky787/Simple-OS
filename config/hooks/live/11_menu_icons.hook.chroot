@@ -1,15 +1,15 @@
 #!/bin/sh
 set -e
-# Symbole für das Openbox-Rechtsklick-Menü: einfarbige Papirus-"symbolic"-Symbole, umgefärbt auf Catppuccin
-# Mocha (Papirus-Dark zeichnet sie fest in #dfdfdf). Normale Einträge Subtext1 #bac2de, "Install Simple OS"
-# Mauve #cba6f7. Openbox lädt Symbole nur über Dateipfade (kein Icon-Theme) -> feste Kopien unter
-#   /usr/share/simpleos/menu-icons/<name>.svg   (menu.xml verweist darauf, 99_verify prüft jeden Pfad)
+# Icons for the Openbox right-click menu: monochrome Papirus "symbolic" icons, recolored to Catppuccin
+# Mocha (Papirus-Dark draws them in a fixed #dfdfdf). Normal entries Subtext1 #bac2de, "Install Simple OS"
+# Mauve #cba6f7. Openbox only loads icons via file paths (no icon theme) -> fixed copies under
+#   /usr/share/simpleos/menu-icons/<name>.svg   (menu.xml refers to them, 99_verify checks every path)
 SRC=/usr/share/icons/Papirus-Dark/symbolic
 DEST=/usr/share/simpleos/menu-icons
 mkdir -p "$DEST"
 while read -r name file color; do
     [ -n "$name" ] || continue
-    [ -f "$SRC/$file" ] || { echo "11_menu_icons: $SRC/$file fehlt" >&2; exit 1; }
+    [ -f "$SRC/$file" ] || { echo "11_menu_icons: $SRC/$file missing" >&2; exit 1; }
     sed "s/#dfdfdf/$color/g" "$SRC/$file" > "$DEST/$name.svg"
     grep -q "$color" "$DEST/$name.svg"
 done <<'LIST'

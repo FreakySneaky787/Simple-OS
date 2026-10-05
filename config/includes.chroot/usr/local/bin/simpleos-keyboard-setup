@@ -1,15 +1,15 @@
 #!/bin/sh
-# Simple OS – Tastaturlayout (Control Center → System → Keyboard layout, Menü → Settings → Keyboard Layout)
-#   simpleos-keyboard-setup                 Rofi-Auswahl der gängigen Layouts (aktuelles markiert)
-#   simpleos-keyboard-setup --set L[:V]     z.B. "ch", "ch:fr", "de:nodeadkeys", "us:intl"
-#   simpleos-keyboard-setup --apply         gespeichertes Layout anwenden (Openbox-Autostart), still
-#   simpleos-keyboard-setup --status        "Layout<TAB>Variante" (aktuell gespeichert/aktiv)
-#   simpleos-keyboard-setup --list          "Layout:Variante<TAB>Name" je Zeile (Control Center)
-# --set wirkt sofort (setxkbmap), wird fürs Konto gespeichert (~/.config/simpleos/keyboard, beim Login per
-# --apply) und systemweit über localectl (systemd-localed schreibt unter Debian /etc/default/keyboard – gilt für
-# Anmeldebildschirm, Konsole und neue Konten; Polkit fragt dafür nach dem Passwort). Abgebrochen: nur fürs Konto.
-# Nur Layouts/Varianten, die XKB kennt (/usr/share/X11/xkb/rules/base.lst). Kein set -e, Exit 0 (außer Aufruf).
-# Tests: SIMPLEOS_XKB_LST ersetzt base.lst.
+# Simple OS – keyboard layout (Control Center → System → Keyboard layout, Menu → Settings → Keyboard Layout)
+#   simpleos-keyboard-setup                 Rofi selection of the common layouts (current one marked)
+#   simpleos-keyboard-setup --set L[:V]     e.g. "ch", "ch:fr", "de:nodeadkeys", "us:intl"
+#   simpleos-keyboard-setup --apply         apply the saved layout (Openbox autostart), silently
+#   simpleos-keyboard-setup --status        "layout<TAB>variant" (currently saved/active)
+#   simpleos-keyboard-setup --list          "layout:variant<TAB>name" per line (Control Center)
+# --set takes effect immediately (setxkbmap), is saved for the account (~/.config/simpleos/keyboard, at login via
+# --apply) and system-wide via localectl (on Debian systemd-localed writes /etc/default/keyboard – applies to the
+# login screen, console and new accounts; polkit asks for the password for it). Cancelled: only for the account.
+# Only layouts/variants that XKB knows (/usr/share/X11/xkb/rules/base.lst). No set -e, exit 0 (except usage).
+# Tests: SIMPLEOS_XKB_LST replaces base.lst.
 
 SOS_NAME=simpleos-keyboard-setup SOS_TITLE="Keyboard layout" SOS_ICON=input-keyboard SOS_PROMPT=Keyboard
 TAB=$(printf '\t')
@@ -20,7 +20,7 @@ sos_log_init "$@"
 CONF=${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/simpleos/keyboard
 LST=${SIMPLEOS_XKB_LST:-/usr/share/X11/xkb/rules/base.lst}
 
-# Gängige Layouts: "Layout:Variante<TAB>Name"
+# Common layouts: "layout:variant<TAB>name"
 LAYOUTS="us:	English (US)
 us:intl	English (US, international – accents with dead keys)
 gb:	English (UK)
@@ -46,9 +46,9 @@ tr:	Turkish
 ru:	Russian
 ua:	Ukrainian"
 
-# Layout/Variante bei XKB bekannt? (base.lst: "! layout" / "! variant"-Abschnitte; Variante: "  fr  ch: French")
-known() {  # $1 Layout, $2 Variante (leer = Standard)
-    [ -r "$LST" ] || return 0      # ohne Liste nicht prüfbar -> setxkbmap entscheidet
+# Layout/variant known to XKB? (base.lst: "! layout" / "! variant" sections; variant: "  fr  ch: French")
+known() {  # $1 layout, $2 variant (empty = default)
+    [ -r "$LST" ] || return 0      # cannot check without the list -> setxkbmap decides
     awk -v l="$1" -v v="$2" '
         /^! / { sec = $2; next }
         sec == "layout" && $1 == l { okl = 1 }
@@ -56,7 +56,7 @@ known() {  # $1 Layout, $2 Variante (leer = Standard)
         END { exit !(okl && (v == "" || okv)) }' "$LST"
 }
 name_of() { printf '%s\n' "$LAYOUTS" | awk -F'\t' -v k="$1" '$1 == k { print $2; exit }'; }
-current() {  # gespeichert, sonst aktiv (setxkbmap -query)
+current() {  # saved, otherwise active (setxkbmap -query)
     l= v=
     if [ -r "$CONF" ]; then
         l=$(sed -n 's/^layout=//p' "$CONF" | head -n 1) v=$(sed -n 's/^variant=//p' "$CONF" | head -n 1)
@@ -68,16 +68,16 @@ current() {  # gespeichert, sonst aktiv (setxkbmap -query)
     fi
     printf '%s\t%s\n' "${l:-us}" "$v"
 }
-apply_x() {  # $1 Layout, $2 Variante
-    command -v setxkbmap >/dev/null || { sos_log "setxkbmap fehlt"; return 1; }
+apply_x() {  # $1 layout, $2 variant
+    command -v setxkbmap >/dev/null || { sos_log "setxkbmap missing"; return 1; }
     [ -n "${DISPLAY:-}" ] || return 0
     setxkbmap -layout "$1" -variant "$2" >&2 2>&1
 }
 
-set_layout() {  # $1 "Layout[:Variante]"
+set_layout() {  # $1 "layout[:variant]"
     l=${1%%:*} v=
     case "$1" in *:*) v=${1#*:} ;; esac
-    case "$l$v" in *[!a-z0-9_]*|'') echo "Ungültig: $1" >&2; exit 2 ;; esac
+    case "$l$v" in *[!a-z0-9_]*|'') echo "Invalid: $1" >&2; exit 2 ;; esac
     known "$l" "$v" || { sos_notify "This keyboard layout is not available: $1" critical; return 0; }
     if ! apply_x "$l" "$v"; then
         sos_notify "The keyboard layout could not be changed." critical
@@ -85,7 +85,7 @@ set_layout() {  # $1 "Layout[:Variante]"
     fi
     mkdir -p "${CONF%/*}" && printf 'layout=%s\nvariant=%s\n' "$l" "$v" > "$CONF"
     name=$(name_of "$l:$v"); name=${name:-$l${v:+ ($v)}}
-    # systemweit (Anmeldebildschirm, Konsole): localectl -> /etc/default/keyboard; Passwort über Polkit
+    # system-wide (login screen, console): localectl -> /etc/default/keyboard; password via polkit
     if command -v localectl >/dev/null && localectl set-x11-keymap "$l" pc105 "$v" >&2 2>&1; then
         sos_notify "Keyboard layout: $name" low
     else
@@ -94,17 +94,17 @@ set_layout() {  # $1 "Layout[:Variante]"
 }
 
 case "${1:-}" in
-    --set)    [ -n "${2:-}" ] || { echo "Aufruf: simpleos-keyboard-setup --set LAYOUT[:VARIANTE]" >&2; exit 2; }
+    --set)    [ -n "${2:-}" ] || { echo "Usage: simpleos-keyboard-setup --set LAYOUT[:VARIANT]" >&2; exit 2; }
               set_layout "$2"; exit 0 ;;
     --apply)  [ -r "$CONF" ] || exit 0
-              cur=$(current); apply_x "${cur%%"$TAB"*}" "${cur#*"$TAB"}" || sos_log "apply fehlgeschlagen"; exit 0 ;;
+              cur=$(current); apply_x "${cur%%"$TAB"*}" "${cur#*"$TAB"}" || sos_log "apply failed"; exit 0 ;;
     --status) current; exit 0 ;;
     --list)   printf '%s\n' "$LAYOUTS"; exit 0 ;;
     "") ;;
-    *) echo "Aufruf: simpleos-keyboard-setup [--set L[:V]|--apply|--status|--list]" >&2; exit 2 ;;
+    *) echo "Usage: simpleos-keyboard-setup [--set L[:V]|--apply|--status|--list]" >&2; exit 2 ;;
 esac
 
-# ---- Rofi-Auswahl
+# ---- Rofi selection
 cur=$(current); curkey="${cur%%"$TAB"*}:${cur#*"$TAB"}"
 I_KEY='\357\204\234' I_CHECK='\357\200\214'   # FontAwesome 4: keyboard U+F11C, check U+F00C
 while IFS="$TAB" read -r key label; do

@@ -1,15 +1,15 @@
 #!/bin/sh
-# Simple OS – Software Store (Bazaar von Flathub). Ist er installiert, startet er sofort; sonst wird er einmalig
-# aus Flathub installiert (systemweit; Polkit erlaubt das Mitgliedern von "sudo" ohne Passwort).
-# Vor der Installation:
-#   - Speicherplatz unter /var/lib/flatpak: Bazaar + GNOME-Laufzeit brauchen ~2,5 GB (ist die Laufzeit schon da,
-#     nur wenig). Im Live-Betrieb liegt alles im Arbeitsspeicher (simpleos-live-tune vergrößert das Overlay) –
-#     reicht es nicht, sagt die Meldung das ehrlich und verweist auf "Install Simple OS".
-#   - Flathub erreichbar (sonst: Internet-Hinweis).
-# Installation mit Ladefenster (simpleos-progress), Protokoll in ~/.cache/simpleos-software.log. Fehler werden
-# eingeordnet: zu wenig Platz / Flathub nicht erreichbar / sonstiger Fehler (dann mit Protokoll-Hinweis) – vorher
-# hieß jeder Fehler "Check your internet connection", auch wenn nur der Platz fehlte.
-# Kein set -e, Exit 0. Tests: SIMPLEOS_SW_FREE_MB ersetzt den freien Platz, SIMPLEOS_SW_NET=0/1 die Netzprüfung.
+# Simple OS – Software Store (Bazaar from Flathub). If it is installed, it starts immediately; otherwise it is installed
+# once from Flathub (system-wide; polkit allows that for members of "sudo" without a password).
+# Before the installation:
+#   - space under /var/lib/flatpak: Bazaar + GNOME runtime need ~2.5 GB (only a little if the runtime is
+#     already there). In live mode everything is in RAM (simpleos-live-tune enlarges the overlay) –
+#     if it is not enough, the notification says so honestly and points to "Install Simple OS".
+#   - Flathub reachable (otherwise: an internet hint).
+# Installation with a progress window (simpleos-progress), log in ~/.cache/simpleos-software.log. Errors are
+# classified: not enough space / Flathub not reachable / other error (then with a log hint) – before,
+# every error was "Check your internet connection", even if only space was missing.
+# No set -e, exit 0. Tests: SIMPLEOS_SW_FREE_MB replaces the free space, SIMPLEOS_SW_NET=0/1 the network check.
 
 SOS_NAME=simpleos-software SOS_TITLE="Software Store" SOS_ICON=system-software-install
 LIB=/usr/local/lib/simpleos/common.sh
@@ -18,8 +18,8 @@ LIB=/usr/local/lib/simpleos/common.sh
 sos_log_init "$@"
 
 APP=io.github.kolunmi.Bazaar
-NEED_FULL=2600   # MB: Bazaar + GNOME-Laufzeit + GL-Erweiterungen
-NEED_APP=300     # MB: Laufzeit schon vorhanden
+NEED_FULL=2600   # MB: Bazaar + GNOME runtime + GL extensions
+NEED_APP=300     # MB: runtime already present
 fail() { sos_notify "$1" critical; exit 0; }
 
 command -v flatpak >/dev/null || fail "The Software Store is not available (Flatpak is missing)."
@@ -29,7 +29,7 @@ fi
 flatpak remotes --system --columns=name 2>/dev/null | grep -qx flathub ||
     fail "The Software Store can't be installed: the Flathub source is not set up."
 
-# ---- Platz
+# ---- Space
 if flatpak list --system --runtime --columns=application 2>/dev/null | grep -qx org.gnome.Platform; then
     need=$NEED_APP
 else
@@ -44,7 +44,7 @@ if [ "$free" -lt "$need" ]; then
     fail "Not enough free disk space for the Software Store: $free MB free, about $need MB needed. Free up space with the Storage Cleaner."
 fi
 
-# ---- Netz (schnell, statt nach Minuten an einer Zeitüberschreitung zu scheitern)
+# ---- Network (fast, instead of failing at a timeout after minutes)
 net=${SIMPLEOS_SW_NET:-}
 if [ -z "$net" ]; then
     if timeout 20 python3 -c 'import urllib.request as u; u.urlopen("https://dl.flathub.org/repo/summary.idx", timeout=15)' 2>>"$SOS_LOG"; then
@@ -55,7 +55,7 @@ if [ -z "$net" ]; then
 fi
 [ "$net" = 1 ] || fail "Flathub can't be reached. Check your internet connection and try again."
 
-# ---- Installation mit Ladefenster
+# ---- Installation with a progress window
 feed=$(mktemp) || fail "The Software Store could not be installed (no temporary file)."
 PROGRESS=/usr/local/bin/simpleos-progress
 ppid=
@@ -69,8 +69,8 @@ else
 fi
 echo "STEP: Installing the Software Store" >> "$feed"
 rcf=$feed.rc
-# ohne --noninteractive (sonst kein Fortschritt; -y beantwortet alle Rückfragen); der Filter macht daraus
-# PROGRESS/STAGE für das Ladefenster und reicht Fehlertexte durch
+# without --noninteractive (otherwise no progress; -y answers all questions); the filter turns it into
+# PROGRESS/STAGE for the progress window and passes error texts through
 FP_PROGRESS=/usr/local/lib/simpleos/flatpak-progress
 [ -x "$FP_PROGRESS" ] || FP_PROGRESS=cat
 { flatpak install --system -y flathub "$APP" </dev/null 2>&1; echo $? > "$rcf"; } | "$FP_PROGRESS" | tee -a "$SOS_LOG" >> "$feed"

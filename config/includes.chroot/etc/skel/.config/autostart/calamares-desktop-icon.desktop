@@ -1,5 +1,5 @@
 [Desktop Entry]
 Type=Application
 Name=Add Calamares Desktop Icon
-# Simple OS: statt Debians "Install Debian"-Icon legt simpleos-live --setup "Install Simple OS" ab
+# Simple OS: instead of Debian's "Install Debian" icon, simpleos-live --setup places "Install Simple OS"
 Hidden=true

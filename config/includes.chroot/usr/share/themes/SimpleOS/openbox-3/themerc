@@ -1,4 +1,4 @@
-# Simple OS – Openbox-Theme (Catppuccin Mocha)
+# Simple OS – Openbox theme (Catppuccin Mocha)
 border.width: 1
 padding.width: 8
 padding.height: 6
@@ -57,12 +57,12 @@ window.inactive.button.disabled.image.color: #313244
 window.inactive.button.toggled.bg: parentrelative
 window.inactive.button.toggled.image.color: #6c7086
 
-# Menüs (Rechtsklick, Fenstermenü) – Catppuccin Mocha:
-#   Base #1e1e2e, Text #cdd6f4, Auswahl Surface0 #313244 mit Mauve #cba6f7, Trennlinien Surface1 #45475a.
-# Openbox 3.6 kennt keinen Innenabstand für Menüeinträge -> breiter Rahmen in Hintergrundfarbe als Innenabstand
-# (die Auswahl schwebt als Fläche im Menü, statt am Rand zu kleben). Die Kontur kommt von picom: runde Ecken
-# (10 px) und weicher Schatten statt harter, eckiger Linie. Eigene Mauve-Farbe, damit simpleos-theme (ersetzt
-# nur den Fenster-Akzent #89b4fa) die Menüs nicht umfärbt.
+# Menus (right-click, window menu) – Catppuccin Mocha:
+#   Base #1e1e2e, text #cdd6f4, selection Surface0 #313244 with Mauve #cba6f7, separators Surface1 #45475a.
+# Openbox 3.6 has no padding for menu entries -> a wide border in the background color serves as padding
+# (the selection floats as an area in the menu instead of sticking to the edge). The outline comes from picom: rounded
+# corners (10 px) and a soft shadow instead of a hard, square line. Its own mauve color, so simpleos-theme (replaces
+# only the window accent #89b4fa) does not recolor the menus.
 menu.border.width: 6
 menu.border.color: #1e1e2e
 menu.overlap.x: -8

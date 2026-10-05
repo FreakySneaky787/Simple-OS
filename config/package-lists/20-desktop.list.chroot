@@ -1,16 +1,16 @@
-# Simple OS – Desktop (X11, Openbox, Login, Look & Feel)
+# Simple OS – desktop (X11, Openbox, login, look & feel)
 xorg
 x11-xserver-utils
-# Eingabe: libinput explizit (präziser Zeiger, Touchpad, Smooth Scrolling)
+# Input: libinput explicitly (precise pointer, touchpad, smooth scrolling)
 xserver-xorg-input-libinput
 openbox
-# Login-Manager mit GTK-Greeter
+# Login manager with GTK greeter
 lightdm
 lightdm-gtk-greeter
 tint2
 feh
 picom
-# glxinfo: simpleos-picom erkennt Software-Rendering (llvmpipe) und startet dann ohne Schatten/Blenden
+# glxinfo: simpleos-picom detects software rendering (llvmpipe) and then starts without shadows/fades
 mesa-utils
 rofi
 xcape
@@ -20,31 +20,31 @@ libnotify-bin
 lxpolkit
 gnome-keyring
 xfce4-power-manager
-# Theme & Fonts
+# Theme & fonts
 arc-theme
 papirus-icon-theme
 fonts-inter
 fonts-jetbrains-mono
-# Farbige Emoji (Browser, Chats, Dateinamen) und metrisch zu Arial/Times/Courier passende Schriften – Office-Dokumente
-# aus Windows behalten Zeilenumbrüche und Seitenzahl
+# Color emoji (browsers, chats, file names) and fonts metric-compatible with Arial/Times/Courier – office documents
+# from Windows keep their line breaks and page count
 fonts-noto-color-emoji
 fonts-liberation2
 fonts-font-awesome
-# GTK-Einstellungen dauerhaft speichern (Dark/Light, Akzent) + Setup-Wizard (Python/GTK3)
+# Store GTK settings permanently (dark/light, accent) + Setup Wizard (Python/GTK3)
 dconf-gsettings-backend
 python3-gi
-# simpleos-progress (Ladefenster) zeichnet per Cairo im GTK-Fenster
+# simpleos-progress (progress window) draws with Cairo in the GTK window
 python3-gi-cairo
 gir1.2-gtk-3.0
-# Welcome-Fenster (simpleos-welcome): eigenes WebKit-Fenster statt Standardbrowser (WebKit ist schon da,
-# das sind nur die Python-Bindings, ~1 MB)
+# Welcome window (simpleos-welcome): own WebKit window instead of the default browser (WebKit is already there,
+# these are just the Python bindings, ~1 MB)
 gir1.2-webkit2-4.1
-# Konfigurationstools
+# Configuration tools
 lxappearance
 obconf
 arandr
 lxrandr
-# Netzwerk, Bluetooth, Audio in der Taskleiste
+# Network, Bluetooth, audio in the taskbar
 network-manager-gnome
 bluez
 blueman
@@ -53,30 +53,30 @@ pipewire
 pipewire-alsa
 pipewire-pulse
 wireplumber
-# Echtzeit-Priorität für PipeWire (ohne: "RTKit error: ServiceUnknown", Knackser unter Last)
+# Real-time priority for PipeWire (without it: "RTKit error: ServiceUnknown", crackling under load)
 rtkit
 pavucontrol
-# pactl für die Lautstärketasten (spricht mit pipewire-pulse)
+# pactl for the volume keys (talks to pipewire-pulse)
 pulseaudio-utils
 volumeicon-alsa
-# Screenshots (Print, Shift+Print); xclip: Screenshot + Zwischenablage-Verlauf (Super+V) in die Zwischenablage
+# Screenshots (Print, Shift+Print); xclip: screenshot + clipboard history (Super+V) into the clipboard
 maim
 xclip
-# Nachtmodus (simpleos-nightlight), Bluetooth-Funkschalter (simpleos-bluetooth), Dateityp-Erkennung
-# (Thunar-Aktionen: simpleos-wallpaper, simpleos-copy-file). Task-Manager: eigenes simpleos-taskmanager
-# (SIGTERM -> SIGKILL, pkexec für fremde Prozesse); Hardware-Erkennung für simpleos-drivers: pciutils/usbutils
+# Night light (simpleos-nightlight), Bluetooth radio switch (simpleos-bluetooth), file type detection
+# (Thunar actions: simpleos-wallpaper, simpleos-copy-file). Task Manager: own simpleos-taskmanager
+# (SIGTERM -> SIGKILL, pkexec for other users' processes); hardware detection for simpleos-drivers: pciutils/usbutils
 pciutils
 usbutils
 gammastep
 rfkill
 file
-# broadwayd: 99_verify startet Control Center und Software Center ohne Bildschirm (GUI-Selbsttest)
+# broadwayd: 99_verify starts Control Center and Software Center without a screen (GUI self-test)
 libgtk-3-bin
-# XSETTINGS-Dienst: Hell/Dunkel (simpleos-theme) wechselt in laufenden GTK3-Programmen sofort
+# XSETTINGS service: light/dark (simpleos-theme) switches immediately in running GTK3 programs
 xsettingsd
-# Fenster andocken (simpleos-snap: xdotool, wmctrl, xprop/xwininfo aus x11-utils)
+# Window snapping (simpleos-snap: xdotool, wmctrl, xprop/xwininfo from x11-utils)
 xdotool
 wmctrl
 x11-utils
-# Wiederherstellungspunkte (simpleos-backup)
+# Restore points (simpleos-backup)
 timeshift

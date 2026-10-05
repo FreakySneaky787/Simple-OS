@@ -1,32 +1,32 @@
 #!/usr/bin/python3
-"""Simple OS – Treiber- & Hardware-Assistent (Control Center → System → Hardware & Drivers).
+"""Simple OS – drivers & hardware assistant (Control Center → System → Hardware & Drivers).
 
-    simpleos-drivers                 Control Center auf der Seite System öffnen
-    simpleos-drivers --json          Bericht als JSON (das Control Center liest ihn)
-    simpleos-drivers --summary       Bericht als Text
-    simpleos-drivers --install       empfohlene Pakete installieren (pkexec simpleos-system-setup --drivers …,
-                                     Fortschritt in simpleos-progress, danach EINE Meldung)
+    simpleos-drivers                 open the Control Center on the System page
+    simpleos-drivers --json          report as JSON (the Control Center reads it)
+    simpleos-drivers --summary       report as text
+    simpleos-drivers --install       install recommended packages (pkexec simpleos-system-setup --drivers …,
+                                     progress in simpleos-progress, then ONE notification)
 
-Erkennung (lspci -nnk, lsusb, lscpu, /sys/class/net/*/wireless, dpkg-query, systemd-detect-virt):
-  Grafik   Intel ab Gen 12 (Tiger/Alder/Raptor/Meteor Lake …): GuC/HuC/DMC-Firmware muss da sein (Paket
-           firmware-misc-nonfree, seit firmware-nonfree 2025 aus Backports zusätzlich firmware-intel-graphics);
-           geprüft werden die Dateien selbst. Bindet gar kein Treiber (Chip neuer als der Kernel, z.B. Raptor Lake
-           0xA7AA mit Kernel 6.1 -> 800x600), wird der aktuelle Kernel aus Backports empfohlen (linux-image-amd64,
-           Pinning in /etc/apt/preferences.d/simpleos-backports.pref).
-           NVIDIA ab Maxwell -> nvidia-driver; Kepler -> nvidia-tesla-470-driver (Bookworm: 525/535 können
-           Kepler nicht mehr); ältere -> bleibt beim freien nouveau. AMD -> firmware-amd-graphics. Virtuelle
-           Grafik (VM) -> nichts. Proprietäre NVIDIA-Module brauchen linux-headers-amd64 (DKMS); bei aktivem
-           Secure Boot kommt ein Hinweis (dkms signiert mit einem eigenen Schlüssel, den die Firmware nicht kennt).
-  WLAN     Gerät ohne gebundenen Treiber bzw. ohne WLAN-Schnittstelle -> Firmware des Herstellers
+Detection (lspci -nnk, lsusb, lscpu, /sys/class/net/*/wireless, dpkg-query, systemd-detect-virt):
+  Graphics Intel from Gen 12 (Tiger/Alder/Raptor/Meteor Lake …): GuC/HuC/DMC firmware must be present (package
+           firmware-misc-nonfree, since firmware-nonfree 2025 from backports also firmware-intel-graphics);
+           the files themselves are checked. If no driver binds at all (chip newer than the kernel, e.g. Raptor Lake
+           0xA7AA with kernel 6.1 -> 800x600), the current kernel from backports is recommended (linux-image-amd64,
+           pinning in /etc/apt/preferences.d/simpleos-backports.pref).
+           NVIDIA from Maxwell -> nvidia-driver; Kepler -> nvidia-tesla-470-driver (Bookworm: 525/535 no longer
+           support Kepler); older -> stays with the free nouveau. AMD -> firmware-amd-graphics. Virtual
+           graphics (VM) -> nothing. Proprietary NVIDIA modules need linux-headers-amd64 (DKMS); with Secure Boot
+           active a hint appears (dkms signs with its own key that the firmware does not know).
+  Wi-Fi    device without a bound driver or without a Wi-Fi interface -> the manufacturer's firmware
            (Intel firmware-iwlwifi, Realtek firmware-realtek, Atheros/Qualcomm firmware-atheros, MediaTek/Ralink
-           firmware-misc-nonfree, Broadcom firmware-brcm80211 bzw. broadcom-sta-dkms für die "wl"-Chips).
-  CPU      intel-microcode / amd64-microcode (Image baut ohne Recommends, daher oft nicht installiert);
-           in einer VM kümmert sich der Gastgeber darum.
-  Basis    firmware-linux-nonfree.
-Bereits installierte Pakete werden nie empfohlen. Die Erkennung ist eine reine Funktion (scan) – Tests:
-SIMPLEOS_HW_ROOT=DIR liest lspci.txt, lsusb.txt, lscpu.txt, installed.txt (Paketnamen), virt.txt,
-wireless.txt ("wlan0 iwlwifi" je Zeile), secureboot.txt ("1"), firmware.txt (Dateien unter /lib/firmware, z.B.
-"i915/adlp_dmc.bin") und kernel.txt (uname -r) statt der echten Befehle.
+           firmware-misc-nonfree, Broadcom firmware-brcm80211 or broadcom-sta-dkms for the "wl" chips).
+  CPU      intel-microcode / amd64-microcode (the image is built without Recommends, so often not installed);
+           in a VM the host takes care of it.
+  Base     firmware-linux-nonfree.
+Packages that are already installed are never recommended. The detection is a pure function (scan) – tests:
+SIMPLEOS_HW_ROOT=DIR reads lspci.txt, lsusb.txt, lscpu.txt, installed.txt (package names), virt.txt,
+wireless.txt ("wlan0 iwlwifi" per line), secureboot.txt ("1"), firmware.txt (files under /lib/firmware, e.g.
+"i915/adlp_dmc.bin") and kernel.txt (uname -r) instead of the real commands.
 """
 import json
 import os
@@ -39,7 +39,7 @@ PCI_HEAD = re.compile(r"^(\S+) (.+?) \[([0-9a-f]{4})\]: (.+?) \[([0-9a-f]{4}):([
 USB_LINE = re.compile(r"^Bus \d+ Device \d+: ID ([0-9a-f]{4}):([0-9a-f]{4}) ?(.*)$")
 KEPLER = ((0x0FC0, 0x0FFF), (0x1000, 0x103F), (0x1180, 0x11FF), (0x1280, 0x12BF))
 MAXWELL_FIRST = 0x1340
-# Broadcom-Chips, die nur der proprietäre "wl"-Treiber (broadcom-sta-dkms) kann
+# Broadcom chips that only the proprietary "wl" driver (broadcom-sta-dkms) supports
 BROADCOM_WL = {0x4311, 0x4312, 0x4313, 0x4315, 0x4328, 0x4329, 0x432A, 0x432B, 0x432C, 0x432D, 0x4331,
                0x4358, 0x4359, 0x4360, 0x4365, 0x43A0, 0x43B1}
 VIRTUAL_GPU_VENDORS = {"1af4", "1b36", "15ad", "80ee", "1234", "1414"}
@@ -49,7 +49,7 @@ USB_WIFI_FIRMWARE = {"0bda": "firmware-realtek", "0cf3": "firmware-atheros", "14
                      "0e8d": "firmware-misc-nonfree", "8087": "firmware-iwlwifi", "0a5c": "firmware-brcm80211"}
 HEADERS = "linux-headers-amd64"
 KERNEL = "linux-image-amd64"
-# Intel-Grafik ab Gen 12: PCI-Geräte-ID-Bereich -> (Name, Präfixe der Firmware-Dateien, von denen eine da sein muss)
+# Intel graphics from Gen 12: PCI device ID range -> (name, prefixes of the firmware files, one of which must be present)
 INTEL_GEN12 = (
     ((0x9A40, 0x9AFF), "Tiger Lake", ("i915/tgl_",)),
     ((0x4C80, 0x4CFF), "Rocket Lake", ("i915/rkl_", "i915/tgl_")),
@@ -64,14 +64,14 @@ INTEL_GEN12 = (
     ((0xB080, 0xB0FF), "Panther Lake", ("xe/ptl_",)),
     ((0xE200, 0xE2FF), "Arc B-Series", ("xe/bmg_",)),
 )
-# Alles, was --install anbieten darf (simpleos-system-setup prüft dieselbe Liste noch einmal als root)
+# Everything --install may offer (simpleos-system-setup checks the same list again as root)
 ALLOWED = {"firmware-linux-nonfree", "firmware-misc-nonfree", "firmware-intel-graphics", KERNEL,
            "firmware-amd-graphics", "firmware-realtek",
            "firmware-iwlwifi", "firmware-atheros", "firmware-brcm80211", "broadcom-sta-dkms", "nvidia-driver",
            "nvidia-tesla-470-driver", HEADERS, "intel-microcode", "amd64-microcode"}
 
 
-# ---------------------------------------------------------------- Rohdaten
+# ---------------------------------------------------------------- Raw data
 def _hw_file(name):
     root = os.environ.get("SIMPLEOS_HW_ROOT")
     if not root:
@@ -91,7 +91,7 @@ def _run(*cmd):
 
 
 def raw_inputs():
-    """Texte der Hardware-Abfragen (oder der Test-Dateien)."""
+    """Texts of the hardware queries (or of the test files)."""
     if os.environ.get("SIMPLEOS_HW_ROOT"):
         return {k: _hw_file(k + ".txt") for k in ("lspci", "lsusb", "lscpu", "installed", "virt", "wireless",
                                                     "secureboot", "firmware", "kernel")}
@@ -144,7 +144,7 @@ def parse_lspci(text):
 
 
 def intel_gen12(dev):
-    """(Familie, Firmware-Präfixe) für Intel-Grafik ab Gen 12, sonst None."""
+    """(family, firmware prefixes) for Intel graphics from Gen 12, otherwise None."""
     for (a, b), fam, prefixes in INTEL_GEN12:
         if a <= dev <= b:
             return fam, prefixes
@@ -152,7 +152,7 @@ def intel_gen12(dev):
 
 
 def kernel_older(release, ref):
-    """'6.1.0-53-amd64' < (6, 12)? Unbekannt -> False."""
+    """'6.1.0-53-amd64' < (6, 12)? Unknown -> False."""
     m = re.match(r"(\d+)\.(\d+)", release or "")
     return bool(m) and (int(m.group(1)), int(m.group(2))) < ref
 
@@ -161,7 +161,7 @@ def short_name(name):
     """'Intel Corporation Alder Lake-P GT2 [Iris Xe Graphics]' -> 'Intel Iris Xe Graphics'."""
     vendor = name.split()[0] if name else ""
     vendor = {"Advanced": "AMD", "NVIDIA": "NVIDIA", "Intel": "Intel"}.get(vendor, vendor)
-    inner = [i for i in re.findall(r"\[([^\]]+)\]", name) if not re.fullmatch(r"[A-Z]+/[A-Z]+", i)]  # nicht "[AMD/ATI]"
+    inner = [i for i in re.findall(r"\[([^\]]+)\]", name) if not re.fullmatch(r"[A-Z]+/[A-Z]+", i)]  # not "[AMD/ATI]"
     model = inner[-1] if inner else re.sub(
         r"^.*?(Corporation|Inc\. and subsidiaries|Semiconductor Co\., Ltd\.|Co\., Ltd\.|Inc\.)\s+", "", name, count=1)
     if model.lower().startswith(vendor.lower()):
@@ -169,7 +169,7 @@ def short_name(name):
     return f"{vendor} {model}".strip()
 
 
-# ---------------------------------------------------------------- Erkennung
+# ---------------------------------------------------------------- Detection
 def scan(raw):
     installed = set((raw.get("installed") or "").split())
     virt = (raw.get("virt") or "none").strip() or "none"
@@ -185,7 +185,7 @@ def scan(raw):
                 want.append(p)
         return [p for p in pkgs if p not in installed]
 
-    # Grafik
+    # Graphics
     gpus = []
     for d in pci:
         if not d["class_id"].startswith("03"):
@@ -208,8 +208,8 @@ def scan(raw):
             else:
                 g["status"] = "Open-source driver (nouveau) – no newer NVIDIA driver supports this card"
             if g["packages"] and (raw.get("secureboot") or "").strip() == "1":
-                # Debians dkms signiert das Modul mit /var/lib/dkms/mok.key, registriert den Schlüssel aber nicht
-                # (die Abfrage per update-secureboot-policy gibt es nur unter Ubuntu) -> ohne Hinweis bliebe es still
+                # Debian's dkms signs the module with /var/lib/dkms/mok.key but does not enroll the key
+                # (the prompt via update-secureboot-policy only exists on Ubuntu) -> without a hint it would stay silent
                 notes.append("Secure Boot is on: the NVIDIA driver only works after you turn Secure Boot off "
                              "in your computer's firmware settings (BIOS/UEFI).")
         elif ven == "8086" and intel_gen12(dev):
@@ -219,8 +219,8 @@ def scan(raw):
             if not d["driver"]:
                 kver = (raw.get("kernel") or "").strip()
                 if kernel_older(kver, (6, 12)):
-                    # linux-image-amd64 ist als Metapaket immer installiert -> trotzdem empfehlen: mit dem
-                    # Backports-Pinning hebt apt es auf den aktuellen Kernel
+                    # linux-image-amd64 is always installed as a meta package -> recommend it anyway: with the
+                    # backports pinning apt raises it to the current kernel
                     if KERNEL not in want:
                         want.append(KERNEL)
                     g["packages"] = [KERNEL]
@@ -242,7 +242,7 @@ def scan(raw):
             g["status"] = f"Working ({d['driver']})" if d["driver"] else "No driver in use"
         gpus.append(g)
 
-    # WLAN (PCI + USB)
+    # Wi-Fi (PCI + USB)
     wifi = []
     for d in pci:
         if d["class_id"] != "0280":
@@ -264,7 +264,7 @@ def scan(raw):
         wifi.append(w)
     for line in (raw.get("lsusb") or "").splitlines():
         m = USB_LINE.match(line.strip())
-        # nur WLAN-Sticks – nicht Funkmäuse/-tastaturen ("Wireless Mouse", "Wireless Receiver")
+        # only Wi-Fi sticks – not wireless mice/keyboards ("Wireless Mouse", "Wireless Receiver")
         if not m or not re.search(r"802\.11|wlan|wi-?fi|wireless (network|lan|adapter)", m.group(3), re.I):
             continue
         w = {"name": m.group(3) or f"USB Wi-Fi {m.group(1)}:{m.group(2)}", "driver": "", "packages": []}
@@ -277,7 +277,7 @@ def scan(raw):
             w["status"] = "No driver found"
         wifi.append(w)
 
-    # CPU-Microcode
+    # CPU microcode
     cpu_vendor = re.search(r"^Vendor ID:\s*(\S+)", raw.get("lscpu") or "", re.M)
     cpu_model = re.search(r"^Model name:\s*(.+)$", raw.get("lscpu") or "", re.M)
     cpu = {"name": cpu_model.group(1).strip() if cpu_model else "Unknown CPU", "packages": []}
@@ -292,7 +292,7 @@ def scan(raw):
         cpu["status"] = "Microcode update missing (security and stability fixes)" if cpu["packages"] \
             else "Microcode up to date"
 
-    # Basis-Firmware
+    # Base firmware
     if not in_vm:
         need("firmware-linux-nonfree")
 
@@ -363,7 +363,7 @@ def main(argv):
     elif arg == "":
         os.execvp("simpleos-control-center", ["simpleos-control-center", "system"])
     else:
-        print("Aufruf: simpleos-drivers [--json|--summary|--install]", file=sys.stderr)
+        print("Usage: simpleos-drivers [--json|--summary|--install]", file=sys.stderr)
         return 2
     return 0
 

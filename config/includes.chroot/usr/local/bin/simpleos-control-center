@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
-"""Simple OS – Control Center (Super+I, Menü → Settings → Control Center).
+"""Simple OS – Control Center (Super+I, Menu → Settings → Control Center).
 
-Ein Fenster für alle Einstellungen, links die Bereiche, rechts die Seite:
-  Sound        Lautstärke, Stumm, Ausgang (Lautsprecher/Kopfhörer/HDMI), Mikrofon, -> pavucontrol
-  Display      Auflösung, Bildwiederholrate, mehrere Bildschirme, Nachtmodus (simpleos-nightlight)
-  Wi-Fi        Netze, Verbinden mit Passwort, Trennen, WLAN an/aus (Funktionen des Setup-Wizards)
-  Bluetooth    an/aus, gekoppelte Geräte verbinden/trennen/entfernen, Geräte suchen und koppeln
-  Appearance   Hell/Dunkel, Akzentfarbe (simpleos-theme), Hintergrundbild (simpleos-wallpaper)
+One window for all settings, the sections on the left, the page on the right:
+  Sound        volume, mute, output (speakers/headphones/HDMI), microphone, -> pavucontrol
+  Display      resolution, refresh rate, several screens, night light (simpleos-nightlight)
+  Wi-Fi        networks, connect with a password, disconnect, Wi-Fi on/off (functions of the Setup Wizard)
+  Bluetooth    on/off, connect/disconnect/remove paired devices, search for and pair devices
+  Appearance   light/dark, accent color (simpleos-theme), wallpaper (simpleos-wallpaper)
   Appearance   … + "Dynamic wallpaper (day/night)" (simpleos-wallpaper-schedule)
-  Power        Bildschirm ausschalten nach … (simpleos-power), Akku, Energieprofil (power-profiles-daemon),
-               Akkuschonung (nur bis 80 % laden, falls der Laptop das kann), Sperren/Ruhezustand/Neustart/Aus
-  System       Tastaturlayout (simpleos-keyboard-setup), Do Not Disturb (simpleos-dnd: Meldungen pausieren, optional ohne Fenstereffekte),
-               Hardware & Drivers (simpleos-drivers: Grafik, WLAN, CPU-Microcode; "Install Recommended Drivers"),
-               Backups (simpleos-backup: Wiederherstellungspunkte), Speicher (freier Platz, simpleos-cleaner),
-               Drucker & Scanner (system-config-printer, simple-scan), Firewall (ufw über den Root-Helfer),
-               Laufwerke (gnome-disks: USB-Sticks formatieren, ISO schreiben), Fehler melden (simpleos-report)
+  Power        turn off the screen after … (simpleos-power), battery, power profile (power-profiles-daemon),
+               battery protection (charge only up to 80 % if the laptop supports it), lock/sleep/restart/off
+  System       keyboard layout (simpleos-keyboard-setup), Do Not Disturb (simpleos-dnd: pause notifications, optionally without window effects),
+               Hardware & Drivers (simpleos-drivers: graphics, Wi-Fi, CPU microcode; "Install Recommended Drivers"),
+               backups (simpleos-backup: restore points), storage (free space, simpleos-cleaner),
+               printers & scanners (system-config-printer, simple-scan), firewall (ufw via the root helper),
+               disks (gnome-disks: format USB sticks, write ISOs), report a problem (simpleos-report)
 
-  simpleos-control-center [sound|display|wifi|bluetooth|appearance|power|system]   Fenster (auf dieser Seite)
-Läuft nur einmal (Gtk.Application); ein zweiter Aufruf holt das Fenster nach vorn.
-Änderungen gehen über dieselben Werkzeuge wie die Rofi-Flyouts – beide zeigen immer denselben Stand.
-Bildschirm-Änderungen müssen bestätigt werden (15 s, sonst zurück); gespeichert wie bei simpleos-display.
-Lange Aufrufe (WLAN-Suche, Bluetooth, Verbinden) laufen im Hintergrund, das Fenster bleibt bedienbar.
-Test: SIMPLEOS_CC_SELFTEST=1 öffnet jede Seite einmal und endet mit Exit 1, falls dabei eine Python-Ausnahme
-auftrat (99_verify nutzt das mit dem GTK-Broadway-Backend, ohne Bildschirm).
+  simpleos-control-center [sound|display|wifi|bluetooth|appearance|power|system]   window (on this page)
+Runs only once (Gtk.Application); a second call brings the window to the front.
+Changes go through the same tools as the Rofi flyouts – both always show the same state.
+Display changes must be confirmed (15 s, otherwise reverted); saved like in simpleos-display.
+Long calls (Wi-Fi search, Bluetooth, connecting) run in the background, the window stays usable.
+Test: SIMPLEOS_CC_SELFTEST=1 opens every page once and ends with exit 1 if a Python exception
+occurred (99_verify uses that with the GTK Broadway backend, without a screen).
 """
 import importlib.machinery
 import os
@@ -50,7 +50,7 @@ SCREEN_OFF = [(0, "Never"), (5, "5 minutes"), (10, "10 minutes"), (15, "15 minut
 
 
 def cmd(*args, timeout=15, env=None):
-    """Befehl ausführen; nie eine Ausnahme (fehlendes Programm, Zeitüberschreitung -> Code 127/124)."""
+    """Run a command; never an exception (missing program, timeout -> code 127/124)."""
     try:
         return subprocess.run(list(args), capture_output=True, text=True, timeout=timeout, env=env)
     except FileNotFoundError:
@@ -69,7 +69,7 @@ def spawn(*args):
         return False
 
 
-# ------------------------------------------------------------------ Sound (pactl, wie simpleos-volume)
+# ------------------------------------------------------------------ Sound (pactl, like simpleos-volume)
 def _c(*args):
     return cmd(*args, env=dict(os.environ, LC_ALL="C"))
 
@@ -94,7 +94,7 @@ def set_mute(on, kind="sink"):
 
 
 def outputs():
-    """[(sink, port, label, active)] – ein Eintrag pro verfügbarem Anschluss (Kopfhörer nur eingesteckt)."""
+    """[(sink, port, label, active)] – one entry per available port (headphones only when plugged in)."""
     default = _c("pactl", "get-default-sink").stdout.strip()
     result, cur = [], None
 
@@ -147,9 +147,9 @@ def switch_output(sink, port):
     return True
 
 
-# ------------------------------------------------------------------ Display (xrandr, wie simpleos-display)
+# ------------------------------------------------------------------ Display (xrandr, like simpleos-display)
 def screens(query=None):
-    """[{name, on, primary, pos, modes: [(mode, [rates])], mode, rate}] – nur angeschlossene Ausgänge."""
+    """[{name, on, primary, pos, modes: [(mode, [rates])], mode, rate}] – only connected outputs."""
     if query is None:
         query = _c("xrandr", "--query").stdout
     result, cur = [], None
@@ -190,7 +190,7 @@ def pretty(name):
 
 
 def snapshot(scr):
-    """xrandr-Argumente für den aktuellen Zustand – gleiches Format wie simpleos-display."""
+    """xrandr arguments for the current state – the same format as simpleos-display."""
     args = []
     for s in scr:
         if s["on"]:
@@ -203,7 +203,7 @@ def snapshot(scr):
 
 
 def layout_args(scr, main, kind):
-    """Mehrere Bildschirme: dup | right | left | only (nur main)."""
+    """Several screens: dup | right | left | only (main only)."""
     by = {s["name"]: s for s in scr}
     args = ["--output", main, "--primary"] if by[main]["on"] else ["--output", main, "--auto", "--primary", "--pos", "0x0"]
     others = [s["name"] for s in scr if s["name"] != main]
@@ -253,7 +253,7 @@ def bt(*args, timeout=15):
 
 
 def bt_state():
-    """(Adapter vorhanden, eingeschaltet)"""
+    """(adapter present, switched on)"""
     if not re.search(r"^Controller ", bt("list").stdout, re.M):
         return False, False
     return True, "Powered: yes" in bt("show").stdout
@@ -314,13 +314,13 @@ def screen_off():
 
 
 def charge_limit():
-    """on | off | unsupported (Akkuschonung über simpleos-power)"""
+    """on | off | unsupported (battery protection via simpleos-power)"""
     m = re.search(r"charge_limit=(\w+)", cmd("simpleos-power", "--get").stdout)
     return m.group(1) if m else "unsupported"
 
 
 def power_profile():
-    """(aktuell, [verfügbar]) über simpleos-power; ("unsupported", []) ohne power-profiles-daemon"""
+    """(current, [available]) via simpleos-power; ("unsupported", []) without power-profiles-daemon"""
     out = cmd("simpleos-power", "--profile").stdout
     cur = (re.search(r"^current=(\S+)", out, re.M) or [None, "unsupported"])[1]
     avail = (re.search(r"^available=(.*)$", out, re.M) or [None, ""])[1].split()
@@ -328,7 +328,7 @@ def power_profile():
 
 
 def firewall_on():
-    """ufw lädt seine Regeln beim Start nur mit ENABLED=yes (Datei ist für alle lesbar, ufw status bräuchte root)"""
+    """ufw loads its rules at boot only with ENABLED=yes (the file is readable by everyone, ufw status would need root)"""
     try:
         return re.search(r"^ENABLED=yes\s*$", UFW_CONF.read_text(), re.M) is not None
     except OSError:
@@ -342,7 +342,7 @@ def drivers_report():
 
 
 def keyboard_layouts():
-    """[(Layout:Variante, Name)] aus simpleos-keyboard-setup --list"""
+    """[(layout:variant, name)] from simpleos-keyboard-setup --list"""
     out = cmd("simpleos-keyboard-setup", "--list").stdout
     return [tuple(l.split("\t", 1)) for l in out.splitlines() if "\t" in l]
 
@@ -369,7 +369,7 @@ def dynamic_theme_on():
 
 
 def disk_usage(path="/"):
-    """(belegt, gesamt) in Bytes"""
+    """(used, total) in bytes"""
     try:
         st = os.statvfs(path)
         total = st.f_blocks * st.f_frsize
@@ -406,13 +406,13 @@ def live_session():
 def power_action(what):
     if what == "lock":
         return cmd("dm-tool", "lock").returncode == 0 or cmd("loginctl", "lock-session").returncode == 0
-    if what == "sleep" and not live_session():   # Live-Session: Passwort unbekannt -> nicht sperren
+    if what == "sleep" and not live_session():   # live session: password unknown -> do not lock
         cmd("dm-tool", "lock")
     verb = {"sleep": "suspend", "restart": "reboot", "shutdown": "poweroff"}[what]
     return cmd("systemctl", verb).returncode == 0 or cmd("loginctl", verb).returncode == 0
 
 
-# ================================================================== Fenster
+# ================================================================== Window
 def load_gtk():
     import gi
     gi.require_version("Gtk", "3.0")
@@ -423,7 +423,7 @@ def load_gtk():
 def wizard_module():
     try:
         return importlib.machinery.SourceFileLoader("simpleos_wizard", WIZARD).load_module()
-    except Exception:  # Wizard fehlt/kaputt -> Seite zeigt einen Hinweis
+    except Exception:  # wizard missing/broken -> the page shows a hint
         return None
 
 
@@ -431,11 +431,11 @@ def main(argv):
     GLib, Gtk = load_gtk()
 
     def bg(work, done):
-        """work() im Hintergrund, done(Ergebnis) danach im GTK-Thread."""
+        """work() in the background, then done(result) in the GTK thread."""
         def run():
             try:
                 res = work()
-            except Exception as err:  # nie das Fenster abstürzen lassen
+            except Exception as err:  # never let the window crash
                 res = err
             GLib.idle_add(lambda: (done(res), False)[1])
         threading.Thread(target=run, daemon=True).start()
@@ -452,7 +452,7 @@ def main(argv):
         return lab
 
     def card(rows):
-        """Gerahmte Liste: rows = [(Titel, Untertitel|None, Widget|None)]"""
+        """Framed list: rows = [(title, subtitle|None, widget|None)]"""
         box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
         box.get_style_context().add_class("frame")
         for title, sub, widget in rows:
@@ -517,7 +517,7 @@ def main(argv):
             mute.connect("notify::active", lambda s, _p: set_mute(s.get_active()))
 
             def vol_changed(s):
-                set_volume(s.get_value())          # hebt die Stummschaltung auf -> Schalter nachziehen
+                set_volume(s.get_value())          # unmutes -> update the switch
                 if mute.get_active():
                     mute.set_active(False)
             vol.connect("value-changed", vol_changed)
@@ -589,7 +589,7 @@ def main(argv):
                 self.put(card([("Multiple displays", "Like Windows+P",
                                 lay), ("", None, button("Apply", lambda: self.apply(
                                     layout_args(scr, main, lay.get_active_id() or "right")), "suggested-action"))]))
-            # Nachtmodus
+            # Night light
             mode, temp = nightlight_status()
             nl = Gtk.ComboBoxText()
             for key, text in (("off", "Off"), ("on", "On"), ("auto", "Automatic (20:00–07:00)")):
@@ -600,7 +600,7 @@ def main(argv):
             warm.set_inverted(True)
             warm.set_value(temp)
             warm.set_size_request(220, -1)
-            # jede Änderung (Maus, Tastatur, Mausrad) – kurz verzögert, damit Ziehen nicht jeden Zwischenwert anwendet
+            # every change (mouse, keyboard, mouse wheel) – slightly delayed so dragging does not apply every intermediate value
             pending = [None]
 
             def apply_warmth():
@@ -696,12 +696,12 @@ def main(argv):
             if in_use:
                 return bg(lambda: self.w.disconnect_wifi(dev), self.done)
             password = ""
-            # Passwort abfragen: neues Netz – oder das gespeicherte Passwort hat gerade nicht geklappt (ask)
+            # ask for the password: a new network – or the saved password just did not work (ask)
             if secured and (ask or ssid not in self.w.saved_networks()):
                 password = self.win.ask_password(ssid)
                 if password is None:
                     return self.refresh()
-            retry = secured and not password   # gespeichertes Profil ohne neues Passwort versucht
+            retry = secured and not password   # saved profile tried without a new password
 
             def done(res):
                 if retry and isinstance(res, tuple) and not res[0]:
@@ -843,7 +843,7 @@ def main(argv):
             for minutes, text in SCREEN_OFF:
                 off.append(str(minutes), text)
             cur_off = screen_off()
-            # anderer Wert (z.B. "simpleos-power --screen-off 20" im Terminal): als eigener Eintrag statt leerer Auswahl
+            # another value (e.g. "simpleos-power --screen-off 20" in a terminal): as its own entry instead of an empty selection
             if not off.set_active_id(str(cur_off)):
                 off.append(str(cur_off), f"{cur_off} minutes")
                 off.set_active_id(str(cur_off))
@@ -877,7 +877,7 @@ def main(argv):
             key = combo.get_active_id()
             if key and cmd("simpleos-power", "--profile", key).returncode != 0:
                 self.win.error("The power mode could not be changed.")
-            self.refresh()   # Untertitel passend zum Profil
+            self.refresh()   # subtitle matching the profile
 
         def set_limit(self, sw, _p):
             want = "on" if sw.get_active() else "off"
@@ -970,7 +970,7 @@ def main(argv):
             sw.set_sensitive(False)
 
             def done(res):
-                # 126/127 = Passwortdialog abgebrochen -> still zurück; sonst zählt nur der neue Zustand
+                # 126/127 = password dialog cancelled -> back silently; otherwise only the new state counts
                 if getattr(res, "returncode", 1) not in (126, 127) and firewall_on() != want:
                     self.win.error("The firewall could not be changed.")
                 self.refresh()
@@ -1043,7 +1043,7 @@ def main(argv):
             if select:
                 for row in self.side.get_children():
                     if row.key == key:
-                        self.side.select_row(row)   # löst open(select=False) aus
+                        self.side.select_row(row)   # triggers open(select=False)
                         return
             self.stack.set_visible_child_name(key)
             self.pages[key].refresh()
@@ -1100,7 +1100,7 @@ def main(argv):
                     if keys:
                         self.win.open(keys.pop(0))
                         return True
-                    GLib.timeout_add(1500, self.quit)   # Hintergrund-Aufrufe der letzten Seite abwarten
+                    GLib.timeout_add(1500, self.quit)   # wait for the background calls of the last page
                     return False
                 GLib.timeout_add(700, step)
             return 0

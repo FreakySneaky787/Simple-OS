@@ -1,7 +1,7 @@
-# Simple OS – Benachrichtigungen (dunst 1.9), Catppuccin Mocha
-# Unten rechts über der schwebenden Taskleiste, weiche Ecken, Inter, Papirus-Icons.
-# Linksklick löst die Aktion einer Meldung aus ("Open" beim USB-Stick, "Install" bei Updates),
-# Rechtsklick schließt alle. Nicht gesetzte Werte nehmen dunsts eingebaute Vorgaben.
+# Simple OS – notifications (dunst 1.9), Catppuccin Mocha
+# Bottom right above the floating taskbar, soft corners, Inter, Papirus icons.
+# A left click triggers a notification's action ("Open" for a USB stick, "Install" for updates),
+# a right click closes all. Values that are not set use dunst's built-in defaults.
 
 [global]
     monitor = 0
@@ -22,7 +22,7 @@
     corner_radius = 12
     sort = yes
 
-    # Fortschrittsbalken (Lautstärke/Helligkeit, Ladefenster ohne Anzeige): schlank, Catppuccin Mocha
+    # Progress bar (volume/brightness, progress windows without a display): slim, Catppuccin Mocha
     progress_bar = true
     progress_bar_height = 6
     progress_bar_frame_width = 0
@@ -72,8 +72,8 @@
     frame_color = "#f38ba8"
     timeout = 0
 
-# OSD für Fn-Tasten (simpleos-osd): ersetzt sich selbst (Stack-Tag), kurz sichtbar, nicht im Verlauf,
-# Balken in Catppuccin-Blau auf Surface0
+# OSD for the Fn keys (simpleos-osd): replaces itself (stack tag), briefly visible, not in the history,
+# bar in Catppuccin blue on Surface0
 [simpleos-osd]
     category = x-simpleos-osd
     timeout = 1.5

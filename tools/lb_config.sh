@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-# Simple OS – live-build konfigurieren.
-# Läuft im Build-Container im Arbeitsverzeichnis build/, in das build_iso.sh vorher die
-# Quell-Konfiguration (../config) kopiert hat. Ergänzt nur, was nicht als Datei im Repo liegt:
-# die lb-config-Grundeinstellungen, die Branding-Grafiken und das fastfetch-Paket.
+# Simple OS – configure live-build.
+# Runs in the build container in the working directory build/, into which build_iso.sh has copied the
+# source configuration (../config) beforehand. Only adds what is not stored as a file in the repo:
+# the lb config basics, the branding graphics and the fastfetch package.
 set -euo pipefail
 TOOLS=$(cd "$(dirname "$0")" && pwd)
 
-# contrib, non-free und non-free-firmware bleiben aktiv (Image + Quellen des Live-Systems): der Setup-Wizard
-# installiert daraus zur Laufzeit steam-installer ("Ultimate Gaming", contrib) bzw. NVIDIA-Bibliotheken (non-free).
-# Auf dem installierten System überschreibt Calamares (sources-final) die Quellen mit "main non-free-firmware";
-# simpleos-post-install ergänzt sie danach wieder (simpleos-system-setup --repos).
-# Nur amd64 im Image – i386 aktiviert der Wizard erst bei Bedarf (dpkg --add-architecture), damit apt
-# sonst keine 32-Bit-Paketlisten lädt.
-# Firmware: feste Liste in config/package-lists/40-hardware.list.chroot statt der Automatik (--firmware-chroot),
-# die jedes Bookworm-Paket mit /lib/firmware-Dateien mitnahm (Raspberry-Pi-Bootfirmware, Astronomie-Kameras …) und
-# mit der Firmware aus Backports kollidiert (firmware-realtek-rtl8723cs-bt). --firmware-binary legt Firmware nur
-# für den Debian-Installer ins ISO – Simple OS installiert mit Calamares aus dem Live-System.
-# Kernel/Firmware/Microcode aus bookworm-backports: config/archives/backports.pref.chroot (Kernel 6.12 kennt z.B.
-# Intel Raptor Lake 0xA7AA; mit 6.1 blieb der Bildschirm bei 800x600).
+# contrib, non-free and non-free-firmware stay enabled (image + sources of the live system): the Setup Wizard
+# installs steam-installer ("Ultimate Gaming", contrib) or NVIDIA libraries (non-free) from them at runtime.
+# On the installed system Calamares (sources-final) overwrites the sources with "main non-free-firmware";
+# simpleos-post-install adds them back afterwards (simpleos-system-setup --repos).
+# Only amd64 in the image – the wizard enables i386 only when needed (dpkg --add-architecture), so apt
+# does not download 32-bit package lists otherwise.
+# Firmware: a fixed list in config/package-lists/40-hardware.list.chroot instead of the automatic selection (--firmware-chroot),
+# which took every Bookworm package with /lib/firmware files (Raspberry Pi boot firmware, astronomy cameras …) and
+# conflicts with the firmware from backports (firmware-realtek-rtl8723cs-bt). --firmware-binary only puts firmware
+# into the ISO for the Debian installer – Simple OS installs with Calamares from the live system.
+# Kernel/firmware/microcode from bookworm-backports: config/archives/backports.pref.chroot (kernel 6.12 knows e.g.
+# Intel Raptor Lake 0xA7AA; with 6.1 the screen stayed at 800x600).
 lb config \
     --distribution bookworm \
     --architectures amd64 \
@@ -29,11 +29,11 @@ lb config \
     --bootappend-live "boot=live components locales=en_US.UTF-8 keyboard-layouts=us quiet splash hostname=simple-os username=simple" \
     --bootappend-live-failsafe "boot=live components memtest noapic noapm nodma nomce nolapic nosmp nosplash vga=788 locales=en_US.UTF-8 keyboard-layouts=us hostname=simple-os username=simple"
 
-# Branding-Grafiken (Calamares, Wallpaper, Wizard-Logo, Plymouth, Bootmenü der ISO) im Catppuccin-Look erzeugen
+# Generate the branding graphics (Calamares, wallpaper, wizard logo, Plymouth, ISO boot menu) in the Catppuccin look
 python3 "$TOOLS/gen_branding.py" config/includes.chroot config/bootloaders/isolinux
 
-# fastfetch: nicht in bookworm/-backports -> offizielles Upstream-.deb (Version + SHA256 fest).
-# Zwischengespeichert in build/downloads, damit nicht jeder Build neu lädt.
+# fastfetch: not in bookworm/-backports -> the official upstream .deb (version + SHA256 fixed).
+# Cached in build/downloads so not every build downloads it again.
 FASTFETCH_VERSION=2.69.0
 FASTFETCH_SHA256=cd91bc80ba416e2089e4dd40ea087e9e02028aeeb65988f92e17ede8da1c1bda
 FASTFETCH_DEB=downloads/fastfetch_${FASTFETCH_VERSION}_amd64.deb

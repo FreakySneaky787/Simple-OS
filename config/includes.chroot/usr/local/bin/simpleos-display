@@ -1,27 +1,27 @@
 #!/bin/sh
-# Simple OS – Bildschirm-Einstellungen (Super+P, Settings → Display)
-# Rofi-Menü in Alltagssprache statt Ausgangsnamen (eDP-1 -> "Built-in display", HDMI-1 -> "HDMI 1"):
-#   ein Bildschirm     "Resolution", "Refresh rate"
-#   mehrere            je Bildschirm ein Untermenü (Auflösung, Bildwiederholrate, Hauptbildschirm, Aus) und
-#                      "Duplicate", "Extend right", "Extend left", "Only <Bildschirm>" (wie Windows+P)
-#   ganz unten         "Advanced Display Settings" -> arandr (lxrandr als Ersatz)
-# Jede Änderung muss bestätigt werden ("Keep changes"); ohne Antwort in 15 s (Bild schwarz/unlesbar) oder
-# bei "Revert" stellt das Skript den alten Zustand wieder her – wie bei Windows. Bestätigte Einstellungen
-# landen in ~/.config/simpleos/display und werden beim Login per "simpleos-display --restore" gesetzt.
-# Robust wie simpleos-wifi: kein set -e, Exit 0, Fehler als Meldung, Details in ~/.cache/simpleos-display.log.
-#   simpleos-display            Menü
-#   simpleos-display --restore  gespeicherte Einstellung anwenden (Openbox-Autostart), still. Ohne gespeicherte
-#                               Einstellung: --best (Xorg nimmt sonst den bevorzugten Modus des Monitors, bei
-#                               vielen 120/144/165-Hz-Monitoren 60 Hz)
-#   simpleos-display --best     jeder aktive Bildschirm: höchste Bildwiederholrate der aktuellen Auflösung
-# Tests: SIMPLEOS_DISPLAY_TIMEOUT = Sekunden bis zum automatischen Zurücksetzen.
+# Simple OS – display settings (Super+P, Settings → Display)
+# Rofi menu in plain language instead of output names (eDP-1 -> "Built-in display", HDMI-1 -> "HDMI 1"):
+#   one screen         "Resolution", "Refresh rate"
+#   several            a submenu per screen (resolution, refresh rate, main display, off) and
+#                      "Duplicate", "Extend right", "Extend left", "Only <screen>" (like Windows+P)
+#   at the bottom      "Advanced Display Settings" -> arandr (lxrandr as a fallback)
+# Every change must be confirmed ("Keep changes"); without an answer within 15 s (picture black/unreadable) or
+# on "Revert" the script restores the old state – like on Windows. Confirmed settings
+# go to ~/.config/simpleos/display and are applied at login with "simpleos-display --restore".
+# Robust like simpleos-wifi: no set -e, exit 0, errors as a notification, details in ~/.cache/simpleos-display.log.
+#   simpleos-display            menu
+#   simpleos-display --restore  apply the saved setting (Openbox autostart), silently. Without a saved
+#                               setting: --best (otherwise Xorg takes the monitor's preferred mode, 60 Hz on
+#                               many 120/144/165 Hz monitors)
+#   simpleos-display --best     every active screen: the highest refresh rate of the current resolution
+# Tests: SIMPLEOS_DISPLAY_TIMEOUT = seconds until the automatic revert.
 
 SOS_NAME=simpleos-display SOS_TITLE=Display SOS_ICON=video-display SOS_PROMPT=Display
 TAB=$(printf '\t')
 SAVED=${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/simpleos/display
 TIMEOUT=${SIMPLEOS_DISPLAY_TIMEOUT:-15}
 LIB=/usr/local/lib/simpleos/common.sh
-# "." auf eine fehlende Datei würde dash sofort beenden -> vorher prüfen
+# "." on a missing file would end dash immediately -> check first
 [ -r "$LIB" ] || { notify-send "Display" "Simple OS is incomplete (missing $LIB)." 2>/dev/null; exit 0; }
 . "$LIB"
 sos_log_init "$@"
@@ -43,13 +43,13 @@ case "${1:-}" in
     *) command -v xrandr >/dev/null || { sos_notify "Display settings are not available (xrandr missing)." critical; exit 0; } ;;
 esac
 
-# ---- xrandr lesen. Q = Ausgabe von "xrandr --query" (einmal pro Menüdurchlauf)
+# ---- Read xrandr. Q = output of "xrandr --query" (once per menu round)
 query() { Q=$(LC_ALL=C xrandr --query 2>/dev/null); }
 connected() { printf '%s\n' "$Q" | awk '$2 == "connected" { print $1 }'; }
-# Ausgang aktiv (hat eine Geometrie WxH+X+Y)?
+# Output active (has a geometry WxH+X+Y)?
 is_on() { printf '%s\n' "$Q" | awk -v o="$1" '$1 == o { for (i = 3; i <= NF; i++) if ($i ~ /^[0-9]+x[0-9]+\+/) f = 1 } END { exit !f }'; }
 is_primary() { printf '%s\n' "$Q" | awk -v o="$1" '$1 == o && $3 == "primary" { f = 1 } END { exit !f }'; }
-# Modus-Zeilen eines Ausgangs: "Modus<TAB>Rate<TAB>aktiv(1/0)" (eine Zeile pro Rate)
+# Mode lines of an output: "mode<TAB>rate<TAB>active(1/0)" (one line per rate)
 mode_lines() {
     printf '%s\n' "$Q" | awk -v o="$1" -v OFS='\t' '
         /^[^ \t]/ { inside = ($1 == o); next }
@@ -65,7 +65,7 @@ modes() { mode_lines "$1" | cut -f1 | awk '!seen[$0]++'; }
 cur_mode() { mode_lines "$1" | awk -F'\t' '$3 == 1 { print $1; exit }'; }
 cur_rate() { mode_lines "$1" | awk -F'\t' '$3 == 1 { print $2; exit }'; }
 rates() { mode_lines "$1" | awk -F'\t' -v m="$2" '$1 == m { print $2 }'; }
-# Höchste Rate der aktuellen Auflösung je aktivem Bildschirm (nur, wenn sie höher ist als die aktuelle)
+# Highest rate of the current resolution per active screen (only if it is higher than the current one)
 best() {
     query
     for o in $(connected); do
@@ -76,15 +76,15 @@ best() {
         [ -n "$top" ] || continue
         if awk -v a="$top" -v b="${cur:-0}" 'BEGIN { exit !(a > b + 0.5) }'; then
             sos_log "best: $o $m ${cur:-?} -> $top Hz"
-            xrandr --output "$o" --mode "$m" --rate "$top" >&2 2>&1 || sos_log "best: $o $top Hz abgelehnt"
+            xrandr --output "$o" --mode "$m" --rate "$top" >&2 2>&1 || sos_log "best: $o $top Hz rejected"
         fi
     done
 }
 case "${1:-}" in
     --restore)
         if [ -s "$SAVED" ]; then
-            # Gespeicherte Ausgänge, die es nicht mehr gibt (Monitor abgesteckt) -> xrandr scheitert, alles bleibt;
-            # dann wenigstens die höchste Bildwiederholrate wie ohne gespeicherte Einstellung (sonst oft 60 Hz)
+            # Saved outputs that no longer exist (monitor unplugged) -> xrandr fails, everything stays;
+            # then at least the highest refresh rate as without a saved setting (otherwise often 60 Hz)
             # shellcheck disable=SC2046
             if ! xrandr $(head -n 1 "$SAVED") >&2 2>&1; then
                 sos_log "restore failed: $(head -n 1 "$SAVED")"
@@ -98,7 +98,7 @@ case "${1:-}" in
 esac
 command -v rofi >/dev/null || { sos_log "rofi missing"; sos_rofi_failed; }
 hz() { printf '%s' "$1" | awk '{ printf "%d Hz", $1 + 0.5 }'; }
-# Anzeigename statt Ausgangsname
+# Display name instead of the output name
 pretty() {
     n=${1##*-}; sos_is_num "$n" || n=
     case "$1" in
@@ -111,7 +111,7 @@ pretty() {
         *)                          echo "$1" ;;
     esac
 }
-# Aktueller Zustand aller angeschlossenen Ausgänge als xrandr-Argumente (zum Zurücksetzen/Speichern)
+# Current state of all connected outputs as xrandr arguments (for reverting/saving)
 snapshot() {
     args=
     for o in $(connected); do
@@ -126,8 +126,8 @@ snapshot() {
     printf '%s' "${args# }"
 }
 
-# Rückfrage mit Zeitlimit: Exit 0 nur bei "Keep changes". Grab-Fehler direkt nach dem Moduswechsel
-# -> neuer Versuch; kein Rofi, Esc oder Zeit abgelaufen -> zurücksetzen.
+# Question with a time limit: exit 0 only on "Keep changes". Grab errors right after the mode change
+# -> new attempt; no Rofi, Esc or time is up -> revert.
 confirm() {
     try=0
     while [ "$try" -lt 3 ]; do
@@ -143,9 +143,9 @@ confirm() {
         [ "$rc" -ne 0 ] && [ "$grab" = 1 ] && { sleep 0.3; continue; }
         break
     done
-    [ "$answer" = 0 ]          # Zeile 0 = "Keep changes"
+    [ "$answer" = 0 ]          # row 0 = "Keep changes"
 }
-# apply "xrandr-Argumente": anwenden, bestätigen lassen, sonst zurück; bestätigt -> speichern
+# apply "xrandr arguments": apply, let the user confirm, otherwise revert; confirmed -> save
 apply() {
     prev=$(snapshot)
     sos_log "apply: $1 (previous: $prev)"
@@ -189,7 +189,7 @@ pick_rate() {
     sos_pick "<b>Refresh rate</b>   $(sos_dim "$(pretty "$1") · $cur")" 360
     [ "$action" = set ] && apply "--output $1 --mode $cur --rate $arg1"
 }
-# Untermenü eines Bildschirms (nur bei mehreren)
+# Submenu of a screen (only with several)
 screen_menu() {
     sos_add "$(sos_fa "$I_RES")  Resolution  $(sos_dim "$(cur_mode "$1")")" "res"
     sos_add "$(sos_fa "$I_RATE")  Refresh rate  $(sos_dim "$(hz "$(cur_rate "$1")")")" "rate"
@@ -205,7 +205,7 @@ screen_menu() {
         on)      apply "--output $1 --auto --right-of $(connected | grep -vx "$1" | head -n 1)" ;;
     esac
 }
-# Größter Modus, den alle Bildschirme können (für "Duplicate")
+# Largest mode all screens support (for "Duplicate")
 common_mode() {
     first=1 list=
     for o in $(connected); do
@@ -217,7 +217,7 @@ common_mode() {
 }
 layout() {
     main=$1 prevo=$1 m=
-    # Hauptbildschirm behält seine Auflösung; ist er aus, nimmt er seinen bevorzugten Modus
+    # The main display keeps its resolution; if it is off, it takes its preferred mode
     if is_on "$1"; then args="--output $1 --primary"; else args="--output $1 --auto --primary --pos 0x0"; fi
     for o in $(connected); do
         [ "$o" = "$main" ] && continue
@@ -230,7 +230,7 @@ layout() {
             only)  args="$args --output $o --off" ;;
         esac
     done
-    # Duplizieren mit gemeinsamer Auflösung: alle anderen Bildschirme auf denselben Modus und dieselbe Stelle
+    # Duplicate with a common resolution: all other screens to the same mode and the same position
     if [ "$2" = dup ] && [ -n "$m" ]; then
         for o in $(connected); do [ "$o" = "$main" ] || args="$args --output $o --mode $m --same-as $main"; done
     fi

@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=spice-vdagent
-# Simple OS: startet ~/.config/openbox/autostart (bei xfce4-power-manager nur mit echtem Akku); ohne diese
-# Sperre liefe es doppelt, sobald PyXDG (python3-xdg) installiert ist und openbox-xdg-autostart greift
+# Simple OS: ~/.config/openbox/autostart starts it (xfce4-power-manager only with a real battery); without this
+# block it would run twice as soon as PyXDG (python3-xdg) is installed and openbox-xdg-autostart takes effect
 Hidden=true

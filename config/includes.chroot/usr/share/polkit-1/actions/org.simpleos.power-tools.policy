@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
   "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
-<!-- Simple OS – root-Helfer der Power-Werkzeuge (Aufruf per pkexec):
-       Backups     Wiederherstellungspunkte (timeshift) anlegen/zurückspielen/löschen: Passwort
-       Cleaner     Paket-Cache, alte Pakete/Runtimes, alte Protokolle löschen: Passwort
-       Task-Manager  Prozess eines anderen Benutzers (z.B. root) beenden: Passwort
-       Fehlerbericht Systemprotokoll für "Report a Problem" lesen (nur lesen): Passwort -->
+<!-- Simple OS – root helpers of the power tools (called via pkexec):
+       Backups     create/restore/delete restore points (timeshift): password
+       Cleaner     delete package cache, old packages/runtimes, old logs: password
+       Task Manager  end a process of another user (e.g. root): password
+       Problem report  read the system log for "Report a Problem" (read only): password -->
 <policyconfig>
   <vendor>Simple OS</vendor>
   <action id="org.simpleos.backup">

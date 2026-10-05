@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Erzeugt die Simple-OS-Branding-Grafiken (Catppuccin Mocha).
+"""Generates the Simple OS branding graphics (Catppuccin Mocha).
 
-Marke: "SOS" (Simple Operating System), das "O" ist ein Rettungsring – Rettung vor Big Tech – mit dem Spruch
-"Keep it Simple". Ring weiß mit vier Streifen in Catppuccin Red (rot-weiß, auch in 16 px als Rettungsring
-erkennbar), die beiden "S" im Simple-OS-Verlauf Blau -> Pink. Das Logo (logo.png, icon.png) ist der Ring allein.
+Brand: "SOS" (Simple Operating System), the "O" is a lifebuoy – a rescue from Big Tech – with the slogan
+"Keep it Simple". A white ring with four stripes in Catppuccin Red (red and white, recognizable as a lifebuoy
+even at 16 px), the two "S" in the Simple OS gradient blue -> pink. The logo (logo.png, icon.png) is the ring alone.
 
-Aufruf: gen_branding.py <includes.chroot-Ordner> [<bootloaders/isolinux-Ordner>]
-        gen_branding.py --readme docs     (nur das README-Banner docs/sos-banner.png)
-Erzeugt darin:
+Usage: gen_branding.py <includes.chroot folder> [<bootloaders/isolinux folder>]
+        gen_branding.py --readme docs     (only the README banner docs/sos-banner.png)
+Generates in it:
   etc/calamares/branding/simpleos/{logo,icon,welcome,slide1}.png
   usr/share/simpleos/logo.png
   usr/share/backgrounds/simpleos/wallpaper.png (2560x1440)
   usr/share/plymouth/themes/spinner/watermark.png
-und im zweiten Ordner das Bootmenü-Bild der ISO (statt live-builds Debian-Helm mit "Debian GNU/Linux"):
-  splash.png (640x480, isolinux/BIOS) und splash800x600.png (GRUB/UEFI nutzt es, solange es kein eigenes hat)
+and in the second folder the ISO's boot menu image (instead of live-build's Debian helmet with "Debian GNU/Linux"):
+  splash.png (640x480, isolinux/BIOS) and splash800x600.png (GRUB/UEFI uses it as long as it has no own image)
 """
 import sys
 from pathlib import Path
@@ -29,7 +29,7 @@ SUBTEXT = (0xA6, 0xAD, 0xC8)
 CRUST = (0x11, 0x11, 0x1B)
 MAUVE = (0xCB, 0xA6, 0xF7)
 LAVENDER = (0xB4, 0xBE, 0xFE)
-# Catppuccin Latte (helles Gegenstück zu Mocha) für das Tag-Wallpaper
+# Catppuccin Latte (light counterpart of Mocha) for the day wallpaper
 LATTE_CRUST = (0xDC, 0xE0, 0xE8)
 LATTE_BASE = (0xEF, 0xF1, 0xF5)
 LATTE_SURFACE0 = (0xCC, 0xD0, 0xDA)
@@ -38,15 +38,15 @@ LATTE_SURFACE2 = (0xAC, 0xB0, 0xBE)
 LATTE_BLUE = (0x1E, 0x66, 0xF5)
 LATTE_LAVENDER = (0x72, 0x87, 0xFD)
 WHITE = (0xFF, 0xFF, 0xFF)
-RED = (0xF3, 0x8B, 0xA8)          # Catppuccin Mocha Red: Streifen des Rettungsrings
-RING = (0xF5, 0xF6, 0xFA)         # Grundfarbe des Rings (fast weiß)
+RED = (0xF3, 0x8B, 0xA8)          # Catppuccin Mocha Red: stripes of the lifebuoy
+RING = (0xF5, 0xF6, 0xFA)         # base color of the ring (almost white)
 TEXT = (0xCD, 0xD6, 0xF4)
 SLOGAN = "Keep it Simple"
 
 FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
-SS = 4  # Supersampling-Faktor für glatte Kanten
+SS = 4  # supersampling factor for smooth edges
 
 
 def lerp(a, b, t):
@@ -68,7 +68,7 @@ def gradient(size, start, end, horizontal=True):
 
 
 def gradient_text(canvas, xy, text, font, start=BLUE, end=PINK, anchor="mm"):
-    """Zeichnet Text mit horizontalem Blau->Pink-Verlauf."""
+    """Draws text with a horizontal blue->pink gradient."""
     mask = Image.new("L", canvas.size, 0)
     ImageDraw.Draw(mask).text(xy, text, font=font, fill=255, anchor=anchor)
     x0, _, x1, _ = mask.getbbox()
@@ -78,8 +78,8 @@ def gradient_text(canvas, xy, text, font, start=BLUE, end=PINK, anchor="mm"):
 
 
 def make_lifebuoy(size):
-    """Rettungsring: weißer Ring, vier rote Streifen diagonal (45°, 135°, 225°, 315°), Loch transparent.
-    Ab 40 px und kleiner ist der Ring dicker, damit die Streifen sichtbar bleiben (Taskleiste, Symbole)."""
+    """Lifebuoy: white ring, four red stripes diagonally (45°, 135°, 225°, 315°), transparent hole.
+    From 40 px and smaller the ring is thicker so the stripes stay visible (taskbar, icons)."""
     s = size * SS
     img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
     c = s / 2
@@ -99,17 +99,17 @@ def make_lifebuoy(size):
 
 
 def make_logo(size):
-    """Logo = Rettungsring (Calamares, Setup-Wizard, Welcome-Seite)."""
+    """Logo = lifebuoy (Calamares, Setup Wizard, Welcome page)."""
     return make_lifebuoy(size)
 
 
 def make_wordmark(cap_px):
-    """Wortmarke "S [Ring] S", transparent, auf den Inhalt zugeschnitten. cap_px = Höhe der Großbuchstaben;
-    der Ring ist 10 % größer (Überhang wie bei einem echten "O")."""
+    """Wordmark "S [ring] S", transparent, cropped to its content. cap_px = height of the capital letters;
+    the ring is 10 % larger (overshoot like a real "O")."""
     font = ImageFont.truetype(FONT_BOLD, 100 * SS)
     probe = ImageDraw.Draw(Image.new("L", (1, 1)))
     l0, t0, r0, b0 = probe.textbbox((0, 0), "S", font=font, anchor="ls")
-    fsize = round(100 * SS * cap_px * SS / (b0 - t0))          # Schriftgröße für die gewünschte Höhe
+    fsize = round(100 * SS * cap_px * SS / (b0 - t0))          # font size for the desired height
     font = ImageFont.truetype(FONT_BOLD, fsize)
     l, t, r, b = probe.textbbox((0, 0), "S", font=font, anchor="ls")
     cap, sw = b - t, r - l
@@ -131,12 +131,12 @@ def make_wordmark(cap_px):
 
 
 def make_banner(size, title_px, subtitle):
-    """Calamares-Willkommensbild/-Folie: SOS-Wortmarke, darunter "Keep it Simple" und eine leise Zeile."""
+    """Calamares welcome image/slide: SOS wordmark, below it "Keep it Simple" and a quiet line."""
     w, h = size[0] * SS, size[1] * SS
     img = gradient((w, h), BASE, MANTLE, horizontal=False).convert("RGBA")
     draw = ImageDraw.Draw(img)
 
-    # Dezente Akzentlinien oben/unten im Verlauf
+    # Subtle accent lines at the top/bottom in the gradient
     bar = round(h * 0.012)
     img.paste(gradient((w, bar), BLUE, PINK), (0, 0))
     img.paste(gradient((w, bar), BLUE, PINK), (0, h - bar))
@@ -153,21 +153,21 @@ def make_banner(size, title_px, subtitle):
 
 
 def make_wallpaper(size, day=False):
-    """Minimal-Motiv: geschichtete Dünen unter einem ruhigen Himmel, feine Lichtkante.
-    Kein Logo, kein Text, keine Farbflecken – das Wallpaper soll hinter Fenstern verschwinden.
-    Nacht (Vorgabe): Catppuccin Mocha, Lichtkante in Lavender. Tag (day=True): dieselben Dünen in Catppuccin
-    Latte – heller Himmel mit einem Hauch Blau, weiße Lichtkante (simpleos-wallpaper-schedule wechselt).
-    Deterministisch (fester Zufallswert), damit jeder Build dasselbe Bild liefert und Tag/Nacht dieselbe
-    Landschaft zeigen."""
+    """Minimal motif: layered dunes under a calm sky, a fine edge of light.
+    No logo, no text, no color blobs – the wallpaper should disappear behind windows.
+    Night (default): Catppuccin Mocha, edge of light in lavender. Day (day=True): the same dunes in Catppuccin
+    Latte – a light sky with a hint of blue, a white edge of light (simpleos-wallpaper-schedule switches).
+    Deterministic (fixed random seed), so every build delivers the same picture and day/night show the same
+    landscape."""
     import math
     import random
 
     rnd = random.Random(1984)
-    ss = 2  # Supersampling für glatte Kanten
+    ss = 2  # supersampling for smooth edges
     w, h = size[0] * ss, size[1] * ss
 
     if day:
-        # Himmel: oben ein heller Blauschimmer, zum Horizont hin Latte-Base
+        # Sky: a light blue shimmer at the top, Latte Base towards the horizon
         sky = gradient((w, h), lerp(LATTE_BASE, LATTE_BLUE, 0.16), lerp(LATTE_BASE, LATTE_LAVENDER, 0.04),
                        horizontal=False)
         layers = [
@@ -178,9 +178,9 @@ def make_wallpaper(size, day=False):
         ]
         rim_color = WHITE
     else:
-        # Himmel: oben Crust, zum Horizont hin Base mit einem Hauch Lavender
+        # Sky: Crust at the top, Base with a hint of lavender towards the horizon
         sky = gradient((w, h), CRUST, lerp(BASE, LAVENDER, 0.06), horizontal=False)
-        # Dünen von hinten nach vorn: hinten heller (Dunst), vorne dunkler
+        # Dunes from back to front: lighter at the back (haze), darker at the front
         layers = [
             (0.58, lerp(BASE, SURFACE, 0.55), 0.050, 0.22),
             (0.66, lerp(BASE, SURFACE, 0.30), 0.060, 0.18),
@@ -201,7 +201,7 @@ def make_wallpaper(size, day=False):
         layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         d = ImageDraw.Draw(layer)
         d.polygon(pts + [(w, h), (0, h)], fill=color + (255,))
-        # Lichtkante: dünne Linie auf dem Kamm, nach oben weich auslaufend
+        # Edge of light: a thin line on the ridge, fading softly upwards
         edge = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         ImageDraw.Draw(edge).line(pts, fill=rim_color + (round(255 * rim),), width=2 * ss)
         edge = edge.filter(ImageFilter.GaussianBlur(ss))
@@ -209,19 +209,19 @@ def make_wallpaper(size, day=False):
         img = Image.alpha_composite(img, edge)
 
     img = img.convert("RGB").resize(size, Image.LANCZOS)
-    # Feine Körnung gegen Farbstufen (Banding) in den dunklen Verläufen
+    # Fine grain against color banding in the dark gradients
     noise = Image.effect_noise(size, 18).convert("RGB")
     return Image.blend(img, noise, 0.018)
 
 
 def make_watermark(scale=1.0):
-    """SOS-Wortmarke (Plymouth-Spinner, Bootmenü) mit transparentem Hintergrund."""
+    """SOS wordmark (Plymouth spinner, boot menu) with a transparent background."""
     return make_wordmark(round(58 * scale))
 
 
 def make_boot_splash(size, logo_y):
-    """Hintergrund der Bootmenüs: dunkler Verlauf, Logo + Schriftzug oben (Mitte bei logo_y, Anteil der Höhe).
-    Darunter bleibt alles frei – GRUB zeichnet sein Menü ab 52 % der Höhe, isolinux ab etwa 40 %."""
+    """Background of the boot menus: dark gradient, logo + wordmark at the top (center at logo_y, share of the height).
+    Everything below stays free – GRUB draws its menu from 52 % of the height, isolinux from about 40 %."""
     w, h = size
     img = gradient(size, CRUST, BASE, horizontal=False)
     mark = make_watermark(scale=w / 800)
@@ -230,12 +230,12 @@ def make_boot_splash(size, logo_y):
     font = ImageFont.truetype(FONT, max(11, round(14 * w / 800)))
     draw.text((w / 2, round(h * logo_y) + mark.height // 2 + round(18 * w / 800)), f"{SLOGAN} · Version 1.0",
               font=font, fill=SUBTEXT, anchor="mt")
-    # vesamenu (isolinux) und GRUB lesen nur einfache PNGs: RGB, 8 Bit, ohne Interlacing
+    # vesamenu (isolinux) and GRUB only read simple PNGs: RGB, 8 bit, without interlacing
     return img.convert("RGB")
 
 
 def main():
-    # README-Banner fürs Repository (docs/sos-banner.png): gen_branding.py --readme docs
+    # README banner for the repository (docs/sos-banner.png): gen_branding.py --readme docs
     if len(sys.argv) > 2 and sys.argv[1] == "--readme":
         out = Path(sys.argv[2])
         out.mkdir(parents=True, exist_ok=True)
@@ -252,7 +252,7 @@ def main():
     make_banner((600, 350), 72, "Simple Operating System").save(cala / "welcome.png")
     make_banner((800, 480), 96, "Simple Operating System · Version 1.0").save(cala / "slide1.png")
 
-    # Logo für den Setup-Wizard (Calamares-Branding wird nach der Installation entfernt)
+    # Logo for the Setup Wizard (the Calamares branding is removed after the installation)
     share = root / "usr/share/simpleos"
     share.mkdir(parents=True, exist_ok=True)
     make_logo(256).save(share / "logo.png")
@@ -260,7 +260,7 @@ def main():
     bg = root / "usr/share/backgrounds/simpleos"
     bg.mkdir(parents=True, exist_ok=True)
     make_wallpaper((2560, 1440)).save(bg / "wallpaper.png", optimize=True)
-    # Tag-Variante für simpleos-wallpaper-schedule (Dynamic Wallpaper: Tag hell, abends/Nachtmodus dunkel)
+    # Day variant for simpleos-wallpaper-schedule (dynamic wallpaper: light during the day, dark in the evening/night light)
     make_wallpaper((2560, 1440), day=True).save(bg / "wallpaper-day.png", optimize=True)
 
     ply = root / "usr/share/plymouth/themes/spinner"

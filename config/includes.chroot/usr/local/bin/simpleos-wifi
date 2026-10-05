@@ -1,25 +1,25 @@
 #!/bin/sh
-# Simple OS – Netzwerk-Flyout (Klick auf die Netzwerk-Anzeige in der Taskleiste, Settings → Network & Wi-Fi)
-# Aufbau wie bei Windows, ein Rofi-Menü in Alltagssprache, ohne Schnittstellennamen (wlan0, eth0, …):
-#   Überschrift   "Select network"
-#   1. Zeile      aktives Netz ("Connected: Home" / "Connected: Ethernet" / "Not connected")
-#                 Klick -> "Disconnect", "Network Details", "Back"
-#   darunter      verfügbare WLANs, nach Signalstärke sortiert; Klick verbindet (Passwort per Rofi,
-#                 gespeicherte Netze ohne Abfrage); ohne WLAN-Gerät "Wi-Fi Hardware: Not found / Disabled"
-#   ganz unten    Aktionen: "Turn off Wi-Fi" / "Turn on Wi-Fi", "Network Details"
-# Keine Terminals, keine TUI-Formulare.
+# Simple OS – network flyout (click on the network display in the taskbar, Settings → Network & Wi-Fi)
+# Built like on Windows, a Rofi menu in plain language, without interface names (wlan0, eth0, …):
+#   heading       "Select network"
+#   first row     active network ("Connected: Home" / "Connected: Ethernet" / "Not connected")
+#                 click -> "Disconnect", "Network Details", "Back"
+#   below         available Wi-Fi networks, sorted by signal strength; a click connects (password via Rofi,
+#                 saved networks without asking); without a Wi-Fi device "Wi-Fi Hardware: Not found / Disabled"
+#   at the bottom actions: "Turn off Wi-Fi" / "Turn on Wi-Fi", "Network Details"
+# No terminals, no TUI forms.
 #
-# Robustheit: kein set -e/-u; jeder Pfad endet mit Exit 0 und – wenn etwas schiefgeht – mit einer
-# verständlichen notify-send-Meldung. Technische Details landen in ~/.cache/simpleos-wifi.log.
-# Rofi kann direkt nach einem Taskleisten-Klick Tastatur/Maus oft nicht greifen -> kurz warten, erneut
-# versuchen. Startet Rofi gar nicht: nm-connection-editor (GTK), sonst eine Meldung mit den Netzwerkdaten.
+# Robustness: no set -e/-u; every path ends with exit 0 and – if something goes wrong – with a
+# clear notify-send notification. Technical details go to ~/.cache/simpleos-wifi.log.
+# Right after a taskbar click Rofi often cannot grab keyboard/mouse -> wait briefly, try again.
+# If Rofi does not start at all: nm-connection-editor (GTK), otherwise a notification with the network data.
 
 NETINFO=/usr/local/bin/simpleos-netinfo
 TAB=$(printf '\t')
 
 SOS_NAME=simpleos-wifi SOS_TITLE=Network SOS_ICON=network-wireless SOS_PROMPT=Network SOS_CORNER=1
 LIB=/usr/local/lib/simpleos/common.sh
-# "." auf eine fehlende Datei würde dash sofort beenden -> vorher prüfen
+# "." on a missing file would end dash immediately -> check first
 [ -r "$LIB" ] || { notify-send "Network" "Simple OS is incomplete (missing $LIB)." 2>/dev/null; exit 0; }
 . "$LIB"
 sos_log_init
@@ -34,7 +34,7 @@ details() {
     sos_notify "Network details are not available on this system."
     exit 0
 }
-# Rofi geht nicht: grafischer Editor, sonst Meldung mit den wichtigsten Netzwerkdaten
+# Rofi does not work: graphical editor, otherwise a notification with the most important network data
 sos_rofi_failed() {
     if command -v nm-connection-editor >/dev/null; then
         sos_notify "The network menu could not open. Opening the network settings window instead."
@@ -51,13 +51,13 @@ command -v nmcli >/dev/null || { sos_notify "Network management is not installed
 command -v rofi >/dev/null || { sos_log "rofi missing"; sos_rofi_failed; }
 
 while :; do
-    # ---- Zustand: WLAN-Gerät, aktive Verbindung (WLAN vor Kabel), Kabel-Gerät zum Verbinden
+    # ---- State: Wi-Fi device, active connection (Wi-Fi before cable), cable device to connect
     devs=$(nmcli -t -f DEVICE,TYPE,STATE,CONNECTION device 2>/dev/null)
     wifi=$(printf '%s\n' "$devs" | awk -F: '$2 == "wifi" { print $1; exit }')
     wifi_up=$(printf '%s\n' "$devs" | awk -F: '$2 == "wifi" && $3 ~ /^connected/ { print $1; exit }')
     eth_up=$(printf '%s\n' "$devs" | awk -F: '$2 == "ethernet" && $3 ~ /^connected/ { print $1; exit }')
     eth=$(printf '%s\n' "$devs" | awk -F: '$2 == "ethernet" && $3 != "unmanaged" { print $1; exit }')
-    # Kabel, das NetworkManager nicht verwaltet (manche VMs): Standardroute zählt als "Connected: Ethernet"
+    # A cable that NetworkManager does not manage (some VMs): the default route counts as "Connected: Ethernet"
     route_dev=
     [ -n "$wifi_up$eth_up" ] || route_dev=$(ip -4 route show default 2>/dev/null | awk '{
         d = ""; m = 0
@@ -67,8 +67,8 @@ while :; do
     radio=on
     [ -n "$wifi" ] && [ "$(nmcli radio wifi 2>/dev/null)" != enabled ] && radio=off
 
-    # ---- WLANs: SSID<TAB>Signal<TAB>Sicherheit<TAB>verbunden, eine Zeile pro Netz, stärkstes zuerst.
-    # SSID steht bei nmcli -t zuletzt, weil ':' darin als '\:' kommt; versteckte Netze fehlen.
+    # ---- Wi-Fi networks: SSID<TAB>signal<TAB>security<TAB>connected, one line per network, strongest first.
+    # With nmcli -t the SSID comes last, because ':' in it arrives as '\:'; hidden networks are missing.
     nets=
     if [ -n "$wifi" ] && [ "$radio" = on ]; then
         nets=$(nmcli -t -f IN-USE,SIGNAL,SECURITY,SSID device wifi list ifname "$wifi" --rescan auto 2>/dev/null | awk '
@@ -88,7 +88,7 @@ while :; do
     [ -n "$wifi_up" ] && [ -z "$current" ] &&
         current=$(printf '%s\n' "$devs" | awk -F: -v d="$wifi_up" '$1 == d { print $4; exit }')
 
-    # ---- 1. Zeile: aktives Netz
+    # ---- First row: active network
     if [ -n "$wifi_up" ]; then
         sos_add "$(sos_fa "$I_CHECK")  Connected: $(sos_esc "$current")" "active${TAB}wifi${TAB}$current"
     elif [ -n "$eth_up$route_dev" ]; then
@@ -101,8 +101,8 @@ while :; do
         sos_add "$(sos_fa "$I_OFF")  No network adapter" "none"
     fi
 
-    # ---- darunter: verfügbare WLANs (ohne das aktive), stärkstes zuerst; ohne WLAN-Gerät (kein Modul/
-    # Treiber, VM, abgeschaltet) nur ein Hinweis – Klick darauf öffnet das Menü erneut
+    # ---- Below: available Wi-Fi networks (without the active one), strongest first; without a Wi-Fi device (no module/
+    # driver, VM, switched off) only a hint – a click on it opens the menu again
     others=0
     [ -n "$wifi" ] || sos_add "$(sos_fa "$I_WIFI")  Wi-Fi Hardware: $(sos_dim "Not found / Disabled")" "info"
     if [ -n "$wifi" ] && [ "$radio" = on ]; then
@@ -122,7 +122,7 @@ EOF
         [ "$others" -gt 0 ] || sos_add "$(sos_fa "$I_SEARCH")  Search again" "rescan"
     fi
 
-    # ---- ganz unten: Aktionen
+    # ---- At the bottom: actions
     if [ -n "$wifi" ]; then
         if [ "$radio" = on ]; then sos_add "$(sos_fa "$I_POWER")  Turn off Wi-Fi" "wifi-off"
         else                       sos_add "$(sos_fa "$I_POWER")  Turn on Wi-Fi" "wifi-on"; fi
@@ -166,7 +166,7 @@ EOF
 done
 [ -n "$ssid" ] || exit 0
 
-# ---- Verbinden: gespeichertes Profil ohne Passwort, sonst Passwort per Rofi
+# ---- Connect: saved profile without a password, otherwise the password via Rofi
 if nmcli -t -f NAME connection show 2>/dev/null | grep -qxF "$ssid" &&
    nmcli --wait 20 connection up id "$ssid" >&2 2>&1; then
     sos_notify "Connected to $ssid."; exit 0
@@ -182,8 +182,8 @@ if [ "$security" != open ]; then
 fi
 
 sos_notify "Connecting to $ssid …"
-# Gespeichertes Profil (Passwort hat eben nicht geklappt): neues Passwort ins Profil schreiben und es verbinden –
-# "device wifi connect" legte sonst ein zweites Profil daneben an oder scheiterte am alten
+# Saved profile (the password just did not work): write the new password into the profile and connect it –
+# "device wifi connect" would otherwise create a second profile next to it or fail because of the old one
 if [ "${had_profile:-0}" != 0 ] && [ -n "${pw:-}" ] &&
    nmcli connection modify id "$ssid" wifi-sec.psk "$pw" >&2 2>&1 &&
    nmcli --wait 30 connection up id "$ssid" >&2 2>&1; then
@@ -195,7 +195,7 @@ if err=$(nmcli --wait 30 "$@" 2>&1 >/dev/null); then
     exit 0
 fi
 sos_log "connect failed: $err"
-# Fehlgeschlagen (meist falsches Passwort): neu angelegtes Profil wieder löschen
+# Failed (usually a wrong password): delete the newly created profile again
 [ "${had_profile:-0}" = 0 ] && nmcli connection delete id "$ssid" >&2 2>&1
 if [ "$security" != open ]; then
     sos_notify "Could not connect to $ssid. The password may be wrong – click the network display and try again." critical

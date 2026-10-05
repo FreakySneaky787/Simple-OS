@@ -1,12 +1,12 @@
 #!/bin/sh
-# Simple OS – "Open as Administrator" (Thunar: Rechtsklick)
-#   simpleos-admin-open ORDNER   Dateimanager mit Administratorrechten
-#   simpleos-admin-open DATEI    Texteditor (mousepad) mit Administratorrechten
-# Grafische Passwortabfrage über pkexec (lxpolkit). pkexec löscht die Umgebung -> DISPLAY/XAUTHORITY werden
-# per env übergeben; dbus-run-session gibt dem root-Programm einen eigenen Sitzungsbus (sonst Fehlermeldungen).
+# Simple OS – "Open as Administrator" (Thunar: right-click)
+#   simpleos-admin-open FOLDER   file manager with administrator rights
+#   simpleos-admin-open FILE     text editor (mousepad) with administrator rights
+# Graphical password prompt via pkexec (lxpolkit). pkexec clears the environment -> DISPLAY/XAUTHORITY are
+# passed with env; dbus-run-session gives the root program its own session bus (otherwise error messages).
 note() { notify-send -u critical -c x-simpleos -i dialog-error "Administrator" "$1" 2>/dev/null; exit 0; }
 target=${1:-}
-[ -n "$target" ] || { echo "Aufruf: simpleos-admin-open ORDNER|DATEI" >&2; exit 2; }
+[ -n "$target" ] || { echo "Usage: simpleos-admin-open FOLDER|FILE" >&2; exit 2; }
 case "$target" in file://*) target=${target#file://} ;; esac
 [ -e "$target" ] || note "\"$target\" does not exist."
 if [ -d "$target" ]; then app=thunar; else app=mousepad; fi
@@ -18,7 +18,7 @@ command -v dbus-run-session >/dev/null && bus=dbus-run-session
 pkexec env DISPLAY="${DISPLAY:-:0}" XAUTHORITY="${XAUTHORITY:-$HOME/.Xauthority}" \
     GTK_THEME="${GTK_THEME:-Arc-Dark}" $bus "$(command -v "$app")" "$target" >/dev/null 2>&1
 rc=$?
-# 126 = Passwortabfrage abgebrochen, 127 = nicht berechtigt
+# 126 = password prompt cancelled, 127 = not authorized
 case "$rc" in
     0|126) ;;
     127) note "You are not allowed to open this as administrator." ;;

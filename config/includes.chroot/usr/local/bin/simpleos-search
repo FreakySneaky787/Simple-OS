@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Simple OS – Spotlight-Suche (Super+Space, Super antippen, Alt+F2).
+"""Simple OS – Spotlight search (Super+Space, tap Super, Alt+F2).
 
-Ein Rofi-Fenster (Catppuccin Mocha) für alles:
-  Apps und Einstellungen   tippen filtert, Enter startet (auch über Stichwörter: "wifi" findet Network)
-  Systembefehle            Lock, Sleep, Restart, Shut down, Sign out (Neustart/Aus/Abmelden mit Rückfrage)
-  Rechnen                  "42 * 12" + Enter -> "42 * 12 = 504", Enter kopiert das Ergebnis; auch 2^10, 3,5*2,
-                           sqrt(2), (1+2)/3, pi – eigener Rechner über den Syntaxbaum, kein eval
-  Dateien und Ordner       Name + Enter durchsucht das Home-Verzeichnis (ohne versteckte Ordner), Enter öffnet
-Passt nichts aus der Liste, nimmt Enter den getippten Text; passt etwas, erzwingt Strg+Enter die Suche.
+One Rofi window (Catppuccin Mocha) for everything:
+  apps and settings        typing filters, Enter starts (also via keywords: "wifi" finds Network)
+  system commands          Lock, Sleep, Restart, Shut down, Sign out (restart/off/sign out with confirmation)
+  calculations             "42 * 12" + Enter -> "42 * 12 = 504", Enter copies the result; also 2^10, 3,5*2,
+                           sqrt(2), (1+2)/3, pi – own calculator via the syntax tree, no eval
+  files and folders        name + Enter searches the home folder (without hidden folders), Enter opens
+If nothing in the list matches, Enter takes the typed text; if something matches, Ctrl+Enter forces the search.
 
-Technik: Rofi-Script-Modus (rofi -show search -modi search:simpleos-search). Rofi ruft dieses Programm bei
-jeder Auswahl auf (ROFI_RETV 0 = Start, 1 = Zeile gewählt, 2 = eigener Text), die Antwort sind neue Zeilen –
-das Fenster bleibt offen, bis etwas gestartet wird.
-  simpleos-search             Fenster öffnen (Rofi fehlt -> Meldung, Grab-Fehler -> neuer Versuch)
-  simpleos-search --calc AUSDRUCK   nur rechnen (Tests), Exit 1 = kein Rechenausdruck
-Tests: SIMPLEOS_SEARCH_ROOT ersetzt das durchsuchte Verzeichnis ($HOME).
+Technique: Rofi script mode (rofi -show search -modi search:simpleos-search). Rofi calls this program on
+every selection (ROFI_RETV 0 = start, 1 = row selected, 2 = own text), the answer are new rows –
+the window stays open until something is started.
+  simpleos-search             open the window (Rofi missing -> notification, grab error -> new attempt)
+  simpleos-search --calc EXPRESSION   only calculate (tests), exit 1 = not a calculation
+Tests: SIMPLEOS_SEARCH_ROOT replaces the searched folder ($HOME).
 """
 import ast
 import math
@@ -31,9 +31,9 @@ from pathlib import Path
 SEP = "\x1f"
 HOME = Path(os.environ.get("SIMPLEOS_SEARCH_ROOT") or Path.home())
 MAX_FILES = 60
-FILE_TIMEOUT = 3.0   # Sekunden für die Dateisuche
+FILE_TIMEOUT = 3.0   # seconds for the file search
 LIVE = "/usr/local/bin/simpleos-live"
-SYSTEM = [  # (Schlüssel, Name, Symbol, Stichwörter, Rückfrage)
+SYSTEM = [  # (key, name, icon, keywords incl. German synonyms for German speakers, confirmation)
     ("lock", "Lock", "system-lock-screen", "lock screen sperren", None),
     ("sleep", "Sleep", "system-suspend", "sleep suspend standby ruhezustand", None),
     ("restart", "Restart", "system-reboot", "restart reboot neustart", "Restart now"),
@@ -42,15 +42,15 @@ SYSTEM = [  # (Schlüssel, Name, Symbol, Stichwörter, Rückfrage)
 ]
 
 
-# ------------------------------------------------------------------ Rechnen (sicher, ohne eval)
+# ------------------------------------------------------------------ Calculations (safe, without eval)
 _BIN = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul, ast.Div: operator.truediv,
         ast.FloorDiv: operator.floordiv, ast.Mod: operator.mod, ast.Pow: operator.pow}
 _UNARY = {ast.UAdd: operator.pos, ast.USub: operator.neg}
 _FUNCS = {"sqrt": math.sqrt, "sin": math.sin, "cos": math.cos, "tan": math.tan, "log": math.log10,
           "ln": math.log, "abs": abs, "round": round, "floor": math.floor, "ceil": math.ceil}
 _CONST = {"pi": math.pi, "e": math.e}
-# Größte Ganzzahl (Bits, ~1200 Stellen): größere Ergebnisse brachten Python an die Grenze der Zahl-zu-Text-Umwandlung
-# (4300 Stellen, Absturz der Suche) bzw. ließen den Rechner minutenlang rechnen ("((9^999)^999)^999")
+# Largest integer (bits, ~1200 digits): larger results brought Python to the limit of number-to-text conversion
+# (4300 digits, search crashed) or kept the calculator busy for minutes ("((9^999)^999)^999")
 _MAX_BITS = 4000
 
 
@@ -74,7 +74,7 @@ def _eval(node):
         if isinstance(node.op, ast.Pow):
             if abs(right) > 1000:
                 raise ValueError("exponent too large")
-            # Größe vorher abschätzen: Bits des Ergebnisses ≈ Exponent · log2(Basis)
+            # Estimate the size beforehand: bits of the result ≈ exponent · log2(base)
             if abs(left) > 1 and right > 0 and right * math.log2(abs(left)) > _MAX_BITS:
                 raise TooLarge("number too large")
         return _check(_BIN[type(node.op)](left, right))
@@ -89,9 +89,9 @@ def _eval(node):
 
 
 def calculate(text):
-    """(Anzeige, Ergebnis) oder None, wenn der Text keine Rechnung ist. Fehler -> (Meldung, None)."""
+    """(display, result) or None if the text is not a calculation. Error -> (message, None)."""
     expr = text.strip().rstrip("=").strip()
-    # Nur Ziffern, Operatoren, Klammern, bekannte Funktionen/Konstanten; mindestens eine Zahl und ein Operator
+    # Only digits, operators, brackets, known functions/constants; at least one number and one operator
     words = set(re.findall(r"[A-Za-z_]+", expr))
     if not expr or not re.search(r"\d", expr) or words - set(_FUNCS) - set(_CONST):
         return None
@@ -106,7 +106,7 @@ def calculate(text):
         return f"{expr} – the number is too large", None
     except (ValueError, TypeError, SyntaxError, OverflowError, RecursionError):
         return None
-    # negative Basis mit gebrochenem Exponenten ((-8)^(1/3)) ergibt in Python eine komplexe Zahl
+    # a negative base with a fractional exponent ((-8)^(1/3)) gives a complex number in Python
     if isinstance(value, complex):
         return f"{expr} – no result", None
     if isinstance(value, float):
@@ -115,12 +115,12 @@ def calculate(text):
         value = int(value) if value.is_integer() and abs(value) < 1e15 else float(f"{value:.12g}")
     pretty = re.sub(r"\s*([+\-*/%^×÷])\s*", r" \1 ", expr).strip()
     pretty = re.sub(r"\s+", " ", pretty).replace("( ", "(").replace(" )", ")")
-    # Vorzeichen (am Anfang, nach "(" oder nach einem Operator) ohne Leerzeichen: "(-8)" statt "(- 8)"
+    # Sign (at the start, after "(" or after an operator) without a space: "(-8)" instead of "(- 8)"
     pretty = re.sub(r"(^|[(+\-*/%^×÷] ?)([+-]) (?=[\d(.a-z])", r"\1\2", pretty)
     return f"{pretty} = {value}", str(value)
 
 
-# ------------------------------------------------------------------ Apps (.desktop-Dateien)
+# ------------------------------------------------------------------ Apps (.desktop files)
 def data_dirs():
     home = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local/share")
     dirs = os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share"
@@ -128,7 +128,7 @@ def data_dirs():
 
 
 def read_desktop(path):
-    """Schlüssel des Abschnitts [Desktop Entry]; Name/GenericName/Keywords in der Sprache von $LANG."""
+    """Keys of the [Desktop Entry] section; Name/GenericName/Keywords in the language of $LANG."""
     entry, section = {}, None
     try:
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -151,7 +151,7 @@ def read_desktop(path):
 
 
 def apps():
-    """[(desktop_id, Pfad, Eintrag)] – sichtbare Programme, nach Namen sortiert; erste Fundstelle gewinnt."""
+    """[(desktop_id, path, entry)] – visible programs sorted by name; the first location wins."""
     found = {}
     desktop = (os.environ.get("XDG_CURRENT_DESKTOP") or "openbox").lower().split(":")
     for d in data_dirs():
@@ -201,9 +201,9 @@ def launch_app(path):
     return spawn(argv)
 
 
-# ------------------------------------------------------------------ Dateien
+# ------------------------------------------------------------------ Files
 def find_files(query):
-    """Dateien/Ordner im Home, deren Name den Text enthält (ohne versteckte Ordner), beste zuerst."""
+    """Files/folders in the home folder whose name contains the text (without hidden folders), best first."""
     q = query.lower()
     hits, start = [], time.monotonic()
     for root, dirs, files in os.walk(HOME):
@@ -244,7 +244,7 @@ def open_path(path):
     return spawn(["xdg-open", str(p)])
 
 
-# ------------------------------------------------------------------ Ausgabe für Rofi
+# ------------------------------------------------------------------ Output for Rofi
 def spawn(argv):
     try:
         subprocess.Popen(argv, start_new_session=True, stdin=subprocess.DEVNULL,
@@ -324,7 +324,7 @@ def run_system(key):
                 return True
         return False
     lock = (["dm-tool", "lock"], ["loginctl", "lock-session"])
-    # vor dem Schlafen sperren – nicht in der Live-Session (Passwort unbekannt, wie system-sleep/simpleos-lock)
+    # lock before sleeping – not in the live session (password unknown, like system-sleep/simpleos-lock)
     live = os.access(LIVE, os.X_OK) and subprocess.run([LIVE, "--check"], stdout=subprocess.DEVNULL,
                                                         stderr=subprocess.DEVNULL).returncode == 0
     ok = {"lock": lambda: first(*lock),
@@ -354,7 +354,7 @@ def selected(info, text):
         notify(f"{value} copied to the clipboard.", "low")
     elif kind == "sys":
         confirm = next((c for k, _n, _i, _w, c in SYSTEM if k == value), None)
-        if confirm:   # Neustart/Aus/Abmelden: erst nachfragen (Suche nach "sh…" soll nie ausschalten)
+        if confirm:   # restart/off/sign out: ask first (a search for "sh…" should never switch off)
             header("Save your work first.")
             row(confirm, f"do:{value}", next(i for k, _n, i, _w, _c in SYSTEM if k == value))
             row("Cancel", "back:", "go-previous")
@@ -379,7 +379,7 @@ def open_window():
         err = proc.stderr.lower()
         if proc.returncode == 0 or not ("grab" in err or "already running" in err or "pidfile" in err):
             break
-        # direkt nach einem Tastendruck/Klick hält X Tastatur/Maus noch fest, oder ein anderes Rofi beendet sich gerade
+        # right after a key press/click X still holds keyboard/mouse, or another Rofi is just closing
         time.sleep(0.3)
     else:
         notify("Search could not open. Please try again.", "critical")

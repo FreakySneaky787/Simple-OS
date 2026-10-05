@@ -1,22 +1,22 @@
 #!/bin/sh
-# Simple OS – Energie-Optionen (Control Center → Power)
-#   simpleos-power --get                 Einstellungen ausgeben (screen_off=<Minuten, 0 = nie>, charge_limit=on|off|unsupported)
-#   simpleos-power --screen-off MIN      Bildschirm nach MIN Minuten ausschalten (0 = nie), wirkt sofort
+# Simple OS – power options (Control Center → Power)
+#   simpleos-power --get                 print settings (screen_off=<minutes, 0 = never>, charge_limit=on|off|unsupported)
+#   simpleos-power --screen-off MIN      turn the screen off after MIN minutes (0 = never), takes effect immediately
 #   simpleos-power --charge-limit on|off|status
-#                                        Akkuschonung: nur bis ~80 % laden (Lenovo "Conservation Mode" bzw.
-#                                        charge_control_end_threshold anderer Laptops), wirkt sofort
-#   simpleos-power --profile             Energieprofil (power-profiles-daemon): "current=<Profil>" und
-#                                        "available=<Profile>" bzw. "current=unsupported" ohne Dienst
-#   simpleos-power --profile NAME        power-saver | balanced | performance setzen (merkt sich der Dienst selbst;
-#                                        aktive Sitzung darf das ohne Passwort, Polkit von power-profiles-daemon)
-#   simpleos-power --apply               gespeicherte Einstellungen anwenden (Openbox-Autostart)
-# X-Bildschirmschoner + DPMS per xset; Einstellungen in ~/.config/simpleos/power. In VMs schaltet DPMS nur die
-# virtuelle Anzeige ab – harmlos. Akku-Programme startet dieses Skript nicht (siehe simpleos-battery).
-# Akkuschonung: Schreibrechte für die Gruppe sudo gibt /etc/udev/rules.d/60-simpleos-charge-limit.rules.
-# Lenovo speichert den Modus im Laptop selbst; bei anderen Herstellern geht er beim Neustart teils verloren,
-# daher setzt --apply eine selbst gewählte Einstellung beim Login erneut (ohne eigene Wahl: nichts anfassen).
-# Test: SIMPLEOS_POWER_SUPPLY (statt /sys/class/power_supply), SIMPLEOS_IDEAPAD (statt des ideapad_acpi-Treibers).
-# Kein set -e, Exit 0 (außer bei falschem Aufruf bzw. --charge-limit ohne Unterstützung/Rechte: Exit 1).
+#                                        battery protection: charge only up to ~80 % (Lenovo "Conservation Mode" or
+#                                        charge_control_end_threshold of other laptops), takes effect immediately
+#   simpleos-power --profile             power profile (power-profiles-daemon): "current=<profile>" and
+#                                        "available=<profiles>" or "current=unsupported" without the service
+#   simpleos-power --profile NAME        set power-saver | balanced | performance (the service remembers it itself;
+#                                        the active session may do that without a password, polkit of power-profiles-daemon)
+#   simpleos-power --apply               apply saved settings (Openbox autostart)
+# X screensaver + DPMS via xset; settings in ~/.config/simpleos/power. In VMs DPMS only turns off the
+# virtual display – harmless. This script does not start battery programs (see simpleos-battery).
+# Battery protection: /etc/udev/rules.d/60-simpleos-charge-limit.rules gives the sudo group write access.
+# Lenovo stores the mode in the laptop itself; with other manufacturers it is sometimes lost on restart,
+# so --apply sets a self-chosen setting again at login (without your own choice: touch nothing).
+# Test: SIMPLEOS_POWER_SUPPLY (instead of /sys/class/power_supply), SIMPLEOS_IDEAPAD (instead of the ideapad_acpi driver).
+# No set -e, exit 0 (except on wrong usage or --charge-limit without support/permissions: exit 1).
 CONF=${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/simpleos/power
 PS=${SIMPLEOS_POWER_SUPPLY:-/sys/class/power_supply}
 IDEAPAD=${SIMPLEOS_IDEAPAD:-/sys/bus/platform/drivers/ideapad_acpi}
@@ -45,7 +45,7 @@ apply_screen() {
     fi
 }
 
-# Akkuschonung: erst Lenovo (ideapad_acpi), sonst der Kernel-Standard am Akku
+# Battery protection: Lenovo first (ideapad_acpi), otherwise the kernel standard on the battery
 ideapad_file() {
     for f in "$IDEAPAD"/*/conservation_mode; do
         [ -f "$f" ] && { echo "$f"; return 0; }
@@ -69,20 +69,20 @@ limit_status() {
     fi
 }
 put() { { printf '%s\n' "$2" > "$1"; } 2>/dev/null; }
-limit_set() {   # $1 = on|off; 0 = gesetzt
+limit_set() {   # $1 = on|off; 0 = set
     if f=$(ideapad_file); then
         [ "$1" = on ] && v=1 || v=0
         put "$f" "$v"
     elif b=$(threshold_bat); then
         if [ "$1" = on ]; then
-            # Manche Laptops (z.B. ThinkPad) verlangen Start < Ende – sonst lehnt der Kernel das Ende ab
+            # Some laptops (e.g. ThinkPad) require start < end – otherwise the kernel rejects the end
             start=$(cat "$b/charge_control_start_threshold" 2>/dev/null)
             if is_num "$start" && [ "$start" -ge "$LIMIT" ]; then
                 put "$b/charge_control_start_threshold" $((LIMIT - 5))
             fi
             put "$b/charge_control_end_threshold" "$LIMIT"
         else
-            # Erst das Ende hoch, dann den Start auf 0 (= immer laden) – sonst lüde er erst unter 75 % wieder
+            # First raise the end, then the start to 0 (= always charge) – otherwise it would only charge again below 75 %
             put "$b/charge_control_end_threshold" 100
             [ -f "$b/charge_control_start_threshold" ] && put "$b/charge_control_start_threshold" 0
         fi
@@ -92,8 +92,8 @@ limit_set() {   # $1 = on|off; 0 = gesetzt
     [ "$(limit_status)" = "$1" ]
 }
 
-# Profile aus "powerprofilesctl list": Kopfzeilen "* balanced:" (aktiv) bzw. "  performance:", darunter eingerückte
-# Details ("Driver:     intel_pstate"), die nicht auf ":" enden. Ausgabe: ein Profil pro Zeile, aktives mit "*"
+# Profiles from "powerprofilesctl list": header lines "* balanced:" (active) or "  performance:", indented details
+# below ("Driver:     intel_pstate") that do not end with ":". Output: one profile per line, the active one with "*"
 profiles() {
     command -v powerprofilesctl >/dev/null || return 1
     timeout 10 powerprofilesctl list 2>/dev/null |
@@ -138,6 +138,6 @@ case "${1:-}" in
         if [ -n "$charge_limit" ] && [ "$(limit_status)" != unsupported ] && [ "$(limit_status)" != "$charge_limit" ]; then
             limit_set "$charge_limit"
         fi ;;
-    *) echo "Aufruf: simpleos-power --get | --screen-off MIN | --charge-limit on|off|status | --profile [NAME] | --apply" >&2; exit 2 ;;
+    *) echo "Usage: simpleos-power --get | --screen-off MIN | --charge-limit on|off|status | --profile [NAME] | --apply" >&2; exit 2 ;;
 esac
 exit 0

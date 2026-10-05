@@ -1,5 +1,5 @@
 #!/bin/sh
 set -e
 flatpak remote-add --if-not-exists --system flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-# GTK4/libadwaita-Flatpaks (Bazaar) über das GTK-Portal dunkel darstellen
+# Show GTK4/libadwaita Flatpaks (Bazaar) dark via the GTK portal
 glib-compile-schemas /usr/share/glib-2.0/schemas

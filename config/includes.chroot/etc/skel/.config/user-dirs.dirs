@@ -1,5 +1,5 @@
-# Simple OS – Standardordner (xdg-user-dirs). Feste englische Namen, passend zur Oberfläche;
-# "$HOME/" allein = Ordner abgeschaltet (kein leerer "Public").
+# Simple OS – standard folders (xdg-user-dirs). Fixed English names, matching the interface;
+# "$HOME/" alone = folder disabled (no empty "Public").
 XDG_DESKTOP_DIR="$HOME/Desktop"
 XDG_DOWNLOAD_DIR="$HOME/Downloads"
 XDG_TEMPLATES_DIR="$HOME/Templates"

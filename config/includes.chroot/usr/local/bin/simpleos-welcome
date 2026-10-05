@@ -1,22 +1,22 @@
 #!/bin/sh
-# Simple OS – Willkommensseite öffnen (Menü → Help → Welcome to Simple OS)
-# Nie über den Standardbrowser ($BROWSER, xdg-open): gehärtete Browser wie der Mullvad Browser (Flatpak) sehen
-# /usr/share nicht bzw. blockieren file://-Seiten, und ein VPN kann localhost sperren. Reihenfolge:
-#   1. eigenes WebKit-Fenster (/usr/local/lib/simpleos/welcome-viewer) – der Normalfall
-#   2. Firefox ESR / Chromium (Debian-Pakete, lesen /usr/share direkt), falls WebKit fehlt
-#   3. Meldung mit dem Pfad der Seite
-# Kein set -e; immer Exit 0. Details in ~/.cache/simpleos-welcome.log.
+# Simple OS – open the welcome page (Menu → Help → Welcome to Simple OS)
+# Never via the default browser ($BROWSER, xdg-open): hardened browsers like the Mullvad Browser (Flatpak) cannot see
+# /usr/share or block file:// pages, and a VPN can block localhost. Order:
+#   1. own WebKit window (/usr/local/lib/simpleos/welcome-viewer) – the normal case
+#   2. Firefox ESR / Chromium (Debian packages, read /usr/share directly), if WebKit is missing
+#   3. a notification with the path of the page
+# No set -e; always exit 0. Details in ~/.cache/simpleos-welcome.log.
 
 SOS_NAME=simpleos-welcome SOS_TITLE="Welcome" SOS_ICON=user-home
 PAGE=/usr/share/simpleos/welcome.html
 VIEWER=/usr/local/lib/simpleos/welcome-viewer
 LIB=/usr/local/lib/simpleos/common.sh
-# "." auf eine fehlende Datei würde dash sofort beenden -> vorher prüfen
+# "." on a missing file would end dash immediately -> check first
 [ -r "$LIB" ] || { notify-send "Welcome" "Simple OS is incomplete (missing $LIB)." 2>/dev/null; exit 0; }
 . "$LIB"
 sos_log_init "$@"
 
-# Lokale Adressen nie über Proxy/VPN-Proxy; der Standardbrowser des Nutzers spielt hier keine Rolle
+# Never route local addresses through a proxy/VPN proxy; the user's default browser plays no role here
 export NO_PROXY="localhost,127.0.0.1,::1${NO_PROXY:+,$NO_PROXY}"
 export no_proxy="localhost,127.0.0.1,::1${no_proxy:+,$no_proxy}"
 unset BROWSER
@@ -26,7 +26,7 @@ unset BROWSER
 if [ -x "$VIEWER" ] && command -v python3 >/dev/null; then
     python3 "$VIEWER" "$PAGE"
     rc=$?
-    [ "$rc" -eq 3 ] || exit 0          # 3 = WebKit/Bildschirm nicht verfügbar -> nächster Weg
+    [ "$rc" -eq 3 ] || exit 0          # 3 = WebKit/screen not available -> next way
     sos_log "viewer unavailable, falling back"
 fi
 if command -v firefox-esr >/dev/null; then exec firefox-esr --new-window "file://$PAGE"; fi

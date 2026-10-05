@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Simple OS in QEMU testen.
+# Test Simple OS in QEMU.
 #   ./test_vm.sh [--uefi | --secureboot] [--installed]
-#     (ohne)         klassisches BIOS (SeaBIOS)                          Platte output/disk.qcow2
-#     --uefi         UEFI ohne Secure Boot (OVMF)                        Platte output/disk-uefi.qcow2
-#     --secureboot   UEFI mit Secure Boot und den Microsoft-Schlüsseln wie bei einem gekauften Laptop
-#                                                                        Platte output/disk-secureboot.qcow2
-#     --installed    das installierte System von der Platte starten (ohne ISO)
-# UEFI: Der NVRAM (Booteinträge, Secure-Boot-Schlüssel) liegt je Modus in output/ovmf-vars-<modus>.fd und bleibt
-# zwischen Installation und Neustart erhalten – wie auf echter Hardware. Neu anfangen: Platte und vars-Datei löschen.
-# Braucht für UEFI das Paket edk2-ovmf (Fedora).
+#     (none)         classic BIOS (SeaBIOS)                              disk output/disk.qcow2
+#     --uefi         UEFI without Secure Boot (OVMF)                     disk output/disk-uefi.qcow2
+#     --secureboot   UEFI with Secure Boot and the Microsoft keys like on a laptop you buy
+#                                                                        disk output/disk-secureboot.qcow2
+#     --installed    boot the installed system from the disk (without the ISO)
+# UEFI: the NVRAM (boot entries, Secure Boot keys) is stored per mode in output/ovmf-vars-<mode>.fd and is kept
+# between installation and restart – like on real hardware. To start over: delete the disk and the vars file.
+# UEFI needs the package edk2-ovmf (Fedora).
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -20,7 +20,7 @@ for a in "$@"; do
         --uefi) mode=uefi ;;
         --secureboot) mode=secureboot ;;
         --installed) installed=1 ;;
-        *) echo "Aufruf: $0 [--uefi | --secureboot] [--installed]" >&2; exit 2 ;;
+        *) echo "Usage: $0 [--uefi | --secureboot] [--installed]" >&2; exit 2 ;;
     esac
 done
 
@@ -32,25 +32,25 @@ esac
 if [[ $installed == 1 ]]; then
     if [[ ! -f "$DISK" ]]; then
         flag=; [[ $mode != bios ]] && flag=" --$mode"
-        echo "Keine Festplatte für diesen Modus – zuerst installieren: $0$flag" >&2
+        echo "No disk for this mode – install first: $0$flag" >&2
         exit 1
     fi
     BOOT=()
 else
     if [[ ! -f "$ISO" ]]; then
-        echo "Keine ISO gefunden – zuerst ./build_iso.sh ausführen." >&2
+        echo "No ISO found – run ./build_iso.sh first." >&2
         exit 1
     fi
-    # Virtuelle Zielfestplatte für den Installer anlegen
+    # Create the virtual target disk for the installer
     if [[ ! -f "$DISK" ]]; then
-        echo "Lege $DISK (20G) an ..."
+        echo "Creating $DISK (20G) ..."
         qemu-img create -f qcow2 "$DISK" 20G
     fi
     BOOT=(-boot d -cdrom "$ISO")
 fi
 
-# Firmware: BIOS = QEMU-Standard; UEFI = OVMF mit eigener, beschreibbarer NVRAM-Kopie je Modus.
-# Secure Boot braucht den q35-Chipsatz mit SMM, sonst könnte das System die Schlüssel umgehen (OVMF verweigert dann).
+# Firmware: BIOS = QEMU default; UEFI = OVMF with its own writable NVRAM copy per mode.
+# Secure Boot needs the q35 chipset with SMM, otherwise the system could bypass the keys (OVMF then refuses).
 FIRMWARE=()
 if [[ $mode != bios ]]; then
     if [[ $mode == secureboot ]]; then
@@ -61,7 +61,7 @@ if [[ $mode != bios ]]; then
         FIRMWARE=(-machine q35)
     fi
     if [[ ! -f "$CODE" || ! -f "$VARS_TEMPLATE" ]]; then
-        echo "UEFI-Firmware fehlt ($CODE) – installieren mit: sudo dnf install edk2-ovmf" >&2
+        echo "UEFI firmware missing ($CODE) – install it with: sudo dnf install edk2-ovmf" >&2
         exit 1
     fi
     VARS=./output/ovmf-vars-$mode.fd
@@ -70,18 +70,18 @@ if [[ $mode != bios ]]; then
                -drive if=pflash,format=raw,unit=1,file="$VARS")
 fi
 
-# Absolutes Zeigegerät: Gast-Cursor folgt dem Host-Cursor ohne Versatz/Lag (statt relativer PS/2-Maus)
+# Absolute pointing device: the guest cursor follows the host cursor without offset/lag (instead of a relative PS/2 mouse)
 INPUT=(-device qemu-xhci -device usb-tablet)
 
-# Soundkarte (über PipeWire des Hosts), sonst haben die Lautstärketasten nichts zu steuern
+# Sound card (via the host's PipeWire), otherwise the volume keys have nothing to control
 AUDIO=(-audiodev pipewire,id=snd0 -device intel-hda -device hda-duplex,audiodev=snd0)
 
-# SPICE-Agent-Kanal (QEMU-intern): gemeinsame Zwischenablage. Maus bewusst aus -> Zeiger nur über das USB-Tablet
+# SPICE agent channel (QEMU internal): shared clipboard. Mouse deliberately off -> pointer only via the USB tablet
 VDAGENT=(-device virtio-serial-pci
     -chardev qemu-vdagent,id=vdagent,name=vdagent,clipboard=on,mouse=off
     -device virtserialport,chardev=vdagent,name=com.redhat.spice.0)
 
-echo "Modus: $mode$([[ $installed == 1 ]] && echo ' (installiertes System)') – Platte $DISK"
+echo "Mode: $mode$([[ $installed == 1 ]] && echo ' (installed system)') – disk $DISK"
 qemu-system-x86_64 -m 4096 -smp 4 -enable-kvm -cpu host -vga virtio \
     "${FIRMWARE[@]}" \
     -display gtk,grab-on-hover=on \

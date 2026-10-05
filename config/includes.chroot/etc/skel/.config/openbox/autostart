@@ -1,80 +1,80 @@
 # Simple OS – Openbox Autostart
-# Auflösung: in VMs erst 1920x1080 als Basis (echte Monitore behalten ihre native Auflösung).
-# Bietet die virtuelle Grafik den Modus nicht an, den bevorzugten Modus nehmen statt bei 1024x768 zu bleiben.
-# Danach passt spice-vdagent Größe + Zwischenablage an, sofern die VM einen SPICE-Kanal hat
-# (Daemon spice-vdagentd startet per udev). Größe folgt dem Fenster nur mit SPICE-Client (virt-manager,
-# remote-viewer); QEMUs eingebauter qemu-vdagent (test_vm.sh) liefert nur Zwischenablage.
+# Resolution: in VMs first 1920x1080 as a base (real monitors keep their native resolution).
+# If the virtual graphics does not offer that mode, take the preferred mode instead of staying at 1024x768.
+# Afterwards spice-vdagent adjusts size + clipboard, if the VM has a SPICE channel
+# (the spice-vdagentd daemon starts via udev). The size follows the window only with a SPICE client (virt-manager,
+# remote-viewer); QEMU's built-in qemu-vdagent (test_vm.sh) only provides the clipboard.
 if systemd-detect-virt -q --vm; then
     xrandr -s 1920x1080 2>/dev/null || xrandr --auto 2>/dev/null || true
 fi
-# Standardordner (Documents, Downloads, Pictures … kommen samt ~/.config/user-dirs.dirs aus /etc/skel): Seitenleiste
-# von Thunar und Dateidialogen beim ersten Login einmal damit füllen – braucht den echten Home-Pfad, daher nicht
-# schon in /etc/skel. Kein xdg-user-dirs-update: das legt gelöschte Ordner nicht neu an, sondern biegt sie auf ~ um
+# Standard folders (Documents, Downloads, Pictures … come with ~/.config/user-dirs.dirs from /etc/skel): fill the
+# sidebar of Thunar and file dialogs with them once at first login – needs the real home path, so not already
+# in /etc/skel. No xdg-user-dirs-update: it does not recreate deleted folders but points them to ~ instead
 mkdir -p ~/.config/gtk-3.0
 [ -e ~/.config/gtk-3.0/bookmarks ] || for d in Documents Downloads Pictures Music Videos; do
     echo "file://$HOME/$d $d"
 done > ~/.config/gtk-3.0/bookmarks
-# Eigene Bildschirm-Einstellung (Settings → Display, bestätigt mit "Keep changes") hat Vorrang
+# Your own display setting (Settings → Display, confirmed with "Keep changes") takes precedence
 simpleos-display --restore
-# Tastaturlayout des Kontos (simpleos-keyboard-setup; systemweit steht es in /etc/default/keyboard)
+# Keyboard layout of the account (simpleos-keyboard-setup; system-wide it is in /etc/default/keyboard)
 simpleos-keyboard-setup --apply
-# Live-Session (USB-Stick/ISO): Desktop-Icon "Install Simple OS" + Welcome mit Installations-Banner;
-# installiertes System: Installer-Reste aus Desktop und Menü entfernen. Badge in der Taskleiste: --apply unten
+# Live session (USB stick/ISO): desktop icon "Install Simple OS" + Welcome with the install banner;
+# installed system: remove installer leftovers from the desktop and menu. Taskbar badge: --apply below
 simpleos-live --setup
 if [ -e /dev/virtio-ports/com.redhat.spice.0 ]; then
     spice-vdagent &
 fi
-# Compositor (Schatten, runde Ecken; GLX + VSync; nur Software-OpenGL/llvmpipe -> xrender ohne Effekte, Fallbacks
-# ohne VSync/GLX): simpleos-picom – dieselbe Logik nutzt Do Not Disturb (simpleos-dnd) beim Wiedereinschalten
+# Compositor (shadows, rounded corners; GLX + VSync; software OpenGL/llvmpipe only -> xrender without effects, fallbacks
+# without VSync/GLX): simpleos-picom – Do Not Disturb (simpleos-dnd) uses the same logic when switching back on
 simpleos-picom --start
-# XSETTINGS (xsettingsd): GTK-Theme/Symbole/Schrift für alle GTK3-Programme; simpleos-theme schaltet Hell/Dunkel
-# darüber live um (SIGHUP) – ohne Settings-Dienst sähen laufende Fenster den Wechsel erst nach einem Neustart
+# XSETTINGS (xsettingsd): GTK theme/icons/font for all GTK3 programs; simpleos-theme switches light/dark
+# through it live (SIGHUP) – without a settings service, running windows would only see the change after a restart
 simpleos-theme --xsettings
-# Hintergrund: Fallback-Farbe, dann Wallpaper per feh (synchron, sofort sichtbar),
-# danach pcmanfm für Desktop-Icons (zeichnet dasselbe Wallpaper)
+# Background: fallback color, then the wallpaper via feh (synchronous, visible immediately),
+# then pcmanfm for desktop icons (draws the same wallpaper)
 xsetroot -solid "#1e1e2e"
 feh --no-fehbg --bg-fill /usr/share/backgrounds/simpleos/wallpaper.png
 pcmanfm --desktop &
-# Standard-Mauszeiger setzen (sonst unsichtbar über dem Root-Fenster)
+# Set the default mouse cursor (otherwise invisible over the root window)
 xsetroot -cursor_name left_ptr &
-# Benachrichtigungen zuerst: Applets und Skripte melden sich teils direkt beim Start (z.B. nm-applet
-# "Connection established"); sonst startete D-Bus dunst nebenbei und dieser Aufruf liefe ins Leere.
-# simpleos-dunst hängt in VMs/ohne echten Akku den Akku-Filter an (keine "Battery low"-Fehlalarme)
+# Notifications first: applets and scripts sometimes report right at startup (e.g. nm-applet
+# "Connection established"); otherwise D-Bus would start dunst on the side and this call would go nowhere.
+# simpleos-dunst appends the battery filter in VMs/without a real battery (no false "Battery low" alarms)
 simpleos-dunst &
-# System-Applets für die Taskleiste
+# System applets for the taskbar
 lxpolkit &
-# NetworkManager-Applet: Linksklick aufs Tray-Symbol listet die WLANs (anklicken, Passwort eingeben)
+# NetworkManager applet: a left click on the tray icon lists the Wi-Fi networks (click, enter the password)
 nm-applet &
 blueman-applet &
-# Power-Manager nur mit echtem Akku (nicht in VMs, nicht am Desktop-PC): sonst meldete er über UPower
-# Phantom-Geräte mit 0 % als "low power". Meldungen/Tray-Symbol sind ohnehin aus
-# (/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml), Akku-Anzeige: tint2 + simpleos-battery
+# Power manager only with a real battery (not in VMs, not on desktop PCs): otherwise it reported phantom
+# devices with 0 % as "low power" via UPower. Notifications/tray icon are off anyway
+# (/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml), battery display: tint2 + simpleos-battery
 simpleos-battery --present && xfce4-power-manager &
 volumeicon &
-# Taskleiste: Einstellungen anwenden (u.a. Akkuanzeige nur auf Geräten mit Akku), dann starten.
-# Ohne DISPLAY, sonst startet --apply selbst ein tint2 und es gäbe zwei Leisten.
+# Taskbar: apply the settings (e.g. battery display only on devices with a battery), then start it.
+# Without DISPLAY, otherwise --apply starts a tint2 itself and there would be two bars.
 env -u DISPLAY simpleos-taskbar-select --apply 2>/dev/null
 tint2 &
-# USB-Sticks/-Festplatten automatisch einbinden; Meldung mit "Open" über simpleos-usb-notify (statt der
-# technischen udiskie-Meldungen), Tray-Symbol zum sicheren Entfernen nur, solange ein Laufwerk steckt
+# Mount USB sticks/drives automatically; notification with "Open" via simpleos-usb-notify (instead of the
+# technical udiskie notifications), tray icon for safe removal only while a drive is plugged in
 udiskie --automount --no-notify --smart-tray --file-manager thunar \
     --notify-command "/usr/local/bin/simpleos-usb-notify {event} {mount_path} {id_label} {drive_label}" &
-# Updates: 2 Minuten nach dem Login prüfen – Meldung nur, wenn es welche gibt (nicht in der Live-Session)
+# Updates: check 2 minutes after login – a notification only if there are any (not in the live session)
 (sleep 120; /usr/local/bin/simpleos-update --check) &
-# Zwischenablage-Verlauf (Super+V) merkt sich kopierte Texte
+# Clipboard history (Super+V) remembers copied texts
 simpleos-clipboard --daemon &
-# Nachtmodus (an/aus/automatisch 20–7 Uhr, Settings → Night Light) und Bildschirm-Abschaltung (Control Center → Power)
+# Night light (on/off/automatic 20–7 o'clock, Settings → Night Light) and screen blanking (Control Center → Power)
 simpleos-nightlight --daemon &
-# Dynamic Wallpaper (Control Center → Appearance): tagsüber hell, abends/Nachtmodus dunkel – ohne Einschalten still
+# Dynamic wallpaper (Control Center → Appearance): light during the day, dark in the evening/night light – silent unless switched on
 simpleos-wallpaper-schedule --daemon &
 simpleos-power --apply
-# Super-Taste allein antippen -> XF86Search (Openbox: Suche/Menü). Bewusst eine eigene Taste statt eines
-# künstlichen Super+Space: das vermischte sich mit echtem Super+Space (Menü ging auf und gleich wieder
-# zu oder gar nicht) und mit Super-Kürzeln. Super+Space bleibt eine eigene Openbox-Taste; erneutes Antippen
-# schließt das Menü (Rofi: kb-cancel XF86Search). Hält man Super länger als 500 ms, passiert nichts.
+# Tapping the Super key alone -> XF86Search (Openbox: search/menu). Deliberately its own key instead of a
+# synthetic Super+Space: that mixed with real Super+Space (the menu opened and closed again right away
+# or not at all) and with Super shortcuts. Super+Space stays its own Openbox key; tapping again
+# closes the menu (Rofi: kb-cancel XF86Search). If you hold Super longer than 500 ms, nothing happens.
 pkill -x xcape 2>/dev/null
 xcape -e 'Super_L=XF86Search;Super_R=XF86Search' &
-# Einrichtungsassistent beim ersten Login (nicht in der Live-Session). Mit SPICE kurz warten, bis
-# spice-vdagent die Auflösung gesetzt hat – sonst wird der Wizard auf der alten Bildschirmgröße zentriert.
+# Setup Wizard at first login (not in the live session). With SPICE wait briefly until
+# spice-vdagent has set the resolution – otherwise the wizard is centered on the old screen size.
 [ -e /dev/virtio-ports/com.redhat.spice.0 ] && sleep 2
 simpleos-welcome-wizard --first-run &

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Simple OS – Rechtsklick-Aktionen im Dateimanager (Thunar "Custom Actions")
-     "Extract Here" / "Extract To…" für Archive liefert thunar-archive-plugin (file-roller). -->
+<!-- Simple OS – right-click actions in the file manager (Thunar "Custom Actions")
+     "Extract Here" / "Extract To…" for archives come from thunar-archive-plugin (file-roller). -->
 <actions>
   <action>
     <icon>utilities-terminal</icon>

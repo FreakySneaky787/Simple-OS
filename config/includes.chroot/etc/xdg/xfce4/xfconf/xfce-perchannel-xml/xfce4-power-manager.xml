@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Simple OS – Systemvorgaben für xfce4-power-manager (xfconfd liest $XDG_CONFIG_DIRS, also /etc/xdg).
-     Der Power-Manager startet nur auf Geräten mit echtem Akku (Openbox-Autostart über simpleos-battery).
-     Achtung: in XML-Kommentaren ist ein doppelter Bindestrich verboten.
-     Akku-Anzeige und "Battery low" übernehmen tint2 + simpleos-battery; xfce4-power-manager bleibt still:
-       show-tray-icon       false  kein zweites Akku-Symbol im Tray
-       general-notification false  keine Meldungen "System is running on low power" / "Your mouse charge
-                                   level is low" (auch Funkmäuse/-tastaturen und USVs über UPower)
-       handle-brightness-keys / show-brightness-popup false  Helligkeitstasten macht Openbox + simpleos-osd
-                                   (eigenes OSD; sonst doppelt bzw. Konflikt um die Tasten)
-       logind-handle-lid-switch true  Deckel zuklappen entscheidet logind (/etc/systemd/logind.conf.d/
-                                   10-simpleos-lid.conf: Energiesparmodus, auch am Netzteil) -->
+<!-- Simple OS – system defaults for xfce4-power-manager (xfconfd reads $XDG_CONFIG_DIRS, i.e. /etc/xdg).
+     The power manager only starts on devices with a real battery (Openbox autostart via simpleos-battery).
+     Caution: a double hyphen is not allowed in XML comments.
+     tint2 + simpleos-battery handle the battery display and "Battery low"; xfce4-power-manager stays quiet:
+       show-tray-icon       false  no second battery icon in the tray
+       general-notification false  no notifications "System is running on low power" / "Your mouse charge
+                                   level is low" (also wireless mice/keyboards and UPSs via UPower)
+       handle-brightness-keys / show-brightness-popup false  Openbox + simpleos-osd handle the brightness keys
+                                   (own OSD; otherwise duplicated or a conflict over the keys)
+       logind-handle-lid-switch true  logind decides about closing the lid (/etc/systemd/logind.conf.d/
+                                   10-simpleos-lid.conf: sleep, also on AC power) -->
 <channel name="xfce4-power-manager" version="1.0">
   <property name="xfce4-power-manager" type="empty">
     <property name="show-tray-icon" type="bool" value="false"/>

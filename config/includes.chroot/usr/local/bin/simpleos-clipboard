@@ -1,19 +1,19 @@
 #!/usr/bin/python3
-"""Simple OS – Zwischenablage-Verlauf (Super+V, wie Windows+V).
+"""Simple OS – clipboard history (Super+V, like Windows+V).
 
-  simpleos-clipboard            Rofi-Liste der zuletzt kopierten Texte; Auswahl kommt zurück in die
-                                Zwischenablage (Strg+V fügt sie ein), "Clear history" leert den Verlauf
-  simpleos-clipboard --daemon   merkt sich jeden kopierten Text (Openbox-Autostart, GTK3 owner-change,
-                                kein Abfragen im Takt); läuft nur einmal pro Sitzung
-  simpleos-clipboard --list     Verlauf als JSON (Tests)
-  simpleos-clipboard --add TEXT Eintrag hinzufügen (Tests)
-  simpleos-clipboard --clear    Verlauf leeren
+  simpleos-clipboard            Rofi list of the most recently copied texts; the selection goes back into the
+                                clipboard (Ctrl+V pastes it), "Clear history" empties the history
+  simpleos-clipboard --daemon   remembers every copied text (Openbox autostart, GTK3 owner-change,
+                                no polling); runs only once per session
+  simpleos-clipboard --list     history as JSON (tests)
+  simpleos-clipboard --add TEXT add an entry (tests)
+  simpleos-clipboard --clear    empty the history
 
-Nur Text, höchstens 50 Einträge à 100 000 Zeichen, gleiche Texte rutschen nach oben. Verlauf in
-~/.cache/simpleos/clipboard.json (nur für den Benutzer lesbar). Inhalte von Passwort-Managern
-(Ziel x-kde-passwordManagerHint) landen nie im Verlauf.
-Robust wie die Shell-Werkzeuge: Fehler als Meldung, immer Exit 0 (außer bei falschem Aufruf).
-Tests: SIMPLEOS_CLIPBOARD_FILE ersetzt den Pfad des Verlaufs.
+Text only, at most 50 entries of 100 000 characters each, identical texts move to the top. History in
+~/.cache/simpleos/clipboard.json (readable only by the user). Contents from password managers
+(target x-kde-passwordManagerHint) never end up in the history.
+Robust like the shell tools: errors as a notification, always exit 0 (except on wrong usage).
+Tests: SIMPLEOS_CLIPBOARD_FILE replaces the path of the history.
 """
 import json
 import os
@@ -64,14 +64,14 @@ def add(text):
 
 
 def label(text, width=90):
-    """Eine Zeile pro Eintrag: Zeilenumbrüche als ⏎, Tabs als Leerzeichen, lange Texte gekürzt."""
+    """One line per entry: line breaks as ⏎, tabs as spaces, long texts shortened."""
     one = " ⏎ ".join(part.strip() for part in text.strip().splitlines() if part.strip())
     one = one.replace("\t", " ")
     return one if len(one) <= width else one[: width - 1] + "…"
 
 
 def set_clipboard(text):
-    """Text in die Zwischenablage (xclip, sonst xsel); beide halten die Auswahl im Hintergrund."""
+    """Text into the clipboard (xclip, otherwise xsel); both keep the selection in the background."""
     for cmd in (["xclip", "-selection", "clipboard", "-in"], ["xsel", "--clipboard", "--input"]):
         if shutil.which(cmd[0]):
             try:
@@ -118,14 +118,14 @@ def pick():
 def daemon():
     import fcntl
     if not os.environ.get("DISPLAY"):
-        return  # nur in der X-Sitzung (Openbox-Autostart)
+        return  # only in the X session (Openbox autostart)
     os.environ["GDK_BACKEND"] = "x11"
     os.makedirs(os.path.dirname(HISTORY), exist_ok=True)
     lock = open(HISTORY + ".lock", "w")
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
-        return  # läuft schon
+        return  # already running
     try:
         import gi
         gi.require_version("Gtk", "3.0")
@@ -133,7 +133,7 @@ def daemon():
         from gi.repository import Gdk, Gtk
     except (ImportError, ValueError):
         return
-    if not Gtk.init_check(sys.argv[:1])[0]:  # kein Bildschirm
+    if not Gtk.init_check(sys.argv[:1])[0]:  # no screen
         return
     clip = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
 
@@ -164,7 +164,7 @@ def main(argv):
     elif cmd == "--clear":
         save([])
     else:
-        print("Aufruf: simpleos-clipboard [--daemon | --list | --add TEXT | --clear]", file=sys.stderr)
+        print("Usage: simpleos-clipboard [--daemon | --list | --add TEXT | --clear]", file=sys.stderr)
         return 2
     return 0
 
@@ -172,6 +172,6 @@ def main(argv):
 if __name__ == "__main__":
     try:
         sys.exit(main(sys.argv))
-    except Exception as e:  # nie stumm abbrechen
+    except Exception as e:  # never abort silently
         notify(f"The clipboard history ran into a problem: {e}", "critical")
         sys.exit(0)

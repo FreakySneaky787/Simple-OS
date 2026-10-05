@@ -1,6 +1,6 @@
-# Simple OS – Akkuschonung ohne Passwort umschalten (simpleos-power --charge-limit, Control Center → Power):
-# Gruppe sudo (Administratoren) darf die Ladegrenze schreiben. Lenovo IdeaPad/ThinkBook: conservation_mode am
-# ideapad_acpi-Treiber (Attribut entsteht erst beim Binden, daher auch ACTION bind); andere Laptops:
-# charge_control_*_threshold am Akku.
+# Simple OS – switch battery protection without a password (simpleos-power --charge-limit, Control Center → Power):
+# the sudo group (administrators) may write the charge limit. Lenovo IdeaPad/ThinkBook: conservation_mode on the
+# ideapad_acpi driver (the attribute only appears when binding, hence also ACTION bind); other laptops:
+# charge_control_*_threshold on the battery.
 ACTION!="remove", SUBSYSTEM=="platform", DRIVER=="ideapad_acpi", RUN+="/bin/sh -c 'f=/sys%p/conservation_mode; [ -e $$f ] && chgrp sudo $$f && chmod 0664 $$f || true'"
 ACTION!="remove", SUBSYSTEM=="power_supply", ATTR{type}=="Battery", RUN+="/bin/sh -c 'for f in /sys%p/charge_control_start_threshold /sys%p/charge_control_end_threshold; do [ -e $$f ] && chgrp sudo $$f && chmod 0664 $$f; done; true'"

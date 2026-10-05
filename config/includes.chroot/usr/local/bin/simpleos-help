@@ -1,11 +1,11 @@
 #!/bin/sh
-# Simple OS – Tastenkürzel-Übersicht (Super+H oder Super+Shift+?, Menü → Help → Keyboard Shortcuts)
-# Zentriertes Rofi-Fenster, nach Themen gruppiert, Tippen filtert die Liste, Esc schließt.
-# Robust wie simpleos-wifi: kein set -e, Exit 0; startet Rofi nicht, zeigt eine Meldung die wichtigsten Kürzel.
+# Simple OS – keyboard shortcut overview (Super+H or Super+Shift+?, Menu → Help → Keyboard Shortcuts)
+# Centered Rofi window, grouped by topic, typing filters the list, Esc closes.
+# Robust like simpleos-wifi: no set -e, exit 0; if Rofi does not start, a notification shows the most important shortcuts.
 
 SOS_NAME=simpleos-help SOS_TITLE="Keyboard shortcuts" SOS_ICON=input-keyboard
 LIB=/usr/local/lib/simpleos/common.sh
-# "." auf eine fehlende Datei würde dash sofort beenden -> vorher prüfen
+# "." on a missing file would end dash immediately -> check first
 [ -r "$LIB" ] || { notify-send "Keyboard shortcuts" "Simple OS is incomplete (missing $LIB)." 2>/dev/null; exit 0; }
 . "$LIB"
 sos_log_init "$@"

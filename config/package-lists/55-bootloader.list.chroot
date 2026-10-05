@@ -1,23 +1,23 @@
-# Simple OS – Bootloader für das installierte System (BIOS + UEFI), offline ohne Paket-Pool auf dem Medium.
-# Nur die parallel installierbaren Teile; die Meta-Pakete grub-pc bzw. grub-efi-amd64 schließen sich
-# gegenseitig aus -> liegen als .deb unter /usr/share/simpleos/bootloader-debs (Hook 08_bootloader_debs)
-# und werden von /usr/sbin/bootloader-config je nach Firmware installiert.
+# Simple OS – bootloader for the installed system (BIOS + UEFI), offline without a package pool on the medium.
+# Only the parts that can be installed side by side; the meta packages grub-pc and grub-efi-amd64 exclude
+# each other -> they are stored as .deb in /usr/share/simpleos/bootloader-debs (hook 08_bootloader_debs)
+# and installed by /usr/sbin/bootloader-config depending on the firmware.
 grub-common
 # update-grub, grub-install
 grub2-common
-# BIOS (i386-pc) und UEFI (x86_64-efi)
+# BIOS (i386-pc) and UEFI (x86_64-efi)
 grub-pc-bin
 grub-efi-amd64-bin
-# Secure Boot (ab Werk an bei aktuellen Laptops): shim (von Microsoft signiert) + von Debian signiertes GRUB;
-# Calamares installiert sie über /usr/local/sbin/simpleos-grub-install immer mit --uefi-secure-boot. Ohne diese
-# Pakete bekam das installierte System ein unsigniertes GRUB und startete mit Secure Boot nicht.
-# mokutil: Schlüssel für selbst gebaute Module (DKMS: nvidia-driver, broadcom-sta) registrieren
+# Secure Boot (on by default on current laptops): shim (signed by Microsoft) + GRUB signed by Debian;
+# Calamares always installs them via /usr/local/sbin/simpleos-grub-install with --uefi-secure-boot. Without these
+# packages the installed system got an unsigned GRUB and did not start with Secure Boot.
+# mokutil: register keys for self-built modules (DKMS: nvidia-driver, broadcom-sta)
 shim-signed
 grub-efi-amd64-signed
 mokutil
 os-prober
 efibootmgr
-# Abhängigkeiten der gebündelten .debs (grub-pc/grub-efi-amd64: ucf; cryptsetup-initramfs bei LUKS)
+# Dependencies of the bundled .debs (grub-pc/grub-efi-amd64: ucf; cryptsetup-initramfs with LUKS)
 ucf
 cryptsetup
 keyutils

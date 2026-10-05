@@ -1,13 +1,13 @@
 #!/bin/sh
 set -e
-# Akku-Programme nur mit echtem Akku: Fehlalarme "Battery low" in VMs/am Desktop-PC kommen von Diensten,
-# die Phantom-Akkus (UPower, ACPI-Attrappen der VM) melden. Gesichert werden alle Startwege:
-#   XDG-Autostart  Exec über "simpleos-battery --run" (startet nur mit echtem Akku, nie in VMs);
-#                  xfce4-power-manager zusätzlich Hidden=true (startet ~/.config/openbox/autostart selbst)
-#   systemd        upower/acpid: ConditionVirtualization=!vm (Drop-ins unter /etc/systemd/system)
-#   dunst          simpleos-dunst (Autostart, D-Bus, systemd-User-Dienst) filtert, was trotzdem kommt
-# Gilt auch für später installierte Pakete mit denselben Namen nicht automatisch -> 99_verify prüft alle
-# Startwege erneut.
+# Battery programs only with a real battery: false "Battery low" alarms in VMs/on desktop PCs come from services
+# that report phantom batteries (UPower, the VM's ACPI dummies). All start paths are covered:
+#   XDG autostart  Exec via "simpleos-battery --run" (starts only with a real battery, never in VMs);
+#                  xfce4-power-manager additionally Hidden=true (~/.config/openbox/autostart starts it itself)
+#   systemd        upower/acpid: ConditionVirtualization=!vm (drop-ins under /etc/systemd/system)
+#   dunst          simpleos-dunst (autostart, D-Bus, systemd user service) filters whatever still comes
+# This does not apply automatically to packages with the same names installed later -> 99_verify checks all
+# start paths again.
 BATT_RE='xfce4-power-manager|cbatticon|mate-power-manager|gnome-power-manager|gsd-power|powerdevil|batterymon|fdpowermon|batti|statnot|acpid'
 for f in /etc/xdg/autostart/*.desktop; do
     [ -f "$f" ] || continue

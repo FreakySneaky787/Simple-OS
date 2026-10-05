@@ -1,4 +1,4 @@
 #!/bin/sh
-# Simple OS – Fortschritt von "flatpak install/update" (ohne --noninteractive) -> PROGRESS/STAGE-Zeilen.
-# Eigentliche Arbeit: progress-filter (Python, streamt sofort – awk puffert Pipes und lieferte alles erst am Ende).
+# Simple OS – progress of "flatpak install/update" (without --noninteractive) -> PROGRESS/STAGE lines.
+# The actual work: progress-filter (Python, streams immediately – awk buffers pipes and delivered everything only at the end).
 exec /usr/local/lib/simpleos/progress-filter flatpak

@@ -1,22 +1,22 @@
-# Simple OS – Basissystem
+# Simple OS – base system
 sudo
 locales
 network-manager
 wpasupplicant
 wireless-regdb
-# iw: WLAN-Zustand (Verbindungsrate, Stromsparmodus) für Report a Problem und zur Fehlersuche
+# iw: Wi-Fi state (link rate, power saving) for Report a Problem and troubleshooting
 iw
 libpam-systemd
 polkitd
-# pkexec: grafische Passwortabfrage (lxpolkit) für Installationen aus dem Setup-Wizard
+# pkexec: graphical password prompt (lxpolkit) for installations from the Setup Wizard
 pkexec
 dosfstools
 exfatprogs
 ntfs-3g
 zram-tools
-# Boot-Splash
+# Boot splash
 plymouth
 plymouth-themes
-# Performance: preload (App-Starts per RAM-Cache), gamemode (CPU/GPU-Boost für Spiele)
+# Performance: preload (app starts via RAM cache), gamemode (CPU/GPU boost for games)
 preload
 gamemode

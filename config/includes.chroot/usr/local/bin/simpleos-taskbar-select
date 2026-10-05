@@ -1,12 +1,12 @@
 #!/bin/sh
-# Simple OS – Taskleisten-Designer (Menü → Settings → Taskbar & Panel)
-#   simpleos-taskbar-select                  Auswahl per Rofi (Position, Layout, Aussehen, Netzwerk/Uhr)
-#   simpleos-taskbar-select --set key=value  direkt setzen, z.B. --set position=top --set clock=off
-#   simpleos-taskbar-select --apply          Einstellungen erneut anwenden (simpleos-theme nach Dark/Light)
-# Schlüssel: position=bottom|top  size=full|compact  tasks=text|icons  style=dark|transparent|theme
+# Simple OS – taskbar designer (Menu → Settings → Taskbar & Panel)
+#   simpleos-taskbar-select                  selection via Rofi (position, layout, look, network/clock)
+#   simpleos-taskbar-select --set key=value  set directly, e.g. --set position=top --set clock=off
+#   simpleos-taskbar-select --apply          apply the settings again (simpleos-theme after dark/light)
+# Keys: position=bottom|top  size=full|compact  tasks=text|icons  style=dark|transparent|theme
 #            network=on|off  clock=on|off
-# Geändert werden nur die betroffenen Zeilen in ~/.config/tint2/tint2rc (Akzentfarbe von simpleos-theme
-# und alles andere bleibt), danach lädt tint2 die Datei per SIGUSR1 im laufenden Prozess neu (kein Neustart).
+# Only the affected lines in ~/.config/tint2/tint2rc are changed (the accent color from simpleos-theme
+# and everything else stays), then tint2 reloads the file via SIGUSR1 in the running process (no restart).
 set -e
 
 STATE="$HOME/.config/simpleos/taskbar"
@@ -15,19 +15,19 @@ TINT2RC="$HOME/.config/tint2/tint2rc"
 position=bottom size=full tasks=text style=dark network=on clock=on
 [ -r "$STATE" ] && . "$STATE"
 
-# Echter Akku (BAT*, type Battery, present 1) – VMs/PCs ohne Akku: nein; fehlt das Skript: auch nein
+# Real battery (BAT*, type Battery, present 1) – VMs/PCs without a battery: no; script missing: also no
 has_battery() { simpleos-battery --present 2>/dev/null; }
-# Live-Session (USB-Stick/ISO) -> Badge "Install Simple OS"; fehlt das Skript: nein
+# Live session (USB stick/ISO) -> badge "Install Simple OS"; script missing: no
 is_live() { /usr/local/bin/simpleos-live --check 2>/dev/null; }
 
-valid() {  # $1 = Schlüssel, $2 = Wert
+valid() {  # $1 = key, $2 = value
     case "$1=$2" in
         position=bottom|position=top|size=full|size=compact|tasks=text|tasks=icons) return 0 ;;
         style=dark|style=transparent|style=theme|network=on|network=off|clock=on|clock=off) return 0 ;;
     esac
     return 1
 }
-# Kaputte Werte in der Zustandsdatei auf die Vorgabe zurücksetzen
+# Reset broken values in the state file to the default
 valid position "$position" || position=bottom
 valid size "$size"         || size=full
 valid tasks "$tasks"       || tasks=text
@@ -36,12 +36,12 @@ valid network "$network"   || network=on
 valid clock "$clock"       || clock=on
 
 apply() {
-    [ -f "$TINT2RC" ] || { echo "Keine tint2-Konfiguration: $TINT2RC" >&2; exit 1; }
+    [ -f "$TINT2RC" ] || { echo "No tint2 configuration: $TINT2RC" >&2; exit 1; }
     mkdir -p "$(dirname "$STATE")"
     printf 'position=%s\nsize=%s\ntasks=%s\nstyle=%s\nnetwork=%s\nclock=%s\n' \
         "$position" "$size" "$tasks" "$style" "$network" "$clock" > "$STATE"
 
-    # Farben: Dark / Dark transparent / wie das App-Design (simpleos-theme --mode light -> helle Leiste)
+    # Colors: Dark / Dark transparent / like the app design (simpleos-theme --mode light -> light bar)
     mode=dark
     [ "$style" = theme ] && mode=$(simpleos-theme --show 2>/dev/null | sed -n 's/^mode=//p')
     panel_alpha=92
@@ -56,7 +56,7 @@ apply() {
         btn_hover="#313244 80" btn_pressed="#45475a 80"
     fi
 
-    # Größe und Aufgaben-Darstellung
+    # Size and task display
     if [ "$size" = compact ]; then height=34 task_h=26 tray=16; else height=40 task_h=30 tray=18; fi
     if [ "$tasks" = icons ]; then
         task_text=0 task_centered=1 task_padding="8 4 0" task_w=$((task_h + 16))
@@ -65,13 +65,13 @@ apply() {
         [ "$size" = compact ] && task_w=160
     fi
 
-    # Leiste: App-Button, Aufgaben, Do-Not-Disturb-Symbol, [Netzwerk], [Live-Badge], Tray, [Akku], [Uhr], Power-Button
-    # tint2 ordnet die Executor-Blöcke der Reihe nach den "E" zu: der DND-Block steht vor dem Netzwerk-Block und
-    # ist immer da (zeigt nur etwas, solange DND an ist) -> erstes E = DND, zweites E = Netzwerk
-    # Akku nur, wenn es wirklich einen gibt: ohne Akku meldet tint2 0 % und löst "Battery low" aus,
-    # VMs liefern teils eine Attrappe (present 0)
-    # Live-Badge: tint2 ordnet die Buttons der Reihe nach den "P" zu -> der Badge-Block steht zwischen App- und
-    # Power-Button und existiert nur in der Live-Session (sonst bekäme der Power-Platz den Badge)
+    # Bar: app button, tasks, Do Not Disturb icon, [network], [live badge], tray, [battery], [clock], power button
+    # tint2 assigns the executor blocks to the "E"s in order: the DND block comes before the network block and
+    # is always there (it only shows something while DND is on) -> first E = DND, second E = network
+    # Battery only if there really is one: without a battery tint2 reports 0 % and triggers "Battery low",
+    # VMs sometimes provide a dummy (present 0)
+    # Live badge: tint2 assigns the buttons to the "P"s in order -> the badge block sits between the app and
+    # power button and only exists in the live session (otherwise the power slot would get the badge)
     live=0
     is_live && live=1
     items=PTE
@@ -82,7 +82,7 @@ apply() {
     [ "$clock" = on ] && items=${items}C
     items=${items}P
 
-    # Hintergründe (Abschnitt "Backgrounds", nummeriert nach "rounded ="): 1 Leiste, 2 Aufgaben, 6 App-Button
+    # Backgrounds (section "Backgrounds", numbered by "rounded ="): 1 bar, 2 tasks, 6 app button
     bg="1|background_color|$panel;1|background_color_hover|$panel;1|background_color_pressed|$panel"
     bg="$bg;1|border_color|$border;1|border_color_hover|$border;1|border_color_pressed|$border"
     bg="$bg;2|background_color|$task;2|background_color_hover|$task_hover;2|background_color_pressed|$task_pressed"
@@ -99,12 +99,12 @@ apply() {
         n = split(bg, a, ";"); for (i = 1; i <= n; i++) { split(a[i], f, "|"); B[f[1] SUBSEP f[2]] = f[3] }
         n = split(kv, a, ";"); for (i = 1; i <= n; i++) { split(a[i], f, "|"); K[f[1]] = f[2] }
     }
-    # Do Not Disturb: alten Block immer entfernen und vor dem Netzwerk-Block neu einsetzen (ältere tint2rc ohne Block
-    # bekommen ihn so beim nächsten --apply, statt dass das erste E auf den Netzwerk-Block fiele)
+    # Do Not Disturb: always remove the old block and insert it again before the network block (older tint2rc without
+    # the block get it this way on the next --apply). Markers: "End" also matches the old "Ende", "Netzwerk" = old name
     /^#---- Do Not Disturb/ { dskip = 1 }
-    dskip { if (/^#---- Do Not Disturb Ende/) { dskip = 0; eat = 1 } next }
-    /^#---- Netzwerk/ {
-        print "#---- Do Not Disturb (Symbol nur, solange DND an ist; Klick schaltet um; simpleos-taskbar-select --apply setzt den Block)"
+    dskip { if (/^#---- Do Not Disturb End/) { dskip = 0; eat = 1 } next }
+    /^#---- (Netzwerk|Network)/ {
+        print "#---- Do Not Disturb (icon only while DND is on; a click toggles it; simpleos-taskbar-select --apply sets the block)"
         print "execp = new"
         print "execp_command = /usr/local/bin/simpleos-dnd --panel"
         print "execp_interval = 0"
@@ -118,16 +118,16 @@ apply() {
         print "execp_tooltip = Do Not Disturb is on – click to turn it off"
         print "execp_lclick_command = /usr/local/bin/simpleos-dnd --toggle"
         print "execp_rclick_command = /usr/local/bin/simpleos-control-center system"
-        print "#---- Do Not Disturb Ende"
+        print "#---- Do Not Disturb End"
         print ""
     }
-    # Live-Badge: alten Block immer entfernen, in der Live-Session vor dem Power-Button neu einsetzen
+    # Live badge: always remove the old block, insert it again before the power button in the live session ("Power-Button" = old name)
     /^#---- Live-Badge/ { skip = 1 }
-    skip { if (/^#---- Live-Badge Ende/) { skip = 0; eat = 1 } next }
-    eat { eat = 0; if ($0 == "") next }      # Leerzeile hinter dem Block gehört dazu
-    /^#---- Power-Button/ && live == 1 {
-        # Leerzeile wie zwischen allen Abschnitten; beim Entfernen nimmt "eat" sie wieder mit
-        print "#---- Live-Badge (nur Live-Session; simpleos-taskbar-select --apply setzt/entfernt ihn)"
+    skip { if (/^#---- Live-Badge End/) { skip = 0; eat = 1 } next }
+    eat { eat = 0; if ($0 == "") next }      # the empty line after the block belongs to it
+    /^#---- Power[- ][Bb]utton/ && live == 1 {
+        # an empty line as between all sections; when removing, "eat" takes it along again
+        print "#---- Live-Badge (live session only; simpleos-taskbar-select --apply sets/removes it)"
         print "button = new"
         print "button_text = Install Simple OS"
         print "button_font = Inter Bold 10"
@@ -136,9 +136,9 @@ apply() {
         print "button_background_id = 8"
         print "button_centered = 1"
         print "button_max_icon_size = 0"
-        print "button_tooltip = Simple OS auf diesem Computer installieren · Install Simple OS on this computer"
+        print "button_tooltip = Install Simple OS on this computer"
         print "button_lclick_command = /usr/local/bin/simpleos-install"
-        print "#---- Live-Badge Ende"
+        print "#---- Live-Badge End"
         print ""
     }
     /^#---- Panel/ { panel = 1 }
@@ -149,7 +149,7 @@ apply() {
         if (panel && key in K) { print key " = " K[key]; next }
     }
     { print }' "$TINT2RC" > "$tmp"
-    cat "$tmp" > "$TINT2RC"   # Inhalt ersetzen, Datei (Rechte, Besitzer) bleibt
+    cat "$tmp" > "$TINT2RC"   # replace the content, the file (permissions, owner) stays
     rm -f "$tmp"
 
     if [ -n "$DISPLAY" ]; then
@@ -157,28 +157,28 @@ apply() {
     fi
 }
 
-# ------------------------------------------------------------------ Aufruf ohne Rofi
+# ------------------------------------------------------------------ Calls without Rofi
 case "${1:-}" in
     --apply) apply; exit 0 ;;
     --set)
         while [ "${1:-}" = --set ] && [ -n "${2:-}" ]; do
             key=${2%%=*} value=${2#*=}
-            valid "$key" "$value" || { echo "Ungültig: $2" >&2; exit 2; }
+            valid "$key" "$value" || { echo "Invalid: $2" >&2; exit 2; }
             eval "$key=\$value"
             shift 2
         done
-        [ $# -eq 0 ] || { echo "Aufruf: simpleos-taskbar-select [--apply | --set key=value ...]" >&2; exit 2; }
+        [ $# -eq 0 ] || { echo "Usage: simpleos-taskbar-select [--apply | --set key=value ...]" >&2; exit 2; }
         apply; exit 0 ;;
     "") ;;
-    *) echo "Aufruf: simpleos-taskbar-select [--apply | --set key=value ...]" >&2; exit 2 ;;
+    *) echo "Usage: simpleos-taskbar-select [--apply | --set key=value ...]" >&2; exit 2 ;;
 esac
 
 # ------------------------------------------------------------------ Rofi
-# rofi-retry: Grab-Fehler -> neuer Versuch, rofi fehlt/startet nicht -> Meldung statt stummem Ende
+# rofi-retry: grab error -> new attempt, rofi missing/does not start -> notification instead of a silent end
 rofi_cmd=/usr/local/lib/simpleos/rofi-retry
 [ -x "$rofi_cmd" ] || rofi_cmd=rofi
 export SOS_NAME=simpleos-taskbar-select SOS_TITLE=Taskbar
-pick() {  # $1 = Titel, Rest = Einträge; aktueller Wert ist mit ● markiert
+pick() {  # $1 = title, rest = entries; the current value is marked with ●
     title=$1; shift
     printf '%s\n' "$@" | "$rofi_cmd" -dmenu -i -no-custom -p "Taskbar" -mesg "<b>$title</b>" -markup \
         -theme-str 'window { width: 460px; } listview { lines: 7; } element-icon { enabled: false; }' || true

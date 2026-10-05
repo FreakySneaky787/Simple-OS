@@ -1,7 +1,7 @@
 #!/bin/sh
-# Simple OS – Installer starten (Desktop-Icon, Menü ganz oben, Taskleisten-Badge, Welcome-Banner)
-# Debians Wrapper install-debian ruft "pkexec calamares" auf und räumt vorher die live-fstab weg (sonst
-# stolpert die Partitionierung); fehlt er, direkt pkexec calamares. Nur in der Live-Session, nur einmal.
+# Simple OS – start the installer (desktop icon, top of the menu, taskbar badge, Welcome banner)
+# Debian's wrapper install-debian calls "pkexec calamares" and removes the live fstab first (otherwise
+# partitioning stumbles); if it is missing, pkexec calamares directly. Only in the live session, only once.
 note() { notify-send -c x-simpleos -i system-os-installer "Install Simple OS" "$1" 2>/dev/null; }
 if [ -x /usr/local/bin/simpleos-live ] && ! /usr/local/bin/simpleos-live --check; then
     note "Simple OS is already installed on this computer."

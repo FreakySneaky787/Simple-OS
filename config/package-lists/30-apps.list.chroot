@@ -1,4 +1,4 @@
-# Simple OS – Anwendungen
+# Simple OS – applications
 kitty
 thunar
 thunar-archive-plugin
@@ -6,7 +6,7 @@ file-roller
 gvfs
 gvfs-backends
 udisks2
-# USB-Sticks automatisch einbinden (Openbox-Autostart, Meldung per simpleos-usb-notify)
+# Mount USB sticks automatically (Openbox autostart, notification via simpleos-usb-notify)
 udiskie
 firefox-esr
 mousepad
@@ -14,10 +14,10 @@ atril
 mpv
 viewnior
 galculator
-# Laufwerke: USB-Sticks formatieren, ISO-Abbilder schreiben, Gesundheit der Festplatte (Control Center → System)
+# Disks: format USB sticks, write ISO images, disk health (Control Center → System)
 gnome-disk-utility
 htop
-# Flatpak + Flathub (Bazaar als Software-Store), GNOME Software, Portale für Flatpak-Apps
+# Flatpak + Flathub (Bazaar as Software Store), GNOME Software, portals for Flatpak apps
 flatpak
 gnome-software
 gnome-software-plugin-flatpak

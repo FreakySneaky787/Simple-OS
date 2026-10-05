@@ -1,9 +1,9 @@
-# Simple OS – Standard-Anwendungen (Doppelklick im Dateimanager, xdg-open)
-#   Web         firefox-esr (simpleos-browser-select schreibt eigene Wahl nach ~/.config/mimeapps.list)
-#   Bilder      viewnior (webp/avif/heif: feh)     PDF/E-Books/Comics  atril
-#   Audio/Video mpv                                Archive             file-roller (Archive Manager)
-#   Text        mousepad                           Ordner              thunar
-# Aus den MimeType-Zeilen der .desktop-Dateien erzeugt; 99_verify prüft die wichtigsten per xdg-mime.
+# Simple OS – default applications (double click in the file manager, xdg-open)
+#   Web         firefox-esr (simpleos-browser-select writes your own choice to ~/.config/mimeapps.list)
+#   Pictures    viewnior (webp/avif/heif: feh)     PDF/e-books/comics  atril
+#   Audio/video mpv                                Archives            file-roller (Archive Manager)
+#   Text        mousepad                           Folders             thunar
+# Generated from the MimeType lines of the .desktop files; 99_verify checks the most important ones via xdg-mime.
 [Default Applications]
 x-scheme-handler/http=firefox-esr.desktop
 x-scheme-handler/https=firefox-esr.desktop

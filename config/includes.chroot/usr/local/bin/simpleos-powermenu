@@ -1,12 +1,12 @@
 #!/bin/sh
-# Simple OS – Power-Menü (Super+X, roter Knopf rechts in der Taskleiste, Menü → Power)
-# Rofi-Flyout: Lock, Sleep, Restart, Shut down, Sign out. Esc schließt ohne Aktion.
-# Robust wie simpleos-wifi: kein set -e, jeder Pfad endet mit Exit 0, Fehler als verständliche Meldung,
-# Details in ~/.cache/simpleos-powermenu.log. Startet Rofi nicht, erklärt eine Meldung den Weg über das Menü.
+# Simple OS – power menu (Super+X, red button on the right of the taskbar, Menu → Power)
+# Rofi flyout: Lock, Sleep, Restart, Shut down, Sign out. Esc closes without an action.
+# Robust like simpleos-wifi: no set -e, every path ends with exit 0, errors as a clear notification,
+# details in ~/.cache/simpleos-powermenu.log. If Rofi does not start, a notification explains the way via the menu.
 
 SOS_NAME=simpleos-powermenu SOS_TITLE=Power SOS_ICON=system-shutdown SOS_PROMPT=Power SOS_CORNER=1
 LIB=/usr/local/lib/simpleos/common.sh
-# "." auf eine fehlende Datei würde dash sofort beenden -> vorher prüfen
+# "." on a missing file would end dash immediately -> check first
 [ -r "$LIB" ] || { notify-send "Power" "Simple OS is incomplete (missing $LIB)." 2>/dev/null; exit 0; }
 . "$LIB"
 sos_log_init "$@"
@@ -16,13 +16,13 @@ sos_rofi_failed() {
     exit 0
 }
 
-# Bildschirm sperren: LightDM (dm-tool), sonst logind
+# Lock the screen: LightDM (dm-tool), otherwise logind
 lock_screen() {
     command -v dm-tool >/dev/null && dm-tool lock >&2 2>&1 && return 0
     command -v loginctl >/dev/null && loginctl lock-session >&2 2>&1 && return 0
     return 1
 }
-# $1 = systemctl-Verb, $2 = Meldung bei Fehler
+# $1 = systemctl verb, $2 = notification on error
 power() {
     systemctl "$1" >&2 2>&1 || loginctl "$1" >&2 2>&1 || sos_notify "$2" critical
 }
@@ -37,10 +37,10 @@ sos_pick "<b>Power</b>" 300
 
 case "$action" in
     lock)     lock_screen || sos_notify "The screen could not be locked." critical ;;
-    # beim Aufwachen gesperrt, wie bei Windows – nur nicht in der Live-Session: dort kennt niemand das Passwort
-    # (wie /usr/lib/systemd/system-sleep/simpleos-lock)
+    # locked when waking up, like on Windows – but not in the live session: nobody knows the password there
+    # (like /usr/lib/systemd/system-sleep/simpleos-lock)
     sleep)    if [ -x /usr/local/bin/simpleos-live ] && /usr/local/bin/simpleos-live --check; then
-                  sos_log "Live-Session: vor dem Schlafen nicht gesperrt"
+                  sos_log "Live session: not locked before sleep"
               else
                   lock_screen || sos_log "lock before suspend failed"
               fi

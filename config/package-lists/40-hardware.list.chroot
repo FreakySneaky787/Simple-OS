@@ -1,28 +1,28 @@
-# Simple OS – Hardware & VMs
-# Firmware: feste Liste statt der automatischen Auswahl von live-build (tools/lb_config.sh: --firmware-chroot
-# false). Die Automatik nahm jedes Bookworm-Paket mit Dateien unter /lib/firmware – inkl. Raspberry-Pi-
-# Bootfirmware, Astronomie-Kameras, Telefonie-Karten und firmware-realtek-rtl8723cs-bt, das mit firmware-realtek
-# aus Backports kollidiert (Build-Abbruch). Kernel, Firmware und Microcode kommen aus bookworm-backports
-# (config/archives/backports.pref.chroot): Kernel 6.12 kennt neuere Grafik (z.B. Intel Raptor Lake 0xA7AA im
-# Core 5 210H – mit 6.1 blieb der Bildschirm bei 800x600), die Firmware 2025 passt dazu. Dort ist
-# firmware-misc-nonfree aufgeteilt (Intel-Grafik, MediaTek, Cirrus, NVIDIA …) – die Teile stehen unten einzeln.
-# firmware-linux zieht ohne Recommends nur den freien Teil -> nonfree explizit
+# Simple OS – hardware & VMs
+# Firmware: a fixed list instead of live-build's automatic selection (tools/lb_config.sh: --firmware-chroot
+# false). The automatic selection took every Bookworm package with files under /lib/firmware – including Raspberry Pi
+# boot firmware, astronomy cameras, telephony cards and firmware-realtek-rtl8723cs-bt, which conflicts with
+# firmware-realtek from backports (build abort). Kernel, firmware and microcode come from bookworm-backports
+# (config/archives/backports.pref.chroot): kernel 6.12 knows newer graphics (e.g. Intel Raptor Lake 0xA7AA in the
+# Core 5 210H – with 6.1 the screen stayed at 800x600), and firmware 2025 matches it. There
+# firmware-misc-nonfree is split up (Intel graphics, MediaTek, Cirrus, NVIDIA …) – the parts are listed below.
+# firmware-linux only pulls the free part without Recommends -> nonfree explicitly
 firmware-linux
 firmware-linux-free
 firmware-linux-nonfree
 firmware-misc-nonfree
-# Grafik: Intel ab Gen 12 (Tiger/Alder/Raptor/Meteor Lake: GuC/HuC/DMC), AMD, NVIDIA (nouveau + GSP)
+# Graphics: Intel from Gen 12 (Tiger/Alder/Raptor/Meteor Lake: GuC/HuC/DMC), AMD, NVIDIA (nouveau + GSP)
 firmware-intel-graphics
 firmware-amd-graphics
 firmware-nvidia-graphics
 firmware-nvidia-gsp
-# Intel sonst (Sensor-Hub/ISH, VPU …), Audio (SOF: Lautsprecher/Mikrofon moderner Laptops, Cirrus-Verstärker)
+# Other Intel (sensor hub/ISH, VPU …), audio (SOF: speakers/microphones of modern laptops, Cirrus amplifiers)
 firmware-intel-misc
 firmware-intel-sound
 firmware-sof-signed
 firmware-cirrus
 alsa-topology-conf
-# WLAN/Bluetooth
+# Wi-Fi/Bluetooth
 firmware-iwlwifi
 firmware-realtek
 firmware-atheros
@@ -35,12 +35,12 @@ firmware-zd1211
 atmel-firmware
 bluez-firmware
 wireless-regdb
-# Kabel-Netzwerk (Broadcom NetXtreme in Workstations, Realtek siehe oben)
+# Wired network (Broadcom NetXtreme in workstations, Realtek see above)
 firmware-bnx2
 firmware-bnx2x
-# CPU-Microcode (Sicherheits- und Stabilitätskorrekturen)
+# CPU microcode (security and stability fixes)
 intel-microcode
 amd64-microcode
-# QEMU/SPICE: Auflösung + gemeinsame Zwischenablage, Gast-Agent
+# QEMU/SPICE: resolution + shared clipboard, guest agent
 spice-vdagent
 qemu-guest-agent

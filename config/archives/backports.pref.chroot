@@ -1,17 +1,17 @@
-# Simple OS – Kernel, Firmware und Microcode aus bookworm-backports (Build: live-build config/archives;
-# Live-/installiertes System: dieselbe Datei als /etc/apt/preferences.d/simpleos-backports.pref).
-# Warum: Der Bookworm-Kernel 6.1 kennt neuere Grafikchips nicht (z.B. Intel Raptor Lake 0xA7AA–0xA7AD im
-# Core 5 210H, Core 7 240H …) -> i915 bindet nicht, der Bildschirm bleibt beim Firmware-Framebuffer (800x600).
-# Kernel 6.12 aus Backports kennt sie. Die Firmware muss dazu passen (firmware-nonfree 2025: Intel-Grafik liegt
-# dann in firmware-intel-graphics), Header für DKMS (nvidia-driver, broadcom-sta-dkms) müssen zum Kernel passen.
-# NVIDIA 535 bleibt bei Bookworm: dort kommt er über bookworm-security aktuell (535.309), Backports hängt hinterher
-# (535.216) – und die GSP-Firmware muss exakt zur Treiberversion passen (firmware-nvidia-gsp daher ausgenommen).
-# Nur der Legacy-Treiber 470 (Kepler) kommt aus Backports (neuere Kernel-Patches). Alles andere bleibt Bookworm.
-# Updates: Backports-Pakete erhalten Updates aus Backports (ButAutomaticUpgrades); die Quelle steht auch im
-# installierten System (Calamares sources-final + simpleos-post-install).
-# GSP-Firmware gehört zum NVIDIA-535-Treiber (Bookworm, exakt gleiche Version nötig). MUSS vor "firmware-*"
-# stehen: apt nimmt den ERSTEN passenden Eintrag (sonst käme 535.216 aus Backports und nvidia-driver 535.309
-# ließe sich nicht mehr installieren)
+# Simple OS – kernel, firmware and microcode from bookworm-backports (build: live-build config/archives;
+# live/installed system: the same file as /etc/apt/preferences.d/simpleos-backports.pref).
+# Why: the Bookworm kernel 6.1 does not know newer graphics chips (e.g. Intel Raptor Lake 0xA7AA–0xA7AD in the
+# Core 5 210H, Core 7 240H …) -> i915 does not bind, the screen stays on the firmware framebuffer (800x600).
+# Kernel 6.12 from backports knows them. The firmware must match (firmware-nonfree 2025: Intel graphics is then
+# in firmware-intel-graphics), headers for DKMS (nvidia-driver, broadcom-sta-dkms) must match the kernel.
+# NVIDIA 535 stays with Bookworm: it is current there via bookworm-security (535.309), backports lags behind
+# (535.216) – and the GSP firmware must match the driver version exactly (so firmware-nvidia-gsp is excluded).
+# Only the legacy driver 470 (Kepler) comes from backports (newer kernel patches). Everything else stays Bookworm.
+# Updates: backports packages get updates from backports (ButAutomaticUpgrades); the source is also in the
+# installed system (Calamares sources-final + simpleos-post-install).
+# The GSP firmware belongs to the NVIDIA 535 driver (Bookworm, exactly the same version needed). MUST come before
+# "firmware-*": apt takes the FIRST matching entry (otherwise 535.216 would come from backports and nvidia-driver
+# 535.309 could no longer be installed)
 Package: firmware-nvidia-gsp
 Pin: release n=bookworm-backports
 Pin-Priority: 100

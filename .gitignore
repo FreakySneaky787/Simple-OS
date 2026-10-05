@@ -1,6 +1,6 @@
-# Build-Zwischenstände (live-build-Chroot, Caches, build.log) und fertige Abbilder
+# Build intermediates (live-build chroot, caches, build.log) and finished images
 /build/
 /output/
-# Python-Bytecode (tools/gen_branding.py, Syntaxprüfungen)
+# Python bytecode (tools/gen_branding.py, syntax checks)
 __pycache__/
 *.pyc

@@ -1,10 +1,10 @@
 #!/bin/sh
-# Simple OS – grub-install für Calamares (/etc/calamares/modules/bootloader.conf: grubInstall), läuft im Zielsystem.
-# UEFI (--target=x86_64-efi): immer --uefi-secure-boot, solange shim-signed und grub-efi-amd64-signed installiert
-# sind -> EFI/debian/shimx64.efi (von Microsoft signiert) lädt das von Debian signierte GRUB, das den signierten
-# Kernel lädt. Debians grub-install macht das sonst nur, wenn schon die Installation mit Secure Boot gestartet
-# wurde – wer Secure Boot zum Installieren ausschaltet und danach wieder ein, hätte ein nicht startendes System.
-# BIOS und alles andere: unverändert an grub-install.
+# Simple OS – grub-install for Calamares (/etc/calamares/modules/bootloader.conf: grubInstall), runs in the target system.
+# UEFI (--target=x86_64-efi): always --uefi-secure-boot as long as shim-signed and grub-efi-amd64-signed are
+# installed -> EFI/debian/shimx64.efi (signed by Microsoft) loads the GRUB signed by Debian, which loads the signed
+# kernel. Otherwise Debian's grub-install only does that if the installation was already started with Secure Boot
+# – anyone who switches Secure Boot off to install and back on afterwards would have a system that does not start.
+# BIOS and everything else: passed to grub-install unchanged.
 efi=0
 for a in "$@"; do
     case "$a" in --target=x86_64-efi) efi=1 ;; esac
@@ -15,7 +15,7 @@ for a in "$@"; do
     prev=$a
 done
 if [ "$efi" = 1 ] && [ -e /usr/lib/shim/shimx64.efi.signed ] && [ -e /usr/lib/grub/x86_64-efi-signed/grubx64.efi.signed ]; then
-    echo "simpleos-grub-install: UEFI mit Secure-Boot-Kette (shim + signiertes GRUB)"
+    echo "simpleos-grub-install: UEFI with Secure Boot chain (shim + signed GRUB)"
     exec grub-install --uefi-secure-boot "$@"
 fi
 exec grub-install "$@"

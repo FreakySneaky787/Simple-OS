@@ -7,13 +7,13 @@ configuration {
     display-run: "Run";
     display-window: "Windows";
     drun-display-format: "{name}";
-    /* Startmenü wie bei Windows: EIN Klick öffnet/übernimmt den Eintrag (Rofi-Vorgabe wäre Doppelklick).
-       Gilt für alle Rofi-Fenster (Menü, Suche, Flyouts); Desktop-Symbole (pcmanfm) bleiben beim Doppelklick.
-       "!" = beim LOSLASSEN übernehmen: beim Drücken öffnete die App (WLAN, Sound, Appearance …) ihr eigenes
-       Rofi-Fenster schon, während die Taste noch unten war – das Loslassen außerhalb schloss es sofort wieder. */
+    /* Start menu like Windows: ONE click opens/accepts the entry (Rofi's default would be a double click).
+       Applies to all Rofi windows (menu, search, flyouts); desktop icons (pcmanfm) stay with a double click.
+       "!" = accept on RELEASE: on press the app (Wi-Fi, Sound, Appearance …) already opened its own
+       Rofi window while the button was still down – releasing it outside closed it again right away. */
     me-select-entry: "";
     me-accept-entry: "!MousePrimary";
-    /* Super erneut antippen schließt das Menü (xcape schickt beim Antippen XF86Search, siehe Openbox-Autostart) */
+    /* Tapping Super again closes the menu (xcape sends XF86Search on a tap, see the Openbox autostart) */
     kb-cancel: "Escape,Control+g,Control+bracketleft,XF86Search";
 }
 
@@ -31,7 +31,7 @@ configuration {
     text-color:       @fg;
 }
 
-/* Fenster: weiche Ecken, feine Kontur statt kräftigem Rahmen; den Schatten zeichnet picom */
+/* Window: soft corners, a fine border instead of a heavy frame; picom draws the shadow */
 window {
     location:         center;
     anchor:           center;
@@ -44,13 +44,13 @@ window {
 }
 
 mainbox {
-    /* message: Hinweiszeile von "rofi -mesg" (Netzwerk, Power, Updates …); ohne -mesg blendet Rofi sie aus */
+    /* message: hint line from "rofi -mesg" (network, power, updates …); without -mesg Rofi hides it */
     children: [ inputbar, message, listview ];
     spacing:  10px;
     padding:  14px;
 }
 
-/* Suchfeld: ruhige Fläche ohne Rahmen, das Prompt-Wort nur als leise Beschriftung */
+/* Search field: a calm area without a border, the prompt word only as a quiet label */
 inputbar {
     children:         [ prompt, entry ];
     background-color: @bg-alt;
@@ -69,10 +69,10 @@ entry {
     cursor:            text;
 }
 
-/* Hinweiszeile als Überschrift, nicht als Kasten */
+/* Hint line as a heading, not as a box */
 message {
     padding: 2px 6px 0px 6px;
-    /* ohne eigene Angabe zeichnet Rofi seinen eingebauten gestrichelten Rahmen (im hellen Modus sichtbar) */
+    /* without its own setting Rofi draws its built-in dashed border (visible in light mode) */
     border:  0px;
 }
 
@@ -101,7 +101,7 @@ element alternate.normal {
     text-color:       @fg;
 }
 
-/* Auswahl: dezente Fläche, schmale Akzent-Markierung links (Farbe per simpleos-theme) */
+/* Selection: a subtle area, a narrow accent marker on the left (color via simpleos-theme) */
 element selected.normal {
     background-color: @bg-alt;
     text-color:       @fg;
