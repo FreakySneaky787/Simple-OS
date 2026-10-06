@@ -66,8 +66,8 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
   `./tools/release.sh sign`, `./tools/release.sh publish` (draft first, checks that all repository files are
   attached and the signature matches the key in the image, only then "latest"; never an older or equal version).
   **Every** release must carry the repository – `publish` refuses otherwise, also with uncommitted changes in
-  `config/`/`tools/` (the next edition only recognizes file versions that are in git) or an `output/repo` newer
-  than the ISO. Back up the signing key
+  `config/`/`tools/` (the next edition only recognizes file versions that are in git) or an `output/repo` that is not
+  from the ISO build (marker `output/repo/.in-iso`, written by `build_iso.sh`). Back up the signing key
   (`~/.local/share/simpleos-release/gnupg`): installed systems only trust that key.
 - A new Debian base (Debian 13) is a bigger step than an edition update and is not covered by this.
 

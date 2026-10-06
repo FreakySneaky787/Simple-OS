@@ -106,8 +106,10 @@ cmd_publish() {
     for f in "$REPO"/*; do assets+=("$f"); done
     if [ "$with_iso" = 1 ]; then
         [ -f "$ISO" ] || die "$ISO missing (or --no-iso for an update without a new ISO)"
-        # Same build: the ISO must contain this repository's simpleos package (a later --config-only rebuilds output/repo)
-        [ "$REPO/simpleos_${v}_all.deb" -ot "$ISO" ] || die "output/repo is newer than the ISO – run ./build_iso.sh again, then sign and publish"
+        # Same build: the ISO must contain this repository's simpleos package (a later --config-only rebuilds output/repo
+        # without the marker build_iso.sh writes; file times do not help – live-build dates the ISO to the build start)
+        (cd "$REPO" && sha256sum --quiet -c .in-iso >/dev/null 2>&1) ||
+            die "output/repo is not from the ISO build – run ./build_iso.sh again, then sign and publish"
         assets+=("$ISO" "$ISO.sha256" output/Simple-OS.packages.txt)
     fi
     gh release view "$tag" -R "$repo" >/dev/null 2>&1 && die "release $tag exists already – raise the version in $OSR"

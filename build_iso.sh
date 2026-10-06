@@ -52,6 +52,9 @@ sudo mv "$ISO" output/Simple-OS.iso
 # package list with exact versions – it leads to the source code of every package (snapshot.debian.org, GPL).
 (cd output && sha256sum Simple-OS.iso) | sudo tee output/Simple-OS.iso.sha256 >/dev/null
 sudo cp build/live-image-amd64.packages output/Simple-OS.packages.txt
+# Marker for tools/release.sh: this repository's simpleos package is the one in this ISO (a later --config-only
+# rebuilds output/repo without the marker). Dot file: not uploaded as a release asset.
+(cd output/repo && sha256sum simpleos_*_all.deb) | sudo tee output/repo/.in-iso >/dev/null
 
 echo "Done: output/Simple-OS.iso (log: build/build.log)"
 echo "  Checksum:     output/Simple-OS.iso.sha256  ($(cut -d' ' -f1 output/Simple-OS.iso.sha256))"
