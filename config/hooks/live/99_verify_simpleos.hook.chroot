@@ -3416,6 +3416,14 @@ rcase "page only" 2 osr-gh "" '[ -z "$(ls $rt/desk)" ] && grep -q "^https://gith
 rcase "cancel" 3 osr-gh "" '[ -z "$(ls $rt/desk)" ] && [ ! -e $rt/st/browser ] && [ ! -e $rt/st/pkexec ]'
 rm -rf "${rt:?}"
 
+# Live session without passwords (hook 16): polkit lets the live user through, the installation removes the rule
+LR=/etc/polkit-1/rules.d/49-simpleos-live.rules
+check "live: polkit asks the live user for a password (rule missing)" \
+      "grep -q 'subject.user == \"simple\" && subject.local && subject.active' $LR && grep -q 'polkit.Result.YES' $LR && [ \"\$(stat -c %a $LR)\" = 644 ]"
+check "simpleos-post-install leaves the live polkit rule on the installed system" \
+      "grep -q 'rm -f .*$LR' /usr/local/sbin/simpleos-post-install"
+check "polkit: rules.d permissions changed (polkitd 0700)" "[ \"\$(stat -c %a /etc/polkit-1/rules.d)\" = 700 ]"
+
 # Installer links (Calamares runs as root): open in the live user's browser, not as root (hook 15)
 check "installer links: root does not open http(s) via open-as-user (browsers refuse to run as root)" \
       "[ \"\$(env -i HOME=/root PATH=/usr/bin:/bin xdg-mime query default x-scheme-handler/https)\" = simpleos-open-as-user.desktop ] &&

@@ -19,8 +19,8 @@ done
 rm -f /usr/share/applications/simpleos-install.desktop /etc/skel/Desktop/simpleos-install.desktop \
       /home/*/Desktop/simpleos-install.desktop /home/*/Desktop/install-debian.desktop
 
-# Leftovers of the live session: autologin of the live user and its NOPASSWD sudo
-rm -f /etc/lightdm/lightdm.conf.d/01_autologin.conf /etc/sudoers.d/simple-nopasswd
+# Leftovers of the live session: autologin of the live user, its NOPASSWD sudo and its polkit rule (hook 16)
+rm -f /etc/lightdm/lightdm.conf.d/01_autologin.conf /etc/sudoers.d/simple-nopasswd /etc/polkit-1/rules.d/49-simpleos-live.rules
 
 # Update channel of Simple OS (package "simpleos"): hook 98 switches it off in the image if GitHub was not
 # reachable during the build – the installed system needs it to get new Simple OS editions

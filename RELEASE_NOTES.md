@@ -26,7 +26,8 @@ need a terminal.
 - **Linux:** open *Disks* (gnome-disks), select the stick, choose *Restore Disk Image…* and pick the ISO.
 
 Start the computer from the stick. Usually that's F12, F9, F2 or Esc right after power-on, depending on the brand.
-The live system starts without a password. If anything asks for one, the user is `simple` and the password is `live`.
+The live system needs no password – not for the installer either. Only if something unexpected asks: the user is
+`simple` and the password is `live`.
 To install, use **Install Simple OS** on the desktop.
 
 ## System requirements
