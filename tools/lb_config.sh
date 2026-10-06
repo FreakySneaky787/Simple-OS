@@ -16,6 +16,9 @@ TOOLS=$(cd "$(dirname "$0")" && pwd)
 # which took every Bookworm package with /lib/firmware files (Raspberry Pi boot firmware, astronomy cameras …) and
 # conflicts with the firmware from backports (firmware-realtek-rtl8723cs-bt). --firmware-binary only puts firmware
 # into the ISO for the Debian installer – Simple OS installs with Calamares from the live system.
+# --apt-options: never ask during the build. A conffile that already exists in the image (created by another package's
+# scripts) would otherwise stop the build at dpkg's question; the edition tool takes the Simple OS version on the
+# first installation of the package simpleos.
 # Kernel/firmware/microcode from bookworm-backports: config/archives/backports.pref.chroot (kernel 6.12 knows e.g.
 # Intel Raptor Lake 0xA7AA; with 6.1 the screen stayed at 800x600).
 lb config \
@@ -26,6 +29,7 @@ lb config \
     --apt-recommends false \
     --firmware-chroot false \
     --firmware-binary false \
+    --apt-options "--yes -o Acquire::Retries=5 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold" \
     --bootappend-live "boot=live components locales=en_US.UTF-8 keyboard-layouts=us quiet splash hostname=simple-os username=simple" \
     --bootappend-live-failsafe "boot=live components memtest noapic noapm nodma nomce nolapic nosmp nosplash vga=788 locales=en_US.UTF-8 keyboard-layouts=us hostname=simple-os username=simple"
 
@@ -44,3 +48,6 @@ if ! echo "$FASTFETCH_SHA256  $FASTFETCH_DEB" | sha256sum -c --quiet >/dev/null 
     echo "$FASTFETCH_SHA256  $FASTFETCH_DEB" | sha256sum -c --quiet
 fi
 cp "$FASTFETCH_DEB" config/packages.chroot/
+
+# Edition package "simpleos" (installed into the image, updates installed systems) + repository files in output/repo
+"$TOOLS/build_deb.sh"

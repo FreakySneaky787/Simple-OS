@@ -5,8 +5,11 @@ Problem** – that tests the tool at the same time.
 
 ## 0. Build
 
+- [ ] Once: `./tools/release.sh key` – creates the release signing key and puts the public key into the image.
+      Back up `~/.local/share/simpleos-release/gnupg` (without it no further update can be signed).
 - [ ] `./build_iso.sh` runs without errors. At the end the verify hook reports `Simple OS verify: OK` (in `build/build.log`).
-- [ ] `output/` contains `Simple-OS.iso`, `Simple-OS.iso.sha256` and `Simple-OS.packages.txt`.
+- [ ] `output/` contains `Simple-OS.iso`, `Simple-OS.iso.sha256`, `Simple-OS.packages.txt` and `repo/`
+      (`simpleos_<version>_all.deb`, `Packages`, `Release`). The version is the one in `usr/lib/os-release`.
 - [ ] `cd output && sha256sum -c Simple-OS.iso.sha256` reports `Simple-OS.iso: OK`.
 
 ## 1. In the VM (no extra hardware)
@@ -59,5 +62,17 @@ Already done (October 4, with the ISO from October 3 plus the new boot image):
 1. Create a public repo **`simple-os`** under `FreakySneaky787` on GitHub. The name must match, because the
    installer and Report a Problem link to `github.com/FreakySneaky787/simple-os`.
 2. `git remote add origin https://github.com/FreakySneaky787/simple-os.git && git push -u origin main`
-3. Releases → "Draft a new release" → tag `v1.0`. Paste the text of `RELEASE_NOTES.md` as the description. Attach the
-   three files from `output/` (GitHub allows up to 2 GB per file).
+3. `./tools/release.sh sign && ./tools/release.sh publish` – creates the release `v<version>` with the text of
+   `RELEASE_NOTES.md`, the three ISO files and the update repository, checks it as a draft and only then makes it
+   "latest" (needs `gh auth login`). From then on installed systems are offered this edition.
+4. On an installed system (VM): `sudo apt-get update` shows the Simple OS source without errors
+   (`…/releases/latest/download ./ InRelease`), and `/etc/apt/sources.list.d/simpleos.sources` has no `Enabled: no`.
+
+## 5. Update to a new edition (from the second release on)
+
+- [ ] Before publishing the new version: a VM installed from the **previous** ISO. Change something by hand in
+      `~/.config/openbox/rc.xml` (e.g. a comment).
+- [ ] After `publish`: Software Updates lists "Simple OS <new version>" at the top → Install now → the notification
+      says "Simple OS … is installed". `cat /etc/os-release` shows the new version.
+- [ ] Sign out and back in: files you did not change follow the new edition, your change in `rc.xml` is still there
+      (`~/.cache/simpleos-edition.log` lists "updated …" / "kept …"). New packages of the edition are installed.

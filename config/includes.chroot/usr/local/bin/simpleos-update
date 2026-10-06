@@ -18,6 +18,9 @@
 # is interrupted in the middle of their work.
 # BIOS updates run during the restart; if the same device is in the list again afterwards, applying it failed
 # -> an honest notification (marker ~/.cache/simpleos/firmware-installed).
+# New Simple OS edition: the package "simpleos" (APT source simpleos.sources, GitHub release "latest") is listed as
+# "Simple OS <version>" at the top; the packages that edition adds come with it (edition --todo-packages). Afterwards
+# a hint that the account's settings follow at the next sign-in (edition --user).
 # Tests: SIMPLEOS_REBOOT_FLAG replaces /var/run/reboot-required, SIMPLEOS_APT_STAMPS the time stamps of the last
 # check (list; empty/old = check again).
 # Robust like simpleos-wifi: no set -e, every path ends with exit 0 and a clear notification;
@@ -58,12 +61,17 @@ FW_MARK=${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}/simpleos/firmware-installed
 APT_STAMPS=${SIMPLEOS_APT_STAMPS-/var/lib/simpleos/apt-refreshed /var/lib/apt/periodic/update-success-stamp}
 # Package names with updates (one line per package): what the helper would install (see above). "Inst package [old]
 # (new …)" = new version; new packages without "[old]" (e.g. the kernel package behind linux-image-amd64) do not count.
-# apt-get -s needs no root.
+# apt-get -s needs no root. The edition package comes first as "Simple OS <new version>".
 upgradable() {
     sim=$(LC_ALL=C apt-get -s full-upgrade 2>/dev/null) || sim=
     printf '%s\n' "$sim" | grep -q '^Remv ' && sim=$(LC_ALL=C apt-get -s upgrade --with-new-pkgs 2>/dev/null)
-    printf '%s\n' "$sim" | awk '$1 == "Inst" && $3 ~ /^\[/ { print $2 }'
+    printf '%s\n' "$sim" | awk '$1 == "Inst" && $3 ~ /^\[/ {
+        if ($2 == "simpleos") { v = $4; sub(/^\(/, "", v); print "Simple OS " v } else rest = rest $2 "\n" }
+        END { printf "%s", rest }'
 }
+# Packages of the installed edition that are still missing (an earlier installation of them failed)
+EDITION=/usr/local/lib/simpleos/edition
+edition_todo() { [ -x "$EDITION" ] && "$EDITION" --todo-packages 2>/dev/null; }
 # Devices with a firmware update (one line per device). --json never asks, --no-authenticate: no password dialog
 # just for checking. In the JSON output the device name comes before "Releases" (release names only follow after it).
 firmware() {
@@ -73,8 +81,14 @@ firmware() {
         awk '/"Name" *:/ { n = $0; sub(/^[^:]*: *"/, "", n); sub(/",? *$/, "", n) }
              /"Releases" *: *\[/ { if (n != "") print n; n = "" }'
 }
-# Everything pending: firmware first (with a hint), then packages
-pending() { firmware | sed 's/$/ (firmware)/'; upgradable; }
+# Everything pending: a new Simple OS edition, firmware (with a hint), then packages
+pending() {
+    up=$(upgradable)
+    printf '%s\n' "$up" | grep '^Simple OS '
+    firmware | sed 's/$/ (firmware)/'
+    printf '%s\n' "$up" | grep -v -e '^Simple OS ' -e '^$'
+    edition_todo
+}
 # After a restart: a BIOS/firmware update the helper had installed is still pending -> not applied during the
 # restart. One notification, then the marker is gone (the update stays in the list as usual).
 firmware_check() {
@@ -116,6 +130,7 @@ install_updates() {
     # update under get-updates afterwards (it waits for the restart) – read afterwards, the list stayed empty and the
     # check after the restart (firmware_check) never took effect. The list is already in the window ($pkgs, "… (firmware)").
     fw_before=$(printf '%s\n' "${pkgs:-}" | sed -n 's/ (firmware)$//p')
+    edition=$(printf '%s\n' "${pkgs:-}" | sed -n 's/^Simple OS //p' | head -n 1)
     # Progress window with real progress (PROGRESS/STAGE from the helper); appears only after the password dialog.
     # Without --title: the helper's STEP lines are the heading ("Checking for updates" -> "Installing updates"),
     # otherwise it also said "Installing updates" when just checking. Nothing to do -> the helper reports "DONE: Already up to date"
@@ -152,6 +167,7 @@ install_updates() {
                 sos_notify "$n could not be installed automatically: they would remove other software. Details: ~/.cache/simpleos-update.log" critical
             fi
             restart="Your computer needs a restart to finish the update. Restart when it suits you."
+            [ -n "$edition" ] && restart="Simple OS $edition is installed. Your computer needs a restart to finish the update. Restart when it suits you."
             if printf '%s\n' "$log" | grep -qx 'FIRMWARE: installed'; then
                 restart="Your computer needs a restart to finish the update. Firmware is installed during the restart – keep the charger plugged in."
                 # Remember the devices: if they are still pending after the restart, applying them did not work
@@ -160,6 +176,8 @@ install_updates() {
             fi
             if [ -e "$REBOOT_FLAG" ]; then
                 offer_restart "$restart"
+            elif [ -n "$edition" ]; then
+                sos_notify "Simple OS $edition is installed. Sign out and back in to see everything that is new."
             elif [ -n "$fwnote$held" ]; then
                 :
             elif printf '%s\n' "$log" | grep -qx 'UPTODATE: 1'; then

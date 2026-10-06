@@ -22,6 +22,11 @@ rm -f /usr/share/applications/simpleos-install.desktop /etc/skel/Desktop/simpleo
 # Leftovers of the live session: autologin of the live user and its NOPASSWD sudo
 rm -f /etc/lightdm/lightdm.conf.d/01_autologin.conf /etc/sudoers.d/simple-nopasswd
 
+# Update channel of Simple OS (package "simpleos"): hook 98 switches it off in the image if GitHub was not
+# reachable during the build – the installed system needs it to get new Simple OS editions
+SOS_SRC=/etc/apt/sources.list.d/simpleos.sources
+[ -f "$SOS_SRC" ] && sed -i '/^Enabled: no$/d' "$SOS_SRC"
+
 # Offline packages for bootloader-config (grub-pc/grub-efi-amd64/cryptsetup-initramfs) are no longer needed
 rm -rf /usr/share/simpleos/bootloader-debs
 

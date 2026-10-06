@@ -10,6 +10,8 @@
 #                                    system update invalid (the exit code stays 0). Updates that would only work by
 #                                    removing other packages are left alone: line "HELD: <count>".
 #                                    kernel, microcode, firmware, libc, systemd updated -> /run/reboot-required
+#                                    A new Simple OS edition (package "simpleos") comes with the other updates; the
+#                                    packages it adds to Simple OS are installed once afterwards (edition --todo-packages)
 #   pkexec simpleos-system-setup --refresh   only check (simpleos-update when opening): download package lists and
 #                                    firmware metadata, install nothing. Without a password for active
 #                                    administrators (polkit rule 50-simpleos-update-refresh.rules, hook 14)
@@ -105,13 +107,30 @@ apt_wait() {
 APT_STAMP=/var/lib/simpleos/apt-refreshed
 apt_get_update() {
     apt_wait
-    if ! ${APT_GET:-apt-get} -o DPkg::Lock::Timeout=300 update; then
+    if ! apt_update_once; then
         sleep 5
         apt_wait
-        ${APT_GET:-apt-get} -o DPkg::Lock::Timeout=300 update || return 1
+        apt_update_once || return 1
     fi
     [ -n "${APT_STAMP:-}" ] && mkdir -p "${APT_STAMP%/*}" 2>/dev/null && : > "$APT_STAMP" 2>/dev/null
     return 0
+}
+# One "apt-get update". If only the Simple OS source failed (GitHub not reachable, before the first release) it still
+# counts as success: Debian's lists are fresh, and Debian's (security) updates must never wait for Simple OS.
+SOS_SOURCE=/etc/apt/sources.list.d/simpleos.sources
+apt_update_once() {
+    _out=$(${APT_GET:-apt-get} -o DPkg::Lock::Timeout=300 update 2>&1)
+    _rc=$?
+    [ -n "$_out" ] && printf '%s\n' "$_out" >&2
+    [ "$_rc" -eq 0 ] && return 0
+    _uri=$(sed -n 's/^URIs: *//p' "$SOS_SOURCE" 2>/dev/null | head -n 1)
+    _uri=${_uri%/}
+    _err=$(printf '%s\n' "$_out" | grep '^E: ' | grep -v 'Some index files failed to download')
+    if [ -n "$_uri" ] && [ -n "$_err" ] && ! printf '%s\n' "$_err" | grep -qvF "$_uri"; then
+        echo "Simple OS updates could not be checked ($_uri) – Debian updates go on" >&2
+        return 0
+    fi
+    return "$_rc"
 }
 # Restart needed? stdin = package names that were just updated/installed. Debian creates /run/reboot-required
 # only for dbus itself (unattended-upgrades is missing) – without this marker simpleos-update reported "up to date"
@@ -315,6 +334,22 @@ upgrade_sim() {  # $1 full|safe -> simulation on stdout
     if [ "$1" = full ]; then LC_ALL=C ${APT_GET:-apt-get} -s full-upgrade 2>/dev/null
     else LC_ALL=C ${APT_GET:-apt-get} -s upgrade --with-new-pkgs 2>/dev/null; fi
 }
+# Packages a new Simple OS edition added to its package lists (e.g. a new tool's dependency): installed once after
+# the edition package itself, then marked as handled – what you remove yourself later stays removed
+EDITION=/usr/local/lib/simpleos/edition
+edition_todo() { [ -x "$EDITION" ] && "$EDITION" --todo-packages 2>/dev/null; }
+install_edition_pkgs() {
+    _todo=$(edition_todo)
+    [ -n "$_todo" ] || return 0
+    step "Installing new Simple OS components"
+    # shellcheck disable=SC2086
+    if aptget --no-remove install $_todo; then
+        "$EDITION" --mark-packages
+        printf '%s\n' "$_todo" | mark_reboot
+    else
+        fail "new Simple OS components could not be installed"
+    fi
+}
 
 if [ "$upgrade" -eq 1 ]; then
     step "Checking for updates"
@@ -327,6 +362,7 @@ if [ "$upgrade" -eq 1 ]; then
     planned=$(upgrade_sim "$mode" | sim_pkgs)
     apt_pending=0
     [ -n "$planned" ] && apt_pending=1
+    [ -n "$(edition_todo)" ] && apt_pending=1
     fp_pending=0
     if command -v flatpak >/dev/null && flatpak remotes --system 2>/dev/null | grep -q .; then
         _ls=$(flatpak remote-ls --updates --system --columns=ref 2>/dev/null) || _ls=unknown
@@ -348,15 +384,21 @@ if [ "$upgrade" -eq 1 ]; then
             /usr/local/sbin/simpleos-backup-helper --before-update ||
                 echo "restore point before the update failed – the update runs anyway" >&2
         fi
-        step "Installing updates"
-        if [ "$mode" = full ]; then
-            aptget --no-remove full-upgrade
-        else
-            aptget upgrade --with-new-pkgs
+        urc=0
+        if [ -n "$planned" ]; then
+            step "Installing updates"
+            if [ "$mode" = full ]; then
+                aptget --no-remove full-upgrade
+            else
+                aptget upgrade --with-new-pkgs
+            fi
+            urc=$?
         fi
         # Restart marker only after success – otherwise the error message would wrongly say "Restart first"
-        if [ $? -eq 0 ]; then
+        if [ $urc -eq 0 ]; then
             printf '%s\n' "$planned" | mark_reboot
+            # after the upgrade: the list of the edition that is installed now
+            install_edition_pkgs
         else
             fail "updates could not be installed"
         fi

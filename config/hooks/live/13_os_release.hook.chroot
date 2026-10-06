@@ -1,11 +1,12 @@
 #!/bin/sh
-# Simple OS – protect /usr/lib/os-release (from includes.chroot) against Debian updates.
-# The file belongs to base-files and is not a conffile: every point release (12.x) would have replaced it, along
-# with /etc/os-release, by "Debian GNU/Linux 12" – name, version and BUG_REPORT_URL (simpleos-report) would be gone.
-# With the diversion dpkg stores Debian's version as /usr/lib/os-release.debian from now on. /etc/os-release stays
-# a link to it, as on Debian (base-files recreates it unchanged on updates).
+# Simple OS – /usr/lib/os-release comes from the package "simpleos" and is protected against Debian updates:
+# the file belongs to base-files and is not a conffile – every point release (12.x) would replace it, along with
+# /etc/os-release, by "Debian GNU/Linux 12" (name, version and BUG_REPORT_URL for simpleos-report gone).
+# The package's preinst diverts it (dpkg-divert --package simpleos): Debian's version goes to /usr/lib/os-release.debian.
+# /etc/os-release stays a link to it, as on Debian (base-files recreates it unchanged on updates).
 set -e
 OSR=/usr/lib/os-release
 grep -q '^ID=simpleos$' "$OSR"
-dpkg-divert --local --no-rename --divert "$OSR.debian" --add "$OSR"
+[ "$(dpkg-divert --listpackage "$OSR")" = simpleos ] ||
+    { echo "13_os_release: $OSR is not diverted by the package simpleos (preinst)" >&2; exit 1; }
 ln -sfn ../usr/lib/os-release /etc/os-release

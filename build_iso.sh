@@ -2,6 +2,7 @@
 # Simple OS – build the ISO.
 #   ./build_iso.sh                 build the ISO -> output/Simple-OS.iso (privileged container, needs sudo)
 #   ./build_iso.sh --config-only   only generate the live-build configuration in build/config (without sudo, for checking)
+#                                  – also builds the edition package "simpleos" and output/repo (tools/build_deb.sh)
 #
 # The source is config/ (never modified). The build happens in build/: the freshly copied
 # configuration, all live-build intermediates and build.log end up there.
@@ -55,3 +56,4 @@ sudo cp build/live-image-amd64.packages output/Simple-OS.packages.txt
 echo "Done: output/Simple-OS.iso (log: build/build.log)"
 echo "  Checksum:     output/Simple-OS.iso.sha256  ($(cut -d' ' -f1 output/Simple-OS.iso.sha256))"
 echo "  Package list: output/Simple-OS.packages.txt"
+echo "  Updates:      output/repo (edition package + repository; release: ./tools/release.sh sign && ./tools/release.sh publish)"

@@ -1,5 +1,6 @@
 #!/bin/sh
 set -e
+# Re-run on Simple OS updates (package simpleos, edition --system): must stay idempotent.
 # Icons for the Openbox right-click menu: monochrome Papirus "symbolic" icons, recolored to Catppuccin
 # Mocha (Papirus-Dark draws them in a fixed #dfdfdf). Normal entries Subtext1 #bac2de, "Install Simple OS"
 # Mauve #cba6f7. Openbox only loads icons via file paths (no icon theme) -> fixed copies under

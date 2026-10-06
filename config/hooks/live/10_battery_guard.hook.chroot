@@ -1,5 +1,6 @@
 #!/bin/sh
 set -e
+# Re-run on Simple OS updates (package simpleos, edition --system): must stay idempotent.
 # Battery programs only with a real battery: false "Battery low" alarms in VMs/on desktop PCs come from services
 # that report phantom batteries (UPower, the VM's ACPI dummies). All start paths are covered:
 #   XDG autostart  Exec via "simpleos-battery --run" (starts only with a real battery, never in VMs);

@@ -1,5 +1,6 @@
 #!/bin/sh
 set -e
+# Re-run on Simple OS updates (package simpleos, edition --system): must stay idempotent.
 # Tidy up the launcher (Rofi): hide duplicate and raw system tools. Copies with NoDisplay=true in
 # /usr/local/share/applications take precedence over /usr/share/applications and survive package updates.
 # Settings go through Menu → Settings (Display, Sound, Network, Appearance, Setup Wizard).

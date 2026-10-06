@@ -1,5 +1,6 @@
 #!/bin/sh
 set -e
+# Re-run on Simple OS updates (package simpleos, edition --system): must stay idempotent.
 grep -q fastfetch /etc/skel/.bashrc || cat >> /etc/skel/.bashrc <<'BASHRC'
 
 # Simple OS: logo + system info

@@ -1,0 +1,18 @@
+#!/bin/sh
+# Simple OS – update channel (/etc/apt/sources.list.d/simpleos.sources from the package "simpleos").
+# live-build runs "apt-get update" in the image after the hooks. Before the first release with the repository exists
+# on GitHub (or without internet during the build) the source would make it fail – and with it the whole build. Then
+# it is switched off in the image ("Enabled: no"); simpleos-post-install switches it on again during the installation.
+set -e
+SRC=/etc/apt/sources.list.d/simpleos.sources
+uri=$(sed -n 's/^URIs: *//p' "$SRC")
+case "$uri" in https://*/) ;; *) echo "98_update_channel: no https URI in $SRC" >&2; exit 1 ;; esac
+tmp=$(mktemp -d)
+if /usr/lib/apt/apt-helper download-file "${uri}InRelease" "$tmp/InRelease" >/dev/null 2>&1 &&
+   grep -q 'BEGIN PGP SIGNED MESSAGE' "$tmp/InRelease"; then
+    echo "Simple OS update channel: reachable (${uri})"
+else
+    echo "Simple OS update channel: ${uri} not reachable – switched off in the image, the installation switches it on" >&2
+    grep -qx 'Enabled: no' "$SRC" || echo 'Enabled: no' >> "$SRC"
+fi
+rm -rf "$tmp"

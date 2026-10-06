@@ -1,0 +1,224 @@
+#!/bin/sh
+# Simple OS – keep an installed system on the newest Simple OS edition.
+# The edition itself is the package "simpleos" (APT source /etc/apt/sources.list.d/simpleos.sources = GitHub release
+# "latest", built by tools/build_deb.sh); Software Updates installs it like any other update. This tool carries
+# over what a package update alone does not reach:
+#   edition --system [--first-install]
+#                             root, from the package's postinst: unchanged older /etc files that dpkg kept (it
+#                             only knows its own last version; on the first installation of the package – a system
+#                             from before it existed – every kept one, the old file is saved under
+#                             /var/lib/simpleos/edition/replaced), files that belong to Debian packages (copies in
+#                             /usr/share/simpleos/edition/system), the build hooks that derive system settings
+#                             (hooks/), one-time system migrations (migrations/system)
+#   edition --user            at every sign-in, before the desktop starts (/etc/X11/Xsession.d/80simpleos-edition):
+#                             the account's copies of /etc/skel (~/.config/openbox/rc.xml, tint2rc …), one-time
+#                             user migrations (migrations/user)
+#   edition --todo-packages   packages the installed edition added to Simple OS that are not installed yet and can be
+#                             installed without removing anything (one per line; simpleos-update counts them,
+#                             "simpleos-system-setup --upgrade" installs them). One that conflicts with this system
+#                             is left out – otherwise every update would fail on it again.
+#   edition --mark-packages   root: the current package list counts as handled (after installing it) – a package
+#                             you remove yourself later is never installed again
+# A file is only replaced if nobody changed it: its content is a version Simple OS once shipped (*.history, built
+# from git by tools/managed_history.py) or the one this tool put there last time (state). A home copy that equals the
+# /etc/skel file replaced on the first installation counts as unchanged too. A file you deleted stays deleted; a file
+# that is new in this edition is added.
+# Changed home copies – by you, or at every sign-in by Simple OS tools (taskbar: battery/layout lines in tint2rc,
+# theme: accent colors, wallpaper schedule …) – get a 3-way merge (diff3, like git): the changes between the /etc/skel
+# version the copy is based on (~/.local/state/simpleos/base) and the new one are worked into the copy, your/the
+# tools' lines stay. If both changed the same place, the copy stays as it is (log: "kept").
+# Migrations: executable files, run once each in name order (e.g. 010-taskbar-clock); exit != 0 -> again next time.
+# A fresh system/account (no state yet) counts the existing ones as done – it already starts in the new state.
+# Log: /var/log/simpleos-edition.log (system), ~/.cache/simpleos-edition.log (account). Never fails its caller.
+# Tests: SIMPLEOS_EDITION_SHARE, SIMPLEOS_EDITION_STATE (system state), SIMPLEOS_EDITION_CONFFILES replace the fixed paths.
+
+SHARE=${SIMPLEOS_EDITION_SHARE:-/usr/share/simpleos/edition}
+SYSSTATE=${SIMPLEOS_EDITION_STATE:-/var/lib/simpleos/edition}
+VERSION=$(cat "$SHARE/version" 2>/dev/null)
+LOG=/dev/null
+# State record for a file the user changed: known (a later deletion is respected), but never "unchanged"
+KEPT=0000000000000000000000000000000000000000000000000000000000000000
+
+log() { printf '%s %s\n' "$(date '+%F %T')" "$*" >> "$LOG" 2>/dev/null; }
+sha() { sha256sum < "$1" 2>/dev/null | cut -c1-64; }
+# Replace atomically – tint2, Openbox … never read a half-written file
+install_file() {
+    _tmp="$2.simpleos-new.$$"
+    if cp "$1" "$_tmp" 2>/dev/null && mv -f "$_tmp" "$2" 2>/dev/null; then return 0; fi
+    rm -f "$_tmp"
+    return 1
+}
+
+# Merge the changes BASE -> NEW into FILE (diff3 -m), keeping FILE's permissions; 1 = they overlap (FILE unchanged)
+merge_file() {  # FILE BASE NEW
+    command -v diff3 >/dev/null 2>&1 || return 1
+    _tmp="$1.simpleos-new.$$"
+    if cp "$1" "$_tmp" 2>/dev/null && diff3 -m "$1" "$2" "$3" > "$_tmp" 2>/dev/null && mv -f "$_tmp" "$1" 2>/dev/null; then
+        return 0
+    fi
+    rm -f "$_tmp"
+    return 1
+}
+# Remember which version of SRC a home copy is based on now (base for the next merge)
+save_base() {  # SRC BASE_FILE
+    [ -n "$_base" ] || return 0
+    mkdir -p "${2%/*}" 2>/dev/null && cp "$1" "$2" 2>/dev/null
+}
+
+# sync_files HISTORY SRC_ROOT DEST_ROOT STATE [OLD_ROOT [BASE_ROOT]] – every path in HISTORY ("sha256  path") from
+# SRC_ROOT to DEST_ROOT. OLD_ROOT: earlier versions of SRC_ROOT on this system (count as unchanged, and as merge base
+# if BASE_ROOT has none). BASE_ROOT: the SRC version each copy is based on (merging; without it changed files stay).
+sync_files() {
+    _hist=$1 _src=$2 _dst=$3 _state=$4 _old=${5:-} _base=${6:-}
+    [ -r "$_hist" ] || return 0
+    mkdir -p "${_state%/*}" 2>/dev/null
+    _new=$(mktemp "$_state.XXXXXX" 2>/dev/null) || return 0
+    cut -c67- "$_hist" | sort -u | while IFS= read -r p; do
+        [ -n "$p" ] || continue
+        src=$_src/$p dst=$_dst/$p base=$_base/$p
+        last=$(awk -v p="$p" 'substr($0, 67) == p { print substr($0, 1, 64); exit }' "$_state" 2>/dev/null)
+        rec=$last
+        if [ ! -f "$src" ]; then
+            :  # no longer shipped – nothing to do
+        elif [ -L "$dst" ] || { [ -e "$dst" ] && [ ! -f "$dst" ]; }; then
+            :  # not a plain file (link, folder) – your business
+        elif [ -f "$dst" ]; then
+            want=$(sha "$src") have=$(sha "$dst")
+            # merge base: the version this copy is based on, else the one replaced on the first installation
+            from=
+            if [ -n "$_base" ] && [ -f "$base" ]; then from=$base
+            elif [ -n "$_base" ] && [ -n "$_old" ] && [ -f "$_old/$p" ]; then from=$_old/$p; fi
+            if [ "$have" = "$want" ]; then
+                rec=$want
+                save_base "$src" "$base"
+            elif [ "$have" = "$last" ] || grep -qxF "$have  $p" "$_hist" ||
+                 { [ -n "$_old" ] && [ -f "$_old/$p" ] && [ "$have" = "$(sha "$_old/$p")" ]; }; then
+                if install_file "$src" "$dst"; then
+                    log "updated $dst"
+                    rec=$want
+                    save_base "$src" "$base"
+                else
+                    log "could not update $dst"
+                fi
+            elif [ -n "$from" ] && [ "$(sha "$from")" = "$want" ]; then
+                rec=$KEPT  # changed, but nothing new from Simple OS since
+            elif [ -n "$from" ] && merge_file "$dst" "$from" "$src"; then
+                log "merged the new version into $dst (your changes stay)"
+                rec=$KEPT
+                save_base "$src" "$base"
+            else
+                [ "$last" = "$KEPT" ] || log "kept $dst (changed${from:+ in the same places as the new version})"
+                rec=$KEPT
+            fi
+        elif [ -n "$last" ]; then
+            :  # deleted after we knew it – stays deleted
+        elif mkdir -p "${dst%/*}" 2>/dev/null && install_file "$src" "$dst"; then
+            log "added $dst"
+            rec=$(sha "$src")
+            save_base "$src" "$base"
+        else
+            log "could not add $dst"
+        fi
+        [ -n "$rec" ] && printf '%s  %s\n' "$rec" "$p"
+    done > "$_new"
+    mv -f "$_new" "$_state" 2>/dev/null || rm -f "$_new"
+}
+
+# run_migrations DIR DONE – exit 1 if one failed (it runs again next time)
+run_migrations() {
+    _dir=$1 _done=$2 _rc=0
+    if [ ! -e "$_done" ]; then
+        # fresh system/account: already in the newest state
+        mkdir -p "${_done%/*}" 2>/dev/null
+        ls "$_dir" 2>/dev/null > "$_done"
+        return 0
+    fi
+    for m in "$_dir"/*; do
+        [ -f "$m" ] && [ -x "$m" ] || continue
+        n=${m##*/}
+        grep -qxF "$n" "$_done" && continue
+        if "$m" >> "$LOG" 2>&1; then
+            echo "$n" >> "$_done"
+            log "migration $n done"
+        else
+            log "migration $n failed – again next time"
+            _rc=1
+        fi
+    done
+    return "$_rc"
+}
+
+case "${1:-}" in
+    --system)
+        [ "$(id -u)" -eq 0 ] || { echo "edition --system: must run as root" >&2; exit 1; }
+        [ -n "$VERSION" ] || exit 0
+        LOG=/var/log/simpleos-edition.log
+        mkdir -p "$SYSSTATE" 2>/dev/null
+        log "Simple OS $VERSION"
+        # dpkg keeps a conffile it considers changed (--force-confold) and puts the new one next to it as .dpkg-dist.
+        # If the kept file is a version Simple OS shipped (a system from before the package, an older image), nobody
+        # changed it -> take the new one. Really changed files stay; the new version waits as .dpkg-dist.
+        cf=${SIMPLEOS_EDITION_CONFFILES:-/var/lib/dpkg/info/simpleos.conffiles}
+        [ -r "$cf" ] && while IFS= read -r f; do
+            [ -f "$f.dpkg-dist" ] && [ -f "$f" ] && [ ! -L "$f" ] || continue
+            if grep -qxF "$(sha "$f")  ${f#/}" "$SHARE/system.history"; then
+                if mv -f "$f.dpkg-dist" "$f"; then log "updated $f"; fi
+            elif [ "${2:-}" = --first-install ]; then
+                old=$SYSSTATE/replaced$f
+                if mkdir -p "${old%/*}" && cp -p "$f" "$old" && mv -f "$f.dpkg-dist" "$f"; then
+                    log "replaced $f by the Simple OS version (first installation of the package; before: $old)"
+                fi
+            else
+                log "kept $f (changed) – the new version is $f.dpkg-dist"
+            fi
+        done < "$cf"
+        sync_files "$SHARE/system.history" "$SHARE/system" "" "$SYSSTATE/managed"
+        for h in "$SHARE"/hooks/*; do
+            [ -f "$h" ] || continue
+            if sh "$h" >> "$LOG" 2>&1; then log "hook ${h##*/}: ok"; else log "hook ${h##*/}: FAILED"; fi
+        done
+        run_migrations "$SHARE/migrations/system" "$SYSSTATE/migrations"
+        # Fresh system (image): the packages are already there
+        [ -e "$SYSSTATE/packages" ] || cp "$SHARE/packages" "$SYSSTATE/packages" 2>/dev/null
+        # New boot splash -> into the initramfs (only on a change, it takes a while)
+        wm=/usr/share/plymouth/themes/spinner/watermark.png
+        if [ -f "$wm" ]; then
+            h=$(sha "$wm") old=$(cat "$SYSSTATE/plymouth" 2>/dev/null)
+            if [ -n "$old" ] && [ "$h" != "$old" ] && command -v update-initramfs >/dev/null 2>&1; then
+                update-initramfs -u >> "$LOG" 2>&1 || log "update-initramfs failed"
+            fi
+            echo "$h" > "$SYSSTATE/plymouth"
+        fi
+        exit 0 ;;
+    --user)
+        [ "$(id -u)" -ne 0 ] && [ -n "${HOME:-}" ] && [ -d "$HOME" ] && [ -n "$VERSION" ] || exit 0
+        state=${XDG_STATE_HOME:-$HOME/.local/state}/simpleos
+        LOG=${XDG_CACHE_HOME:-$HOME/.cache}/simpleos-edition.log
+        # Nothing new since the last sign-in -> done at once (runs before every desktop start)
+        stamp=$({ cat "$SHARE/version" "$SHARE/skel.history"; ls "$SHARE/migrations/user" 2>/dev/null; } | sha256sum | cut -c1-64)
+        [ "$(cat "$state/edition" 2>/dev/null)" = "$stamp" ] && exit 0
+        mkdir -p "$state" "${LOG%/*}" 2>/dev/null
+        log "Simple OS $VERSION"
+        sync_files "$SHARE/skel.history" /etc/skel "$HOME" "$state/managed" "$SYSSTATE/replaced/etc/skel" "$state/base"
+        run_migrations "$SHARE/migrations/user" "$state/migrations" && echo "$stamp" > "$state/edition"
+        exit 0 ;;
+    --todo-packages)
+        known=$SYSSTATE/packages
+        command -v dpkg-query >/dev/null 2>&1 && [ -r "$known" ] && [ -r "$SHARE/packages" ] || exit 0
+        grep -vxFf "$known" "$SHARE/packages" | while read -r p; do
+            [ -n "$p" ] || continue
+            dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q 'install ok installed' && continue
+            # not available (source missing) or not installable without removing something
+            LC_ALL=C apt-get -s -o Debug::NoLocking=1 --no-remove install "$p" >/dev/null 2>&1 || continue
+            echo "$p"
+        done
+        exit 0 ;;
+    --mark-packages)
+        [ "$(id -u)" -eq 0 ] || { echo "edition --mark-packages: must run as root" >&2; exit 1; }
+        mkdir -p "$SYSSTATE" && cat "$SHARE/packages" "$SYSSTATE/packages" 2>/dev/null | sort -u > "$SYSSTATE/packages.new" &&
+            mv -f "$SYSSTATE/packages.new" "$SYSSTATE/packages"
+        exit 0 ;;
+    *)
+        echo "Usage: $0 --system | --user | --todo-packages | --mark-packages" >&2
+        exit 2 ;;
+esac

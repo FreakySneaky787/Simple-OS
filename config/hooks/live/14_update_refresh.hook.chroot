@@ -1,5 +1,6 @@
 #!/bin/sh
 set -e
+# Re-run on Simple OS updates (package simpleos, edition --system): must stay idempotent.
 # Software Updates may look for updates without a password: "pkexec simpleos-system-setup --refresh" only downloads
 # package lists and firmware metadata, it installs nothing. Allowed for the active, local session of an
 # administrator (group sudo) – exactly this command line, everything else (installing, --upgrade, drivers …) still

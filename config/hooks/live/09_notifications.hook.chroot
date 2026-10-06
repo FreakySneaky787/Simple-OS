@@ -1,5 +1,6 @@
 #!/bin/sh
 set -e
+# Re-run on Simple OS updates (package simpleos, edition --system): must stay idempotent.
 # Notifications (dunst 1.9 has no drop-in configuration): a left click on a notification triggers its
 # action – e.g. "Open" for a USB stick (simpleos-usb-notify) or "Install" for updates (simpleos-update).
 # The action menu (several buttons) uses rofi instead of dmenu, which is not installed.

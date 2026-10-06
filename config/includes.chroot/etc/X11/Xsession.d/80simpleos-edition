@@ -1,0 +1,6 @@
+# Simple OS: bring this account's settings up to the installed Simple OS edition before the desktop starts
+# (unchanged copies of /etc/skel, one-time migrations – /usr/local/lib/simpleos/edition --user). Sourced by Xsession:
+# never exits, never fails; without anything new it returns at once.
+if [ -x /usr/local/lib/simpleos/edition ]; then
+    timeout 30 /usr/local/lib/simpleos/edition --user >/dev/null 2>&1 || true
+fi

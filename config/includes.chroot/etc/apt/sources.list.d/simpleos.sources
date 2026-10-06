@@ -1,0 +1,7 @@
+# Simple OS – updates of Simple OS itself: the package "simpleos" (tools, settings, look) brings the system to the
+# newest Simple OS edition through Software Updates, like any Debian update. "latest" is always the newest release
+# on GitHub; every release carries the signed repository (tools/release.sh). Key: simpleos-archive-keyring.asc
+Types: deb
+URIs: https://github.com/FreakySneaky787/simple-os/releases/latest/download/
+Suites: ./
+Signed-By: /usr/share/keyrings/simpleos-archive-keyring.asc

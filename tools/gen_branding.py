@@ -42,6 +42,7 @@ RED = (0xF3, 0x8B, 0xA8)          # Catppuccin Mocha Red: stripes of the lifebuo
 RING = (0xF5, 0xF6, 0xFA)         # base color of the ring (almost white)
 TEXT = (0xCD, 0xD6, 0xF4)
 SLOGAN = "Keep it Simple"
+VERSION = ""  # from usr/lib/os-release (main)
 
 FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
@@ -228,7 +229,7 @@ def make_boot_splash(size, logo_y):
     img.paste(mark, ((w - mark.width) // 2, round(h * logo_y) - mark.height // 2), mark)
     draw = ImageDraw.Draw(img)
     font = ImageFont.truetype(FONT, max(11, round(14 * w / 800)))
-    draw.text((w / 2, round(h * logo_y) + mark.height // 2 + round(18 * w / 800)), f"{SLOGAN} · Version 1.0",
+    draw.text((w / 2, round(h * logo_y) + mark.height // 2 + round(18 * w / 800)), f"{SLOGAN} · Version {VERSION}",
               font=font, fill=SUBTEXT, anchor="mt")
     # vesamenu (isolinux) and GRUB only read simple PNGs: RGB, 8 bit, without interlacing
     return img.convert("RGB")
@@ -244,13 +245,18 @@ def main():
         return
 
     root = Path(sys.argv[1] if len(sys.argv) > 1 else ".")
+    # The version is set in ONE place: usr/lib/os-release (VERSION_ID, also the version of the package "simpleos")
+    global VERSION
+    for line in (root / "usr/lib/os-release").read_text().splitlines():
+        if line.startswith("VERSION_ID="):
+            VERSION = line.split("=", 1)[1].strip('"')
 
     cala = root / "etc/calamares/branding/simpleos"
     cala.mkdir(parents=True, exist_ok=True)
     make_logo(256).save(cala / "logo.png")
     make_logo(64).save(cala / "icon.png")
     make_banner((600, 350), 72, "Simple Operating System").save(cala / "welcome.png")
-    make_banner((800, 480), 96, "Simple Operating System · Version 1.0").save(cala / "slide1.png")
+    make_banner((800, 480), 96, f"Simple Operating System · Version {VERSION}").save(cala / "slide1.png")
 
     # Logo for the Setup Wizard (the Calamares branding is removed after the installation)
     share = root / "usr/share/simpleos"

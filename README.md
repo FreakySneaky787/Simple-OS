@@ -16,9 +16,60 @@ logo and short form.
 | `./build_iso.sh --config-only` | Only generate the live-build configuration in `build/config` (no `sudo`) |
 | `./test_vm.sh [--uefi\|--secureboot]` | Boot the ISO in QEMU and install it: BIOS (`output/disk.qcow2`), UEFI, or UEFI with Secure Boot and Microsoft keys (OVMF, `output/disk-<mode>.qcow2`, NVRAM in `output/ovmf-vars-<mode>.fd`) |
 | `./test_installed_vm.sh [--uefi\|--secureboot]` | Boot the installed system from that mode's disk |
+| `./tools/release.sh key` | Once: create the release signing key (private key outside the repo, public key into the image) |
+| `./tools/release.sh sign` / `publish [--no-iso]` | Sign `output/repo`, publish it with the ISO as GitHub release `v<VERSION>` ("latest") |
 
 Release: test checklist in `TESTING.md`, text for the download page in `RELEASE_NOTES.md` (its `#known-issues`
 section is the target of the installer's "Known issues" button).
+
+## Updates to new Simple OS editions
+
+Installed systems follow the newest Simple OS on their own – through **Software Updates**, like any Debian update:
+
+- Everything Simple OS adds to Debian is the package **`simpleos`** (`tools/build_deb.sh`, built by every
+  `./build_iso.sh`, also `--config-only`): `config/includes.chroot` minus installer/live-only files and first
+  defaults (`EXCLUDE`), its `/etc` files are conffiles. Version = `VERSION_ID` in `usr/lib/os-release` – the **one
+  place** to raise for a new edition (also the version on the boot menu and in Calamares).
+- The image installs the package (live-build `packages.chroot`) and the APT source
+  `/etc/apt/sources.list.d/simpleos.sources`: `https://github.com/FreakySneaky787/simple-os/releases/latest/download/`,
+  a flat repository signed with `usr/share/keyrings/simpleos-archive-keyring.asc`. Every GitHub release carries the
+  repository (`output/repo`: `simpleos_<v>_all.deb`, fastfetch, `Packages`, `Release`, `InRelease`, `Release.gpg`);
+  "latest" always points to the newest one. Hook `98_update_channel` switches the source off in the image if GitHub
+  is not reachable during the build (the first release does not exist yet); `simpleos-post-install` switches it on.
+- `simpleos-update` lists the new edition at the top ("Simple OS 1.1"), `simpleos-system-setup --upgrade` installs
+  it with the other updates. If only the Simple OS source fails (GitHub down), Debian's updates still go on.
+- What a package update alone does not reach, `/usr/local/lib/simpleos/edition` does (data in
+  `/usr/share/simpleos/edition`, log `/var/log/simpleos-edition.log` and `~/.cache/simpleos-edition.log`):
+  - **Settings in the homes** (`--user`, at every sign-in via `/etc/X11/Xsession.d/80simpleos-edition`, before the
+    desktop starts): each copy of an `/etc/skel` file is replaced by the new version **only if nobody changed it** –
+    its content is a version Simple OS once shipped (`skel.history`, every version from git,
+    `tools/managed_history.py`) or the one the tool put there last time. Changed copies – by the user, or at every
+    sign-in by Simple OS tools (taskbar: battery/layout lines in `tint2rc`, theme: accent colors, wallpaper
+    schedule) – get a **3-way merge** (`diff3`, like git): the changes between the skel version the copy is based on
+    (`~/.local/state/simpleos/base/`) and the new one are worked in, the user's/tools' lines stay; if both changed
+    the same place the copy stays as it is ("kept" in the log). Deleted copies stay deleted, new files are added.
+  - **System** (`--system`, from the package's postinst): `/etc` files dpkg kept although they are an unchanged
+    older Simple OS version (`system.history`); files of Debian packages that dpkg would refuse in our package
+    (`/etc/issue`, `/etc/motd`, `zramswap`, LightDM greeter, xfce4-power-manager – copies in `edition/system`, same rule);
+    the build hooks marked "Re-run on Simple OS updates" (00, 07, 09, 10, 11, 14 – derived settings, must stay
+    idempotent; never 12, it would switch a firewall turned off by the user back on); a new boot splash → initramfs.
+  - **New packages** in `config/package-lists` (except installer/bootloader): installed once after the upgrade
+    (`--todo-packages`, `--mark-packages`); what the user removes later is not installed again, a package that
+    could only be installed by removing something is left out (otherwise every update would fail on it).
+  - **One-time steps** for changes that need more than replacing a file: executable scripts in
+    `config/includes.chroot/usr/share/simpleos/edition/migrations/system/` (root, from the postinst) or `…/user/`
+    (each account at sign-in), named `NNN-name`, run once in order; exit ≠ 0 = again next time. A fresh system or
+    account counts the existing ones as done.
+- `/usr/lib/os-release` belongs to base-files: the package diverts Debian's copy (`dpkg-divert --package simpleos`,
+  Debian's goes to `os-release.debian`); hook 13 only checks it.
+- Releasing an edition: raise the version in `usr/lib/os-release`, `./build_iso.sh`, test (`TESTING.md`),
+  `./tools/release.sh sign`, `./tools/release.sh publish` (draft first, checks that all repository files are
+  attached and the signature matches the key in the image, only then "latest"; never an older or equal version).
+  **Every** release must carry the repository – `publish` refuses otherwise, also with uncommitted changes in
+  `config/`/`tools/` (the next edition only recognizes file versions that are in git) or an `output/repo` newer
+  than the ISO. Back up the signing key
+  (`~/.local/share/simpleos-release/gnupg`): installed systems only trust that key.
+- A new Debian base (Debian 13) is a bigger step than an edition update and is not covered by this.
 
 ## Structure
 
@@ -29,16 +80,19 @@ simple-os/
 ├── Containerfile                                   build environment (Debian bookworm + live-build)
 ├── docs/sos-banner.png   README banner (tools/gen_branding.py --readme docs)
 ├── tools/
-│   ├── lb_config.sh      lb config + build-time parts (branding, fastfetch download)
+│   ├── lb_config.sh      lb config + build-time parts (branding, fastfetch download, edition package)
+│   ├── build_deb.sh      edition package "simpleos" + APT repository files in output/repo
+│   ├── managed_history.py  every git version of the managed files (edition tool: "unchanged?")
+│   ├── release.sh        signing key, sign output/repo, GitHub release
 │   └── gen_branding.py   generates wallpapers, logos, Calamares and Plymouth graphics, the ISO boot menu image
 ├── config/               source of the live-build configuration (own files only)
 │   ├── package-lists/    10-base, 12-userdirs, 15-system, 20-desktop, 30-apps, 40-hardware, 45-printing, 50-installer, 55-bootloader
-│   ├── hooks/live/       chroot hooks (00–14), 99_verify_simpleos (aborts the build on errors),
+│   ├── hooks/live/       chroot hooks (00–14), 98_update_channel, 99_verify_simpleos (aborts the build on errors),
 │   │                     binary hook 90_boot_menu (GRUB entries "Simple OS Live")
 │   ├── bootloaders/      boot menu (isolinux; background splash.png/splash800x600.png generated by gen_branding.py)
 │   └── includes.chroot/  files in the image, 1:1 as in the target system
 ├── build/                live-build working directory (refilled on every build)
-└── output/               Simple-OS.iso (+ .sha256, .packages.txt), VM disks
+└── output/               Simple-OS.iso (+ .sha256, .packages.txt), repo/ (update repository), VM disks
 ```
 
 git: `build/` and `output/` are excluded (`.gitignore`). git does not store empty folders – folders that must be
@@ -74,7 +128,7 @@ the lb default files, the generated graphics and the fastfetch package.
 | `usr/share/themes/SimpleOS/` | Openbox theme (Catppuccin Mocha) |
 | `etc/lightdm/` | login manager: greeter theme, Openbox as default session, live autologin |
 | `etc/calamares/` | installer branding (links to GitHub: project, issues, known issues, releases) and extra modules |
-| `usr/lib/os-release` | name, version, `VERSION_CODENAME`, `HOME_URL`, `BUG_REPORT_URL` – source of the issue address for `simpleos-report` (the installer links must match it, checked by 99_verify). Hook 13 protects the file from base-files updates with `dpkg-divert` (otherwise "Debian GNU/Linux 12" after every point release); `/etc/os-release` stays a link to it |
+| `usr/lib/os-release` | name, version (= version of the package `simpleos`), `VERSION_CODENAME`, `HOME_URL`, `BUG_REPORT_URL` – source of the issue address for `simpleos-report` (the installer links must match it, checked by 99_verify). The package `simpleos` protects the file from base-files updates with `dpkg-divert` (otherwise "Debian GNU/Linux 12" after every point release); `/etc/os-release` stays a link to it |
 | `usr/share/doc/simpleos/copyright` | license notice (GPL-3.0-or-later) with the source code address |
 | `etc/X11/` | libinput profiles, session environment (Flatpak, smooth scrolling, `NO_PROXY` for localhost) |
 

@@ -42,7 +42,8 @@ To install, use **Install Simple OS** on the desktop.
   accent color, office suite (LibreOffice or ONLYOFFICE) and an optional gaming setup (Steam, Lutris, MangoHud)
 - **Control Center** (Super+I) for sound, display, Wi-Fi, Bluetooth, appearance, power and system settings
 - **Software Store** (Flathub) and **Software Updates** with a single password prompt. Firmware and BIOS updates
-  from the LVFS are included.
+  from the LVFS are included, and so are **new versions of Simple OS itself**: you don't need to reinstall to get
+  the next Simple OS. Settings you changed yourself are kept.
 - **Hardware & Drivers**: detects NVIDIA graphics, Wi-Fi chips and CPU microcode and installs what is missing
 - **Backups**: restore points with Timeshift, optionally created before every update
 - **Firewall** on by default: other devices can't connect to you, while browsing, printing and updates keep working

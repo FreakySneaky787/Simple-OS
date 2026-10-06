@@ -605,7 +605,7 @@ check "simpleos-progress: the helper's final text DONE: is not taken over" \
 # and tries once more; gaming does not go on installing with outdated lists (":i386" unknown)
 aw=$(mktemp -d)
 mkdir -p "$aw/bin"
-sed -n '/^apt_wait() {/,/^}/p;/^apt_get_update() {/,/^}/p' /usr/local/sbin/simpleos-system-setup > "$aw/fn.sh"
+sed -n '/^apt_wait() {/,/^}/p;/^apt_get_update() {/,/^}/p;/^SOS_SOURCE=/p;/^apt_update_once() {/,/^}/p' /usr/local/sbin/simpleos-system-setup > "$aw/fn.sh"
 printf '#!/bin/sh\nn=$(cat $T/sc 2>/dev/null || echo 0); echo $((n+1)) > $T/sc; [ "$n" -lt "${BUSY:-0}" ]\n' > "$aw/bin/systemctl"
 printf '#!/bin/sh\nexit 1\n' > "$aw/bin/pgrep"
 printf '#!/bin/sh\nexit 0\n' > "$aw/bin/sleep"
@@ -671,6 +671,7 @@ for p in firefox-esr libc6 openssl tzdata linux-image-amd64 curl; do
     i=$((i + 1))
 done
 [ "${UPDATES:-0}" -gt 0 ] && echo "Inst linux-image-6.12.57+deb12-amd64 (6.12.57 Debian Backports [amd64])"
+[ "$NEWEDITION" = 1 ] && echo "Inst simpleos [1.0] (1.1 Simple OS:./ [all])"
 if [ "$*" = "-s full-upgrade" ] && [ "$NEEDREMOVE" = 1 ]; then
     echo "Inst firmware-misc-nonfree [1] (2 Debian Backports [all])"; echo "Remv firmware-old [1]"
 fi
@@ -750,6 +751,11 @@ hcase "$U" "restart notification open: lock released (Software Updates opens aga
 hcase "$U" "restart: notification dismissed -> nothing" "" "UPDATES=1 SIMPLEOS_REBOOT_FLAG=$wt/reboot-required" "0" \
     '[ ! -e $S/rofi.1 ] && [ ! -s $S/power ] && grep -q "needs a restart" $S/notify'
 rm -f "$wt/reboot-required"
+# New Simple OS edition (package simpleos): by name at the top, afterwards the hint to sign in again
+hcase "$U" "new Simple OS edition first, by name" "" "UPDATES=2 NEWEDITION=1" "-" \
+    'grep -q "<b>3 updates available</b>" $S/rofi.args && grep -q "^Simple OS 1.1, firefox-esr, libc6" $S/rofi.args && ! grep -q "simpleos" $S/rofi.args'
+hcase "$U" "new edition installed -> sign-in hint instead of 'up to date'" "" "UPDATES=1 NEWEDITION=1" "0" \
+    'grep -q "Simple OS 1.1 is installed. Sign out and back in" $S/notify && ! grep -q "up to date" $S/notify'
 hcase "$U" "nothing to do -> its own notification" "" "UPDATES=1 PKEXEC_OUT=UPTODATE:_1" "0" 'grep -q "there was nothing to install" $S/notify'
 hcase "$U" "password cancelled" "" "UPDATES=1 PKEXEC_RC=126" "0" 'grep -q "No password entered" $S/notify'
 hcase "$U" "installation fails" "" "UPDATES=1 PKEXEC_RC=1" "0" 'grep -q "could not be installed. Details: ~/.cache/simpleos-update.log" $S/notify'
@@ -3290,6 +3296,8 @@ check "os-release: /etc/os-release is not Simple OS" "grep -qx 'ID=simpleos' /et
 check "os-release: /etc/os-release is not a link to /usr/lib/os-release" "[ \"\$(readlink /etc/os-release)\" = ../usr/lib/os-release ]"
 check "os-release: no diversion (a base-files update would bring Debian back)" \
       "[ \"\$(dpkg-divert --truename /usr/lib/os-release)\" = /usr/lib/os-release.debian ]"
+check "os-release: not diverted by the package simpleos (its updates would not bring the new version)" \
+      "[ \"\$(dpkg-divert --listpackage /usr/lib/os-release)\" = simpleos ]"
 check "os-release: VERSION_CODENAME missing (third-party install scripts)" "grep -qx 'VERSION_CODENAME=bookworm' /etc/os-release"
 check "os-release: BUG_REPORT_URL missing" "grep -qE '^BUG_REPORT_URL=\"https://[^\"]+/issues\"\$' /etc/os-release"
 check "os-release: HOME_URL missing" "grep -qE '^HOME_URL=\"https://' /etc/os-release"
@@ -3407,6 +3415,102 @@ rcase "without an address: only save, open the folder" 1 osr-none "" \
 rcase "page only" 2 osr-gh "" '[ -z "$(ls $rt/desk)" ] && grep -q "^https://github.com/example/simple-os/issues/new" $rt/st/browser'
 rcase "cancel" 3 osr-gh "" '[ -z "$(ls $rt/desk)" ] && [ ! -e $rt/st/browser ] && [ ! -e $rt/st/pkexec ]'
 rm -rf "${rt:?}"
+
+# ==== New Simple OS editions: package simpleos (tools/build_deb.sh), update channel, edition tool ====
+OSV=$(sed -n 's/^VERSION_ID="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' /usr/lib/os-release)
+ED=/usr/share/simpleos/edition
+SOSSRC=/etc/apt/sources.list.d/simpleos.sources
+check "edition: package simpleos not installed as version $OSV (os-release VERSION_ID)" \
+      "[ \"\$(dpkg-query -W -f='\${Status} \${Version}' simpleos 2>/dev/null)\" = 'install ok installed $OSV' ]"
+# The image must be exactly the package (includes.chroot is copied over it) – except the live menu with
+# "Install Simple OS" and the update channel switched off by hook 98
+check "edition: files in the image differ from the package simpleos" \
+      "[ -z \"\$(dpkg --verify simpleos 2>&1 | grep -v -e ' /etc/skel/.config/openbox/menu.xml\$' -e ' $SOSSRC\$')\" ]"
+check "edition: update source not the signed GitHub release 'latest'" \
+      "grep -qE '^URIs: https://github\\.com/[^/]+/[^/]+/releases/latest/download/\$' $SOSSRC && grep -qx 'Suites: ./' $SOSSRC &&
+       grep -qx 'Signed-By: /usr/share/keyrings/simpleos-archive-keyring.asc' $SOSSRC &&
+       grep -q 'BEGIN PGP PUBLIC KEY BLOCK' /usr/share/keyrings/simpleos-archive-keyring.asc"
+check "edition: update source and HOME_URL (os-release) name different GitHub projects" \
+      "[ \"\$(sed -n 's|^URIs: https://github.com/\\([^/]*/[^/]*\\)/.*|\\1|p' $SOSSRC | tr A-Z a-z)\" = \"\$(sed -n 's|^HOME_URL=\"https://github.com/\\([^/\"]*/[^/\"]*\\).*|\\1|p' /usr/lib/os-release | tr A-Z a-z)\" ]"
+check "edition: update channel neither on nor cleanly switched off (hook 98)" \
+      "! grep -q '^Enabled:' $SOSSRC || [ \"\$(grep '^Enabled:' $SOSSRC)\" = 'Enabled: no' ]"
+check "simpleos-post-install does not switch the update channel on again" \
+      "grep -q 'SOS_SRC=$SOSSRC' /usr/local/sbin/simpleos-post-install && grep -q \"sed -i '/^Enabled: no\\\$/d'\" /usr/local/sbin/simpleos-post-install"
+check "edition: data missing in $ED" \
+      "[ \"\$(cat $ED/version)\" = '$OSV' ] && grep -qx openbox $ED/packages && ! grep -q calamares $ED/packages &&
+       [ -s $ED/skel.history ] && [ -s $ED/system.history ] && [ -f $ED/system/etc/issue ]"
+check "edition: re-run hooks wrong (07 must be there, 12 never – it would switch the firewall back on)" \
+      "[ -f $ED/hooks/07_launcher_cleanup.hook.chroot ] && [ ! -e $ED/hooks/12_system_services.hook.chroot ]"
+check "edition: state of the image missing (new packages/migrations would run on every installed system)" \
+      "[ -s /var/lib/simpleos/edition/packages ] && [ -e /var/lib/simpleos/edition/migrations ] && [ -z \"\$(/usr/local/lib/simpleos/edition --todo-packages)\" ]"
+check "edition: sign-in step missing" "grep -q '/usr/local/lib/simpleos/edition --user' /etc/X11/Xsession.d/80simpleos-edition"
+# Every /etc/skel file of the package in its current version in the history (otherwise homes never get it)
+for f in $(dpkg -L simpleos | grep '^/etc/skel/' | grep -v ' '); do
+    [ -f "$f" ] && [ ! -L "$f" ] || continue
+    check "edition: $f not in skel.history" "grep -qxF \"\$(sha256sum < '$f' | cut -c1-64)  ${f#/etc/skel/}\" $ED/skel.history"
+done
+check "helper: new packages of an edition not installed after the upgrade" \
+      "grep -q '^            install_edition_pkgs\$' /usr/local/sbin/simpleos-system-setup && grep -q 'edition_todo)\" ] && apt_pending=1' /usr/local/sbin/simpleos-system-setup"
+# A failing Simple OS source (GitHub) must not stop Debian's updates; any other error still counts
+ew=$(mktemp -d)
+sed -n '/^SOS_SOURCE=/p;/^apt_update_once() {/,/^}/p' /usr/local/sbin/simpleos-system-setup > "$ew/fn.sh"
+printf 'URIs: https://github.com/x/y/releases/latest/download/\n' > "$ew/src"
+cat > "$ew/apt-get" <<'MOCK'
+#!/bin/sh
+echo "Hit:1 http://deb.debian.org/debian bookworm InRelease"
+[ "$M" = deb ] && echo "E: Failed to fetch http://deb.debian.org/debian/dists/bookworm/InRelease  Hash Sum mismatch"
+echo "E: The repository 'https://github.com/x/y/releases/latest/download ./ Release' does not have a Release file."
+exit 100
+MOCK
+chmod 0755 "$ew/apt-get"
+check "helper: a failing Simple OS source blocks Debian's updates" \
+      "M=sos sh -c '. $ew/fn.sh; SOS_SOURCE=$ew/src APT_GET=$ew/apt-get apt_update_once' 2>/dev/null"
+check "helper: a Debian error is ignored together with the Simple OS source" \
+      "! M=deb sh -c '. $ew/fn.sh; SOS_SOURCE=$ew/src APT_GET=$ew/apt-get apt_update_once' 2>/dev/null"
+rm -rf "${ew:?}"
+# Edition tool: unchanged files follow the edition, changed/deleted ones stay, new ones come, migrations run once
+et=$(mktemp -d)
+sed -n '/^KEPT=/p;/^log() /p;/^sha() /p;/^install_file() {/,/^}/p;/^merge_file() {/,/^}/p;/^save_base() {/,/^}/p;/^sync_files() {/,/^}/p;/^run_migrations() {/,/^}/p' \
+    /usr/local/lib/simpleos/edition > "$et/fn.sh"
+mkdir -p "$et/src" "$et/dst" "$et/old" "$et/mig"
+for n in same mine gone new pre; do echo "v2 $n" > "$et/src/$n"; done
+echo "v1 same" > "$et/dst/same"; echo "my own" > "$et/dst/mine"; echo "pre" > "$et/dst/pre"; echo "pre" > "$et/old/pre"
+for n in same mine gone pre; do printf '%s  %s\n' "$(echo "v1 $n" | sha256sum | cut -c1-64)" "$n"; done > "$et/hist"
+for n in same mine gone new pre; do printf '%s  %s\n' "$(sha256sum < "$et/src/$n" | cut -c1-64)" "$n"; done >> "$et/hist"
+printf '%s  gone\n' "$(echo "v1 gone" | sha256sum | cut -c1-64)" > "$et/state"
+esync() { sh -c ". $et/fn.sh; LOG=$et/log; sync_files $et/hist $et/src $et/dst $et/state $et/old"; }
+esync || true; esync || true
+check "edition: unchanged file not updated" "grep -qx 'v2 same' $et/dst/same"
+check "edition: a file the user changed was replaced" "grep -qx 'my own' $et/dst/mine"
+check "edition: a file the user deleted came back" "[ ! -e $et/dst/gone ]"
+check "edition: a file new in the edition not added" "grep -qx 'v2 new' $et/dst/new"
+check "edition: copy of the replaced skel file not counted as unchanged" "grep -qx 'v2 pre' $et/dst/pre"
+check "edition: changed file reported again on every run" "[ \$(grep -c 'kept .*/mine' $et/log) -eq 1 ]"
+# Home copy changed by a tool at every sign-in (taskbar adds a battery line): the edition's change is merged in,
+# the tool's line stays; both in the same place -> unchanged. Base = the version the copy is based on.
+mkdir -p "$et/msrc" "$et/mdst" "$et/mbase"
+for n in merge clash; do seq 1 20 | sed 's/^/line /' > "$et/mbase/$n"; done
+for n in merge clash; do sed 's/^line 15$/line 15 new edition/' "$et/mbase/$n" > "$et/msrc/$n"; done
+sed 's/^line 2$/line 2 battery/' "$et/mbase/merge" > "$et/mdst/merge"
+sed 's/^line 15$/line 15 mine/' "$et/mbase/clash" > "$et/mdst/clash"
+for n in merge clash; do printf '%s  %s\n' "$(sha256sum < "$et/msrc/$n" | cut -c1-64)" "$n"; done > "$et/mhist"
+sh -c ". $et/fn.sh; LOG=$et/mlog; sync_files $et/mhist $et/msrc $et/mdst $et/mstate '' $et/mbase" || true
+check "edition: the new version was not merged into a home copy a tool had changed" \
+      "grep -qx 'line 2 battery' $et/mdst/merge && grep -qx 'line 15 new edition' $et/mdst/merge && cmp -s $et/msrc/merge $et/mbase/merge"
+check "edition: a merge overwrote the user's change in the same place" \
+      "grep -qx 'line 15 mine' $et/mdst/clash && ! grep -q 'new edition' $et/mdst/clash && ! grep -q '<<<<<<<' $et/mdst/clash"
+printf '#!/bin/sh\necho 1 >> %s/ran\n' "$et" > "$et/mig/010-old"
+chmod 0755 "$et/mig/010-old"
+emig() { sh -c ". $et/fn.sh; LOG=$et/log; run_migrations $et/mig $et/done"; }
+emig || true
+check "edition: a fresh account ran old migrations" "[ ! -e $et/ran ] && grep -qx 010-old $et/done"
+printf '#!/bin/sh\necho 2 >> %s/ran\n' "$et" > "$et/mig/020-new"
+printf '#!/bin/sh\nexit 1\n' > "$et/mig/030-fails"
+chmod 0755 "$et/mig/020-new" "$et/mig/030-fails"
+emig || true; emig || true  # 030-fails fails on purpose (set -e)
+check "edition: a new migration did not run exactly once" "[ \"\$(cat $et/ran)\" = 2 ]"
+check "edition: a failed migration counts as done" "! grep -qx 030-fails $et/done && ! emig"
+rm -rf "${et:?}"
 
 [ "$fail" -eq 0 ]
 echo "Simple OS verify: OK"
