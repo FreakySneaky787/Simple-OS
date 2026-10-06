@@ -27,6 +27,9 @@ rm -f /etc/lightdm/lightdm.conf.d/01_autologin.conf /etc/sudoers.d/simple-nopass
 SOS_SRC=/etc/apt/sources.list.d/simpleos.sources
 [ -f "$SOS_SRC" ] && sed -i '/^Enabled: no$/d' "$SOS_SRC"
 
+# Installer links as the live user (hook 15) – no longer needed, root keeps its normal defaults
+rm -f /root/.config/mimeapps.list /root/.local/share/applications/simpleos-open-as-user.desktop /usr/local/lib/simpleos/open-as-user
+
 # Offline packages for bootloader-config (grub-pc/grub-efi-amd64/cryptsetup-initramfs) are no longer needed
 rm -rf /usr/share/simpleos/bootloader-debs
 

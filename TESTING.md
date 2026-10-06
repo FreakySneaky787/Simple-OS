@@ -65,6 +65,7 @@ Already done (October 4, with the ISO from October 3 plus the new boot image):
 3. `./tools/release.sh sign && ./tools/release.sh publish` – creates the release `v<version>` with the text of
    `RELEASE_NOTES.md`, the three ISO files and the update repository, checks it as a draft and only then makes it
    "latest" (needs `gh auth login`). From then on installed systems are offered this edition.
+   `publish` refuses while the repo is private – installed systems download updates without a GitHub login.
 4. On an installed system (VM): `sudo apt-get update` shows the Simple OS source without errors
    (`…/releases/latest/download ./ InRelease`), and `/etc/apt/sources.list.d/simpleos.sources` has no `Enabled: no`.
 

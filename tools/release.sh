@@ -112,6 +112,10 @@ cmd_publish() {
             die "output/repo is not from the ISO build – run ./build_iso.sh again, then sign and publish"
         assets+=("$ISO" "$ISO.sha256" output/Simple-OS.packages.txt)
     fi
+    # Installed systems download without a GitHub login: release files of a private repository are not reachable
+    local vis
+    vis=$(gh repo view "$repo" --json visibility -q .visibility 2>/dev/null || true)
+    [ "$vis" = PUBLIC ] || die "github.com/$repo is ${vis:-not reachable} – make it public first (Settings → Danger Zone → Change visibility); installed systems cannot download updates from a private repository"
     gh release view "$tag" -R "$repo" >/dev/null 2>&1 && die "release $tag exists already – raise the version in $OSR"
     # Never go backwards: apt would not install an older edition anyway
     latest=$(gh release view -R "$repo" --json tagName -q .tagName 2>/dev/null || true)
@@ -130,6 +134,9 @@ cmd_publish() {
         grep -qx "$f" <<<"$names" || die "asset $f missing in the draft $tag – NOT published (fix it and run: gh release edit $tag -R $repo --draft=false --latest)"
     done
     gh release edit "$tag" -R "$repo" --draft=false --latest
+    # As an installed system sees it: anonymous, through "latest"
+    curl -fsSL -o /dev/null "https://github.com/$repo/releases/latest/download/InRelease" ||
+        die "published, but https://github.com/$repo/releases/latest/download/InRelease cannot be downloaded – check the release on GitHub"
     echo "Published: Simple OS $v – installed systems are offered it at their next update check."
 }
 

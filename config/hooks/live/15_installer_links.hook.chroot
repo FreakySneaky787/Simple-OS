@@ -1,0 +1,24 @@
+#!/bin/sh
+set -e
+# Links in the installer ("Known issues", "Support", "Release notes", "Learn more"): Calamares runs as root (pkexec),
+# browsers refuse to run as root in another user's session -> a click did nothing. Root's default for http/https
+# becomes /usr/local/lib/simpleos/open-as-user, which opens the link as the signed-in user. Written here instead of
+# includes.chroot: copying a root/ folder could change the permissions of /root (0700).
+# Only the live image: simpleos-post-install removes it again.
+mkdir -p /root/.config /root/.local/share/applications
+cat > /root/.local/share/applications/simpleos-open-as-user.desktop <<'DESKTOP'
+[Desktop Entry]
+Type=Application
+Name=Open in the user's browser
+Exec=/usr/local/lib/simpleos/open-as-user %u
+MimeType=x-scheme-handler/http;x-scheme-handler/https;
+NoDisplay=true
+DESKTOP
+cat > /root/.config/mimeapps.list <<'MIME'
+# Simple OS live image: links from the installer (root) open in the signed-in user's browser; removed by simpleos-post-install
+[Default Applications]
+x-scheme-handler/http=simpleos-open-as-user.desktop
+x-scheme-handler/https=simpleos-open-as-user.desktop
+MIME
+chmod 0700 /root
+[ "$(env -i HOME=/root PATH=/usr/bin:/bin xdg-mime query default x-scheme-handler/https)" = simpleos-open-as-user.desktop ]

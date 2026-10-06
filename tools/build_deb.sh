@@ -39,6 +39,7 @@ EXCLUDE=(
     etc/calamares/
     usr/sbin/bootloader-config
     usr/local/sbin/simpleos-post-install
+    usr/local/lib/simpleos/open-as-user
     usr/share/applications/simpleos-install.desktop
     etc/skel/.config/autostart/calamares-desktop-icon.desktop
     etc/lightdm/lightdm.conf.d/01_autologin.conf

@@ -120,6 +120,7 @@ the lb default files, the generated graphics and the fastfetch package.
 | `etc/apt/apt.conf.d/20simpleos-periodic` | refresh package lists daily (check only, never install automatically) |
 | `usr/sbin/bootloader-config` | replaces Debian's Calamares script: installs GRUB (BIOS/UEFI) offline from `usr/share/simpleos/bootloader-debs` (hook 08) |
 | `usr/local/sbin/simpleos-post-install` | runs after the installation (Calamares): removes the installer and live leftovers |
+| `usr/local/lib/simpleos/open-as-user` | live image only: links in the installer (runs as root) open in the live user's browser – browsers refuse to run as root; root's http(s) default from hook 15 |
 | `usr/local/sbin/simpleos-system-setup` | root helper of the Setup Wizard (browser, Firefox removal, office, gaming) |
 | `usr/share/polkit-1/actions/` | Polkit action for the root helper (pkexec with a graphical password dialog) |
 | `etc/sysctl.d/99-simpleos-perf.conf` | kernel tuning for desktop and gaming |

@@ -1,0 +1,17 @@
+#!/bin/sh
+# Simple OS – open a web link from the installer (Calamares runs as root via pkexec) in the browser of the
+# signed-in user. Browsers refuse to run as root in another user's session (Firefox: "Running Firefox as root in
+# a regular user's session is not supported") – the buttons "Known issues", "Support" … did nothing.
+# Root's default for http/https in the live image (hook 15: /root/.config/mimeapps.list -> simpleos-open-as-user.desktop);
+# simpleos-post-install removes it again. The user: PKEXEC_UID (pkexec), otherwise the owner of $XAUTHORITY.
+uid=${PKEXEC_UID:-}
+[ -n "$uid" ] || uid=$(stat -c %u "${XAUTHORITY:-/nonexistent}" 2>/dev/null)
+user=$(id -nu "$uid" 2>/dev/null)
+if [ -z "$user" ] || [ "$uid" = 0 ]; then
+    echo "open-as-user: no signed-in user found" >&2
+    exit 1
+fi
+home=$(getent passwd "$user" | cut -d: -f6)
+exec runuser -u "$user" -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME="$home" USER="$user" LOGNAME="$user" \
+    DISPLAY="${DISPLAY:-:0}" XAUTHORITY="${XAUTHORITY:-$home/.Xauthority}" XDG_RUNTIME_DIR="/run/user/$uid" \
+    DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" LANG="${LANG:-C.UTF-8}" xdg-open "$@"

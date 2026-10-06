@@ -3416,6 +3416,14 @@ rcase "page only" 2 osr-gh "" '[ -z "$(ls $rt/desk)" ] && grep -q "^https://gith
 rcase "cancel" 3 osr-gh "" '[ -z "$(ls $rt/desk)" ] && [ ! -e $rt/st/browser ] && [ ! -e $rt/st/pkexec ]'
 rm -rf "${rt:?}"
 
+# Installer links (Calamares runs as root): open in the live user's browser, not as root (hook 15)
+check "installer links: root does not open http(s) via open-as-user (browsers refuse to run as root)" \
+      "[ \"\$(env -i HOME=/root PATH=/usr/bin:/bin xdg-mime query default x-scheme-handler/https)\" = simpleos-open-as-user.desktop ] &&
+       grep -qx 'Exec=/usr/local/lib/simpleos/open-as-user %u' /root/.local/share/applications/simpleos-open-as-user.desktop &&
+       [ -x /usr/local/lib/simpleos/open-as-user ] && [ \"\$(stat -c %a /root)\" = 700 ]"
+check "simpleos-post-install does not remove the installer link handler" \
+      "grep -q 'rm -f /root/.config/mimeapps.list' /usr/local/sbin/simpleos-post-install"
+
 # ==== New Simple OS editions: package simpleos (tools/build_deb.sh), update channel, edition tool ====
 OSV=$(sed -n 's/^VERSION_ID="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' /usr/lib/os-release)
 ED=/usr/share/simpleos/edition
