@@ -2,6 +2,10 @@
 # Simple OS – release a new edition: sign the update repository and publish it on GitHub.
 #   ./tools/release.sh key        once: create the release signing key (asks for a passphrase) and put the public key
 #                                 into the image (config/includes.chroot/usr/share/keyrings/simpleos-archive-keyring.asc)
+#   ./tools/release.sh version X.Y.Z
+#                                 set the version of the next edition everywhere it is shown: VERSION_ID (what the build
+#                                 and the package use), VERSION and PRETTY_NAME in usr/lib/os-release, the installer's
+#                                 branding (etc/calamares/branding/simpleos/branding.desc). The build refuses a mismatch.
 #   ./tools/release.sh sign       sign output/repo (after ./build_iso.sh): InRelease + Release.gpg
 #   ./tools/release.sh publish [--no-iso]
 #                                 GitHub release v<VERSION> with the ISO and the signed repository, then mark it as
@@ -11,8 +15,8 @@
 # (/etc/apt/sources.list.d/simpleos.sources). So EVERY release must carry the repository files – a "latest" release
 # without them breaks "Check for updates" on all systems. publish therefore creates a draft first, uploads everything,
 # checks the asset list and only then publishes it.
-# New edition: raise VERSION/VERSION_ID/PRETTY_NAME in config/includes.chroot/usr/lib/os-release, ./build_iso.sh,
-# test (TESTING.md), ./tools/release.sh sign && ./tools/release.sh publish.
+# New edition: ./tools/release.sh version X.Y.Z, commit and push, ./build_iso.sh, test (TESTING.md),
+# ./tools/release.sh sign && ./tools/release.sh publish.
 # The private key lives outside the repository ($SIMPLEOS_GNUPGHOME, default ~/.local/share/simpleos-release/gnupg).
 # Back it up: without it no further update can be signed, and installed systems only trust this key.
 set -euo pipefail
@@ -25,6 +29,7 @@ GPG_TTY=$(tty 2>/dev/null || true)
 export GPG_TTY
 PUBKEY=config/includes.chroot/usr/share/keyrings/simpleos-archive-keyring.asc
 OSR=config/includes.chroot/usr/lib/os-release
+BRANDING=config/includes.chroot/etc/calamares/branding/simpleos/branding.desc
 SOURCES=config/includes.chroot/etc/apt/sources.list.d/simpleos.sources
 REPO=output/repo
 ISO=output/Simple-OS.iso
@@ -78,6 +83,23 @@ check_repo() {
     done
 }
 
+cmd_version() {
+    local v=${1:-} cur
+    [[ $v =~ ^[0-9]+(\.[0-9]+)*$ ]] || die "usage: ./tools/release.sh version X.Y.Z (digits and dots, e.g. 1.0.1)"
+    cur=$(version)
+    if [ -n "$cur" ] && [ "$(printf '%s\n%s\n' "$cur" "$v" | sort -V | tail -n 1)" != "$v" ]; then
+        die "$v is older than the current version $cur – installed systems never go back to an older edition"
+    fi
+    sed -i -e "s/^VERSION_ID=.*/VERSION_ID=\"$v\"/" -e "s/^VERSION=.*/VERSION=\"$v\"/" \
+        -e "s/^PRETTY_NAME=.*/PRETTY_NAME=\"Simple OS v$v\"/" "$OSR"
+    sed -i -E -e "s/^( *(version|shortVersion): *).*/\1\"$v\"/" \
+        -e "s/^( *(versionedName|shortVersionedName): *).*/\1\"Simple OS $v\"/" "$BRANDING"
+    [ "$(version)" = "$v" ] && [ "$(grep -cE "^ *(version|shortVersion): *\"$v\"\$|^ *(versionedName|shortVersionedName): *\"Simple OS $v\"\$" "$BRANDING")" = 4 ] ||
+        die "could not set the version in $OSR / $BRANDING – check both files"
+    echo "Version $v set in $OSR and $BRANDING."
+    echo "Next: commit and push, ./build_iso.sh, test (TESTING.md), ./tools/release.sh sign, ./tools/release.sh publish"
+}
+
 cmd_sign() {
     [ -s "$REPO/Release" ] || die "$REPO/Release missing – build first (./build_iso.sh)"
     [ -s "$PUBKEY" ] || die "no release key – ./tools/release.sh key"
@@ -102,6 +124,15 @@ cmd_publish() {
     # The next edition recognizes unchanged files by their versions in git – an edition from uncommitted files
     # would not be in it (its files would count as "changed by the user" forever)
     [ -z "$(git status --porcelain -- config tools)" ] || die "uncommitted changes in config/ or tools/ – commit, rebuild, then publish"
+    # The tag must point to the commit that was built: without --target, "gh release create" tags the newest commit of
+    # GitHub's default branch – another one as soon as something is not pushed yet (the release's source code would
+    # then not be the ISO's). So: this commit, and it must be on GitHub already.
+    local head tagged
+    head=$(git rev-parse HEAD)
+    git fetch --quiet --tags origin || die "git fetch origin failed (network? a local tag that differs from GitHub's?)"
+    [ -n "$(git branch -r --contains "$head")" ] || die "commit ${head:0:7} is not on GitHub yet – git push first, then publish"
+    tagged=$(git rev-parse -q --verify "refs/tags/$tag^{commit}" || true)
+    [ -z "$tagged" ] || [ "$tagged" = "$head" ] || die "tag $tag exists already and points to ${tagged:0:7}, not to ${head:0:7}"
     local assets=()
     for f in "$REPO"/*; do assets+=("$f"); done
     if [ "$with_iso" = 1 ]; then
@@ -116,7 +147,7 @@ cmd_publish() {
     local vis
     vis=$(gh repo view "$repo" --json visibility -q .visibility 2>/dev/null || true)
     [ "$vis" = PUBLIC ] || die "github.com/$repo is ${vis:-not reachable} – make it public first (Settings → Danger Zone → Change visibility); installed systems cannot download updates from a private repository"
-    gh release view "$tag" -R "$repo" >/dev/null 2>&1 && die "release $tag exists already – raise the version in $OSR"
+    gh release view "$tag" -R "$repo" >/dev/null 2>&1 && die "release $tag exists already – raise the version (./tools/release.sh version X.Y.Z)"
     # Never go backwards: apt would not install an older edition anyway
     latest=$(gh release view -R "$repo" --json tagName -q .tagName 2>/dev/null || true)
     latest=${latest#v}
@@ -125,8 +156,8 @@ cmd_publish() {
             die "version $v is not newer than the latest release $latest"
         fi
     fi
-    echo "Creating draft release $tag on $repo …"
-    gh release create "$tag" -R "$repo" --draft --title "Simple OS $v" --notes-file RELEASE_NOTES.md "${assets[@]}" ||
+    echo "Creating draft release $tag on $repo (commit ${head:0:7}) …"
+    gh release create "$tag" -R "$repo" --target "$head" --draft --title "Simple OS $v" --notes-file RELEASE_NOTES.md "${assets[@]}" ||
         die "upload failed – remove the draft (gh release delete $tag -R $repo --yes) and run publish again"
     local names
     names=$(gh release view "$tag" -R "$repo" --json assets -q '.assets[].name')
@@ -142,7 +173,8 @@ cmd_publish() {
 
 case "${1:-}" in
     key)     cmd_key ;;
+    version) shift; cmd_version "$@" ;;
     sign)    cmd_sign ;;
     publish) shift; cmd_publish "$@" ;;
-    *) sed -n '2,8p' "$0" >&2; exit 2 ;;
+    *) sed -n '2,12p' "$0" >&2; exit 2 ;;
 esac

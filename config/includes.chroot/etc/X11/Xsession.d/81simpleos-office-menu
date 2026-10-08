@@ -1,0 +1,6 @@
+# Simple OS: office entries in the Openbox menu (Apps) for exactly the installed office apps, before Openbox reads the
+# menu (/usr/local/lib/simpleos/office-menu – after 80simpleos-edition, which may have brought the menu to a new
+# edition). Sourced by Xsession: never exits, never fails; without a change it leaves the menu alone.
+if [ -x /usr/local/lib/simpleos/office-menu ]; then
+    timeout 10 /usr/local/lib/simpleos/office-menu >/dev/null 2>&1 || true
+fi

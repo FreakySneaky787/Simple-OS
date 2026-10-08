@@ -8,7 +8,7 @@ for f in /usr/local/bin/simpleos-powermenu /usr/local/bin/simpleos-screenshot /u
          /usr/local/bin/simpleos-welcome /usr/local/bin/simpleos-software /usr/local/bin/simpleos-browser \
          /usr/local/bin/simpleos-browser-select /usr/local/bin/simpleos-theme \
          /usr/local/bin/simpleos-welcome-wizard /usr/local/bin/simpleos-netinfo /usr/local/bin/simpleos-taskbar-select /usr/local/bin/simpleos-wifi \
-         /usr/local/bin/simpleos-battery /usr/local/lib/simpleos/rofi-retry \
+         /usr/local/bin/simpleos-battery /usr/local/lib/simpleos/rofi-retry /usr/local/lib/simpleos/office-menu \
          /usr/local/bin/simpleos-dunst /usr/local/bin/simpleos-volume /usr/local/bin/simpleos-display \
          /usr/local/bin/simpleos-clipboard /usr/local/bin/simpleos-control-center /usr/local/bin/simpleos-software-center \
          /usr/local/bin/simpleos-bluetooth /usr/local/bin/simpleos-nightlight /usr/local/bin/simpleos-power \
@@ -166,6 +166,50 @@ check "wizard does not use the helper via pkexec" "grep -q '\"pkexec\", HELPER' 
 for home in /etc/skel /home/simple; do
     check "office marker missing in the menu in $home" "grep -q '<!-- simpleos-office:' '$home/.config/openbox/menu.xml'"
 done
+# Office entries (office-menu): exactly the installed office apps, only in the account's own copy, the format of 1.0
+# recognized. Up to 1.0 the root helper also wrote them into /etc/skel – a file of the package simpleos, which then
+# never got a newer menu again; migration 010-skel-office-menu takes them out on systems updated from 1.0.
+OM=/usr/local/lib/simpleos/office-menu
+check "office menu: sign-in step missing" \
+      "grep -q 'timeout 10 $OM ' /etc/X11/Xsession.d/81simpleos-office-menu && sh -n /etc/X11/Xsession.d/81simpleos-office-menu && sh -n $OM"
+check "office menu: Setup Wizard/Software Center do not update the menu" \
+      "grep -q 'run(\[OFFICE_MENU\])' /usr/local/bin/simpleos-welcome-wizard && grep -q 'OFFICE_MENU, \"--reconfigure\"' /usr/local/bin/simpleos-software-center"
+check "helper writes office entries into the menus again (/etc/skel belongs to the package simpleos)" \
+      "! grep -q 'openbox/menu.xml' /usr/local/sbin/simpleos-system-setup"
+for i in office-writer office-calc office-impress office-draw; do
+    check "menu icon $i missing (hook 11_menu_icons)" "[ -s /usr/share/simpleos/menu-icons/$i.svg ]"
+done
+om=$(mktemp -d)
+cp /etc/skel/.config/openbox/menu.xml "$om/clean.xml"
+printf '      <!-- simpleos-office-libreoffice -->\n      <item label="LibreOffice Writer">\n        <action name="Execute"><command>libreoffice --writer</command></action>\n      </item>\n' > "$om/block"
+sed "/<!-- simpleos-office:/r $om/block" "$om/clean.xml" > "$om/old.xml"
+cp "$om/old.xml" "$om/menu.xml"
+SIMPLEOS_OFFICE_APPS="writer calc onlyoffice" $OM "$om/menu.xml"
+check "office menu: entries not added, doubled or XML invalid" \
+      "grep -q 'LibreOffice Calc\" icon=\"/usr/share/simpleos/menu-icons/office-calc.svg' $om/menu.xml &&
+       grep -q '<command>flatpak run org.onlyoffice.desktopeditors</command>' $om/menu.xml && [ \$(grep -c 'LibreOffice Writer' $om/menu.xml) -eq 1 ] &&
+       ! grep -q 'LibreOffice Draw' $om/menu.xml && python3 -c 'import sys, xml.dom.minidom as m; m.parse(sys.argv[1])' $om/menu.xml"
+cp "$om/menu.xml" "$om/again.xml"
+SIMPLEOS_OFFICE_APPS="writer calc onlyoffice" $OM "$om/again.xml"
+check "office menu: changes the menu again without a reason" "cmp -s $om/menu.xml $om/again.xml"
+SIMPLEOS_OFFICE_APPS="" $OM "$om/menu.xml"
+check "office menu: entries of removed apps stay" "cmp -s $om/clean.xml $om/menu.xml"
+grep -v '<!-- simpleos-office:' "$om/clean.xml" > "$om/nomarker.xml"; cp "$om/nomarker.xml" "$om/nm.xml"
+SIMPLEOS_OFFICE_APPS="writer" $OM "$om/nm.xml"
+check "office menu: a menu without the marker (removed by hand) was changed" "cmp -s $om/nomarker.xml $om/nm.xml"
+MIG=/usr/share/simpleos/edition/migrations/system/010-skel-office-menu
+printf '%s  etc/skel/.config/openbox/menu.xml\n' "$(sha256sum < "$om/clean.xml" | cut -c1-64)" > "$om/system.history"
+cp "$om/old.xml" "$om/skel.xml"
+SIMPLEOS_SKEL_MENU=$om/skel.xml SIMPLEOS_EDITION_SHARE=$om $MIG >/dev/null 2>&1
+check "migration 010-skel-office-menu: /etc/skel not back to the shipped menu" "cmp -s $om/clean.xml $om/skel.xml"
+cp "$om/old.xml" "$om/skel.xml"; sed 's/Text Editor/Text Editor NEW/' "$om/clean.xml" > "$om/skel.xml.dpkg-dist"
+SIMPLEOS_SKEL_MENU=$om/skel.xml SIMPLEOS_EDITION_SHARE=$om $MIG >/dev/null 2>&1
+check "migration 010-skel-office-menu: the waiting new menu (.dpkg-dist) not taken" \
+      "grep -q 'Text Editor NEW' $om/skel.xml && [ ! -e $om/skel.xml.dpkg-dist ] && ! grep -q 'simpleos-office-' $om/skel.xml"
+rm -rf "${om:?}"
+check "helper: Steam with the NVIDIA 470 driver (Kepler) gets the 32-bit libraries of the current driver" \
+      "grep -q 'if installed nvidia-tesla-470-driver; then' /usr/local/sbin/simpleos-system-setup &&
+       grep -q 'nvidia=\"nvidia-tesla-470-driver-libs:i386\"' /usr/local/sbin/simpleos-system-setup"
 check "helper: the Steam license is not accepted beforehand" "grep -q 'steam/question select I AGREE' /usr/local/sbin/simpleos-system-setup"
 # APT components: lb_config (--archive-areas) in the image; after the installation via simpleos-post-install,
 # because Calamares' sources-final only writes "main non-free-firmware" (Steam is in contrib)
@@ -517,7 +561,7 @@ for home in /etc/skel /home/simple; do
     auto=$home/.config/openbox/autostart
     check "autostart: udiskie (automount + simpleos-usb-notify) missing in $home" \
           "grep -q '^udiskie --automount ' '$auto' && grep -q 'notify-command \"/usr/local/bin/simpleos-usb-notify {event} {mount_path}' '$auto'"
-    check "autostart: update check missing in $home" "grep -q 'simpleos-update --check' '$auto'"
+    check "autostart: update check missing in $home (every 12 hours: --watch)" "grep -qx '/usr/local/bin/simpleos-update --watch &' '$auto'"
     check "autostart: syntax error in $home" "sh -n '$auto'"
     check "pcmanfm: own USB dialog (autorun) not off in $home" \
           "grep -qx 'autorun=0' '$home/.config/pcmanfm/default/pcmanfm.conf' && grep -qx 'mount_removable=0' '$home/.config/pcmanfm/default/pcmanfm.conf'"
@@ -809,6 +853,31 @@ hcase "$U" "firmware installed -> marker for the check after the restart" "" \
     "UPDATES=0 FIRMWARE=1 PKEXEC_OUT=FIRMWARE:_installed SIMPLEOS_REBOOT_FLAG=$wt/none" "0" \
     'grep -qx "System Firmware" '"$wt"'/home/.cache/simpleos/firmware-installed'
 rm -f "$wt/home/.cache/simpleos/firmware-installed"
+# Apps from the Software Store (Flatpak): count like packages – before, updates of only e.g. the Mullvad Browser were
+# never offered. APPS = names with an update (comma-separated, _ = space)
+cat > "$wt/mock/flatpak" <<'MOCK'
+#!/bin/sh
+case "$*" in
+    "remotes --system") echo flathub ;;
+    "remote-ls --updates --system --columns=name") [ -n "$APPS" ] && printf '%s\n' "$APPS" | tr ',_' '\n ' ;;
+esac
+exit 0
+MOCK
+chmod 0755 "$wt/mock/flatpak"
+hcase "$U --check" "only app updates -> notification" "" "UPDATES=0 APPS=Mullvad_Browser" "" \
+    'grep -q "1 update is ready to install" $S/notify'
+hcase "$U" "window: apps after the packages, by name" "" "UPDATES=1 APPS=Mullvad_Browser,Mesa,Mesa" "-" \
+    'grep -q "<b>3 updates available</b>" $S/rofi.args && grep -q "^firefox-esr, Mesa (app), Mullvad Browser (app)" $S/rofi.args'
+hcase "$U" "only app updates -> Install now runs the helper" "" "UPDATES=0 APPS=Mullvad_Browser" "0" \
+    'grep -qx "/usr/local/sbin/simpleos-system-setup --upgrade" $S/pkexec'
+# --watch (autostart): checks after sign-in and then again (every 12 hours); only one per session. sleep is a dummy here.
+hcase "$U --watch" "watch: first check after sign-in" "" "UPDATES=2 SIMPLEOS_UPDATE_FIRST=0 SIMPLEOS_UPDATE_ROUNDS=1" "" \
+    'grep -q "2 updates are ready to install" $S/notify'
+hcase "$U --watch" "watch: does not check again later" "" "UPDATES=1 SIMPLEOS_UPDATE_FIRST=0 SIMPLEOS_UPDATE_EVERY=0 SIMPLEOS_UPDATE_ROUNDS=2" "" \
+    '[ "$(grep -c "1 update is ready to install" $S/notify)" -eq 2 ]'
+echo $$ > "$wt/home/.cache/simpleos-update-watch.pid"
+hcase "$U --watch" "watch: a second one runs next to the first" "" "UPDATES=1 SIMPLEOS_UPDATE_FIRST=0 SIMPLEOS_UPDATE_ROUNDS=1" "" '[ ! -s $S/notify ]'
+rm -f "$wt/home/.cache/simpleos-update-watch.pid" "$wt/mock/flatpak"
 USB=/usr/local/bin/simpleos-usb-notify
 hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "stick plugged in, Open clicked" "" "NOTIFY_ACTION=yes" "" \
     'grep -q "\"STICK\" is ready" $S/notify && grep -q "yes=Open" $S/notify && grep -qx "thunar /media/simple/STICK" $S/opened'
@@ -3438,6 +3507,10 @@ ED=/usr/share/simpleos/edition
 SOSSRC=/etc/apt/sources.list.d/simpleos.sources
 check "edition: package simpleos not installed as version $OSV (os-release VERSION_ID)" \
       "[ \"\$(dpkg-query -W -f='\${Status} \${Version}' simpleos 2>/dev/null)\" = 'install ok installed $OSV' ]"
+# The version everywhere it is shown (./tools/release.sh version X.Y.Z): os-release and the installer (Calamares)
+check "version: os-release (VERSION/PRETTY_NAME) or the installer's branding shows another version than $OSV" \
+      "grep -qx 'VERSION=\"$OSV\"' /usr/lib/os-release && grep -qx 'PRETTY_NAME=\"Simple OS v$OSV\"' /usr/lib/os-release &&
+       [ \"\$(grep -cxE ' *(version|shortVersion): *\"$OSV\"| *(versionedName|shortVersionedName): *\"Simple OS $OSV\"' /etc/calamares/branding/simpleos/branding.desc)\" = 4 ]"
 # The image must be exactly the package (includes.chroot is copied over it) – except the live menu with
 # "Install Simple OS" and the update channel switched off by hook 98
 check "edition: files in the image differ from the package simpleos" \

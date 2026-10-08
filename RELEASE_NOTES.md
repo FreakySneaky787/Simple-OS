@@ -1,10 +1,25 @@
-# Simple OS 1.0
+# Simple OS 1.0.1
 
 **SOS – Simple Operating System. Keep it Simple.**
 
 Simple OS is a fast, quiet desktop built on Debian 12 "bookworm". It boots straight into a calm dark desktop
 (Openbox, Catppuccin colors), sets itself up with a short wizard and keeps itself up to date. You don't
 need a terminal.
+
+## What's new in 1.0.1
+
+A maintenance update. If you run Simple OS 1.0, you get it through **Software Updates** – no need to reinstall.
+
+- **Updates are checked regularly.** Simple OS looks for updates 2 minutes after you sign in and then every
+  12 hours, also after the laptop wakes up from sleep. Before, it only checked once after signing in.
+- **App updates are offered too.** Updates for apps from the Software Store (for example the Mullvad Browser or
+  ONLYOFFICE) now show up in Software Updates by themselves. Before, they were only installed along with a
+  system update.
+- **Office entries in the menu** (LibreOffice, ONLYOFFICE) follow what is installed, also when you add or remove an
+  office suite in the Software Center, and they have icons like the other entries. If you picked an office suite
+  in the setup wizard of 1.0, your menu gets Simple OS improvements again from now on.
+- **Gaming with older NVIDIA cards** (Kepler, driver 470): the gaming setup now installs the matching 32-bit
+  graphics libraries, so Steam works with that driver.
 
 ## Download
 

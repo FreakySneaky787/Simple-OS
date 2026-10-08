@@ -17,6 +17,7 @@ logo and short form.
 | `./test_vm.sh [--uefi\|--secureboot]` | Boot the ISO in QEMU and install it: BIOS (`output/disk.qcow2`), UEFI, or UEFI with Secure Boot and Microsoft keys (OVMF, `output/disk-<mode>.qcow2`, NVRAM in `output/ovmf-vars-<mode>.fd`) |
 | `./test_installed_vm.sh [--uefi\|--secureboot]` | Boot the installed system from that mode's disk |
 | `./tools/release.sh key` | Once: create the release signing key (private key outside the repo, public key into the image) |
+| `./tools/release.sh version X.Y.Z` | Set the version of the next edition everywhere it is shown (`usr/lib/os-release`, installer branding) |
 | `./tools/release.sh sign` / `publish [--no-iso]` | Sign `output/repo`, publish it with the ISO as GitHub release `v<VERSION>` ("latest") |
 
 Release: test checklist in `TESTING.md`, text for the download page in `RELEASE_NOTES.md` (its `#known-issues`
@@ -28,8 +29,10 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
 
 - Everything Simple OS adds to Debian is the package **`simpleos`** (`tools/build_deb.sh`, built by every
   `./build_iso.sh`, also `--config-only`): `config/includes.chroot` minus installer/live-only files and first
-  defaults (`EXCLUDE`), its `/etc` files are conffiles. Version = `VERSION_ID` in `usr/lib/os-release` – the **one
-  place** to raise for a new edition (also the version on the boot menu and in Calamares).
+  defaults (`EXCLUDE`), its `/etc` files are conffiles. Version = `VERSION_ID` in `usr/lib/os-release`, also the
+  version on the boot menu. `./tools/release.sh version X.Y.Z` sets it together with `VERSION`, `PRETTY_NAME` and the
+  installer's branding (`etc/calamares/branding/simpleos/branding.desc`); `build_deb.sh` refuses to build when they
+  do not match (before 1.0.1 the installer had "1.0" written in by hand).
 - The image installs the package (live-build `packages.chroot`) and the APT source
   `/etc/apt/sources.list.d/simpleos.sources`: `https://github.com/FreakySneaky787/simple-os/releases/latest/download/`,
   a flat repository signed with `usr/share/keyrings/simpleos-archive-keyring.asc`. Every GitHub release carries the
@@ -59,12 +62,20 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
   - **One-time steps** for changes that need more than replacing a file: executable scripts in
     `config/includes.chroot/usr/share/simpleos/edition/migrations/system/` (root, from the postinst) or `…/user/`
     (each account at sign-in), named `NNN-name`, run once in order; exit ≠ 0 = again next time. A fresh system or
-    account counts the existing ones as done.
+    account counts the existing ones as done. Example: `system/010-skel-office-menu` (1.0.1) takes the office
+    entries that the 1.0 Setup Wizard wrote into `/etc/skel/.config/openbox/menu.xml` out again – with them the
+    file counted as changed, and no later menu change would have reached those systems.
+  - **Files the system changes itself:** tools never write into package files under `/etc/skel` (or other conffiles)
+    for everyday settings – a changed conffile is kept by dpkg and the edition tool forever. Per-account changes go
+    into the home copies (merged by the edition tool), see `office-menu` below.
 - `/usr/lib/os-release` belongs to base-files: the package diverts Debian's copy (`dpkg-divert --package simpleos`,
   Debian's goes to `os-release.debian`); hook 13 only checks it.
-- Releasing an edition: raise the version in `usr/lib/os-release`, `./build_iso.sh`, test (`TESTING.md`),
-  `./tools/release.sh sign`, `./tools/release.sh publish` (draft first, checks that all repository files are
-  attached and the signature matches the key in the image, only then "latest"; never an older or equal version).
+- Releasing an edition: `./tools/release.sh version X.Y.Z`, commit **and push**, `./build_iso.sh`, test
+  (`TESTING.md`), `./tools/release.sh sign`, `./tools/release.sh publish` (draft first, checks that all repository
+  files are attached and the signature matches the key in the image, only then "latest"; never an older or equal
+  version). The tag `vX.Y.Z` is set on exactly the local commit (`--target`); `publish` refuses a commit that is not
+  on GitHub yet – without that, GitHub tagged the newest commit of its default branch, and the release's source code
+  could differ from the ISO.
   **Every** release must carry the repository – `publish` refuses otherwise, also with uncommitted changes in
   `config/`/`tools/` (the next edition only recognizes file versions that are in git) or an `output/repo` that is not
   from the ISO build (marker `output/repo/.in-iso`, written by `build_iso.sh`). Back up the signing key
@@ -114,7 +125,8 @@ the lb default files, the generated graphics and the fastfetch package.
 | `usr/local/bin/simpleos-*` | helper programs: Setup Wizard, theme, browser choice, Software Store, screenshot, sound (simpleos-volume), display (simpleos-display), clipboard (simpleos-clipboard), dunst launcher with battery filter (simpleos-dunst), Control Center (simpleos-control-center, Super+I), Software Center (simpleos-software-center), Bluetooth (simpleos-bluetooth), night light (simpleos-nightlight), power (simpleos-power), Thunar actions (simpleos-wallpaper, simpleos-copy-file, simpleos-admin-open), keybindings, Welcome, network info, taskbar designer |
 | `usr/local/bin/simpleos-powermenu` | power menu (Super+X, red button in the taskbar): Lock, Sleep, Restart, Shut Down, Log Out |
 | `usr/local/bin/simpleos-help` | keyboard shortcut overview (Super+H); `simpleos-keybindings` forwards to it |
-| `usr/local/bin/simpleos-update` | system updates: check after login, "Install" notification, Rofi window, pkexec helper `--upgrade`/`--refresh` (checking without a password), restart only after asking |
+| `usr/local/bin/simpleos-update` | system updates: check after login and every 12 hours (`--watch`), "Install" notification, Rofi window, pkexec helper `--upgrade`/`--refresh` (checking without a password), restart only after asking |
+| `usr/local/lib/simpleos/office-menu` | office entries (LibreOffice, ONLYOFFICE) in the account's Openbox menu for exactly what is installed; at every sign-in (`etc/X11/Xsession.d/81simpleos-office-menu`), after the Setup Wizard and the Software Center |
 | `usr/local/bin/simpleos-usb-notify` | USB notifications for udiskie ("'STICK' is ready" – a click opens the file manager) |
 | `usr/local/lib/simpleos/common.sh` | shared helpers of the Rofi tools: log, notifications, Rofi with grab retry, menu with actions |
 | `etc/apt/apt.conf.d/20simpleos-periodic` | refresh package lists daily (check only, never install automatically) |
@@ -140,6 +152,12 @@ the lb default files, the generated graphics and the fastfetch package.
   `~/.config/simpleos/wizard-done` (not set if an installation failed).
   - Browser Chromium/Mullvad → Firefox ESR is removed completely afterwards (only once the new browser is installed).
   - Office: LibreOffice (apt), ONLYOFFICE (Flathub) or Minimal. Gaming: Ultimate (i386 + Steam, Lutris, MangoHud) or none.
+    With an NVIDIA driver from Debian, Gaming also installs its 32-bit libraries: `nvidia-driver-libs:i386`, or
+    `nvidia-tesla-470-driver-libs:i386` for the legacy driver 470 (Kepler) – chosen by the installed package.
+  - Menu entries for the office apps (Openbox → Apps) come from `/usr/local/lib/simpleos/office-menu`, as the
+    user, into `~/.config/openbox/menu.xml` only: after the marker `<!-- simpleos-office: … -->` one block per app,
+    for exactly what is installed (also from the Software Center or a terminal; removed apps lose their entries).
+    The root helper no longer touches any menu (up to 1.0 it also changed `/etc/skel`, a file of the package).
   - Step 2 "Internet" (before any download, like Windows): the status at the top ("Connected to Home"), below it
     always the full Wi-Fi list – even when the PC is already online. Connected network → "Disconnect", any other
     → password field → "Connect" (= switch networks); nmcli runs in a background thread. Without Wi-Fi hardware a
@@ -313,8 +331,12 @@ the lb default files, the generated graphics and the fastfetch package.
   at program start, dark comes from the theme name Arc-Dark.
 - Right-click menu: Catppuccin Mocha, Inter 11, monochrome icons (`/usr/share/simpleos/menu-icons`, hook
   `11_menu_icons`), rounded corners and shadows via picom.
-- Updates: `simpleos-update --check` runs 2 minutes after login (not in the live session) and only shows up when
-  there are updates; click → Rofi window ("5 updates available · firefox-esr, …") → "Install now" → one password
+- Updates: `simpleos-update --watch` (Openbox autostart) runs `--check` 2 minutes after login and then every 12
+  hours while the session runs – it looks at the clock every minute, so after waking up from sleep a due check runs
+  2 minutes later (before 1.0.1 there was only the check after login). Not in the live session; it only shows up when
+  there are updates. Counted: Debian packages, a new Simple OS edition, firmware, and apps from the Software Store
+  (Flatpak, system installation, `flatpak remote-ls --updates`, listed as "… (app)" – before 1.0.1 an update of
+  only e.g. the Mullvad Browser was never offered). Click → Rofi window ("5 updates available · firefox-esr, …") → "Install now" → one password
   dialog → `simpleos-system-setup --upgrade` (repair dpkg, apt-get update, `full-upgrade --no-remove` if the
   simulation removes nothing – otherwise `upgrade --with-new-pkgs`; never removes packages –, then Flatpak apps
   and firmware). Exactly what the helper installs is counted (`apt-get -s`), so the same updates are not offered

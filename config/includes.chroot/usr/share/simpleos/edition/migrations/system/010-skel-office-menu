@@ -1,0 +1,31 @@
+#!/bin/sh
+# Simple OS 1.0.1 – take the office entries out of /etc/skel/.config/openbox/menu.xml (runs once, as root, from the
+# postinst of the package simpleos via "edition --system").
+# Up to 1.0 the Setup Wizard's root helper also wrote LibreOffice/ONLYOFFICE entries into the /etc/skel copy. That file
+# belongs to the package: changed, dpkg (--force-confold) and the edition tool kept it, and no menu change of a later
+# edition reached anyone who had picked an office suite (their homes are updated from /etc/skel). The entries now live
+# only in the homes (/usr/local/lib/simpleos/office-menu at every sign-in).
+# Without the entries the file is a version Simple OS shipped again: if dpkg has put a newer one next to it (.dpkg-dist,
+# this update changed the menu), it is taken right away; otherwise dpkg's record matches again and the next edition
+# replaces the file as usual. Exit != 0 -> runs again at the next update.
+# Tests: SIMPLEOS_SKEL_MENU, SIMPLEOS_EDITION_SHARE, SIMPLEOS_OFFICE_MENU replace the fixed paths.
+set -e
+MENU=${SIMPLEOS_SKEL_MENU:-/etc/skel/.config/openbox/menu.xml}
+HIST=${SIMPLEOS_EDITION_SHARE:-/usr/share/simpleos/edition}/system.history
+TOOL=${SIMPLEOS_OFFICE_MENU:-/usr/local/lib/simpleos/office-menu}
+[ -f "$MENU" ] && [ ! -L "$MENU" ] || exit 0
+
+if grep -q 'simpleos-office-[a-z]* -->' "$MENU"; then
+    tmp=$MENU.simpleos-new.$$
+    cp -p "$MENU" "$tmp"
+    if ! "$TOOL" --strip "$MENU" > "$tmp" || ! mv -f "$tmp" "$MENU"; then
+        rm -f "$tmp"
+        exit 1
+    fi
+    echo "010-skel-office-menu: office entries removed from $MENU"
+fi
+if [ -f "$MENU.dpkg-dist" ] && grep -qxF "$(sha256sum < "$MENU" | cut -c1-64)  etc/skel/.config/openbox/menu.xml" "$HIST"; then
+    mv -f "$MENU.dpkg-dist" "$MENU"
+    echo "010-skel-office-menu: $MENU updated to this edition"
+fi
+exit 0

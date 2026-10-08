@@ -66,6 +66,7 @@ GAMING = [
 ]
 FIREFOX_ID = "firefox-esr.desktop"
 HELPER = "/usr/local/sbin/simpleos-system-setup"
+OFFICE_MENU = "/usr/local/lib/simpleos/office-menu"
 STEPS = ["Welcome", "Internet", "Browser", "Appearance", "Office", "Gaming", "Apps"]
 NETWORK_PAGE = STEPS.index("Internet")
 
@@ -944,7 +945,9 @@ class Wizard(Gtk.Window):
         # Set the browser only once it is installed – otherwise browser-select would install it itself
         if (self.browser != current_browser() and is_installed(self.browser)) or DRYRUN:
             run(["simpleos-browser-select", "--set", self.browser])
-        run(["openbox", "--reconfigure"])  # reload the menu (e.g. without the Firefox entry)
+        # Office entries in this account's menu for whatever is installed now (also when the suite was there already)
+        run([OFFICE_MENU])
+        run(["openbox", "--reconfigure"])  # reload the menu (e.g. without the Firefox entry, with the office entries)
         if done:
             self.mark_done()
         if self.open_store:

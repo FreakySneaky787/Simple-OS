@@ -59,8 +59,9 @@ tint2 &
 # technical udiskie notifications), tray icon for safe removal only while a drive is plugged in
 udiskie --automount --no-notify --smart-tray --file-manager thunar \
     --notify-command "/usr/local/bin/simpleos-usb-notify {event} {mount_path} {id_label} {drive_label}" &
-# Updates: check 2 minutes after login – a notification only if there are any (not in the live session)
-(sleep 120; /usr/local/bin/simpleos-update --check) &
+# Updates: check 2 minutes after login, then every 12 hours (also after waking up from sleep) – a notification only
+# if there are any (not in the live session)
+/usr/local/bin/simpleos-update --watch &
 # Clipboard history (Super+V) remembers copied texts
 simpleos-clipboard --daemon &
 # Night light (on/off/automatic 20–7 o'clock, Settings → Night Light) and screen blanking (Control Center → Power)

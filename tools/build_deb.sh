@@ -25,6 +25,20 @@ REPO_OUT=../output/repo
 
 VERSION=$(sed -n 's/^VERSION_ID="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' "$INC/usr/lib/os-release")
 [[ $VERSION =~ ^[0-9]+(\.[0-9]+)*$ ]] || { echo "build_deb: VERSION_ID in usr/lib/os-release missing or invalid: '$VERSION'" >&2; exit 1; }
+# Everything else that shows the version must show the same one: the installer's branding had "1.0" written in by
+# hand and would have kept showing it after a new VERSION_ID. ./tools/release.sh version X.Y.Z sets them all.
+BRANDING=$INC/etc/calamares/branding/simpleos/branding.desc
+osr_value() { sed -n "s/^$1=\"\{0,1\}\([^\"]*\)\"\{0,1\}\$/\1/p" "$INC/usr/lib/os-release"; }
+brand_value() { sed -n "s/^ *$1: *\"\(.*\)\"\$/\1/p" "$BRANDING"; }
+bad=
+[ "$(osr_value VERSION)" = "$VERSION" ] || bad="$bad VERSION"
+[ "$(osr_value PRETTY_NAME)" = "Simple OS v$VERSION" ] || bad="$bad PRETTY_NAME"
+for k in version shortVersion; do [ "$(brand_value $k)" = "$VERSION" ] || bad="$bad $k(branding.desc)"; done
+for k in versionedName shortVersionedName; do [ "$(brand_value $k)" = "Simple OS $VERSION" ] || bad="$bad $k(branding.desc)"; done
+if [ -n "$bad" ]; then
+    echo "build_deb: version $VERSION (VERSION_ID) does not match:$bad – run ./tools/release.sh version $VERSION" >&2
+    exit 1
+fi
 KEYRING=$INC/usr/share/keyrings/simpleos-archive-keyring.asc
 if ! grep -q 'BEGIN PGP PUBLIC KEY BLOCK' "$KEYRING" 2>/dev/null; then
     echo "build_deb: release key missing ($KEYRING)." >&2

@@ -1,15 +1,18 @@
-# Release tests Simple OS 1.0
+# Release tests
 
-Tick these off before uploading. Ideally record any bug you find right away with **Menu → Help → Report a
+Tick these off before uploading a new edition (the boxes start empty for every release). Ideally record any bug you find right away with **Menu → Help → Report a
 Problem** – that tests the tool at the same time.
 
 ## 0. Build
 
-- [ ] Once: `./tools/release.sh key` – creates the release signing key and puts the public key into the image.
-      Back up `~/.local/share/simpleos-release/gnupg` (without it no further update can be signed).
+- [x] Once: `./tools/release.sh key` – creates the release signing key and puts the public key into the image.
+      Back up `~/.local/share/simpleos-release/gnupg` (without it no further update can be signed). Done for 1.0.
+- [ ] `./tools/release.sh version X.Y.Z` (1.0.1: done), changes committed **and pushed** – `publish` tags exactly this
+      commit and refuses one that is not on GitHub.
 - [ ] `./build_iso.sh` runs without errors. At the end the verify hook reports `Simple OS verify: OK` (in `build/build.log`).
 - [ ] `output/` contains `Simple-OS.iso`, `Simple-OS.iso.sha256`, `Simple-OS.packages.txt` and `repo/`
-      (`simpleos_<version>_all.deb`, `Packages`, `Release`). The version is the one in `usr/lib/os-release`.
+      (`simpleos_<version>_all.deb`, `Packages`, `Release`). The version is the one in `usr/lib/os-release`
+      (the build stops if os-release and the installer's branding name different versions).
 - [ ] `cd output && sha256sum -c Simple-OS.iso.sha256` reports `Simple-OS.iso: OK`.
 
 ## 1. In the VM (no extra hardware)
@@ -22,10 +25,9 @@ Problem** – that tests the tool at the same time.
 | UEFI + Secure Boot | `./test_vm.sh --secureboot` | as above, **and** after the installation in a terminal: `mokutil --sb-state` → `SecureBoot enabled` |
 | UEFI + encryption | `./test_vm.sh --uefi` | tick "Encrypt system" in the installer. After the restart the system asks for the password and then starts normally |
 
-Already done (October 4, with the ISO from October 3 plus the new boot image):
+- [ ] The installer's welcome page and slideshow show the new version ("Simple OS 1.0.1").
 
-- The live system boots under UEFI with Secure Boot (Microsoft keys, `SecureBoot enabled`) and under BIOS to the desktop.
-- The installation itself has not been tested yet.
+Last results: 1.0 is installed and in daily use on the ThinkBook (UEFI).
 
 ## 2. On real hardware
 
@@ -59,9 +61,9 @@ Already done (October 4, with the ISO from October 3 plus the new boot image):
 
 ## 4. Publish
 
-1. Create a public repo **`simple-os`** under `FreakySneaky787` on GitHub. The name must match, because the
-   installer and Report a Problem link to `github.com/FreakySneaky787/simple-os`.
-2. `git remote add origin https://github.com/FreakySneaky787/simple-os.git && git push -u origin main`
+1. Once (done for 1.0): a public repo **`simple-os`** under `FreakySneaky787` on GitHub. The name must match,
+   because the installer and Report a Problem link to `github.com/FreakySneaky787/simple-os`.
+2. `git push` – the commit the ISO was built from must be on GitHub.
 3. `./tools/release.sh sign && ./tools/release.sh publish` – creates the release `v<version>` with the text of
    `RELEASE_NOTES.md`, the three ISO files and the update repository, checks it as a draft and only then makes it
    "latest" (needs `gh auth login`). From then on installed systems are offered this edition.
@@ -77,3 +79,26 @@ Already done (October 4, with the ISO from October 3 plus the new boot image):
       says "Simple OS … is installed". `cat /etc/os-release` shows the new version.
 - [ ] Sign out and back in: files you did not change follow the new edition, your change in `rc.xml` is still there
       (`~/.cache/simpleos-edition.log` lists "updated …" / "kept …"). New packages of the edition are installed.
+
+## 6. What changed in 1.0.1
+
+Before publishing, the edition package can be tested on a VM installed from the **1.0** ISO: copy
+`output/repo/simpleos_1.0.1_all.deb` into the VM and install it with `sudo apt install ./simpleos_1.0.1_all.deb`
+(after publishing: through Software Updates, see section 5).
+
+- [ ] **Office menu after an update from 1.0:** in the 1.0 VM run the Setup Wizard and pick LibreOffice first.
+      After the update: `sudo dpkg --verify simpleos` does **not** list `/etc/skel/.config/openbox/menu.xml`,
+      `/var/log/simpleos-edition.log` says `migration 010-skel-office-menu done`. Sign out and in: Menu → Apps shows
+      LibreOffice Writer, Calc, Impress and Draw once each, with icons.
+- [ ] **Office menu follows the Software Center:** install ONLYOFFICE in the Software Center → Menu → Apps shows
+      "ONLYOFFICE" right away. Remove it again → the entry is gone.
+- [ ] **New account:** create a second user (`sudo adduser test`), sign in as test: the Apps menu shows the installed
+      office apps as well.
+- [ ] **Regular update checks:** after signing in, `pgrep -af 'simpleos-update --watch'` shows exactly one process;
+      sign out and back in → still exactly one. Put the laptop to sleep for a night: in the morning a pending
+      update shows up as a notification about 2 minutes after waking up.
+- [ ] **App updates:** when `flatpak remote-ls --updates --system` lists an app, Software Updates lists it as
+      "<name> (app)" – also if there is no Debian update – and Install now updates it.
+- [ ] **NVIDIA Kepler** (only if such a computer is available): driver 470 from Hardware & Drivers, then the Setup
+      Wizard with Ultimate Gaming installs without errors, `dpkg -l nvidia-tesla-470-driver-libs:i386` shows it
+      installed, Steam starts.

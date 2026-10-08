@@ -481,47 +481,9 @@ if [ "$purge_firefox" -eq 1 ] && installed firefox-esr; then
 fi
 
 # ------------------------------------------------------------------- Office
-# Entries in the Openbox menu (Office) for skel and all user homes, once; sed -i keeps the owner
-menu_add_office() {  # $1 = id, stdin = <item> lines
-    items=$(mktemp)
-    { echo "      <!-- simpleos-office-$1 -->"; cat; } > "$items"
-    for f in /etc/skel/.config/openbox/menu.xml /home/*/.config/openbox/menu.xml; do
-        [ -f "$f" ] || continue
-        grep -q "simpleos-office-$1 " "$f" && continue
-        sed -i "/<!-- simpleos-office:/r $items" "$f"
-    done
-    rm -f "$items"
-}
-office_menu() {
-    case "$office" in
-        libreoffice)
-            installed libreoffice-writer || return 0
-            menu_add_office libreoffice <<'ITEMS'
-      <item label="LibreOffice Writer">
-        <action name="Execute"><command>libreoffice --writer</command></action>
-      </item>
-      <item label="LibreOffice Calc">
-        <action name="Execute"><command>libreoffice --calc</command></action>
-      </item>
-      <item label="LibreOffice Impress">
-        <action name="Execute"><command>libreoffice --impress</command></action>
-      </item>
-      <item label="LibreOffice Draw">
-        <action name="Execute"><command>libreoffice --draw</command></action>
-      </item>
-ITEMS
-            ;;
-        onlyoffice)
-            flatpak info --system org.onlyoffice.desktopeditors >/dev/null 2>&1 || return 0
-            menu_add_office onlyoffice <<'ITEMS'
-      <item label="ONLYOFFICE">
-        <action name="Execute"><command>flatpak run org.onlyoffice.desktopeditors</command></action>
-      </item>
-ITEMS
-            ;;
-    esac
-}
-
+# The menu entries (Openbox, Apps) are not written here: each account gets them for whatever is installed from
+# /usr/local/lib/simpleos/office-menu (at sign-in, after the wizard/Software Center). Up to 1.0 this helper wrote them
+# into /etc/skel too – a file of the package simpleos, which then never got a newer edition's menu again.
 case "$office" in
     libreoffice)
         if ! installed libreoffice-writer; then
@@ -540,7 +502,6 @@ case "$office" in
             flatpak_install org.onlyoffice.desktopeditors "$need" || fail "ONLYOFFICE could not be installed"
         fi ;;
 esac
-office_menu
 
 # ------------------------------------------------------------------- Gaming
 if [ "$gaming" -eq 1 ]; then
@@ -563,9 +524,15 @@ if [ "$gaming" -eq 1 ]; then
         for owner in steam steam-installer; do
             printf '%s steam/question select I AGREE\n%s steam/license note \n' "$owner" "$owner" | debconf-set-selections
         done
-        # NVIDIA driver active: Steam needs its 32-bit libraries (otherwise it does not start)
+        # NVIDIA driver from Debian: Steam needs its 32-bit libraries (otherwise it does not start), in exactly the
+        # driver's version. The legacy driver 470 (Kepler, simpleos-drivers) has its own – nvidia-driver-libs:i386
+        # belongs to the current driver and did not fit it. Decided by the installed package, not the loaded module:
+        # right after installing the driver (before the restart) the module is not loaded yet, and a driver from
+        # NVIDIA's .run installer has no Debian libraries at all.
         nvidia=
-        if [ -e /sys/module/nvidia/version ]; then
+        if installed nvidia-tesla-470-driver; then
+            nvidia="nvidia-tesla-470-driver-libs:i386"
+        elif installed nvidia-driver; then
             nvidia="nvidia-driver-libs:i386"
         fi
         step "Installing Steam, Lutris and MangoHud (this can take a while)"

@@ -22,6 +22,7 @@ import time
 
 HELPER = "/usr/local/sbin/simpleos-system-setup"
 FP_PROGRESS = "/usr/local/lib/simpleos/flatpak-progress"
+OFFICE_MENU = "/usr/local/lib/simpleos/office-menu"
 # Ask before a Flatpak installation when there is less free space (MB) than this (large apps with runtime: 1–3 GB)
 LOW_SPACE_MB = 3000
 # (key, name, description, category, icon, source, identifier)
@@ -393,6 +394,9 @@ def main(argv):
                     self.error(f"{app[1]}: {explain(rc, out)}")
                 else:
                     self.notify(f"{app[1]} is {'installed' if verb == 'Installing' else 'removed'}.")
+                    # LibreOffice/ONLYOFFICE: entries in the Openbox menu (Apps) follow what is installed
+                    if os.access(OFFICE_MENU, os.X_OK):
+                        subprocess.Popen([OFFICE_MENU, "--reconfigure"], start_new_session=True)
                 self.reload()
             threading.Thread(target=lambda: (lambda r: GLib.idle_add(done, r))(work()), daemon=True).start()
 

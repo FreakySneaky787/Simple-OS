@@ -4,7 +4,8 @@ set -e
 # Icons for the Openbox right-click menu: monochrome Papirus "symbolic" icons, recolored to Catppuccin
 # Mocha (Papirus-Dark draws them in a fixed #dfdfdf). Normal entries Subtext1 #bac2de, "Install Simple OS"
 # Mauve #cba6f7. Openbox only loads icons via file paths (no icon theme) -> fixed copies under
-#   /usr/share/simpleos/menu-icons/<name>.svg   (menu.xml refers to them, 99_verify checks every path)
+#   /usr/share/simpleos/menu-icons/<name>.svg   (menu.xml and /usr/local/lib/simpleos/office-menu refer to them,
+#                                                99_verify checks every path)
 SRC=/usr/share/icons/Papirus-Dark/symbolic
 DEST=/usr/share/simpleos/menu-icons
 mkdir -p "$DEST"
@@ -21,6 +22,10 @@ browser      apps/web-browser-symbolic.svg                      #bac2de
 store        apps/system-software-install-symbolic.svg          #bac2de
 apps         actions/view-app-grid-symbolic.svg                 #bac2de
 pdf          mimetypes/x-office-document-symbolic.svg           #bac2de
+office-writer  mimetypes/x-office-document-symbolic.svg         #bac2de
+office-calc    mimetypes/x-office-spreadsheet-symbolic.svg      #bac2de
+office-impress mimetypes/x-office-presentation-symbolic.svg     #bac2de
+office-draw    mimetypes/x-office-drawing-symbolic.svg          #bac2de
 editor       apps/accessories-text-editor-symbolic.svg          #bac2de
 calculator   apps/accessories-calculator-symbolic.svg           #bac2de
 media        apps/multimedia-video-player-symbolic.svg          #bac2de

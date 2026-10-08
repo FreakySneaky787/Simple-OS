@@ -1,0 +1,86 @@
+#!/bin/sh
+# Simple OS – office entries in the Openbox menu (Apps): LibreOffice Writer/Calc/Impress/Draw and ONLYOFFICE, exactly
+# for what is installed right now (also when installed or removed from the Software Center or a terminal).
+#   office-menu [--reconfigure] [MENU]   bring MENU (default ~/.config/openbox/menu.xml) up to date; --reconfigure:
+#                                        reload Openbox if something changed
+#   office-menu --strip FILE             FILE without any office entries on stdout (migration 010-skel-office-menu)
+# Runs as the user: at every sign-in before Openbox reads the menu (/etc/X11/Xsession.d/81simpleos-office-menu), after
+# the Setup Wizard and after the Software Center installed or removed an app.
+# The entries follow the marker "<!-- simpleos-office: … -->", one block per app: "<!-- simpleos-office-<app> -->" and its
+# <item>s – the format simpleos-system-setup wrote up to 1.0. It also wrote them into /etc/skel, a file of the package
+# simpleos: changed, dpkg and the edition tool kept it, and no later menu change reached anyone who had picked an
+# office suite. Now only the account's own copy is changed, and only if something differs.
+# Without the marker (removed by hand) the menu stays as it is. Never fails its caller (exit 0).
+# Tests: SIMPLEOS_OFFICE_APPS replaces the detection (space-separated: writer calc impress draw onlyoffice).
+
+ICONS=/usr/share/simpleos/menu-icons
+# An item of ours (label as written up to 1.0, optionally with an icon)
+OURS='^[ \t]*<item label="(LibreOffice (Writer|Calc|Impress|Draw)|ONLYOFFICE)"( icon="[^"]*")?>[ \t]*$'
+
+strip() {  # FILE -> without the office blocks (the comment line and the <item>s of ours that follow it)
+    awk -v ours="$OURS" '
+        skip == 2 { if ($0 ~ /<\/item>/) skip = 1; next }
+        skip == 1 { if ($0 ~ ours) { skip = 2; next } skip = 0 }
+        /^[ \t]*<!-- simpleos-office-[a-z]+ -->[ \t]*$/ { skip = 1; next }
+        { print }' "$1"
+}
+
+installed_apps() {
+    if [ -n "${SIMPLEOS_OFFICE_APPS+x}" ]; then echo "$SIMPLEOS_OFFICE_APPS"; return 0; fi
+    for a in writer calc impress draw; do
+        [ -f "/usr/share/applications/libreoffice-$a.desktop" ] && printf '%s ' "$a"
+    done
+    for d in /var/lib/flatpak/exports/share/applications "${XDG_DATA_HOME:-$HOME/.local/share}/flatpak/exports/share/applications"; do
+        [ -f "$d/org.onlyoffice.desktopeditors.desktop" ] && { printf 'onlyoffice '; break; }
+    done
+    echo
+}
+
+item() {  # label command icon
+    printf '      <item label="%s" icon="%s/%s.svg">\n        <action name="Execute"><command>%s</command></action>\n      </item>\n' \
+        "$1" "$ICONS" "$3" "$2"
+}
+
+blocks() {  # installed apps -> the entries in a fixed order
+    lo=
+    for a in $1; do
+        case "$a" in
+            writer)  lo="$lo$(item "LibreOffice Writer" "libreoffice --writer" office-writer)$SOS_NL" ;;
+            calc)    lo="$lo$(item "LibreOffice Calc" "libreoffice --calc" office-calc)$SOS_NL" ;;
+            impress) lo="$lo$(item "LibreOffice Impress" "libreoffice --impress" office-impress)$SOS_NL" ;;
+            draw)    lo="$lo$(item "LibreOffice Draw" "libreoffice --draw" office-draw)$SOS_NL" ;;
+        esac
+    done
+    [ -n "$lo" ] && printf '      <!-- simpleos-office-libreoffice -->\n%s' "$lo"
+    case " $1 " in *" onlyoffice "*)
+        echo "      <!-- simpleos-office-onlyoffice -->"
+        item "ONLYOFFICE" "flatpak run org.onlyoffice.desktopeditors" office-writer ;;
+    esac
+}
+SOS_NL='
+'
+
+if [ "${1:-}" = --strip ]; then
+    [ -r "${2:-}" ] || exit 1
+    strip "$2"
+    exit $?
+fi
+reconfigure=0
+[ "${1:-}" = --reconfigure ] && { reconfigure=1; shift; }
+menu=${1:-${XDG_CONFIG_HOME:-$HOME/.config}/openbox/menu.xml}
+[ -f "$menu" ] && [ ! -L "$menu" ] && [ -w "$menu" ] || exit 0
+grep -q '<!-- simpleos-office:' "$menu" || exit 0
+
+tmp=$menu.simpleos-new.$$
+add=$(mktemp) || exit 0
+trap 'rm -f "$tmp" "$add"' EXIT
+blocks "$(installed_apps)" > "$add"
+# cp -p first: the new file keeps the permissions of the old one
+cp -p "$menu" "$tmp" 2>/dev/null || exit 0
+strip "$menu" | awk -v add="$add" '{ print } /<!-- simpleos-office:/ { while ((getline l < add) > 0) print l }' > "$tmp" || exit 0
+cmp -s "$menu" "$tmp" && exit 0
+mv -f "$tmp" "$menu" 2>/dev/null || exit 0
+if [ "$reconfigure" = 1 ] && [ -n "${DISPLAY:-}" ] && command -v openbox >/dev/null; then
+    openbox --reconfigure >/dev/null 2>&1
+fi
+exit 0

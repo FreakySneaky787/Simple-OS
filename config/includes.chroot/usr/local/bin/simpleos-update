@@ -1,13 +1,20 @@
 #!/bin/sh
 # Simple OS – graphical system update (Menu → Settings → Software Updates)
 #   simpleos-update           Rofi window: available updates, "Install now" -> pkexec (password dialog)
-#   simpleos-update --check   background (Openbox autostart): counts updates; if there are any, a notification
-#                             with "Install" appears -> opens the window above. Not in the live session.
+#   simpleos-update --check   counts updates; if there are any, a notification with "Install" appears -> opens the
+#                             window above. Not in the live session.
+#   simpleos-update --watch   background (Openbox autostart): --check 2 minutes after sign-in, then every 12 hours as long
+#                             as the session runs (runs only once per session). Before, the only check was the one after
+#                             sign-in – a laptop that is only ever closed and opened again never heard of updates.
+#                             The clock is read every minute: after sleep/hibernation a check that became due runs
+#                             2 minutes after waking up (time for the network).
 # Counted is what the root helper would really install ("apt-get -s full-upgrade" if it removes nothing,
 # otherwise "apt-get -s upgrade --with-new-pkgs" – the same choice as the helper; only new versions, no new
 # dependencies) from the package lists that apt-daily.timer downloads daily (/etc/apt/apt.conf.d/20simpleos-periodic),
-# plus firmware/BIOS updates from fwupd (metadata: fwupd-refresh.timer). Before, "apt list --upgradable" also counted
-# updates the helper does not install at all -> after updating and restarting they were there again.
+# plus firmware/BIOS updates from fwupd (metadata: fwupd-refresh.timer) and apps from the Software Store (Flatpak,
+# system installation – the helper updates them along with the rest; before they were not counted, so updates of only
+# e.g. the Mullvad Browser were never offered). Before, "apt list --upgradable" also counted updates the helper does
+# not install at all -> after updating and restarting they were there again.
 # Installation only goes through the fixed root helper "simpleos-system-setup --upgrade" (polkit action, no free
 # package names, never removes packages); it reports "FIRMWARE: installed|needs-power|failed" and "HELD: <count>".
 # Opening the window = checking by itself: if the package lists are older than 30 minutes, "simpleos-system-setup
@@ -22,7 +29,8 @@
 # "Simple OS <version>" at the top; the packages that edition adds come with it (edition --todo-packages). Afterwards
 # a hint that the account's settings follow at the next sign-in (edition --user).
 # Tests: SIMPLEOS_REBOOT_FLAG replaces /var/run/reboot-required, SIMPLEOS_APT_STAMPS the time stamps of the last
-# check (list; empty/old = check again).
+# check (list; empty/old = check again); --watch: SIMPLEOS_UPDATE_FIRST/_EVERY/_NAP (seconds until the first check,
+# between checks, between looks at the clock), SIMPLEOS_UPDATE_ROUNDS (stop after that many checks).
 # Robust like simpleos-wifi: no set -e, every path ends with exit 0 and a clear notification;
 # output of the installation in ~/.cache/simpleos-update.log.
 
@@ -38,6 +46,32 @@ sos_rofi_failed() {
     sos_notify "The update window could not open. Please try again from Settings → Software Updates." critical
     exit 0
 }
+is_live() { grep -qw 'boot=live' /proc/cmdline 2>/dev/null; }
+
+# ---- Background (Openbox autostart): --check after sign-in, then every 12 hours. Before the lock below: this loop runs
+# all session long, the lock is only taken by each --check.
+if [ "${1:-}" = --watch ]; then
+    is_live && exit 0
+    pidf=${XDG_RUNTIME_DIR:-$SOS_LOG_DIR}/simpleos-update-watch.pid
+    if [ -r "$pidf" ] && kill -0 "$(cat "$pidf" 2>/dev/null)" 2>/dev/null; then exit 0; fi
+    echo $$ > "$pidf" 2>/dev/null
+    nap=${SIMPLEOS_UPDATE_NAP:-60} every=${SIMPLEOS_UPDATE_EVERY:-43200} rounds=0
+    last=$(date +%s); due=$((last + ${SIMPLEOS_UPDATE_FIRST:-120}))
+    while :; do
+        sleep "$nap"
+        # Signed out: the X server is gone -> end (a process of the old session would otherwise keep running)
+        [ -n "${DISPLAY:-}" ] && ! xprop -root -notype _NET_SUPPORTING_WM_CHECK >/dev/null 2>&1 && exit 0
+        now=$(date +%s)
+        # The clock jumped (woken up from sleep): a due check waits 2 minutes for the network
+        [ $((now - last)) -gt $((nap * 5 + 60)) ] && [ "$due" -lt $((now + 120)) ] && due=$((now + 120))
+        last=$now
+        [ "$now" -ge "$due" ] || continue
+        "$0" --check
+        due=$(($(date +%s) + every))
+        rounds=$((rounds + 1))
+        [ -n "${SIMPLEOS_UPDATE_ROUNDS:-}" ] && [ "$rounds" -ge "$SIMPLEOS_UPDATE_ROUNDS" ] && exit 0
+    done
+fi
 
 # Only one update window/run at a time (e.g. notification clicked and menu opened)
 LOCK=${XDG_RUNTIME_DIR:-/tmp}/simpleos-update.$(id -u 2>/dev/null || echo 0).lock
@@ -54,7 +88,6 @@ echo $$ > "$LOCK/pid"
 trap 'rm -rf "$LOCK"' EXIT
 trap 'exit 0' INT TERM HUP
 
-is_live() { grep -qw 'boot=live' /proc/cmdline 2>/dev/null; }
 REBOOT_FLAG=${SIMPLEOS_REBOOT_FLAG:-/var/run/reboot-required}
 FW_MARK=${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}/simpleos/firmware-installed
 # Last checked: the helper (apt-get update) or apt-daily
@@ -81,12 +114,21 @@ firmware() {
         awk '/"Name" *:/ { n = $0; sub(/^[^:]*: *"/, "", n); sub(/",? *$/, "", n) }
              /"Releases" *: *\[/ { if (n != "") print n; n = "" }'
 }
-# Everything pending: a new Simple OS edition, firmware (with a hint), then packages
+# Apps from the Software Store (Flatpak, system installation) with an update, one line per name. Needs the network (it
+# asks Flathub) and no root; offline the list stays empty. The helper installs them with "flatpak update --system".
+apps() {
+    command -v flatpak >/dev/null || return 0
+    flatpak remotes --system 2>/dev/null | grep -q . || return 0
+    timeout 60 flatpak remote-ls --updates --system --columns=name 2>/dev/null | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' |
+        grep . | sort -u
+}
+# Everything pending: a new Simple OS edition, firmware (with a hint), packages, then apps (with a hint)
 pending() {
     up=$(upgradable)
     printf '%s\n' "$up" | grep '^Simple OS '
     firmware | sed 's/$/ (firmware)/'
     printf '%s\n' "$up" | grep -v -e '^Simple OS ' -e '^$'
+    apps | sed 's/$/ (app)/'
     edition_todo
 }
 # After a restart: a BIOS/firmware update the helper had installed is still pending -> not applied during the

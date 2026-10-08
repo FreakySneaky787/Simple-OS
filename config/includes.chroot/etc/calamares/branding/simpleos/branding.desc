@@ -9,10 +9,10 @@ windowPlacement: center
 strings:
     productName:         "Simple OS"
     shortProductName:    "Simple OS"
-    version:             "1.0"
-    shortVersion:        "1.0"
-    versionedName:       "Simple OS 1.0"
-    shortVersionedName:  "Simple OS 1.0"
+    version:             "1.0.1"
+    shortVersion:        "1.0.1"
+    versionedName:       "Simple OS 1.0.1"
+    shortVersionedName:  "Simple OS 1.0.1"
     bootloaderEntryName: "Simple OS"
     # Buttons on the installer's welcome page (welcome.conf: showSupportUrl …); the same address as
     # HOME_URL/BUG_REPORT_URL in /usr/lib/os-release
