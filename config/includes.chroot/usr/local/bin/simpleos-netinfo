@@ -19,7 +19,7 @@ mode=$1 dev=${2:-} gw=${3:-}
 [ -n "$dev" ] || dev=$(ip -4 -o addr show scope global 2>/dev/null | awk '{print $2; exit}')
 ip=
 [ -n "$dev" ] && ip=$(ip -4 -o addr show dev "$dev" scope global 2>/dev/null | awk '{sub("/.*", "", $4); print $4; exit}')
-host=$(hostname)
+read -r host < /proc/sys/kernel/hostname 2>/dev/null || host=$(hostname)
 
 kind="Ethernet"
 [ -d "/sys/class/net/$dev/wireless" ] && kind="Wi-Fi"

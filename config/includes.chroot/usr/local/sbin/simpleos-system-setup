@@ -458,20 +458,19 @@ esac
 # Remove Firefox only if the new browser is really there – never leave the system without a browser
 if [ "$purge_firefox" -eq 1 ] && installed firefox-esr; then
     case "$browser" in
-        chromium) new_id=chromium.desktop;                   ok=$(installed chromium && echo 1) ;;
-        mullvad)  new_id=net.mullvad.MullvadBrowser.desktop; ok=$(flatpak info --system net.mullvad.MullvadBrowser >/dev/null 2>&1 && echo 1) ;;
-        *)        new_id=;                                   ok= ;;
+        chromium) ok=$(installed chromium && echo 1) ;;
+        mullvad)  ok=$(flatpak info --system net.mullvad.MullvadBrowser >/dev/null 2>&1 && echo 1) ;;
+        *)        ok= ;;
     esac
     if [ -n "$ok" ]; then
         step "Removing Firefox ESR"
         if aptget purge firefox-esr; then
             aptget autoremove --purge
-            rm -rf /usr/share/firefox-esr
-            # Switch the system-wide defaults to the new browser (for new users and xdg-mime)
+            # Not touched: /etc/xdg/mimeapps.list and /usr/share/applications/defaults.list belong to the package simpleos
+            # (every update would put firefox-esr back, a changed conffile never gets a newer edition's defaults).
+            # The account's own default is in ~/.config/mimeapps.list (simpleos-browser-select); new accounts follow
+            # simpleos-browser, which falls back to any installed browser.
             # (The Openbox menu needs nothing: "Web Browser" starts simpleos-browser, i.e. the default browser)
-            for f in /etc/xdg/mimeapps.list /usr/share/applications/defaults.list; do
-                [ -f "$f" ] && sed -i "s|=firefox-esr\.desktop|=$new_id|" "$f"
-            done
         else
             fail "Firefox ESR could not be removed"
         fi

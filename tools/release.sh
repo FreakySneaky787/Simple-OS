@@ -133,6 +133,17 @@ cmd_publish() {
     [ -n "$(git branch -r --contains "$head")" ] || die "commit ${head:0:7} is not on GitHub yet – git push first, then publish"
     tagged=$(git rev-parse -q --verify "refs/tags/$tag^{commit}" || true)
     [ -z "$tagged" ] || [ "$tagged" = "$head" ] || die "tag $tag exists already and points to ${tagged:0:7}, not to ${head:0:7}"
+    # The ISO and the update package must come from this commit: build_iso.sh records the commit and whether config/ and
+    # tools/ were clean (output/repo/.build-state). A commit made after the build would be in the release's source code
+    # but not in what installed systems download.
+    local bcommit bdirty
+    bcommit=$(sed -n 's/^commit=//p' "$REPO/.build-state" 2>/dev/null)
+    bdirty=$(sed -n 's/^dirty=//p' "$REPO/.build-state" 2>/dev/null)
+    [ -n "$bcommit" ] || die "output/repo/.build-state missing – run ./build_iso.sh again (it records the commit the build is made from)"
+    [ "$bdirty" = 0 ] || die "the build was made from uncommitted changes in config/ or tools/ – commit, run ./build_iso.sh again, then sign and publish"
+    git cat-file -e "$bcommit^{commit}" 2>/dev/null || die "the build commit ${bcommit:0:7} is unknown here – run ./build_iso.sh again"
+    git diff --quiet "$bcommit" "$head" -- config tools ||
+        die "config/ or tools/ changed since the build (${bcommit:0:7} → ${head:0:7}): the ISO and the update package do not contain it – run ./build_iso.sh again, then sign and publish"
     local assets=()
     for f in "$REPO"/*; do assets+=("$f"); done
     if [ "$with_iso" = 1 ]; then

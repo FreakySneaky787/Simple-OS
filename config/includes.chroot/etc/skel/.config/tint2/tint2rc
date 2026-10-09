@@ -167,7 +167,8 @@ execp_rclick_command = /usr/local/bin/simpleos-control-center system
 #---- Network (LAN IP visible directly, details in the tooltip = stderr; click = Wi-Fi menu, right-click = Super+N)
 execp = new
 execp_command = simpleos-netinfo --panel
-execp_interval = 5
+# every 10 s: a few small processes each time (ip, awk); the IP shows up within seconds of connecting
+execp_interval = 10
 execp_has_icon = 0
 execp_continuous = 0
 execp_markup = 1

@@ -97,7 +97,11 @@ case "${1:-}" in
         echo $$ > "$pidf" 2>/dev/null
         rm -f "$RUN/simpleos-nightlight.state"
         while :; do
-            load; apply; couple
+            load
+            # While it should be warm: set the color again every time – the driver forgets it after sleep, with some
+            # graphics drivers (NVIDIA) and after a screen change; the saved state would say "already applied"
+            if wanted; then apply force; else apply; fi
+            couple
             sleep 300
         done ;;
     "") ;;

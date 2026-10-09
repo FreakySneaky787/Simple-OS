@@ -45,7 +45,9 @@ simpleos-dunst &
 lxpolkit &
 # NetworkManager applet: a left click on the tray icon lists the Wi-Fi networks (click, enter the password)
 nm-applet &
-blueman-applet &
+# Bluetooth applet (pairing agent for keyboards/phones, tray icon) only with Bluetooth hardware: a Python process of
+# ~40 MB that would sit idle on desktops and in VMs without it. A USB dongle plugged in later: next sign-in
+[ -n "$(ls /sys/class/bluetooth 2>/dev/null)" ] && blueman-applet &
 # Power manager only with a real battery (not in VMs, not on desktop PCs): otherwise it reported phantom
 # devices with 0 % as "low power" via UPower. Notifications/tray icon are off anyway
 # (/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml), battery display: tint2 + simpleos-battery

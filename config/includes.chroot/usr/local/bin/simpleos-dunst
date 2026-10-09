@@ -1,8 +1,9 @@
 #!/bin/sh
 # Simple OS – launcher for dunst (Openbox autostart, D-Bus activation, systemd user service dunst.service)
 # Without a real battery (VM or "simpleos-battery --present" fails) it appends the battery filter
-# /etc/xdg/dunst/simpleos-battery-filter.conf to the dunst configuration: every foreign notification with
-# Battery/Akku/Power (title, text, icon, sender) is discarded – no matter which service sends it.
+# /etc/xdg/dunst/simpleos-battery-filter.conf to the dunst configuration: notifications of power/battery programs (by
+# sender), with a battery icon, and "battery low" warnings from plain notify-send are discarded – no matter which service
+# sends them. Chat messages, mails etc. that merely mention battery or power stay.
 # With a real battery dunst starts unchanged (battery warning via tint2 + simpleos-battery --low-alert).
 #   simpleos-dunst [dunst options]    start dunst
 #   simpleos-dunst --print-config     print the path of the configuration dunst would get (tests)

@@ -7,6 +7,9 @@ wireless-regdb
 # iw: Wi-Fi state (link rate, power saving) for Report a Problem and troubleshooting
 iw
 libpam-systemd
+# NTP time synchronization: systemd only Recommends it and the image is built without Recommends – without it the
+# clock is never corrected (drifts; wrong by the time zone offset on a dual-boot with Windows)
+systemd-timesyncd
 polkitd
 # pkexec: graphical password prompt (lxpolkit) for installations from the Setup Wizard
 pkexec
@@ -17,6 +20,5 @@ zram-tools
 # Boot splash
 plymouth
 plymouth-themes
-# Performance: preload (app starts via RAM cache), gamemode (CPU/GPU boost for games)
-preload
+# Performance: gamemode (CPU/GPU boost for games). No preload: unmaintained since 2009, little use on SSDs, costs RAM
 gamemode

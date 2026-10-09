@@ -174,23 +174,22 @@ fi
 had_profile=$(nmcli -t -f NAME connection show 2>/dev/null | grep -cxF "$ssid" || true)
 
 set -- device wifi connect "$ssid" ifname "$wifi"
+ask=
 if [ "$security" != open ]; then
     pw=$(sos_rofi -dmenu -password -p "Password" -mesg "<b>$(sos_esc "$ssid")</b>  Enter the password" -markup \
         -theme-str 'window { width: 480px; } listview { lines: 0; }' </dev/null)
     [ -n "$pw" ] || exit 0
-    set -- "$@" password "$pw"
+    ask=--ask    # nmcli asks for the password and reads it from stdin – never on the command line (visible in ps)
 fi
 
 sos_notify "Connecting to $ssid …"
-# Saved profile (the password just did not work): write the new password into the profile and connect it –
-# "device wifi connect" would otherwise create a second profile next to it or fail because of the old one
-if [ "${had_profile:-0}" != 0 ] && [ -n "${pw:-}" ] &&
-   nmcli connection modify id "$ssid" wifi-sec.psk "$pw" >&2 2>&1 &&
-   nmcli --wait 30 connection up id "$ssid" >&2 2>&1; then
-    sos_notify "Connected to $ssid."
-    exit 0
+# Saved profile (the password just did not work): delete it, the connection below creates a new one with the new
+# password – "device wifi connect" would otherwise create a second profile next to it or keep trying the old password
+if [ "${had_profile:-0}" != 0 ] && [ -n "${pw:-}" ]; then
+    nmcli connection delete id "$ssid" >&2 2>&1
+    had_profile=0
 fi
-if err=$(nmcli --wait 30 "$@" 2>&1 >/dev/null); then
+if err=$(printf '%s\n' "${pw:-}" | nmcli $ask --wait 30 "$@" 2>&1 >/dev/null); then
     sos_notify "Connected to $ssid."
     exit 0
 fi

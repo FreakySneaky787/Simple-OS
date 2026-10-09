@@ -13,7 +13,8 @@ Detection (lspci -nnk, lsusb, lscpu, /sys/class/net/*/wireless, dpkg-query, syst
            the files themselves are checked. If no driver binds at all (chip newer than the kernel, e.g. Raptor Lake
            0xA7AA with kernel 6.1 -> 800x600), the current kernel from backports is recommended (linux-image-amd64,
            pinning in /etc/apt/preferences.d/simpleos-backports.pref).
-           NVIDIA from Maxwell -> nvidia-driver; Kepler -> nvidia-tesla-470-driver (Bookworm: 525/535 no longer
+           NVIDIA from Maxwell up to Ada -> nvidia-driver; RTX 50 (Blackwell, ID >= 0x2900) -> nothing (Debian 12's
+           535 does not support it); Kepler -> nvidia-tesla-470-driver (Bookworm: 525/535 no longer
            support Kepler); older -> stays with the free nouveau. AMD -> firmware-amd-graphics. Virtual
            graphics (VM) -> nothing. Proprietary NVIDIA modules need linux-headers-amd64 (DKMS); with Secure Boot
            active a hint appears (dkms signs with its own key that the firmware does not know).
@@ -39,6 +40,9 @@ PCI_HEAD = re.compile(r"^(\S+) (.+?) \[([0-9a-f]{4})\]: (.+?) \[([0-9a-f]{4}):([
 USB_LINE = re.compile(r"^Bus \d+ Device \d+: ID ([0-9a-f]{4}):([0-9a-f]{4}) ?(.*)$")
 KEPLER = ((0x0FC0, 0x0FFF), (0x1000, 0x103F), (0x1180, 0x11FF), (0x1280, 0x12BF))
 MAXWELL_FIRST = 0x1340
+# GeForce RTX 50 (Blackwell, PCI device IDs from 0x2900): Debian 12 only has the NVIDIA 535 driver, which does not know
+# these cards (the module refuses them while nouveau is blacklisted -> no graphical login)
+BLACKWELL_FIRST = 0x2900
 # Broadcom chips that only the proprietary "wl" driver (broadcom-sta-dkms) supports
 BROADCOM_WL = {0x4311, 0x4312, 0x4313, 0x4315, 0x4328, 0x4329, 0x432A, 0x432B, 0x432C, 0x432D, 0x4331,
                0x4358, 0x4359, 0x4360, 0x4365, 0x43A0, 0x43B1}
@@ -197,6 +201,11 @@ def scan(raw):
         elif ven == "10de":
             if d["driver"] == "nvidia":
                 g["status"] = "NVIDIA driver active"
+            elif dev >= BLACKWELL_FIRST:
+                g["status"] = "Too new for the NVIDIA driver of Debian 12 – no driver is installed for it"
+                notes.append("Your NVIDIA graphics card is newer than the NVIDIA driver in Debian 12 supports, so "
+                             "Simple OS does not install one (it would stop the graphical login). The screen works "
+                             "with the basic driver; full 3D speed has to wait for a newer Simple OS.")
             elif dev >= MAXWELL_FIRST:
                 g["packages"] = need("nvidia-driver", "firmware-misc-nonfree", HEADERS)
                 g["status"] = ("Open-source driver – the NVIDIA driver is faster" if g["packages"]

@@ -43,6 +43,7 @@ Super+F1 … Super+F4         Go to workspace 1–4
 Ctrl+Alt+Left/Right         Previous / next workspace
 Shift+Alt+Left/Right        Move window to previous / next workspace
 <b>── System ───────────────────────────────────────────────</b>
+Super+L                     Lock the screen
 Super+X                     Power menu – lock, sleep, restart, shut down, log out
 Super+N                     Network info – LAN IP, gateway, VPN, public IP
 Super+I                     Control Center – all settings in one window
@@ -53,6 +54,7 @@ Super+P                     Display – resolution, refresh rate, duplicate / ex
 Print                       Screenshot – saved to Pictures/Screenshots and copied
 Shift+Print                 Screenshot of an area – drag with the mouse
 Volume keys                 Volume up / down / mute
+Media keys                  Play / pause, next, previous (browser, Spotify …)
 USB stick plugged in        Message with Open / Safely remove
 Update message              Click it to install updates (asks for your password)
 <b>── Mouse ────────────────────────────────────────────────</b>

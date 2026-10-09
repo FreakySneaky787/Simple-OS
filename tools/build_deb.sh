@@ -145,6 +145,11 @@ if [ "$1" = configure ]; then
     if [ -z "$2" ]; then first=--first-install; else first=; fi
     /usr/local/lib/simpleos/edition --system $first || true
 fi
+# Shim and signed GRUB on the EFI partition (EFI/Simple_OS): Debian's own postinst never refreshes them there. Also when
+# shim-signed / grub-efi-amd64-signed were updated (trigger below). Does nothing without UEFI/EFI/Simple_OS.
+case "$1" in
+    configure|triggered) /usr/local/sbin/simpleos-efi-refresh || true ;;
+esac
 exit 0
 SH
 cat > "$ROOT/DEBIAN/postrm" <<'SH'
@@ -158,6 +163,11 @@ case "$1" in
 esac
 exit 0
 SH
+# dpkg triggers: the signed boot chain changed -> postinst "triggered" refreshes the EFI partition (simpleos-efi-refresh)
+cat > "$ROOT/DEBIAN/triggers" <<'TRG'
+interest-noawait /usr/lib/shim
+interest-noawait /usr/lib/grub/x86_64-efi-signed
+TRG
 chmod 0755 "$ROOT/DEBIAN/preinst" "$ROOT/DEBIAN/postinst" "$ROOT/DEBIAN/postrm"
 
 # Permissions as in the image: no group/world write bits (the build copy may have them from the umask)

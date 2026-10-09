@@ -4,6 +4,10 @@ x11-xserver-utils
 # Input: libinput explicitly (precise pointer, touchpad, smooth scrolling)
 xserver-xorg-input-libinput
 openbox
+# openbox-xdg-autostart (Python) needs PyXDG – without it the autostart entries of apps (~/.config/autostart: Steam,
+# Discord, KeePassXC …) never run. The programs of ~/.config/openbox/autostart are blocked in ~/.config/autostart
+# (Hidden=true) so nothing starts twice.
+python3-xdg
 # Login manager with GTK greeter
 lightdm
 lightdm-gtk-greeter
@@ -19,6 +23,9 @@ dunst
 libnotify-bin
 lxpolkit
 gnome-keyring
+# Unlocks the login keyring with the login password (PAM, /etc/pam.d/lightdm) – otherwise apps that store secrets
+# (Chromium, Signal, Discord, VS Code) ask for a new keyring password
+libpam-gnome-keyring
 xfce4-power-manager
 # Theme & fonts
 arc-theme

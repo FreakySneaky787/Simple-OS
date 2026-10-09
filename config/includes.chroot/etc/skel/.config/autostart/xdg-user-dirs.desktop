@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=User folders update
+# Simple OS: no xdg-user-dirs-update at login – it does not recreate deleted folders but points them to ~ instead
+# (see ~/.config/openbox/autostart); the standard folders come from ~/.config/user-dirs.dirs. Without this block it
+# would run as soon as PyXDG (python3-xdg) is installed and openbox-xdg-autostart takes effect
+Hidden=true

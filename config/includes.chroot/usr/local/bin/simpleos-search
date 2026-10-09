@@ -26,6 +26,7 @@ import shutil
 import subprocess
 import sys
 import time
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 SEP = "\x1f"
@@ -46,8 +47,15 @@ SYSTEM = [  # (key, name, icon, keywords incl. German synonyms for German speake
 _BIN = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul, ast.Div: operator.truediv,
         ast.FloorDiv: operator.floordiv, ast.Mod: operator.mod, ast.Pow: operator.pow}
 _UNARY = {ast.UAdd: operator.pos, ast.USub: operator.neg}
+def _round(x, digits=0):
+    """Rounds half up like a pocket calculator (Python's round() gives round(2.5) = 2)."""
+    digits = int(digits)
+    r = Decimal(repr(x)).quantize(Decimal(1).scaleb(-digits), rounding=ROUND_HALF_UP)
+    return int(r) if digits <= 0 else float(r)
+
+
 _FUNCS = {"sqrt": math.sqrt, "sin": math.sin, "cos": math.cos, "tan": math.tan, "log": math.log10,
-          "ln": math.log, "abs": abs, "round": round, "floor": math.floor, "ceil": math.ceil}
+          "ln": math.log, "abs": abs, "round": _round, "floor": math.floor, "ceil": math.ceil}
 _CONST = {"pi": math.pi, "e": math.e}
 # Largest integer (bits, ~1200 digits): larger results brought Python to the limit of number-to-text conversion
 # (4300 digits, search crashed) or kept the calculator busy for minutes ("((9^999)^999)^999")
@@ -56,6 +64,10 @@ _MAX_BITS = 4000
 
 class TooLarge(ValueError):
     pass
+
+
+class NoResult(ValueError):
+    """A function outside its domain: sqrt(-1), ln(0) … (a calculation, but without a result)"""
 
 
 def _check(value):
@@ -84,27 +96,49 @@ def _eval(node):
         return _CONST[node.id]
     if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in _FUNCS
             and not node.keywords and 1 <= len(node.args) <= 2):
-        return _check(_FUNCS[node.func.id](*[_eval(a) for a in node.args]))
+        try:
+            return _check(_FUNCS[node.func.id](*[_eval(a) for a in node.args]))
+        except (ValueError, ArithmeticError) as err:
+            if isinstance(err, (TooLarge, NoResult)) or type(err) is ValueError and "not a calculation" in str(err):
+                raise
+            raise NoResult(str(err)) from err
     raise ValueError("not a calculation")
+
+
+# Languages that write the decimal comma ("3,5"); elsewhere "1,000" is one thousand
+_COMMA_DECIMAL = {"de", "fr", "es", "it", "pt", "nl", "pl", "cs", "sk", "ru", "uk", "tr", "sv", "da", "nb", "nn", "no",
+                  "fi", "hu", "ro", "bg", "hr", "sl", "el"}
+
+
+def _decimal_commas(expr):
+    """Comma between digits: decimal comma (3,5 = 3.5); outside decimal-comma languages groups of exactly three digits
+    ("1,000", "12,345,678") are thousands separators."""
+    lang = (os.environ.get("LC_ALL") or os.environ.get("LC_NUMERIC") or os.environ.get("LANG") or "")[:2].lower()
+    if lang not in _COMMA_DECIMAL:
+        expr = re.sub(r"(?<![\d,.])\d{1,3}(?:,\d{3})+(?![\d,])(?!\.)",
+                      lambda m: m.group(0).replace(",", ""), expr)
+    return re.sub(r"(\d),(\d)", r"\1.\2", expr)
 
 
 def calculate(text):
     """(display, result) or None if the text is not a calculation. Error -> (message, None)."""
-    expr = text.strip().rstrip("=").strip()
+    expr = text.strip().rstrip("=").strip().replace("**", "^")   # 2**3 = 2^3
     # Only digits, operators, brackets, known functions/constants; at least one number and one operator
     words = set(re.findall(r"[A-Za-z_]+", expr))
     if not expr or not re.search(r"\d", expr) or words - set(_FUNCS) - set(_CONST):
         return None
     if not re.fullmatch(r"[\d\s.,+\-*/%^()×÷A-Za-z_]+", expr) or not re.search(r"[+\-*/%^(×÷]", expr):
         return None
-    py = re.sub(r"(\d),(\d)", r"\1.\2", expr).replace("^", "**").replace("×", "*").replace("÷", "/")
+    py = _decimal_commas(expr).replace("^", "**").replace("×", "*").replace("÷", "/")
     try:
         value = _eval(ast.parse(py, mode="eval"))
     except ZeroDivisionError:
         return f"{expr} – can't divide by zero", None
     except TooLarge:
         return f"{expr} – the number is too large", None
-    except (ValueError, TypeError, SyntaxError, OverflowError, RecursionError):
+    except NoResult:
+        return f"{expr} – no result", None
+    except (ValueError, TypeError, SyntaxError, OverflowError, RecursionError, ArithmeticError):
         return None
     # a negative base with a fractional exponent ((-8)^(1/3)) gives a complex number in Python
     if isinstance(value, complex):
@@ -113,10 +147,10 @@ def calculate(text):
         if math.isnan(value) or math.isinf(value):
             return f"{expr} – no result", None
         value = int(value) if value.is_integer() and abs(value) < 1e15 else float(f"{value:.12g}")
-    pretty = re.sub(r"\s*([+\-*/%^×÷])\s*", r" \1 ", expr).strip()
+    pretty = re.sub(r"\s*(//|[+\-*/%^×÷])\s*", r" \1 ", expr).strip()
     pretty = re.sub(r"\s+", " ", pretty).replace("( ", "(").replace(" )", ")")
     # Sign (at the start, after "(" or after an operator) without a space: "(-8)" instead of "(- 8)"
-    pretty = re.sub(r"(^|[(+\-*/%^×÷] ?)([+-]) (?=[\d(.a-z])", r"\1\2", pretty)
+    pretty = re.sub(r"(^|[(,+\-*/%^×÷] ?)([+-]) (?=[\d(.a-z])", r"\1\2", pretty)
     return f"{pretty} = {value}", str(value)
 
 

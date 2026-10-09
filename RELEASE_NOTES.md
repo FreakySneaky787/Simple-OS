@@ -1,4 +1,4 @@
-# Simple OS 1.0.1
+# Simple OS 1.0.2
 
 **SOS – Simple Operating System. Keep it Simple.**
 
@@ -6,20 +6,30 @@ Simple OS is a fast, quiet desktop built on Debian 12 "bookworm". It boots strai
 (Openbox, Catppuccin colors), sets itself up with a short wizard and keeps itself up to date. You don't
 need a terminal.
 
-## What's new in 1.0.1
+## What's new in 1.0.2
 
-A maintenance update. If you run Simple OS 1.0, you get it through **Software Updates** – no need to reinstall.
+A maintenance update. If you run Simple OS 1.0 or 1.0.1, you get it through **Software Updates** – no need to
+reinstall. The update adds a few small packages (about 40 MB) and removes nothing.
 
-- **Updates are checked regularly.** Simple OS looks for updates 2 minutes after you sign in and then every
-  12 hours, also after the laptop wakes up from sleep. Before, it only checked once after signing in.
-- **App updates are offered too.** Updates for apps from the Software Store (for example the Mullvad Browser or
-  ONLYOFFICE) now show up in Software Updates by themselves. Before, they were only installed along with a
-  system update.
-- **Office entries in the menu** (LibreOffice, ONLYOFFICE) follow what is installed, also when you add or remove an
-  office suite in the Software Center, and they have icons like the other entries. If you picked an office suite
-  in the setup wizard of 1.0, your menu gets Simple OS improvements again from now on.
-- **Gaming with older NVIDIA cards** (Kepler, driver 470): the gaming setup now installs the matching 32-bit
-  graphics libraries, so Steam works with that driver.
+- **The clock is set over the internet now.** Before, nothing kept the time right; on a computer that also runs
+  Windows it was often off by hours.
+- **Apps that start with the computer work.** "Start Steam / Discord / … when I sign in" did nothing before.
+- **Previews in the file manager** for pictures, PDFs and more.
+- **No keyring password prompts.** Apps that store passwords (Chromium, Signal, Discord, VS Code …) used to ask
+  for a new "keyring" password; the keyring now opens with your login password.
+- **Smoother video:** hardware video decoding is available for Intel and AMD graphics (less heat and battery use).
+- **Smoother under memory pressure:** memory settings now fit the compressed swap Simple OS uses.
+- **Media keys** (play/pause, next, previous) and **Super+L** to lock the screen.
+- **After an installation** about 175 MB of leftovers of the installer are removed.
+- **Startup of the secure boot files:** updates of Debian's boot loader (shim, GRUB) now reach the EFI partition,
+  and a fallback loader is added if there is none, so the computer still starts after a firmware reset.
+- **Fixes:** the Hardware & Drivers assistant no longer offers an unsuitable NVIDIA driver to GeForce RTX 50 cards;
+  Control Center shows all refresh rates of a monitor and refreshes a page that is opened again; sliders for volume
+  no longer stutter; Bluetooth keyboards and phones can be paired (the window with the code opens); Wi-Fi passwords
+  are no longer visible to other programs while connecting; chat messages and mails that mention "battery" or "power" are no
+  longer hidden on desktop computers; removing Firefox no longer changes Simple OS's own default settings;
+  the accent color no longer changes the "Install Simple OS" badge; night light stays on after waking up; the
+  calculator in the search shows `2**3` correctly and understands `1,000`.
 
 ## Download
 

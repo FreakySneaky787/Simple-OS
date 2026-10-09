@@ -69,9 +69,28 @@ connect() {
     if bt connect "$1" | grep -qi 'successful'; then sos_notify "Connected to $2." low
     else sos_notify "Could not connect to $2. Make sure it is turned on and nearby." critical; fi
 }
+# Pairing through BlueZ itself (Device1.Pair): the default agent – blueman-applet – shows the PIN, passkey and
+# confirmation dialogs that keyboards and phones need. A one-shot "bluetoothctl pair" has nobody to answer them.
+# 0 = paired (or already), 1 = failed. Only used while blueman-applet runs (it is the agent); otherwise bluetoothctl.
+agent_pair() {
+    hci=
+    for d in /sys/class/bluetooth/hci[0-9]*; do [ -e "$d" ] && { hci=${d##*/}; break; }; done
+    [ -n "$hci" ] || return 1
+    obj="/org/bluez/$hci/dev_$(printf '%s' "$1" | tr ':a-f' '_A-F')"
+    out=$(timeout 90 busctl --system call org.bluez "$obj" org.bluez.Device1 Pair 2>&1) && return 0
+    sos_log "Device1.Pair $obj: $out"
+    case "$out" in *AlreadyExists*) return 0 ;; esac
+    return 1
+}
 pair_new() {
     sos_notify "Pairing with $2…" low
-    if ! BT_TIMEOUT=40 bt pair "$1" | grep -qiE 'successful|AlreadyExists'; then
+    if command -v busctl >/dev/null && pgrep -x blueman-applet >/dev/null 2>&1; then
+        sos_notify "If $2 asks for a code, a window with the code or a field for it opens." low
+        if ! agent_pair "$1"; then
+            sos_notify "Could not pair with $2. Put it in pairing mode and try again." critical
+            return
+        fi
+    elif ! BT_TIMEOUT=40 bt pair "$1" | grep -qiE 'successful|AlreadyExists'; then
         sos_notify "Could not pair with $2. Put it in pairing mode and try again." critical
         return
     fi

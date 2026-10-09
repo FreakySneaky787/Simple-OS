@@ -98,6 +98,10 @@
     <keybind key="W-x">
       <action name="Execute"><command>/usr/local/bin/simpleos-powermenu</command></action>
     </keybind>
+    <!-- Lock the screen (like Windows+L) -->
+    <keybind key="W-l">
+      <action name="Execute"><command>/usr/local/bin/simpleos-powermenu --lock</command></action>
+    </keybind>
     <keybind key="Print">
       <action name="Execute"><command>/usr/local/bin/simpleos-screenshot</command></action>
     </keybind>
@@ -131,6 +135,11 @@
     <keybind key="XF86AudioMute">
       <action name="Execute"><command>/usr/local/bin/simpleos-osd volume mute</command></action>
     </keybind>
+    <!-- Media keys: play/pause, next, previous for the player that is running (browser, Spotify, … via MPRIS) -->
+    <keybind key="XF86AudioPlay"><action name="Execute"><command>playerctl play-pause</command></action></keybind>
+    <keybind key="XF86AudioPause"><action name="Execute"><command>playerctl pause</command></action></keybind>
+    <keybind key="XF86AudioNext"><action name="Execute"><command>playerctl next</command></action></keybind>
+    <keybind key="XF86AudioPrev"><action name="Execute"><command>playerctl previous</command></action></keybind>
     <keybind key="XF86MonBrightnessUp">
       <action name="Execute"><command>/usr/local/bin/simpleos-osd brightness up</command></action>
     </keybind>

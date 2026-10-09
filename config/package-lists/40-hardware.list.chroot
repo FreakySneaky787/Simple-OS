@@ -22,6 +22,10 @@ firmware-intel-sound
 firmware-sof-signed
 firmware-cirrus
 alsa-topology-conf
+# Hardware video decoding (VA-API) for mpv/Chromium: Mesa (AMD, Intel up to Gen 7) and Intel Media driver (Gen 8+) –
+# less CPU and battery during video. Not the whole va-driver-all (old i965 driver, more dependencies).
+mesa-va-drivers
+intel-media-va-driver
 # Wi-Fi/Bluetooth
 firmware-iwlwifi
 firmware-realtek

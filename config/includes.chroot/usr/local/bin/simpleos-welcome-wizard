@@ -200,9 +200,9 @@ def run(cmd, wait=True):
 # ---------------------------------------------------------- Network (nmcli)
 # The same logic as simpleos-wifi, only as a GTK page. All calls catch errors: if nmcli is missing or
 # hangs, the page shows "not connected" instead of crashing.
-def nmcli(*args, timeout=15):
+def nmcli(*args, timeout=15, input=None):
     try:
-        return subprocess.run(["nmcli", *args], capture_output=True, text=True, timeout=timeout)
+        return subprocess.run(["nmcli", *args], capture_output=True, text=True, timeout=timeout, input=input)
     except (OSError, subprocess.TimeoutExpired) as err:
         return subprocess.CompletedProcess(["nmcli", *args], 1, "", str(err))
 
@@ -319,20 +319,23 @@ def saved_networks():
 
 
 def connect_wifi(dev, ssid, password, secured=False):
-    """(ok, message in plain language). Saved network + new password: replace the profile's password
+    """(ok, message in plain language). Saved network + new password: delete the old profile and connect again
     (otherwise NetworkManager would keep trying the old, wrong one)."""
     if DRYRUN:
         print(f"DRYRUN: nmcli device wifi connect {ssid} ifname {dev}", flush=True)
         return True, f"Connected to {ssid}. You're online."
     saved = ssid in saved_networks()
     if saved and password:
-        nmcli("connection", "modify", "id", ssid, "wifi-sec.psk", password)
+        # a new password for a saved network: delete the old profile, the connection below creates a new one
+        # (the password is given on stdin, never on the command line – visible in the process list)
+        nmcli("connection", "delete", "id", ssid)
+        saved = False
     if saved and nmcli("--wait", "20", "connection", "up", "id", ssid, timeout=40).returncode == 0:
         return True, f"Connected to {ssid}. You're online."
     cmd = ["--wait", "30", "device", "wifi", "connect", ssid, "ifname", dev]
     if password:
-        cmd += ["password", password]
-    result = nmcli(*cmd, timeout=60)
+        cmd = ["--ask", *cmd]    # nmcli asks for the password and reads it from stdin
+    result = nmcli(*cmd, timeout=60, input=f"{password}\n" if password else None)
     if result.returncode == 0:
         return True, f"Connected to {ssid}. You're online."
     print(f"simpleos-welcome-wizard: connect {ssid}: {result.stderr.strip()}", file=sys.stderr)

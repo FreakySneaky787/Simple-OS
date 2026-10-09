@@ -10,6 +10,11 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 IMAGE="simple-os-builder"
+# Which commit is this build made from, and were config/ and tools/ clean? tools/release.sh publish refuses an ISO that
+# was built from uncommitted files or from another commit than the one it tags (recorded now, checked again after the build)
+build_state() { printf 'commit=%s\ndirty=%s\n' "$(git rev-parse HEAD 2>/dev/null || echo unknown)" \
+    "$([[ -z "$(git status --porcelain -- config tools 2>/dev/null)" ]] && echo 0 || echo 1)"; }
+BUILD_STATE=$(build_state)
 case "${1:-}" in
     "")            CONFIG_ONLY=0; CONTAINER_CMD="${CONTAINER_CMD:-sudo podman}"; RUN_OPTS=(--privileged) ;;
     --config-only) CONFIG_ONLY=1; CONTAINER_CMD="${CONTAINER_CMD:-podman}";      RUN_OPTS=() ;;
@@ -55,6 +60,9 @@ sudo cp build/live-image-amd64.packages output/Simple-OS.packages.txt
 # Marker for tools/release.sh: this repository's simpleos package is the one in this ISO (a later --config-only
 # rebuilds output/repo without the marker). Dot file: not uploaded as a release asset.
 (cd output/repo && sha256sum simpleos_*_all.deb) | sudo tee output/repo/.in-iso >/dev/null
+# ... and the state of the sources it was built from (a change during the build counts as dirty)
+if [[ "$(build_state)" != "$BUILD_STATE" ]]; then BUILD_STATE=$(printf '%s\ndirty=1' "${BUILD_STATE%%$'\n'*}"); fi
+printf '%s\n' "$BUILD_STATE" | sudo tee output/repo/.build-state >/dev/null
 
 echo "Done: output/Simple-OS.iso (log: build/build.log)"
 echo "  Checksum:     output/Simple-OS.iso.sha256  ($(cut -d' ' -f1 output/Simple-OS.iso.sha256))"

@@ -5,6 +5,10 @@ export DEBIAN_FRONTEND=noninteractive
 
 # Remove the installer
 apt-get purge -y calamares calamares-settings-debian
+# Calamares pulled in ~100 packages only it needs (Qt5, KDE Frameworks, kio, WebKit …, ~175 MB) – they would stay
+# installed and receive updates forever. Only packages nobody depends on (apt marks them automatic) go; a failure
+# here must not fail the installation.
+apt-get -y autoremove --purge || echo "simpleos-post-install: autoremove failed (ignored)" >&2
 
 # Calamares (sources-final) writes only "main non-free-firmware" -> add contrib/non-free,
 # otherwise the Setup Wizard does not find e.g. steam-installer (contrib)
@@ -32,5 +36,9 @@ rm -f /root/.config/mimeapps.list /root/.local/share/applications/simpleos-open-
 
 # Offline packages for bootloader-config (grub-pc/grub-efi-amd64/cryptsetup-initramfs) are no longer needed
 rm -rf /usr/share/simpleos/bootloader-debs
+
+# Fallback loader on the EFI partition (\EFI\BOOT\BOOTX64.EFI) and the current shim/GRUB in EFI/Simple_OS (Calamares runs
+# this after the bootloader module; /boot/efi is mounted in the target). Does nothing on BIOS systems.
+/usr/local/sbin/simpleos-efi-refresh || true
 
 rm -f "$0"

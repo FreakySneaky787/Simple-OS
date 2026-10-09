@@ -7,7 +7,7 @@ Problem** – that tests the tool at the same time.
 
 - [x] Once: `./tools/release.sh key` – creates the release signing key and puts the public key into the image.
       Back up `~/.local/share/simpleos-release/gnupg` (without it no further update can be signed). Done for 1.0.
-- [ ] `./tools/release.sh version X.Y.Z` (1.0.1: done), changes committed **and pushed** – `publish` tags exactly this
+- [ ] `./tools/release.sh version X.Y.Z` (1.0.2: done), changes committed **and pushed** – `publish` tags exactly this
       commit and refuses one that is not on GitHub.
 - [ ] `./build_iso.sh` runs without errors. At the end the verify hook reports `Simple OS verify: OK` (in `build/build.log`).
 - [ ] `output/` contains `Simple-OS.iso`, `Simple-OS.iso.sha256`, `Simple-OS.packages.txt` and `repo/`
@@ -25,7 +25,7 @@ Problem** – that tests the tool at the same time.
 | UEFI + Secure Boot | `./test_vm.sh --secureboot` | as above, **and** after the installation in a terminal: `mokutil --sb-state` → `SecureBoot enabled` |
 | UEFI + encryption | `./test_vm.sh --uefi` | tick "Encrypt system" in the installer. After the restart the system asks for the password and then starts normally |
 
-- [ ] The installer's welcome page and slideshow show the new version ("Simple OS 1.0.1").
+- [ ] The installer's welcome page and slideshow show the new version ("Simple OS 1.0.2").
 
 Last results: 1.0 is installed and in daily use on the ThinkBook (UEFI).
 
@@ -102,3 +102,42 @@ Before publishing, the edition package can be tested on a VM installed from the 
 - [ ] **NVIDIA Kepler** (only if such a computer is available): driver 470 from Hardware & Drivers, then the Setup
       Wizard with Ultimate Gaming installs without errors, `dpkg -l nvidia-tesla-470-driver-libs:i386` shows it
       installed, Steam starts.
+
+## 7. What changed in 1.0.2
+
+Test the edition package on a VM installed from the **1.0.1** ISO (`sudo apt install ./simpleos_1.0.2_all.deb`, or after
+publishing through Software Updates), and a fresh installation from the new ISO. The packages added to the lists are
+installed once by Software Updates ("Installing new Simple OS components").
+
+- [ ] **Build:** `output/repo/.build-state` exists (`dirty=0`, the commit of the build); `publish` refuses after a later
+      commit in `config/` or `tools/`, and after a build from uncommitted files.
+- [ ] **Time:** `timedatectl` shows `System clock synchronized: yes` and `NTP service: active` (fresh install and update).
+- [ ] **XDG autostart:** put a `.desktop` file with `Exec=kitty` in `~/.config/autostart`, sign out and in → a terminal opens.
+      Nothing started twice (`pgrep -c nm-applet` = 1, no `xfce4-power-manager` without a battery); the folders in the
+      home folder are unchanged (no `xdg-user-dirs-update`).
+- [ ] **Keyring:** fresh install, start Chromium (Setup Wizard) → no "new keyring" window; `secret-tool` is not needed:
+      `busctl --user list | grep org.freedesktop.secrets` shows the service.
+- [ ] **Thumbnails:** a folder with pictures in Thunar shows previews.
+- [ ] **EFI partition (UEFI VM and ThinkBook):** after the installation `ls /boot/efi/EFI/BOOT` shows `BOOTX64.EFI`,
+      `fbx64.efi`, `mmx64.efi`, `grubx64.efi`. In the VM: `sudo apt install --reinstall shim-signed` or a newer shim/GRUB
+      updates the files in `EFI/Simple_OS` (`/var/log/simpleos-edition.log` is not involved, watch the apt output); with
+      Secure Boot on the system still starts. Delete the boot entry in the firmware (or `efibootmgr -B`) → the
+      computer still starts via the fallback loader and the entry is recreated.
+- [ ] **Browser defaults:** in a 1.0.1 VM remove Firefox with the wizard (Chromium), update → `/etc/xdg/mimeapps.list`
+      names `firefox-esr.desktop` again (log: `020-browser-defaults`), your own default (`xdg-mime query default
+      x-scheme-handler/https`) is still Chromium, Super+B opens Chromium; a new account's Super+B also opens Chromium.
+- [ ] **Wi-Fi:** connect to a WPA2 network with the flyout (password via Rofi), then with the Setup Wizard; while it
+      connects `ps aux | grep nmcli` does not show the password; wrong password → clear message; a saved network with a
+      new password connects.
+- [ ] **Bluetooth pairing:** a Bluetooth keyboard and a phone via Add device… (blueman's window with the code opens);
+      headphones/mice as before.
+- [ ] **RTX 50** (only with such a computer, or `SIMPLEOS_HW_ROOT` test): Hardware & Drivers recommends no NVIDIA driver.
+- [ ] **Control Center:** a monitor with two lines for one resolution in `xrandr` offers all rates; opening the same
+      page again (right-click the Do Not Disturb icon) shows the current state; dragging the volume slider is smooth.
+- [ ] **Do Not Disturb icon:** appears and disappears at once; `top` shows no process waking up every second.
+- [ ] **Super+L** locks the screen; media keys control a playing video in the browser.
+- [ ] **Notifications on a desktop PC:** a chat/mail message that contains "battery" or "power" is shown.
+- [ ] **Night light:** on, suspend and wake up → still warm within 5 minutes.
+- [ ] **After the installation:** `apt-get -s autoremove` lists nothing from Qt/KDE; `df` shows ~175 MB more free space.
+- [ ] **Memory:** `sysctl vm.swappiness vm.page-cluster` → 100 / 0.
+- [ ] **Video:** `vainfo` (package vainfo, optional) lists profiles on Intel/AMD; mpv with `--hwdec=auto` uses vaapi.

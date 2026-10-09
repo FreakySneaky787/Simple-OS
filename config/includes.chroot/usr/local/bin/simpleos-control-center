@@ -85,7 +85,9 @@ def muted(kind="sink"):
 
 
 def set_volume(percent, kind="sink"):
-    _c("pactl", f"set-{kind}-mute", f"@DEFAULT_{kind.upper()}@", "0")
+    # moving the output slider unmutes (you want to hear it); the microphone stays muted if you muted it
+    if kind == "sink":
+        _c("pactl", f"set-{kind}-mute", f"@DEFAULT_{kind.upper()}@", "0")
     return _c("pactl", f"set-{kind}-volume", f"@DEFAULT_{kind.upper()}@", f"{int(percent)}%").returncode == 0
 
 
@@ -173,8 +175,12 @@ def screens(query=None):
                 rates.append(r)
                 if "*" in tok:
                     cur["mode"], cur["rate"] = f[0], r
-            if f[0] not in [m for m, _ in cur["modes"]]:
+            # some drivers list a resolution on several lines (e.g. 59.95 on one, 143.97 120.00 on another): merge
+            known = next((r for m, r in cur["modes"] if m == f[0]), None)
+            if known is None:
                 cur["modes"].append((f[0], rates))
+            else:
+                known.extend(r for r in rates if r not in known)
     return result
 
 
@@ -283,10 +289,24 @@ def bt_scan(seconds=10):
     return [d for d in bt_devices(paired=False) if not d[4] and d[1] != d[0].replace(":", "-")]
 
 
+def _agent_running():
+    """blueman-applet is BlueZ's default agent: it shows the PIN / passkey / confirmation dialogs."""
+    return cmd("pgrep", "-x", "blueman-applet").returncode == 0 and shutil.which("busctl") is not None
+
+
 def bt_pair(mac):
-    out = bt("pair", mac, timeout=40)
-    if not re.search(r"successful|AlreadyExists", out.stdout + out.stderr):
-        return False
+    if _agent_running():
+        # Device1.Pair via D-Bus: the agent answers keyboards (type a code) and phones (confirm a number); a one-shot
+        # "bluetoothctl pair" has nobody to answer them
+        hcis = sorted(p.name for p in Path("/sys/class/bluetooth").glob("hci[0-9]*"))
+        obj = f"/org/bluez/{hcis[0] if hcis else 'hci0'}/dev_{mac.upper().replace(':', '_')}"
+        out = cmd("busctl", "--system", "call", "org.bluez", obj, "org.bluez.Device1", "Pair", timeout=95)
+        if out.returncode != 0 and "AlreadyExists" not in out.stderr:
+            return False
+    else:
+        out = bt("pair", mac, timeout=40)
+        if not re.search(r"successful|AlreadyExists", out.stdout + out.stderr):
+            return False
     bt("trust", mac)
     return "successful" in bt("connect", mac, timeout=30).stdout
 
@@ -516,11 +536,25 @@ def main(argv):
             mute = Gtk.Switch(active=muted())
             mute.connect("notify::active", lambda s, _p: set_mute(s.get_active()))
 
-            def vol_changed(s):
-                set_volume(s.get_value())          # unmutes -> update the switch
+            # dragging fires "value-changed" for every step and set_volume runs pactl: apply only when the slider rests
+            # for a moment (otherwise the window stutters)
+            pend = {}
+
+            def debounced(widget, kind, after=None):
+                def fire():
+                    pend.pop(kind, None)
+                    set_volume(widget.get_value(), kind)
+                    if after:
+                        after()
+                    return False
+                if kind in pend:
+                    GLib.source_remove(pend[kind])
+                pend[kind] = GLib.timeout_add(150, fire)
+
+            def unmuted():                         # set_volume unmuted the output -> update the switch
                 if mute.get_active():
                     mute.set_active(False)
-            vol.connect("value-changed", vol_changed)
+            vol.connect("value-changed", lambda s: debounced(s, "sink", unmuted))
             outs = outputs()
             combo = Gtk.ComboBoxText()
             for i, (sink, port, lab, active) in enumerate(outs):
@@ -536,7 +570,7 @@ def main(argv):
             mic = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 5)
             mic.set_value(volume("source"))
             mic.set_size_request(260, -1)
-            mic.connect("value-changed", lambda s: set_volume(s.get_value(), "source"))
+            mic.connect("value-changed", lambda s: debounced(s, "source"))
             self.put(card([("Volume", None, vol), ("Mute", None, mute),
                            ("Output", "Speakers, headphones, HDMI, Bluetooth" if outs else "No sound output found",
                             combo if outs else None)]))
@@ -1043,6 +1077,9 @@ def main(argv):
             if select:
                 for row in self.side.get_children():
                     if row.key == key:
+                        # an already selected row emits no "row-selected": show the page and refresh it directly
+                        if self.side.get_selected_row() is row:
+                            break
                         self.side.select_row(row)   # triggers open(select=False)
                         return
             self.stack.set_visible_child_name(key)

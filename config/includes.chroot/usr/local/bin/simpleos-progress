@@ -420,8 +420,9 @@ def run_window(args, st, src):
             self.hidden_by_user = self.hover_close = False
             self.deadline = self.t0 + args.timeout if args.timeout else None
             GLib.timeout_add(100, self.poll)
-            # own timer instead of add_tick_callback: if the compositor delivers no frames, it would stand still
-            GLib.timeout_add(16, self.tick)
+            # own timer instead of add_tick_callback: if the compositor delivers no frames, it would stand still.
+            # 30 frames per second are plenty for a slim arc and a bar (60 doubled the CPU load while installing)
+            GLib.timeout_add(33, self.tick)
             if not args.follow:
                 self.start()
 
@@ -482,7 +483,8 @@ def run_window(args, st, src):
             else:
                 cur = self.shown_pct if self.shown_pct is not None else 0.0
                 self.shown_pct = cur + (target - cur) * min(1.0, dt * 6)
-            self.queue_draw()
+            if self.get_visible():       # nothing to draw while hidden (Esc / ×)
+                self.queue_draw()
             return True
 
         def on_draw(self, _w, cr):

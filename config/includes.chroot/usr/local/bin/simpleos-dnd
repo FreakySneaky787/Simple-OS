@@ -17,8 +17,12 @@ STATE=${XDG_RUNTIME_DIR:-${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}}/simpleos-dnd
 SETTINGS=${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/simpleos/dnd
 
 # Taskbar: before everything else (no log, no library) – runs permanently as long as tint2 lives.
-# FontAwesome 4 bell-slash U+F1F6
+# No polling every second: the process sleeps and is woken at once by simpleos-dnd (SIGUSR1 after every change); the
+# long nap only lets it notice that tint2 has ended. FontAwesome 4 bell-slash U+F1F6
 if [ "${1:-}" = --panel ]; then
+    pidf=$STATE.panel
+    echo $$ > "$pidf" 2>/dev/null
+    trap : USR1
     last=x
     while kill -0 "$PPID" 2>/dev/null; do
         if [ -f "$STATE" ]; then now=on; else now=off; fi
@@ -30,8 +34,11 @@ if [ "${1:-}" = --panel ]; then
             fi
             last=$now
         fi
-        sleep 1
+        sleep "${SIMPLEOS_DND_NAP:-30}" &
+        wait $!
+        kill $! 2>/dev/null
     done
+    [ "$(cat "$pidf" 2>/dev/null)" = "$$" ] && rm -f "$pidf"
     exit 0
 fi
 
@@ -42,6 +49,8 @@ LIB=/usr/local/lib/simpleos/common.sh
 sos_log_init "$@"
 
 active() { [ -f "$STATE" ]; }
+# Wake the taskbar indicator (--panel) so it shows the new state at once
+poke_panel() { [ -r "$STATE.panel" ] && kill -USR1 "$(cat "$STATE.panel")" 2>/dev/null; return 0; }
 effects_off() { grep -qx 'effects=off' "$SETTINGS" 2>/dev/null; }
 dunst_pause() { command -v dunstctl >/dev/null && dunstctl set-paused "$1" >&2 2>&1; }
 
@@ -53,6 +62,7 @@ on() {
         simpleos-picom --stop && picom=1
     fi
     printf 'picom=%s\n' "$picom" > "$STATE"
+    poke_panel
     sleep 0.5   # let the notification show, then pause
     dunst_pause true
     sos_log "on: picom=$picom"
@@ -62,6 +72,7 @@ off() {
     picom=0
     . "$STATE" 2>/dev/null
     rm -f "$STATE"
+    poke_panel
     dunst_pause false
     [ "$picom" = 1 ] && command -v simpleos-picom >/dev/null && simpleos-picom --start
     sos_notify "Do Not Disturb is off – notifications are back." low

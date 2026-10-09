@@ -2,9 +2,13 @@
 kitty
 thunar
 thunar-archive-plugin
+# Thumbnails in the file manager (Thunar has no thumbnailer of its own)
+tumbler
 file-roller
 gvfs
 gvfs-backends
+# FUSE bridge: files on phones (MTP) and network shares are also usable in programs that do not use GIO
+gvfs-fuse
 udisks2
 # Mount USB sticks automatically (Openbox autostart, notification via simpleos-usb-notify)
 udiskie
@@ -17,6 +21,10 @@ galculator
 # Disks: format USB sticks, write ISO images, disk health (Control Center → System)
 gnome-disk-utility
 htop
+# Tab completion in the terminal (apt, git, systemctl …)
+bash-completion
+# Media keys (play/pause, next, previous) for browsers, Spotify … via MPRIS – tiny, see rc.xml
+playerctl
 # Flatpak + Flathub (Bazaar as Software Store), GNOME Software, portals for Flatpak apps
 flatpak
 gnome-software

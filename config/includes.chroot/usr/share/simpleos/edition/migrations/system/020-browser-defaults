@@ -1,0 +1,34 @@
+#!/bin/sh
+# Simple OS 1.0.2 – give back the browser defaults the Setup Wizard's root helper changed (runs once, as root, from the
+# postinst of the package simpleos via "edition --system").
+# Up to 1.0.1, removing Firefox (Setup Wizard: Chromium / Mullvad Browser) rewrote /etc/xdg/mimeapps.list and
+# /usr/share/applications/defaults.list – files of the package simpleos. The second one went back to Firefox with every
+# update; the first (a conffile) was then "changed" for dpkg and the edition tool forever, so no newer edition's defaults
+# ever reached that system. The account's own default lives in ~/.config/mimeapps.list and is not touched. Browsers
+# now start via simpleos-browser, which uses any installed browser if the system default is gone.
+# Both files get the shipped browser (firefox-esr) back; a .dpkg-dist next to the conffile that equals a version Simple OS
+# shipped is taken right away. Exit != 0 -> again at the next update.
+# Tests: SIMPLEOS_BROWSER_FILES (space separated) replaces the two files, SIMPLEOS_EDITION_SHARE the data folder.
+set -e
+HIST=${SIMPLEOS_EDITION_SHARE:-/usr/share/simpleos/edition}/system.history
+FILES=${SIMPLEOS_BROWSER_FILES:-/etc/xdg/mimeapps.list /usr/share/applications/defaults.list}
+for f in $FILES; do
+    [ -f "$f" ] && [ ! -L "$f" ] || continue
+    if grep -qE '^(x-scheme-handler/https?|text/html|application/xhtml\+xml)=(chromium\.desktop|net\.mullvad\.MullvadBrowser\.desktop)$' "$f"; then
+        tmp=$f.simpleos-new.$$
+        cp -p "$f" "$tmp"
+        if ! sed -E 's/^((x-scheme-handler\/https?|text\/html|application\/xhtml\+xml)=)(chromium\.desktop|net\.mullvad\.MullvadBrowser\.desktop)$/\1firefox-esr.desktop/' "$f" > "$tmp" ||
+           ! mv -f "$tmp" "$f"; then
+            rm -f "$tmp"
+            exit 1
+        fi
+        echo "020-browser-defaults: browser default restored in $f"
+    fi
+    # the conffile again equals a shipped version: take a newer one that dpkg put next to it
+    rel=${f#/}
+    if [ -f "$f.dpkg-dist" ] && grep -qxF "$(sha256sum < "$f" | cut -c1-64)  $rel" "$HIST"; then
+        mv -f "$f.dpkg-dist" "$f"
+        echo "020-browser-defaults: $f updated to this edition"
+    fi
+done
+exit 0

@@ -20,7 +20,7 @@ for f in /usr/local/bin/simpleos-powermenu /usr/local/bin/simpleos-screenshot /u
          /usr/local/sbin/simpleos-backup-helper /usr/local/sbin/simpleos-cleaner-helper /usr/local/sbin/simpleos-taskmanager-helper \
          /usr/local/bin/simpleos-drivers /usr/local/bin/simpleos-osd /usr/local/sbin/simpleos-live-tune /usr/local/bin/simpleos-keyboard-setup \
          /usr/local/bin/simpleos-setup \
-         /usr/local/sbin/simpleos-post-install \
+         /usr/local/sbin/simpleos-post-install /usr/local/sbin/simpleos-efi-refresh \
          /usr/local/sbin/simpleos-system-setup; do
     chmod 0755 "$f" 2>/dev/null || true
     check "$f missing or not executable" "[ -x '$f' ]"
@@ -34,7 +34,7 @@ for c in maim pactl rofi dm-tool notify-send flatpak gnome-software xdg-mime fas
     check "program $c missing" "command -v $c >/dev/null"
 done
 for rc in /etc/skel/.config/openbox/rc.xml /home/simple/.config/openbox/rc.xml; do
-    for key in W-x Print S-Print W-v W-a W-p W-i C-S-Escape XF86AudioRaiseVolume XF86AudioLowerVolume XF86AudioMute W-h W-S-question W-b W-n; do
+    for key in W-x Print S-Print W-v W-a W-p W-i C-S-Escape XF86AudioRaiseVolume XF86AudioLowerVolume XF86AudioMute W-h W-S-question W-b W-n W-l XF86AudioPlay XF86AudioPause XF86AudioNext XF86AudioPrev; do
         check "keybinding $key missing in $rc" "grep -q 'keybind key=\"$key\"' '$rc'"
     done
 done
@@ -95,13 +95,21 @@ for home in /etc/skel /home/simple; do
     check "kitty start size missing in $home" "grep -q '^initial_window_width' '$home/.config/kitty/kitty.conf'"
 done
 
-# Performance: preload + gamemode, sysctl tuning
+# Performance: gamemode, sysctl tuning (no preload: unmaintained, little use on SSDs)
 # Debian puts gamemoderun into /usr/games (in the PATH of normal users, not in the PATH of the build hook)
 check "gamemoderun missing (/usr/games)" "[ -x /usr/games/gamemoderun ]"
-for pkg in preload gamemode pkexec; do
+for pkg in gamemode pkexec; do
     check "package $pkg not installed" "dpkg-query -W -f='\${Status}' $pkg 2>/dev/null | grep -q 'install ok installed'"
 done
-check "preload service not enabled" "systemctl is-enabled preload >/dev/null 2>&1 || ls /etc/rc2.d/ 2>/dev/null | grep -q preload"
+check "preload must not be installed (unmaintained, costs RAM)" "! dpkg-query -W -f='\${Status}' preload 2>/dev/null | grep -q 'install ok installed'"
+# Packages that Debian only Recommends (the image is built without Recommends) but the desktop needs:
+# time sync, XDG autostart (openbox-xdg-autostart needs PyXDG), keyring unlock at login, thumbnails, FUSE for gvfs,
+# VA-API video decoding, tab completion
+for pkg in systemd-timesyncd python3-xdg libpam-gnome-keyring tumbler gvfs-fuse bash-completion playerctl mesa-va-drivers intel-media-va-driver; do
+    check "package $pkg not installed (a Recommends the desktop needs)" "dpkg-query -W -f='\${Status}' $pkg 2>/dev/null | grep -q 'install ok installed'"
+done
+check "openbox-xdg-autostart cannot import PyXDG" "python3 -c 'from xdg import BaseDirectory; from xdg.DesktopEntry import DesktopEntry'"
+check "systemd-timesyncd not enabled" "systemctl is-enabled systemd-timesyncd >/dev/null 2>&1"
 # ---- Graphics/firmware for new laptops (e.g. Intel Core 5 210H, Raptor Lake 0xA7AA): kernel from bookworm-backports
 #      (6.1 does not know the graphics -> 800x600), firmware 2025 incl. firmware-intel-graphics, microcode; a fixed
 #      firmware list instead of live-build's automatic selection (tools/lb_config.sh --firmware-chroot false)
@@ -148,7 +156,7 @@ rm -rf "${gi:?}"
 check "broadcom-sta-dkms (wl) does not build with kernel 6.12: DKMS adjustment missing" \
       "grep -q 'linux/unaligned.h' /etc/dkms/broadcom-sta.conf && grep -q 'asm/unaligned.h>#<linux/unaligned.h' /etc/dkms/broadcom-sta.conf && grep -q 'linux/unaligned.h>#<asm/unaligned.h' /etc/dkms/broadcom-sta.conf"
 SYSCTL=/etc/sysctl.d/99-simpleos-perf.conf
-for kv in 'vm.swappiness = 10' 'vm.vfs_cache_pressure = 50' 'vm.max_map_count = 1048576'; do
+for kv in 'vm.swappiness = 100' 'vm.page-cluster = 0' 'vm.vfs_cache_pressure = 50' 'vm.max_map_count = 1048576'; do
     check "sysctl '$kv' missing in $SYSCTL" "grep -qxF '$kv' $SYSCTL"
 done
 
@@ -207,6 +215,44 @@ SIMPLEOS_SKEL_MENU=$om/skel.xml SIMPLEOS_EDITION_SHARE=$om $MIG >/dev/null 2>&1
 check "migration 010-skel-office-menu: the waiting new menu (.dpkg-dist) not taken" \
       "grep -q 'Text Editor NEW' $om/skel.xml && [ ! -e $om/skel.xml.dpkg-dist ] && ! grep -q 'simpleos-office-' $om/skel.xml"
 rm -rf "${om:?}"
+# Removing Firefox must not edit the package's browser defaults (1.0/1.0.1 did); migration 020 restores them
+check "helper: Firefox removal edits the package's browser defaults" \
+      "! grep -v '^[[:space:]]*#' /usr/local/sbin/simpleos-system-setup | grep -q 'defaults.list\\|mimeapps.list'"
+bd=$(mktemp -d)
+cp /etc/xdg/mimeapps.list "$bd/m.list"; cp /etc/xdg/mimeapps.list "$bd/clean.list"
+sed -i 's/=firefox-esr.desktop/=net.mullvad.MullvadBrowser.desktop/' "$bd/m.list"
+printf '%s  %s\n' "$(sha256sum < "$bd/clean.list" | cut -c1-64)" "${bd#/}/m.list" > "$bd/system.history"
+cp "$bd/clean.list" "$bd/m.list.dpkg-dist"; echo "# newer" >> "$bd/m.list.dpkg-dist"
+SIMPLEOS_BROWSER_FILES="$bd/m.list" SIMPLEOS_EDITION_SHARE=$bd sh /usr/share/simpleos/edition/migrations/system/020-browser-defaults >/dev/null 2>&1
+check "migration 020-browser-defaults: browser default not restored / waiting new file not taken" \
+      "grep -qx 'x-scheme-handler/https=firefox-esr.desktop' $bd/m.list && grep -qx '# newer' $bd/m.list && [ ! -e $bd/m.list.dpkg-dist ]"
+rm -rf "${bd:?}"
+# simpleos-browser: system default names a browser that is gone -> any installed one (Mullvad via Flatpak)
+bd=$(mktemp -d); mkdir -p "$bd/ap/applications" "$bd/bin"
+printf '[Desktop Entry]\nName=Mullvad\nExec=echo started-mullvad %%U\nCategories=Network;WebBrowser;\n' > "$bd/ap/applications/net.mullvad.MullvadBrowser.desktop"
+printf '#!/bin/sh\necho firefox-esr.desktop\n' > "$bd/bin/xdg-mime"; chmod 0755 "$bd/bin/xdg-mime"
+check "simpleos-browser: no fallback to another installed browser when the default is gone" \
+      "[ \"\$(env -i HOME=$bd XDG_DATA_HOME=$bd/none XDG_DATA_DIRS=$bd/ap PATH=$bd/bin:/usr/bin:/bin /usr/local/bin/simpleos-browser https://example.org)\" = 'started-mullvad https://example.org' ]"
+rm -rf "${bd:?}"
+# EFI partition: Debian's postinst never refreshes EFI/Simple_OS (GRUB_DISTRIBUTOR differs) -> simpleos-efi-refresh does,
+# and creates a fallback loader (EFI/BOOT/BOOTX64.EFI) only if none exists; a foreign one stays
+ER=/usr/local/sbin/simpleos-efi-refresh
+check "dpkg trigger for shim/GRUB updates missing" \
+      "grep -qx 'interest-noawait /usr/lib/shim' /var/lib/dpkg/info/simpleos.triggers && grep -qx 'interest-noawait /usr/lib/grub/x86_64-efi-signed' /var/lib/dpkg/info/simpleos.triggers &&
+       grep -q 'simpleos-efi-refresh' /var/lib/dpkg/info/simpleos.postinst"
+check "simpleos-post-install does not create the fallback loader" "grep -q 'simpleos-efi-refresh' /usr/local/sbin/simpleos-post-install"
+ef=$(mktemp -d); mkdir -p "$ef/esp/EFI/Simple_OS" "$ef/shim" "$ef/grub"
+for f in shimx64 mmx64 fbx64; do echo "$f-new" > "$ef/shim/$f.efi.signed"; echo "$f-old" > "$ef/esp/EFI/Simple_OS/$f.efi"; done
+echo grub-new > "$ef/grub/grubx64.efi.signed"; echo grub-old > "$ef/esp/EFI/Simple_OS/grubx64.efi"; echo stub > "$ef/esp/EFI/Simple_OS/grub.cfg"
+efr() { SIMPLEOS_ESP=$ef/esp SIMPLEOS_SHIM_DIR=$ef/shim SIMPLEOS_GRUB_SIGNED_DIR=$ef/grub sh $ER >/dev/null 2>&1; }
+efr
+check "simpleos-efi-refresh: EFI/Simple_OS not updated" "grep -qx shimx64-new $ef/esp/EFI/Simple_OS/shimx64.efi && grep -qx grub-new $ef/esp/EFI/Simple_OS/grubx64.efi"
+check "simpleos-efi-refresh: fallback loader not created" "grep -qx shimx64-new $ef/esp/EFI/BOOT/BOOTX64.EFI && grep -qx stub $ef/esp/EFI/BOOT/grub.cfg"
+echo shimx64-newer > "$ef/shim/shimx64.efi.signed"; efr
+check "simpleos-efi-refresh: our own fallback loader not refreshed" "grep -qx shimx64-newer $ef/esp/EFI/BOOT/BOOTX64.EFI"
+echo windows > "$ef/esp/EFI/BOOT/BOOTX64.EFI"; echo shimx64-newest > "$ef/shim/shimx64.efi.signed"; efr
+check "simpleos-efi-refresh: a foreign fallback loader was overwritten" "grep -qx windows $ef/esp/EFI/BOOT/BOOTX64.EFI && grep -qx shimx64-newest $ef/esp/EFI/Simple_OS/shimx64.efi"
+rm -rf "${ef:?}"
 check "helper: Steam with the NVIDIA 470 driver (Kepler) gets the 32-bit libraries of the current driver" \
       "grep -q 'if installed nvidia-tesla-470-driver; then' /usr/local/sbin/simpleos-system-setup &&
        grep -q 'nvidia=\"nvidia-tesla-470-driver-libs:i386\"' /usr/local/sbin/simpleos-system-setup"
@@ -374,6 +420,8 @@ printf '#!/bin/sh\nexit 0\n' > "$wt/sys/sleep"
 cat > "$wt/mock/nmcli" <<'MOCK'
 #!/bin/sh
 echo "nmcli $*" >> "$WT/calls"
+# the password is read from stdin with --ask (never from the command line)
+case "$*" in *--ask*) cat > "$WT/stdin-pw" ;; esac
 case "$*" in
     "-t -f DEVICE,TYPE,STATE,CONNECTION device")
         case "$NET" in
@@ -462,14 +510,14 @@ wcase "Wi-Fi: active network -> Disconnect" "" "NET=wifi" "0 0" \
 wcase "Wi-Fi: active network -> Details" "" "NET=wifi" "0 1" 'grep -q "^LAN IP  *192.168.0.5" $S/out'
 wcase "Wi-Fi: active network -> Back" "" "NET=wifi" "0 2 -" '[ -s $S/rofi.2 ] && ! grep -q "disconnect" $S/calls'
 wcase "Wi-Fi: switch (password via Rofi)" "" "NET=wifi" "1 secret" \
-    'grep -q "\-password" $S/rofi.args && grep -q "device wifi connect Office ifname wlan0 password secret" $S/calls &&
-     grep -q "Connected to Office" $S/notify'
+    'grep -q "\-password" $S/rofi.args && grep -q "nmcli --ask --wait 30 device wifi connect Office ifname wlan0$" $S/calls &&
+     ! grep -q "secret" $S/calls && grep -qx "secret" $S/stdin-pw && grep -q "Connected to Office" $S/notify'
 wcase "Wi-Fi: wrong password" "" "NET=wifi BADPW=1" "1 wrong" \
     'grep -q "password may be wrong" $S/notify && grep -q "connection delete id Office" $S/calls'
 wcase "Wi-Fi: password cancelled" "" "NET=wifi" "1 -" '! grep -q "device wifi connect" $S/calls'
-wcase "Wi-Fi: saved network, wrong password -> new password into the profile" "" "NET=wifi-down UPFAIL=1" "1 new" \
-    'grep -q "connection modify id Home wifi-sec.psk new" $S/calls && grep -q "Connected to Home" $S/notify &&
-     ! grep -q "device wifi connect Home" $S/calls'
+wcase "Wi-Fi: saved network, wrong password -> old profile deleted, connected with the new password (stdin)" "" "NET=wifi-down UPFAIL=1" "1 new" \
+    'grep -q "connection delete id Home" $S/calls && grep -q "nmcli --ask --wait 30 device wifi connect Home ifname wlan0$" $S/calls &&
+     ! grep -q "wifi-sec.psk" $S/calls && ! grep -qw "new" $S/calls && grep -qx "new" $S/stdin-pw && grep -q "Connected to Home" $S/notify'
 wcase "Wi-Fi: open network without a password" "" "NET=wifi" "2" \
     '! grep -q "\-password" $S/rofi.args && grep -q "device wifi connect Cafe ifname wlan0$" $S/calls'
 wcase "Wi-Fi: Turn Off Wi-Fi" "" "NET=wifi" "3" 'grep -q "radio wifi off" $S/calls && grep -q "Wi-Fi is off" $S/notify'
@@ -539,10 +587,10 @@ assert v['action'] == 'Turn on Wi-Fi' and not v['show_list'], v\""
 check "wizard: wrong status without Wi-Fi hardware" "wiz NET=eth python3 -c \"$WZ
 s = w.network_state(); v = w.network_view(s, [])
 assert s['wifi'] is None and s['kind'] == 'ethernet' and v['online'] and 'no Wi-Fi hardware' in v['hint'], v\""
-check "wizard: switching networks (connected to Home -> Office) does not work" "wiz NET=wifi python3 -c \"$WZ; ok, msg = w.connect_wifi('wlan0', 'Office', 'secret'); assert ok and 'Office' in msg, msg\" && grep -q 'device wifi connect Office ifname wlan0 password secret' $S/calls"
+check "wizard: switching networks (connected to Home -> Office) does not work" "wiz NET=wifi python3 -c \"$WZ; ok, msg = w.connect_wifi('wlan0', 'Office', 'secret'); assert ok and 'Office' in msg, msg\" && grep -q 'nmcli --ask --wait 30 device wifi connect Office ifname wlan0$' $S/calls && ! grep -q 'secret' $S/calls && grep -qx 'secret' $S/stdin-pw"
 check "wizard: disconnecting does not work" "wiz NET=wifi python3 -c \"$WZ; ok, msg = w.disconnect_wifi('wlan0'); assert ok, msg\" && grep -q 'device disconnect wlan0' $S/calls"
 check "wizard: wrong password without a clear message" "wiz NET=wifi BADPW=1 python3 -c \"$WZ; ok, msg = w.connect_wifi('wlan0', 'Office', 'x'); assert not ok and 'password may be wrong' in msg, msg\" && grep -q 'connection delete id Office' $S/calls"
-check "wizard: saved network, the new password is not taken into the profile" "wiz NET=wifi-down UPFAIL=1 python3 -c \"$WZ; ok, msg = w.connect_wifi('wlan0', 'Home', 'new', True); assert ok, msg\" && grep -q 'connection modify id Home wifi-sec.psk new' $S/calls && ! grep -q 'device wifi connect' $S/calls"
+check "wizard: saved network, the new password does not replace the profile (stdin, not the command line)" "wiz NET=wifi-down UPFAIL=1 python3 -c \"$WZ; ok, msg = w.connect_wifi('wlan0', 'Home', 'new', True); assert ok, msg\" && grep -q 'connection delete id Home' $S/calls && grep -q 'nmcli --ask --wait 30 device wifi connect Home ifname wlan0$' $S/calls && ! grep -qw 'new' $S/calls && grep -qx 'new' $S/stdin-pw"
 check "wizard: saved password wrong -> misleading message" "wiz NET=wifi-down UPFAIL=1 BADPW=1 python3 -c \"$WZ; ok, msg = w.connect_wifi('wlan0', 'Home', '', True); assert not ok and 'saved password may be wrong' in msg, msg\""
 check "wizard: crash without nmcli instead of 'not connected'" "$ENV -i HOME=$wt/home PATH=$wt/py:$wt/sys python3 -c \"$WZ; s = w.network_state(); assert s['kind'] is None and s['wifi'] is None, s\" 2>/dev/null"
 
@@ -1476,6 +1524,10 @@ assert c.snapshot(s[:1]) == '$SNAP'.split(), c.snapshot(s[:1])
 assert c.layout_args(s, 'Virtual-1', 'dup') == '--output Virtual-1 --mode 1280x720 --primary --pos 0x0 --output HDMI-1 --mode 1280x720 --same-as Virtual-1'.split()
 assert c.layout_args(s, 'Virtual-1', 'right') == '--output Virtual-1 --primary --output HDMI-1 --auto --right-of Virtual-1'.split()
 assert [c.pretty(n) for n in ('eDP-1', 'HDMI-A-2', 'DP-1', 'Virtual-1')] == ['Built-in display', 'HDMI 2', 'DisplayPort 1', 'Screen 1']\""
+check "Control Center: a resolution listed on two xrandr lines loses refresh rates" "python3 -c \"$CCL
+q = 'DP-1 connected primary 2560x1440+0+0 (normal) 597mm x 336mm\n   2560x1440     59.95 +\n   2560x1440    143.97*  120.00\n   1920x1080     60.00\n'
+s = c.screens(q)
+assert s[0]['modes'] == [('2560x1440', ['59.95', '143.97', '120.00']), ('1920x1080', ['60.00'])] and s[0]['rate'] == '143.97', s\""
 check "Control Center: Bluetooth read incorrectly" "ccpy python3 -c \"$CCL
 assert c.bt_state() == (True, True)
 d = c.bt_devices()
@@ -1679,7 +1731,7 @@ for home in /etc/skel /home/simple; do
           "awk '/^simpleos-dunst &/{d=NR} /^(nm-applet|blueman-applet|lxpolkit|volumeicon) &/{if(!a)a=NR} /simpleos-battery --present && xfce4-power-manager/{if(!a)a=NR} END{exit !(d && a && d < a)}' '$auto'"
     # Programs from the Openbox autostart must not also run via XDG autostart (openbox-xdg-autostart,
     # as soon as python3-xdg is installed) – the power manager would then also run without a battery
-    for app in xfce4-power-manager nm-applet blueman spice-vdagent; do
+    for app in xfce4-power-manager nm-applet blueman spice-vdagent xdg-user-dirs calamares-desktop-icon; do
         check "XDG autostart: $app not blocked in $home" "grep -qx 'Hidden=true' '$home/.config/autostart/$app.desktop'"
     done
 done
@@ -1776,6 +1828,11 @@ dcase drop "Warning" "Low" "cbatticon" "" ""
 dcase drop "Warning" "Running low" "notify-send" "battery-empty" ""
 dcase drop "Headset" "Connected 5%" "blueman" "battery" ""
 dcase drop "Low power" "Shutting down soon" "PowerDevil" "" ""
+# Desktop PCs: chat messages, mails and downloads that merely mention battery/power must not disappear
+dcase show "Alice" "my phone battery is almost empty" "Signal" "" ""
+dcase show "Power bill October" "Your invoice is ready" "Thunderbird" "" ""
+dcase show "Download finished" "PowerPoint-Vortrag.pptx" "Firefox" "" ""
+dcase show "Bob" "see you tomorrow" "Signal" "" ""
 dcase show "Power" "The computer could not restart." "Power" "system-shutdown" "x-simpleos"
 dcase show "Screenshot saved & copied" "/home/simple/Pictures/Screenshots/Screenshot_1.png" "notify-send" "/home/simple/Pictures/Screenshots/Screenshot_1.png" "x-simpleos"
 dcase show "Network" "Connected to Home" "Network" "network-wireless" "x-simpleos"
@@ -2088,12 +2145,16 @@ SARG="42 * 12" srch ROFI_RETV=2
 check "Search: '42 * 12' + Enter does not calculate" "grep -q '^42 \\* 12 = 504|info~calc:504' $S/out && grep -q 'Enter copies the result' $S/out"
 for c in '42*12=|42 * 12 = 504' '2^10|2 ^ 10 = 1024' '3,5*2|3,5 * 2 = 7' '(1+2)/3|(1 + 2) / 3 = 1' '10 % 3|10 % 3 = 1' \
          'sqrt(16)|sqrt(16) = 4' '6×7|6 × 7 = 42' '8÷2|8 ÷ 2 = 4' '-3+4|-3 + 4 = 1' \
-         '(-8)^(1/3)|(-8)^(1/3) – no result'; do
+         '(-8)^(1/3)|(-8)^(1/3) – no result' '2**3|2 ^ 3 = 8' '7//2|7 // 2 = 3' 'round(2.5)|round(2.5) = 3' \
+         'sqrt(-1)|sqrt(-1) – no result' 'ln(0)|ln(0) – no result' 'round(1234,-2)|round(1234, -2) = 1200'; do
     check "Calculator: '${c%%|*}' does not give '${c#*|}'" "[ \"\$(python3 $SR --calc '${c%%|*}')\" = '${c#*|}' ]"
 done
 for c in "__import__('os').system('true')" 'report' '2**99999' 'open(1)' '9-'; do
     check "Calculator: '$c' evaluated as a calculation" "! python3 $SR --calc \"$c\" >/dev/null 2>&1"
 done
+# "1,000" is one thousand outside decimal-comma languages, "3,5" stays 3.5; German keeps the decimal comma
+check "Calculator: '1,000+5' in English" "[ \"\$(env -u LC_ALL -u LC_NUMERIC LANG=en_US.UTF-8 python3 $SR --calc '1,000+5')\" = '1,000 + 5 = 1005' ]"
+check "Calculator: '1,000+5' in German (decimal comma)" "[ \"\$(env -u LC_ALL -u LC_NUMERIC LANG=de_DE.UTF-8 python3 $SR --calc '1,000+5')\" = '1,000 + 5 = 6' ]"
 check "Calculator: division by zero without an understandable message" "python3 $SR --calc '1/0' | grep -q \"can't divide by zero\""
 for c in '9^999*9^999*9^999*9^999*9^999' '((9^999)^999)^999'; do
     check "Calculator: '$c' crashes or calculates forever instead of 'too large'" "timeout 5 python3 $SR --calc '$c' | grep -q 'the number is too large'"
@@ -2164,14 +2225,14 @@ hcase "$DND --no-effects off" "reset the effects option" "" "" "" '[ ! -e '"$DSE
 check "DND: unknown option not rejected (exit 2)" "HOME=$wt/home $DND --bogus >/dev/null 2>&1; [ \$? -eq 2 ]"
 rm -f "$DS" "$DSET"
 # Taskbar indicator: one line per change (icon when on, empty when off), ends with the parent process (tint2)
-check "DND taskbar: icon/change/end wrong" \
+check "DND taskbar: icon/change/end wrong (woken by SIGUSR1, no polling)" \
       "rm -f $DS; ( HOME=$wt/home XDG_RUNTIME_DIR= timeout 6 $DND --panel > $wt/dndpanel ) & p=\$!;
-       /bin/sleep 1.3; touch $DS; /bin/sleep 1.5; rm -f $DS; /bin/sleep 1.5; kill \$p 2>/dev/null; wait \$p 2>/dev/null;
+       /bin/sleep 1.3; touch $DS; kill -USR1 \$(cat $DS.panel); /bin/sleep 1.5; rm -f $DS; kill -USR1 \$(cat $DS.panel); /bin/sleep 1.5; kill \$p 2>/dev/null; wait \$p 2>/dev/null;
        [ \"\$(sed -n 1p $wt/dndpanel)\" = '' ] && sed -n 2p $wt/dndpanel | grep -q \"font_desc='FontAwesome 11'\" &&
        [ \"\$(sed -n 3p $wt/dndpanel)\" = '' ] && [ \$(wc -l < $wt/dndpanel) -eq 3 ]"
 rm -f "$wt/dndpanel" "$DS"
 # Parent process (otherwise tint2) ends after 1 s -> the indicator ends by itself (no orphaned long-running process)
-sh -c "HOME=$wt/home $DND --panel >/dev/null 2>&1 & echo \$! > $wt/dndpid; /bin/sleep 1"
+sh -c "HOME=$wt/home SIMPLEOS_DND_NAP=1 $DND --panel >/dev/null 2>&1 & echo \$! > $wt/dndpid; /bin/sleep 1"
 /bin/sleep 2.5
 check "DND taskbar: keeps running after tint2 has ended" "! kill -0 \$(cat $wt/dndpid) 2>/dev/null"
 kill "$(cat "$wt/dndpid")" 2>/dev/null || true; rm -f "$wt/dndpid"
@@ -2296,6 +2357,10 @@ r = run(pci(("01:00.0", "VGA compatible controller", "0300", "NVIDIA Corporation
 assert r["recommended"] == [] and "nouveau" in r["gpu"][0]["status"], r
 r = run(pci(("01:00.0", "VGA compatible controller", "0300", "NVIDIA Corporation AD104 [GeForce RTX 4070]", "10de", "2786", "nvidia")), installed=BASE + " intel-microcode")
 assert r["recommended"] == [] and r["gpu"][0]["status"] == "NVIDIA driver active", r
+# RTX 50 (Blackwell, ID >= 0x2900): Debian 12's driver 535 does not know it -> nothing recommended, honest status + note
+for dev_id, gpu in (("2b85", "GB202 [GeForce RTX 5090]"), ("2d04", "GB206 [GeForce RTX 5060 Ti]")):
+    r = run(pci(("01:00.0", "VGA compatible controller", "0300", "NVIDIA Corporation " + gpu, "10de", dev_id, "nouveau")), installed=BASE + " intel-microcode")
+    assert r["recommended"] == [] and r["gpu"][0]["status"].startswith("Too new") and r["notes"], r
 # Virtual machine: virtio graphics, AMD CPU -> nothing recommended, the host takes care of microcode
 r = run(pci(("00:01.0", "VGA compatible controller", "0300", "Red Hat, Inc. Virtio 1.0 GPU", "1af4", "1050", "virtio-pci")), lscpu=AMD_CPU, virt="kvm")
 assert r["recommended"] == [] and "host" in r["cpu"]["status"] and "Virtual" in r["gpu"][0]["status"], r
@@ -2568,7 +2633,7 @@ check "simpleos-progress: waits forever although the caller is gone (--pid)" \
       "$ENV -i HOME=$wt/home WT=$S PATH=$wt/mock:$wt/sys timeout 10 $PG --follow $pf --pid 999999 >/dev/null 2>&1"
 rm -f "$pf"
 check "simpleos-progress: window timing tied to the frame clock (stops when the window is hidden)" \
-      "! grep -q 'add_tick_callback(' $PG && grep -q 'GLib.timeout_add(16, self.tick)' $PG"
+      "! grep -q 'add_tick_callback(' $PG && grep -q 'GLib.timeout_add(33, self.tick)' $PG"
 # Plain rendering: paint() without a window into an image – 3 px arc on a ring, pill solid in the accent color,
 # swinging block, colors exactly from simpleos-theme (Mocha/Latte); no gradients/particles/shine
 check "simpleos-progress: effects (gradients, particles, shine, pulse) not removed" \
@@ -3194,6 +3259,16 @@ theme_home
 tcase "without a screen: files only, no signals" "" "--mode light" \
     'grep -qx "gtk-theme-name=Arc" '"$G3"' && [ ! -e $S/power ] && ! grep -q "HUP\|USR1" $S/pkill 2>/dev/null && [ ! -e $S/xsd ]'
 tcase "accent pink in light mode: Latte shade in Rofi" "DISPLAY=:0 XSD_RUNNING=1" "--accent pink" 'grep -qE "^ *accent: *#ea76cb;" '"$RASI"
+# The accent must not recolor the live badge "Install Simple OS" (background 8 uses #cba6f7/#f5c2e7 = mauve/pink)
+TRC=$th/.config/tint2/tint2rc
+theme_home
+tcase "accent mauve: active task + app button, badge unchanged" "DISPLAY=:0" "--accent mauve" \
+    'grep -qx "background_color = #cba6f7 25" '"$TRC"' && grep -qx "border_color_pressed = #cba6f7 100" '"$TRC"' &&
+     grep -qx "button_font_color = #cba6f7 100" '"$TRC"' && grep -qx "background_color = #cba6f7 100" '"$TRC"' &&
+     grep -qx "background_color_pressed = #f5c2e7 100" '"$TRC"
+tcase "accent green after mauve: badge still mauve/pink" "DISPLAY=:0" "--accent green" \
+    'grep -qx "background_color = #a6e3a1 25" '"$TRC"' && grep -qx "button_font_color = #a6e3a1 100" '"$TRC"' &&
+     grep -qx "background_color = #cba6f7 100" '"$TRC"' && grep -qx "border_color_pressed = #f5c2e7 0" '"$TRC"
 theme_home
 tcase "--xsettings at login" "DISPLAY=:0" "--xsettings" 'grep -qx "Net/ThemeName \"Arc-Dark\"" '"$XSD"' && waitfor $S/xsd && grep -q "^xsettingsd -c " $S/xsd'
 check "skel: gtk-application-prefer-dark-theme not 0 (GTK reads the value only at start -> no live switch to light)" \

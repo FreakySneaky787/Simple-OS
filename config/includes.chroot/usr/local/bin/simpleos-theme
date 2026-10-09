@@ -144,7 +144,20 @@ fi
 # ---- Accent color: tint2, Openbox ----
 
 tint2rc="$HOME/.config/tint2/tint2rc"
-[ -f "$tint2rc" ] && [ "$old_hex" != "$hex" ] && sed -i "s/$old_hex/$hex/gI" "$tint2rc"
+# Only the accent lines: background 3 ("Task (active)" = the 3rd "rounded =" block) and the app button's font color.
+# The whole file would also recolor the "Install Simple OS" badge (background 8: mauve/pink are accent values too).
+if [ -f "$tint2rc" ] && [ "$old_hex" != "$hex" ]; then
+    tmp=$(mktemp "$tint2rc.XXXXXX") && awk -v old="$old_hex" -v new="$hex" '
+        /^rounded[ \t]*=/ { b++ }
+        {
+            line = $0
+            if (b == 3 || line ~ /^button_font_color[ \t]*=/) {
+                while ((i = index(tolower(line), old)) > 0) line = substr(line, 1, i - 1) new substr(line, i + length(old))
+            }
+            print line
+        }' "$tint2rc" > "$tmp" && cat "$tmp" > "$tint2rc"
+    rm -f "$tmp"
+fi
 
 # Openbox: own copy of the SimpleOS theme (~/.themes takes precedence over /usr/share/themes)
 ob_dir="$HOME/.themes/SimpleOS/openbox-3"

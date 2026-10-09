@@ -1,19 +1,32 @@
 #!/bin/sh
 # Simple OS – starts the default browser (Super+B). To change it: simpleos-browser-select
+# Dirs of the .desktop files: user, system, Flatpak exports
+dirs="${XDG_DATA_HOME:-$HOME/.local/share} $(echo "${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" | tr ':' ' ') /var/lib/flatpak/exports/share ${XDG_DATA_HOME:-$HOME/.local/share}/flatpak/exports/share"
+find_desktop() {  # $1 = desktop ID -> path of the file
+    for dir in $dirs; do
+        if [ -f "$dir/applications/$1" ]; then echo "$dir/applications/$1"; return 0; fi
+    done
+    return 1
+}
 id=$(xdg-mime query default x-scheme-handler/https 2>/dev/null)
 file=
-if [ -n "$id" ]; then
-    for dir in "${XDG_DATA_HOME:-$HOME/.local/share}" $(echo "${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" | tr ':' ' ') \
-            /var/lib/flatpak/exports/share; do
-        if [ -f "$dir/applications/$id" ]; then file="$dir/applications/$id"; break; fi
-    done
-fi
+[ -n "$id" ] && file=$(find_desktop "$id")
 if [ -z "$file" ]; then
-    # No valid default: the first available browser (Firefox may have been removed by the Setup Wizard)
-    for b in firefox-esr chromium; do
-        command -v "$b" >/dev/null && exec "$b" "$@"
+    # No valid default (e.g. a new account after Firefox was removed – the system default still names it): the first
+    # browser that is installed, the Setup Wizard's three first, then any other one
+    for cand in firefox-esr.desktop chromium.desktop net.mullvad.MullvadBrowser.desktop; do
+        file=$(find_desktop "$cand") && break
+        file=
     done
-    exec simpleos-browser-select
+    if [ -z "$file" ]; then
+        for dir in $dirs; do
+            for f in "$dir"/applications/*.desktop; do
+                [ -f "$f" ] || continue
+                if grep -q '^Categories=.*WebBrowser' "$f" && ! grep -qi '^NoDisplay=true' "$f"; then file=$f; break 2; fi
+            done
+        done
+    fi
+    [ -n "$file" ] || exec simpleos-browser-select
 fi
 # Exec line without field codes (%u, %U, ...) and Flatpak markers (@@u ... @@)
 cmd=$(sed -n 's/^Exec=//p' "$file" | head -n1 | sed -e 's/@@[a-zA-Z]\{0,1\}//g' -e 's/%[a-zA-Z]//g')

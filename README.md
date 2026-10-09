@@ -65,6 +65,8 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
     account counts the existing ones as done. Example: `system/010-skel-office-menu` (1.0.1) takes the office
     entries that the 1.0 Setup Wizard wrote into `/etc/skel/.config/openbox/menu.xml` out again – with them the
     file counted as changed, and no later menu change would have reached those systems.
+    `system/020-browser-defaults` (1.0.2) gives the shipped browser (`firefox-esr`) back to `/etc/xdg/mimeapps.list` and
+    `defaults.list`, which the Setup Wizard's Firefox removal used to rewrite.
   - **Files the system changes itself:** tools never write into package files under `/etc/skel` (or other conffiles)
     for everyday settings – a changed conffile is kept by dpkg and the edition tool forever. Per-account changes go
     into the home copies (merged by the edition tool), see `office-menu` below.
@@ -78,7 +80,10 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
   could differ from the ISO.
   **Every** release must carry the repository – `publish` refuses otherwise, also with uncommitted changes in
   `config/`/`tools/` (the next edition only recognizes file versions that are in git) or an `output/repo` that is not
-  from the ISO build (marker `output/repo/.in-iso`, written by `build_iso.sh`). Back up the signing key
+  from the ISO build (marker `output/repo/.in-iso`, written by `build_iso.sh`).
+  `build_iso.sh` also records the commit it built and whether `config/` and `tools/` were clean (`output/repo/.build-state`);
+  `publish` refuses a build from uncommitted files and any change in `config/`/`tools/` after the build (the ISO and the
+  update package would not contain what the tag's source code does). Back up the signing key
   (`~/.local/share/simpleos-release/gnupg`): installed systems only trust that key.
 - A new Debian base (Debian 13) is a bigger step than an edition update and is not covered by this.
 
@@ -130,6 +135,7 @@ the lb default files, the generated graphics and the fastfetch package.
 | `usr/local/bin/simpleos-usb-notify` | USB notifications for udiskie ("'STICK' is ready" – a click opens the file manager) |
 | `usr/local/lib/simpleos/common.sh` | shared helpers of the Rofi tools: log, notifications, Rofi with grab retry, menu with actions |
 | `etc/apt/apt.conf.d/20simpleos-periodic` | refresh package lists daily (check only, never install automatically) |
+| `usr/local/sbin/simpleos-efi-refresh` | keeps shim + signed GRUB in `EFI/Simple_OS` on the EFI partition at the installed packages' version (Debian's postinst only refreshes `EFI/<GRUB_DISTRIBUTOR>`) and creates the fallback loader `EFI/BOOT/BOOTX64.EFI` if none exists; called by the package's postinst/dpkg trigger (`/usr/lib/shim`, `/usr/lib/grub/x86_64-efi-signed`) and by `simpleos-post-install` |
 | `usr/sbin/bootloader-config` | replaces Debian's Calamares script: installs GRUB (BIOS/UEFI) offline from `usr/share/simpleos/bootloader-debs` (hook 08) |
 | `usr/local/sbin/simpleos-post-install` | runs after the installation (Calamares): removes the installer and live leftovers |
 | `usr/local/lib/simpleos/open-as-user` | live image only: links in the installer (runs as root) open in the live user's browser – browsers refuse to run as root; root's http(s) default from hook 15 |
@@ -208,8 +214,8 @@ the lb default files, the generated graphics and the fastfetch package.
   `broadcom-sta-dkms` builds with 6.12 via `/etc/dkms/broadcom-sta.conf`.
 - Secure Boot: the live ISO boots via shim; the installed system gets shim + signed GRUB
   (`simpleos-grub-install`, called by Calamares with `--uefi-secure-boot`).
-- Performance (built into the image): `preload`, `gamemode` (`gamemoderun %command%` in Steam),
-  `/etc/sysctl.d/99-simpleos-perf.conf` (among others `vm.swappiness=10`, `vm.max_map_count` for Proton).
+- Performance (built into the image): `gamemode` (`gamemoderun %command%` in Steam),
+  `/etc/sysctl.d/99-simpleos-perf.conf` (among others `vm.swappiness=100` + `vm.page-cluster=0` for zram swap, `vm.max_map_count` for Proton).
 - `simpleos-theme --mode dark|light --accent blue|mauve|pink|green|peach|teal` (`--pick`: Rofi selection, Menu → Settings → Appearance)
 - `simpleos-browser-select` (Rofi) or `simpleos-browser-select --set chromium.desktop`
 - `simpleos-netinfo` (Super+N): LAN IP, interface, gateway, hostname, VPN status, public IP (Rofi;

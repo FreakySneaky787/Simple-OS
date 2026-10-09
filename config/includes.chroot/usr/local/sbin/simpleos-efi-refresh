@@ -1,0 +1,62 @@
+#!/bin/sh
+# Simple OS – keep the boot chain on the EFI partition (shim + signed GRUB) at the version of the installed packages.
+#   simpleos-efi-refresh        (root; from the dpkg trigger and the postinst of the package simpleos, and at the end of
+#                                the installation by simpleos-post-install)
+# Calamares installs shim and GRUB into EFI/Simple_OS (bootloaderEntryName "Simple OS"). Debian's grub-efi-amd64 postinst
+# only refreshes the EFI binaries if EFI/<GRUB_DISTRIBUTOR> exists ("simpleos" – never the folder we have), so
+# security updates of shim-signed and grub-efi-amd64-signed (CVE fixes, SBAT levels) never reached the partition. Here:
+#   1. the files of EFI/Simple_OS are replaced by the signed ones from /usr/lib/shim and /usr/lib/grub/x86_64-efi-signed
+#      when they differ (this is what "grub-install --uefi-secure-boot" copies; grub.cfg and BOOTX64.CSV stay)
+#   2. fallback loader: if the firmware loses its boot entries (BIOS update, CMOS reset) it starts \EFI\BOOT\BOOTX64.EFI.
+#      Created only when that file does not exist (never over Windows or another system's); refreshed only while it is
+#      still our shim (identical to the one in EFI/Simple_OS before step 1). fbx64.efi then recreates the boot entry
+#      from BOOTX64.CSV.
+# Does nothing on BIOS systems, without EFI/Simple_OS/shimx64.efi (not installed by us, or without Secure Boot chain) or if
+# the EFI partition is not mounted. Never fails its caller.
+# Tests: SIMPLEOS_ESP, SIMPLEOS_SHIM_DIR, SIMPLEOS_GRUB_SIGNED_DIR replace the fixed paths (the mount check is skipped).
+ESP=${SIMPLEOS_ESP:-/boot/efi}
+SHIM=${SIMPLEOS_SHIM_DIR:-/usr/lib/shim}
+GRUB=${SIMPLEOS_GRUB_SIGNED_DIR:-/usr/lib/grub/x86_64-efi-signed}
+DIR=$ESP/EFI/Simple_OS
+FB=$ESP/EFI/BOOT
+log() { echo "simpleos-efi-refresh: $*" >&2; }
+
+[ -f "$DIR/shimx64.efi" ] || exit 0
+if [ -z "${SIMPLEOS_ESP:-}" ]; then
+    command -v mountpoint >/dev/null && mountpoint -q "$ESP" || exit 0
+fi
+[ -f "$SHIM/shimx64.efi.signed" ] && [ -f "$GRUB/grubx64.efi.signed" ] || exit 0
+
+# copy SRC to DST if different (temporary name + rename: a power cut never leaves half a boot loader)
+put() {
+    cmp -s "$1" "$2" 2>/dev/null && return 1
+    tmp=$2.simpleos-new
+    if cp "$1" "$tmp" 2>/dev/null && mv -f "$tmp" "$2" 2>/dev/null; then return 0; fi
+    rm -f "$tmp"
+    log "could not write $2"
+    return 1
+}
+
+# fallback: ours? (decided before the files of EFI/Simple_OS change)
+fb_ours=0
+[ -f "$FB/BOOTX64.EFI" ] && cmp -s "$FB/BOOTX64.EFI" "$DIR/shimx64.efi" && fb_ours=1
+fb_free=0
+[ -f "$FB/BOOTX64.EFI" ] || fb_free=1
+
+for pair in shimx64.efi.signed:shimx64.efi mmx64.efi.signed:mmx64.efi fbx64.efi.signed:fbx64.efi; do
+    src=$SHIM/${pair%%:*} dst=$DIR/${pair#*:}
+    [ -f "$src" ] || continue
+    put "$src" "$dst" && log "updated $dst"
+done
+put "$GRUB/grubx64.efi.signed" "$DIR/grubx64.efi" && log "updated $DIR/grubx64.efi"
+
+if [ "$fb_free" = 1 ] || [ "$fb_ours" = 1 ]; then
+    mkdir -p "$FB" 2>/dev/null
+    for f in shimx64.efi:BOOTX64.EFI fbx64.efi:fbx64.efi mmx64.efi:mmx64.efi grubx64.efi:grubx64.efi grub.cfg:grub.cfg; do
+        [ -f "$DIR/${f%%:*}" ] || continue
+        # grub.cfg (stub) only with a new fallback; never replace another file of a foreign loader
+        [ "${f%%:*}" = grub.cfg ] && [ "$fb_free" != 1 ] && continue
+        put "$DIR/${f%%:*}" "$FB/${f#*:}" && log "updated $FB/${f#*:}"
+    done
+fi
+exit 0
