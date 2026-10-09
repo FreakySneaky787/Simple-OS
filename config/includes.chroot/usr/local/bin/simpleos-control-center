@@ -4,19 +4,22 @@
 One window for all settings, the sections on the left, the page on the right:
   Sound        volume, mute, output (speakers/headphones/HDMI), microphone, -> pavucontrol
   Display      resolution, refresh rate, several screens, night light (simpleos-nightlight)
-  Wi-Fi        networks, connect with a password, disconnect, Wi-Fi on/off (functions of the Setup Wizard)
+  Wi-Fi        networks, connect with a password, disconnect, Wi-Fi on/off (functions of the Setup Wizard),
+               band of the connected network (Automatic / 5 GHz / 2.4 GHz)
   Bluetooth    on/off, connect/disconnect/remove paired devices, search for and pair devices
   Appearance   light/dark, accent color (simpleos-theme), wallpaper (simpleos-wallpaper)
   Appearance   … + "Dynamic wallpaper (day/night)" (simpleos-wallpaper-schedule)
   Power        turn off the screen after … (simpleos-power), battery, power profile (power-profiles-daemon),
                battery protection (charge only up to 80 % if the laptop supports it), lock/sleep/restart/off
-  System       keyboard layout (simpleos-keyboard-setup), Do Not Disturb (simpleos-dnd: pause notifications, optionally without window effects),
+  Mouse & Touchpad  natural scrolling, tap to click, pointer speed (simpleos-input)
+  System       keyboard layout (simpleos-keyboard-setup), date & time (time zone, automatic time via timedatectl),
+               password, Do Not Disturb (simpleos-dnd: pause notifications, optionally without window effects),
                Hardware & Drivers (simpleos-drivers: graphics, Wi-Fi, CPU microcode; "Install Recommended Drivers"),
                backups (simpleos-backup: restore points), storage (free space, simpleos-cleaner),
                printers & scanners (system-config-printer, simple-scan), firewall (ufw via the root helper),
                disks (gnome-disks: format USB sticks, write ISOs), report a problem (simpleos-report)
 
-  simpleos-control-center [sound|display|wifi|bluetooth|appearance|power|system]   window (on this page)
+  simpleos-control-center [sound|display|wifi|bluetooth|appearance|input|power|system]   window (on this page)
 Runs only once (Gtk.Application); a second call brings the window to the front.
 Changes go through the same tools as the Rofi flyouts – both always show the same state.
 Display changes must be confirmed (15 s, otherwise reverted); saved like in simpleos-display.
@@ -33,9 +36,13 @@ import sys
 import threading
 from pathlib import Path
 
+# rfkill and iw live in /usr/sbin, which a normal user's PATH on Debian does not contain
+os.environ["PATH"] = os.environ.get("PATH", "") + ":" + os.environ.get("SIMPLEOS_SBIN", "/usr/sbin:/sbin")
+
 PAGES = [("sound", "Sound", "audio-volume-high"), ("display", "Display", "video-display"),
          ("wifi", "Wi-Fi", "network-wireless"), ("bluetooth", "Bluetooth", "bluetooth"),
-         ("appearance", "Appearance", "preferences-desktop-theme"), ("power", "Power", "battery"),
+         ("appearance", "Appearance", "preferences-desktop-theme"), ("input", "Mouse & Touchpad", "input-mouse"),
+         ("power", "Power", "battery"),
          ("system", "System", "computer")]
 WIZARD = "/usr/local/bin/simpleos-welcome-wizard"
 HELPER = "/usr/local/sbin/simpleos-system-setup"
@@ -372,6 +379,23 @@ def keyboard_current():
     return f"{l or 'us'}:{v}"
 
 
+def input_status():
+    """{touchpad: yes|no, mouse: yes|no, natural, tap, tspeed, mnatural, mspeed} from simpleos-input --status"""
+    out = cmd("simpleos-input", "--status").stdout
+    return dict(l.split("=", 1) for l in out.splitlines() if "=" in l)
+
+
+def clock_info():
+    """(time zone, automatic time on, can use NTP, clock synchronized) via timedatectl"""
+    out = _c("timedatectl", "show", "-p", "Timezone", "-p", "NTP", "-p", "CanNTP", "-p", "NTPSynchronized").stdout
+    d = dict(l.split("=", 1) for l in out.splitlines() if "=" in l)
+    return d.get("Timezone", ""), d.get("NTP") == "yes", d.get("CanNTP", "yes") == "yes", d.get("NTPSynchronized") == "yes"
+
+
+def timezones():
+    return [z.strip() for z in _c("timedatectl", "list-timezones").stdout.splitlines() if z.strip()]
+
+
 def dnd_on():
     return cmd("simpleos-dnd", "--status").stdout.strip() == "on"
 
@@ -507,7 +531,7 @@ def main(argv):
         def clear(self):
             for child in self.box.get_children():
                 self.box.remove(child)
-            self.box.pack_start(label(f"<span size='x-large' weight='bold'>{self.title}</span>", markup=True),
+            self.box.pack_start(label(f"<span size='x-large' weight='bold'>{GLib.markup_escape_text(self.title)}</span>", markup=True),
                                 False, False, 0)
 
         def put(self, widget):
@@ -699,7 +723,10 @@ def main(argv):
 
             def work():
                 s = w.network_state()
-                return s, (w.wifi_networks(s["wifi"]) if s["wifi"] and s["radio"] else [])
+                band = ""
+                if s["kind"] == "wifi" and s["name"]:
+                    band = w.nmcli("-g", "802-11-wireless.band", "connection", "show", s["name"]).stdout.strip()
+                return s, (w.wifi_networks(s["wifi"]) if s["wifi"] and s["radio"] else []), band
             bg(work, self.show)
 
         def show(self, res):
@@ -707,12 +734,22 @@ def main(argv):
             if isinstance(res, Exception):
                 self.note(f"Wi-Fi could not be read: {res}")
                 return self.show_all_now()
-            state, nets = res
+            state, nets, band = res
             view = self.w.network_view(state, nets)
             radio = Gtk.Switch(active=bool(state["radio"]), sensitive=bool(state["wifi"]))
             radio.connect("notify::active", lambda s, _p: bg(
                 lambda: self.w.nmcli("radio", "wifi", "on" if s.get_active() else "off"), lambda _r: self.refresh()))
             self.put(card([(view["status"], view["hint"], radio if state["wifi"] else None)]))
+            if state["kind"] == "wifi" and state["name"]:
+                # Some routers' 5 GHz channel (wide, with radar detection) is unstable: downloads drop to a few kB/s although
+                # signal and link rate look perfect; 2.4 GHz is slower at best but steady (found on a Sunrise router)
+                combo = Gtk.ComboBoxText()
+                for key, text in (("auto", "Automatic"), ("a", "5 GHz only"), ("bg", "2.4 GHz only")):
+                    combo.append(key, text)
+                combo.set_active_id(band if band in ("a", "bg") else "auto")
+                combo.connect("changed", lambda c: self.set_band(state["name"], c.get_active_id()))
+                self.put(card([("Wi-Fi band", "If downloads keep dropping to a crawl although the signal is strong, try "
+                                "2.4 GHz – the 5 GHz channel of some routers is unstable", combo)]))
             if view["show_list"]:
                 rows = []
                 for ssid, info, secured, in_use, act in view["rows"]:
@@ -724,6 +761,17 @@ def main(argv):
                            ("More network options", "Wired, VPN, hidden networks",
                             button("Open", lambda: spawn("nm-connection-editor")))]))
             self.show_all_now()
+
+        def set_band(self, name, key):
+            if not key:
+                return
+
+            def work():
+                r = self.w.nmcli("connection", "modify", name, "802-11-wireless.band", "" if key == "auto" else key)
+                if r.returncode != 0:
+                    return False
+                return self.w.nmcli("--wait", "30", "connection", "up", name, timeout=45).returncode == 0
+            bg(work, lambda ok: (None if ok is True else self.win.error("The Wi-Fi band could not be changed.")) or self.refresh())
 
         def click(self, ssid, secured, in_use, ask=False):
             dev = self.w.network_state()["wifi"]
@@ -865,6 +913,57 @@ def main(argv):
                             button("Open", lambda: spawn("simpleos-taskbar-select")))]))
             self.show_all_now()
 
+    class InputPage(Page):
+        title = "Mouse & Touchpad"
+
+        def refresh(self):
+            self.clear()
+            if not shutil.which("simpleos-input"):
+                self.note("Mouse and touchpad settings are not available (simpleos-input missing).")
+                return self.show_all_now()
+            st = input_status()
+            if st.get("touchpad") != "yes" and st.get("mouse") != "yes":
+                self.note("No mouse or touchpad found. Settings for a device appear here once it is connected.")
+                return self.show_all_now()
+            pend = {}
+
+            def speed_slider(key, cur):
+                sc = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, -1, 1, 0.1)
+                sc.set_value(float(cur or 0))
+                sc.set_size_request(220, -1)
+                sc.add_mark(0, Gtk.PositionType.BOTTOM, None)
+
+                def fire():
+                    pend.pop(key, None)
+                    cmd("simpleos-input", "--set", key, f"{sc.get_value():.1f}")
+                    return False
+
+                def moved(_s):   # dragging fires for every step: set the speed when the slider rests
+                    if key in pend:
+                        GLib.source_remove(pend[key])
+                    pend[key] = GLib.timeout_add(150, fire)
+                sc.connect("value-changed", moved)
+                return sc
+
+            def switch(key, on):
+                sw = Gtk.Switch(active=on == "on")
+                sw.connect("notify::active", lambda s, _p: cmd("simpleos-input", "--set", key,
+                                                               "on" if s.get_active() else "off"))
+                return sw
+            if st.get("touchpad") == "yes":
+                self.put(label("<b>Touchpad</b>", markup=True))
+                self.put(card([("Tap to click", "Tap the touchpad instead of pressing it", switch("tap", st.get("tap"))),
+                               ("Natural scrolling", "Content follows your fingers, like on a phone – turn off for "
+                                "the Windows/classic direction", switch("natural", st.get("natural"))),
+                               ("Pointer speed", None, speed_slider("tspeed", st.get("tspeed")))]))
+            if st.get("mouse") == "yes":
+                self.put(label("<b>Mouse</b>", markup=True))
+                self.put(card([("Pointer speed", None, speed_slider("mspeed", st.get("mspeed"))),
+                               ("Natural scrolling", "Scroll wheel in the opposite direction",
+                                switch("mnatural", st.get("mnatural")))]))
+            self.note("Your settings are kept for every device you connect later.")
+            self.show_all_now()
+
     class PowerPage(Page):
         title = "Power"
 
@@ -954,6 +1053,21 @@ def main(argv):
             kb.connect("changed", lambda c: c.get_active_id() and bg(
                 lambda: cmd("simpleos-keyboard-setup", "--set", c.get_active_id(), timeout=120), lambda _r: None))
             self.put(card([("Keyboard layout", "Applies right away – also on the login screen", kb)]))
+            self.put(label("<b>Date &amp; Time</b>", markup=True))
+            tz, ntp, can_ntp, synced = clock_info()
+            auto = Gtk.Switch(active=ntp)
+            auto.set_sensitive(can_ntp and bool(tz))
+            auto.connect("notify::active", self.set_ntp)
+            state = "Clock synchronized" if ntp and synced else ("Waiting for the internet…" if ntp else "Set by hand")
+            self.put(card([("Set the time automatically", f"From the internet · {state}" if can_ntp else
+                            "Not available on this system", auto),
+                           ("Time zone", tz.replace("_", " ") if tz else "Unknown",
+                            button("Change…", lambda: self.choose_timezone(tz)))]))
+            if not live_session():
+                self.put(card([("Password", "The password you sign in with",
+                                button("Change…", lambda: spawn(
+                                    "kitty", "--title", "Change password", "sh", "-c",
+                                    "passwd; printf '\\nPress Enter to close.'; read -r _")))]))
             self.put(label("<b>Focus</b>", markup=True))
             self.put(card([("Do Not Disturb", "Pause notifications until you turn it off", dnd),
                            ("Also turn off window effects", "No shadows or transparency while it is on", quiet)]))
@@ -996,6 +1110,61 @@ def main(argv):
                            ("Report a problem", "Saves details about this computer for a bug report",
                             button("Report", lambda: spawn("simpleos-report")))]))
             self.show_all_now()
+
+        def set_ntp(self, sw, _p):
+            want = sw.get_active()
+            if want == clock_info()[1]:
+                return
+            sw.set_sensitive(False)
+
+            def done(res):
+                # 126/127 = password dialog cancelled -> back silently
+                if getattr(res, "returncode", 1) not in (0, 126, 127):
+                    self.win.error("The setting could not be changed.")
+                self.refresh()
+            bg(lambda: cmd("timedatectl", "set-ntp", "true" if want else "false", timeout=120), done)
+
+        def choose_timezone(self, current):
+            zones = timezones()
+            if not zones:
+                return self.win.error("The list of time zones is not available.")
+            by = {}
+            for z in zones:
+                by.setdefault(z.partition("/")[0], []).append(z)
+            d = Gtk.Dialog(title="Time zone", transient_for=self.win, modal=True)
+            d.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Set", Gtk.ResponseType.OK)
+            d.set_default_response(Gtk.ResponseType.OK)
+            region, city = Gtk.ComboBoxText(), Gtk.ComboBoxText()
+            for r in by:
+                region.append(r, r.replace("_", " "))
+
+            def fill(_c=None):
+                city.remove_all()
+                for z in by.get(region.get_active_id() or "", []):
+                    city.append(z, z.partition("/")[2].replace("_", " ") or z)
+                city.set_active(0)
+            region.connect("changed", fill)
+            region.set_active_id(current.partition("/")[0] if current.partition("/")[0] in by else next(iter(by)))
+            fill()
+            city.set_active_id(current)
+            box = d.get_content_area()
+            box.set_spacing(8)
+            box.set_border_width(12)
+            box.add(label("Where are you?"))
+            box.add(region)
+            box.add(city)
+            d.show_all()
+            ok = d.run() == Gtk.ResponseType.OK
+            zone = city.get_active_id()
+            d.destroy()
+            if not ok or not zone or zone == current:
+                return
+
+            def done(res):
+                if getattr(res, "returncode", 1) not in (0, 126, 127):
+                    self.win.error("The time zone could not be changed.")
+                self.refresh()
+            bg(lambda: cmd("timedatectl", "set-timezone", zone, timeout=120), done)
 
         def set_firewall(self, sw, _p):
             want = sw.get_active()
@@ -1053,7 +1222,7 @@ def main(argv):
             self.pages = {}
             classes = {"system": SystemPage,
                        "sound": SoundPage, "display": DisplayPage, "wifi": WifiPage, "bluetooth": BluetoothPage,
-                       "appearance": AppearancePage, "power": PowerPage}
+                       "appearance": AppearancePage, "input": InputPage, "power": PowerPage}
             for key, title, icon in PAGES:
                 row = Gtk.ListBoxRow()
                 row.key = key

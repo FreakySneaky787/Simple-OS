@@ -7,7 +7,7 @@ Problem** – that tests the tool at the same time.
 
 - [x] Once: `./tools/release.sh key` – creates the release signing key and puts the public key into the image.
       Back up `~/.local/share/simpleos-release/gnupg` (without it no further update can be signed). Done for 1.0.
-- [ ] `./tools/release.sh version X.Y.Z` (1.0.2: done), changes committed **and pushed** – `publish` tags exactly this
+- [ ] `./tools/release.sh version X.Y.Z` (1.0.3: done), changes committed **and pushed** – `publish` tags exactly this
       commit and refuses one that is not on GitHub.
 - [ ] `./build_iso.sh` runs without errors. At the end the verify hook reports `Simple OS verify: OK` (in `build/build.log`).
 - [ ] `output/` contains `Simple-OS.iso`, `Simple-OS.iso.sha256`, `Simple-OS.packages.txt` and `repo/`
@@ -25,7 +25,7 @@ Problem** – that tests the tool at the same time.
 | UEFI + Secure Boot | `./test_vm.sh --secureboot` | as above, **and** after the installation in a terminal: `mokutil --sb-state` → `SecureBoot enabled` |
 | UEFI + encryption | `./test_vm.sh --uefi` | tick "Encrypt system" in the installer. After the restart the system asks for the password and then starts normally |
 
-- [ ] The installer's welcome page and slideshow show the new version ("Simple OS 1.0.2").
+- [ ] The installer's welcome page and slideshow show the new version ("Simple OS 1.0.3").
 
 Last results: 1.0 is installed and in daily use on the ThinkBook (UEFI).
 
@@ -141,3 +141,32 @@ installed once by Software Updates ("Installing new Simple OS components").
 - [ ] **After the installation:** `apt-get -s autoremove` lists nothing from Qt/KDE; `df` shows ~175 MB more free space.
 - [ ] **Memory:** `sysctl vm.swappiness vm.page-cluster` → 100 / 0.
 - [ ] **Video:** `vainfo` (package vainfo, optional) lists profiles on Intel/AMD; mpv with `--hwdec=auto` uses vaapi.
+
+## 8. What changed in 1.0.3
+
+Beginner traps (what a first-time user hits in the first hour). Test on a VM installed from the **1.0.2** ISO (update
+through Software Updates, or `sudo apt install ./simpleos_1.0.3_all.deb`) and on a fresh installation.
+
+- [ ] **Tools:** `curl --version`, `wget --version`, `unzip -v`, `zip -v`, `ssh -V` work in a terminal.
+- [ ] **Audio:** `alsamixer` opens; `ls /usr/share/alsa/ucm2` is not empty; on the ThinkBook speakers *and* the microphone
+      still work (Sound page lists them).
+- [ ] **Fonts:** open a page in Arabic/Thai/Hindi/Chinese (e.g. the Wikipedia main page in that language) → letters, no boxes.
+- [ ] **Language:** install in German (or any other language) with internet → after the first login Firefox is German,
+      the Setup Wizard's LibreOffice is German with a German dictionary (`dpkg -l 'hunspell-de*' 'firefox-esr-l10n-de'`).
+      Without internet during the installation: the packages arrive with the first Software Updates. English: nothing added.
+- [ ] **Second monitor / projector / TV:** plug in HDMI while logged in → it lights up to the right of the laptop screen
+      with a notification; Super+P → Duplicate works; unplug → the laptop screen alone, no black desktop.
+      Unplug while only the external screen was on → the laptop screen comes back.
+- [ ] **Mouse & Touchpad (Control Center):** natural scrolling off → two-finger scrolling reverses at once; tap to click off;
+      pointer speed; the values are still there after signing out; a Bluetooth/USB mouse plugged in later gets them too.
+- [ ] **Date & Time (Control Center → System):** switch "Set the time automatically" off and on (password prompt); change the
+      time zone → the taskbar clock follows; "Password → Change…" opens a terminal with `passwd`.
+- [ ] **Logs:** `journalctl --disk-usage` stays below ~200 MB.
+- [ ] **Wi-Fi band (Control Center → Wi-Fi):** while connected a row "Wi-Fi band" shows; choose 2.4 GHz only → the connection
+      restarts, `iw dev <wlan> link` shows freq 24xx; back to Automatic. (`nmcli -g 802-11-wireless.band connection show <name>`)
+- [ ] **Night light (real hardware):** Control Center → Display → Night light on → the screen turns warm at once (before, nothing
+      happened and `~/.cache/simpleos-nightlight.log` said "Could not connect to wayland display"); off → normal again.
+- [ ] **Microphone (ThinkPad E16 Gen 3):** Sound page lists a microphone input; `pactl info` no longer shows the speaker
+      monitor as the default source ("stereo-fallback" profile gone after alsa-ucm-conf).
+- [ ] **VPN:** the network menu → Edit Connections → Add offers OpenVPN.
+

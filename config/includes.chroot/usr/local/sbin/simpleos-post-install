@@ -14,6 +14,11 @@ apt-get -y autoremove --purge || echo "simpleos-post-install: autoremove failed 
 # otherwise the Setup Wizard does not find e.g. steam-installer (contrib)
 /usr/local/sbin/simpleos-system-setup --repos
 
+# Dictionary and Firefox/LibreOffice language packs for the language chosen in the installer (the image itself is English).
+# Needs the internet; without it nothing happens here and Software Updates installs them later. Limited in time so an
+# unreachable network cannot hold up the installation.
+timeout 300 /usr/local/sbin/simpleos-system-setup --language || echo "simpleos-post-install: language packs skipped" >&2
+
 # Remove the menu entry "Install Simple OS" from skel and all user homes
 for f in /etc/skel/.config/openbox/menu.xml /home/*/.config/openbox/menu.xml; do
     [ -f "$f" ] && sed -i '/simpleos-installer-begin/,/simpleos-installer-end/d' "$f"

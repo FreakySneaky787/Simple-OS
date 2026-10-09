@@ -52,12 +52,20 @@ apply() {
         [ "$want" = off ] || sos_notify "Night light is not installed (gammastep missing)." critical
         return 0
     fi
+    # -m randr: without it gammastep 2.0.9 (Debian 12) tries Wayland first, prints "Could not connect to wayland display"
+    # and exits with code 0 – on this X11 desktop the night light never did anything. A failure is recognized by its
+    # "Error:" line as well, because the exit code stays 0.
     if [ "$want" = off ]; then
-        gammastep -x >&2 2>&1
-    elif ! gammastep -P -O "$want" >&2 2>&1; then
+        gammastep -m randr -x >&2 2>&1
+    else
+        out=$(gammastep -m randr -P -O "$want" 2>&1) && rc=0 || rc=$?
+        [ -n "$out" ] && printf '%s\n' "$out" >&2
+        case "$out" in *"Error:"*|*"error:"*) rc=1 ;; esac
+        [ "$rc" -eq 0 ] || {
         sos_notify "Night light is not supported by this display. Virtual machines often can't change screen colors." critical
         mode=off; save
         return 0
+        }
     fi
     echo "$want" > "$RUN/simpleos-nightlight.state" 2>/dev/null
     applied=1

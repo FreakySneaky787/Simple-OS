@@ -1,4 +1,4 @@
-# Simple OS 1.0.2
+# Simple OS 1.0.3
 
 **SOS – Simple Operating System. Keep it Simple.**
 
@@ -6,30 +6,30 @@ Simple OS is a fast, quiet desktop built on Debian 12 "bookworm". It boots strai
 (Openbox, Catppuccin colors), sets itself up with a short wizard and keeps itself up to date. You don't
 need a terminal.
 
-## What's new in 1.0.2
+## What's new in 1.0.3
 
-A maintenance update. If you run Simple OS 1.0 or 1.0.1, you get it through **Software Updates** – no need to
-reinstall. The update adds a few small packages (about 40 MB) and removes nothing.
+A maintenance update. If you run Simple OS 1.0, 1.0.1 or 1.0.2, you get it through **Software Updates** – no need to
+reinstall. The update adds a few small packages (about 60 MB) and removes nothing.
 
-- **The clock is set over the internet now.** Before, nothing kept the time right; on a computer that also runs
-  Windows it was often off by hours.
-- **Apps that start with the computer work.** "Start Steam / Discord / … when I sign in" did nothing before.
-- **Previews in the file manager** for pictures, PDFs and more.
-- **No keyring password prompts.** Apps that store passwords (Chromium, Signal, Discord, VS Code …) used to ask
-  for a new "keyring" password; the keyring now opens with your login password.
-- **Smoother video:** hardware video decoding is available for Intel and AMD graphics (less heat and battery use).
-- **Smoother under memory pressure:** memory settings now fit the compressed swap Simple OS uses.
-- **Media keys** (play/pause, next, previous) and **Super+L** to lock the screen.
-- **After an installation** about 175 MB of leftovers of the installer are removed.
-- **Startup of the secure boot files:** updates of Debian's boot loader (shim, GRUB) now reach the EFI partition,
-  and a fallback loader is added if there is none, so the computer still starts after a firmware reset.
-- **Fixes:** the Hardware & Drivers assistant no longer offers an unsuitable NVIDIA driver to GeForce RTX 50 cards;
-  Control Center shows all refresh rates of a monitor and refreshes a page that is opened again; sliders for volume
-  no longer stutter; Bluetooth keyboards and phones can be paired (the window with the code opens); Wi-Fi passwords
-  are no longer visible to other programs while connecting; chat messages and mails that mention "battery" or "power" are no
-  longer hidden on desktop computers; removing Firefox no longer changes Simple OS's own default settings;
-  the accent color no longer changes the "Install Simple OS" badge; night light stays on after waking up; the
-  calculator in the search shows `2**3` correctly and understands `1,000`.
+- **Night light works.** On real computers the setting did nothing before; now the screen turns warm.
+- **New: Mouse & Touchpad** in the Control Center – natural scrolling, tap to click and pointer speed. Your settings
+  stay for mice you plug in later.
+- **New: Date & Time** in the Control Center – set the time automatically, change the time zone, change your password.
+- **New: Wi-Fi band.** If downloads drop to a few kB/s although the signal is strong (some routers' 5 GHz channel is
+  unstable), choose "2.4 GHz only" for that network in the Control Center → Wi-Fi.
+- **A monitor, projector or TV you plug in turns on by itself** and extends the desktop (Super+P changes it). Before,
+  it stayed dark.
+- **Your language.** Dictionaries, Firefox and LibreOffice come in the language you chose in the installer (needs the
+  internet; otherwise they follow with the first Software Updates). Before, LibreOffice always got a German dictionary.
+- **Sound on newer laptops:** speakers and microphone profiles (`alsa-ucm-conf`) were missing, so some laptops had no
+  microphone or only a generic output. `alsamixer` is there now.
+- **Web pages in every script:** Arabic, Hebrew, Thai, Hindi, Chinese, Japanese and more show letters instead of empty
+  boxes.
+- **The basics are in the box:** `curl`, `wget`, `unzip`, `zip` and `ssh`, and OpenVPN for the network menu.
+- **The system log is limited** to 200 MB.
+- **Fixes:** the Bluetooth switch could not turn on a Bluetooth that was blocked by the radio switch; "Report a
+  Problem" now contains Wi-Fi quality data (signal, retries, band) to help with slow connections; the title of one
+  Control Center page was missing.
 
 ## Download
 

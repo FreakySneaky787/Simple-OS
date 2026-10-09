@@ -31,7 +31,7 @@ set -u
 export DEBIAN_FRONTEND=noninteractive
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-usage() { echo "Usage: $0 [--browser firefox|chromium|mullvad] [--purge-firefox] [--office libreoffice|onlyoffice|none] [--gaming] | --repos | --upgrade | --refresh | --firewall on|off | --drivers PACKAGE…" >&2; exit 2; }
+usage() { echo "Usage: $0 [--browser firefox|chromium|mullvad] [--purge-firefox] [--office libreoffice|onlyoffice|none] [--gaming] | --repos | --upgrade | --refresh | --language | --firewall on|off | --drivers PACKAGE…" >&2; exit 2; }
 # The only packages --drivers may install (the same list as ALLOWED in simpleos-drivers)
 # Kernel/headers/firmware come from bookworm-backports via pinning (/etc/apt/preferences.d/simpleos-backports.pref)
 DRIVER_PACKAGES="firmware-linux-nonfree firmware-misc-nonfree firmware-intel-graphics firmware-amd-graphics
@@ -40,7 +40,7 @@ nvidia-tesla-470-driver linux-image-amd64 linux-headers-amd64 intel-microcode am
 
 [ "$(id -u)" -eq 0 ] || [ "${SIMPLEOS_SETUP_DRYRUN:-}" = 1 ] || { echo "simpleos-system-setup: must run as root (pkexec)" >&2; exit 1; }
 
-browser= purge_firefox=0 office=none gaming=0 repos_only=0 upgrade=0 refresh=0 drivers=0 firewall=
+browser= purge_firefox=0 office=none gaming=0 repos_only=0 upgrade=0 refresh=0 language=0 drivers=0 firewall=
 while [ $# -gt 0 ]; do
     case "$1" in
         --drivers)       [ $# -ge 2 ] || usage; drivers=1; shift; break ;;   # rest = package names
@@ -51,6 +51,7 @@ while [ $# -gt 0 ]; do
         --repos)         repos_only=1 ;;
         --upgrade)       upgrade=1 ;;
         --refresh)       refresh=1 ;;
+        --language)      language=1 ;;
         --firewall)      [ $# -ge 2 ] || usage; firewall=$2; shift ;;
         *)               usage ;;
     esac
@@ -64,7 +65,7 @@ case "$firewall" in ""|on|off) ;; *) usage ;; esac
 # Before, every section checked itself via a string ("$browser$gaming…" = "000") – after adding
 # --refresh a count of zeros no longer matched, and every --upgrade ended as an "invalid call" (exit 2).
 actions=0
-for a in "$repos_only" "$upgrade" "$refresh" "$drivers"; do [ "$a" = 1 ] && actions=$((actions + 1)); done
+for a in "$repos_only" "$upgrade" "$refresh" "$language" "$drivers"; do [ "$a" = 1 ] && actions=$((actions + 1)); done
 [ -n "$firewall" ] && actions=$((actions + 1))
 wizard=0
 if [ -n "$browser" ] || [ "$purge_firefox" = 1 ] || [ "$office" != none ] || [ "$gaming" = 1 ]; then wizard=1; fi
@@ -351,6 +352,61 @@ install_edition_pkgs() {
     fi
 }
 
+# ----------------------------------------------------------------- Language
+# Language packs for the system language (/etc/default/locale, chosen in the installer). The image is built in English
+# without them: Firefox and LibreOffice would stay English for every other language, and there would be no
+# dictionary for spell checking. Installed: the dictionary (hunspell), Firefox/LibreOffice in the language (only if
+# those are installed) and, for Chinese/Japanese/Korean, the Noto CJK font. Nothing for plain English (en_US).
+# Debian names the packages <prefix>-<language>-<country> (hunspell-de-de, firefox-esr-l10n-pt-br) or <prefix>-<language>.
+sys_locale() {
+    _l=$(sed -n 's/^LANG=//p' "${SIMPLEOS_LOCALE_FILE:-/etc/default/locale}" 2>/dev/null | head -n 1 | tr -d "\"'")
+    _l=${_l%%.*}
+    _l=${_l%%@*}
+    case "$_l" in ""|C|POSIX) return 1 ;; esac
+    printf '%s\n' "$_l"
+}
+lang_pick() {  # PREFIX LANGUAGE COUNTRY -> the first of PREFIX-LANGUAGE-COUNTRY, PREFIX-LANGUAGE that exists
+    for _c in "$1-$2-$3" "$1-$2"; do
+        if apt-cache show "$_c" >/dev/null 2>&1; then echo "$_c"; return 0; fi
+    done
+    return 1
+}
+lang_pkgs() {  # missing language packages of this system, one per line
+    _loc=$(sys_locale) || return 0
+    _lg=$(printf '%s' "${_loc%%_*}" | tr 'A-Z' 'a-z')
+    case "$_loc" in *_*) _cc=$(printf '%s' "${_loc#*_}" | tr 'A-Z' 'a-z') ;; *) _cc=$_lg ;; esac
+    {
+        lang_pick hunspell "$_lg" "$_cc" || { [ "$_lg" = en ] && echo hunspell-en-us; }
+        # en_US is what the programs speak anyway
+        if [ "$_lg-$_cc" != en-us ]; then
+            installed firefox-esr && lang_pick firefox-esr-l10n "$_lg" "$_cc"
+            installed libreoffice-common && lang_pick libreoffice-l10n "$_lg" "$_cc"
+        fi
+        case "$_lg" in zh|ja|ko) echo fonts-noto-cjk ;; esac
+    } | while read -r _p; do
+        [ -n "$_p" ] && ! installed "$_p" && echo "$_p"
+    done
+    return 0
+}
+# Never a reason to fail: a missing dictionary must not turn an update or the wizard into an error
+language_install() {
+    _pk=$(lang_pkgs)
+    [ -n "$_pk" ] || return 0
+    step "Installing language packs"
+    # shellcheck disable=SC2086
+    aptget --no-install-recommends install $_pk || echo "language packs could not be installed (ignored): $_pk" >&2
+    return 0
+}
+
+# Language packs only (simpleos-post-install after the installation; the package lists of a fresh system are empty,
+# so update first). No internet: no error – Software Updates and the Setup Wizard install them later.
+if [ "$language" -eq 1 ]; then
+    sys_locale >/dev/null || exit 0
+    apt_get_update || { echo "language packs: package lists could not be downloaded – later via Software Updates" >&2; exit 0; }
+    language_install
+    exit 0
+fi
+
 if [ "$upgrade" -eq 1 ]; then
     step "Checking for updates"
     dpkg --configure -a || fail "an interrupted installation could not be repaired"
@@ -399,6 +455,7 @@ if [ "$upgrade" -eq 1 ]; then
             printf '%s\n' "$planned" | mark_reboot
             # after the upgrade: the list of the edition that is installed now
             install_edition_pkgs
+            language_install
         else
             fail "updates could not be installed"
         fi
@@ -489,7 +546,7 @@ case "$office" in
             apt_update
             step "Installing LibreOffice (this can take a while)"
             aptget install libreoffice-writer libreoffice-calc libreoffice-impress libreoffice-draw \
-                libreoffice-gtk3 hunspell-de-de hunspell-en-us \
+                libreoffice-gtk3 hunspell-en-us \
                 || fail "LibreOffice could not be installed"
         fi ;;
     onlyoffice)
@@ -541,6 +598,9 @@ if [ "$gaming" -eq 1 ]; then
             || fail "Gaming package could not be installed completely"
     fi
 fi
+
+# Firefox/LibreOffice just installed (or already there) in the language of the system
+language_install
 
 if [ "$failed" -eq 0 ]; then
     step "Done"

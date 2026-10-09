@@ -14,12 +14,18 @@
 #                               setting: --best (otherwise Xorg takes the monitor's preferred mode, 60 Hz on
 #                               many 120/144/165 Hz monitors)
 #   simpleos-display --best     every active screen: the highest refresh rate of the current resolution
-# Tests: SIMPLEOS_DISPLAY_TIMEOUT = seconds until the automatic revert.
+#   simpleos-display --watch    (Openbox autostart) plug in a monitor/projector or TV -> it is switched on and extends
+#                               the desktop to the right, with a hint (Xorg only reports a new screen, it stays dark
+#                               until someone configures it); unplugged -> released; nothing left on -> all on again.
+#                               Waits for udev's DRM events, uses no CPU in between.
+#   simpleos-display --hotplug  one such check against the outputs remembered last (what --watch does per event)
+# Tests: SIMPLEOS_DISPLAY_TIMEOUT = seconds until the automatic revert, SIMPLEOS_DISPLAY_STATE = file with the outputs.
 
 SOS_NAME=simpleos-display SOS_TITLE=Display SOS_ICON=video-display SOS_PROMPT=Display
 TAB=$(printf '\t')
 SAVED=${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/simpleos/display
 TIMEOUT=${SIMPLEOS_DISPLAY_TIMEOUT:-15}
+HP_STATE=${SIMPLEOS_DISPLAY_STATE:-${XDG_RUNTIME_DIR:-/tmp}/simpleos-display.outputs}
 LIB=/usr/local/lib/simpleos/common.sh
 # "." on a missing file would end dash immediately -> check first
 [ -r "$LIB" ] || { notify-send "Display" "Simple OS is incomplete (missing $LIB)." 2>/dev/null; exit 0; }
@@ -39,7 +45,7 @@ sos_rofi_failed() {
 }
 
 case "${1:-}" in
-    --restore|--best) command -v xrandr >/dev/null || exit 0 ;;
+    --restore|--best|--watch|--hotplug) command -v xrandr >/dev/null || exit 0 ;;
     *) command -v xrandr >/dev/null || { sos_notify "Display settings are not available (xrandr missing)." critical; exit 0; } ;;
 esac
 
@@ -80,6 +86,94 @@ best() {
         fi
     done
 }
+hz() { printf '%s' "$1" | awk '{ printf "%d Hz", $1 + 0.5 }'; }
+# Display name instead of the output name
+pretty() {
+    n=${1##*-}; sos_is_num "$n" || n=
+    case "$1" in
+        eDP*|LVDS*|DSI*)            echo "Built-in display" ;;
+        HDMI*)                      echo "HDMI${n:+ $n}" ;;
+        DP*|DisplayPort*)           echo "DisplayPort${n:+ $n}" ;;
+        DVI*)                       echo "DVI${n:+ $n}" ;;
+        VGA*)                       echo "VGA${n:+ $n}" ;;
+        Virtual*|qxl*|default|XWAYLAND*) echo "Screen${n:+ $n}" ;;
+        *)                          echo "$1" ;;
+    esac
+}
+
+# Plugged in / unplugged since the last check ($HP_STATE: line 1 = connected outputs, line 2 = every output seen in this
+# session). New: if the saved layout (~/.config/simpleos/display, confirmed in Super+P) knows it, that layout is applied
+# again – a monitor that drops its signal when it goes to standby comes back where it was; otherwise it is switched on
+# to the right of an active screen (the same as "Extend right" in the menu), several new ones next to each other.
+# Gone: release the output. Nothing active afterwards (e.g. only the external screen was on and was unplugged): all on.
+# The hint only for an output not seen before in this session.
+hotplug() {
+    query
+    now=$(connected | tr '\n' ' ')
+    if [ ! -e "$HP_STATE" ]; then printf '%s\n%s\n' "$now" "$now" > "$HP_STATE"; return 0; fi
+    prev=$(sed -n 1p "$HP_STATE" 2>/dev/null)
+    seen=$(sed -n 2p "$HP_STATE" 2>/dev/null)
+    [ "$now" = "$prev" ] && return 0
+    sos_log "hotplug: [$prev] -> [$now]"
+    args= added= anchor= known=
+    for o in $prev; do
+        case " $now " in *" $o "*) ;; *) args="$args --output $o --off" ;; esac
+    done
+    for o in $(connected); do
+        case " $prev " in *" $o "*) is_on "$o" && { anchor=$o; break; } ;; esac
+    done
+    for o in $(connected); do
+        case " $prev " in *" $o "*) continue ;; esac
+        added="$added $o"
+        if [ -s "$SAVED" ] && head -n 1 "$SAVED" | grep -q -- "--output $o " && ! head -n 1 "$SAVED" | grep -q -- "--output $o --off"; then
+            known=1
+            continue
+        fi
+        if [ -n "$anchor" ]; then args="$args --output $o --auto --right-of $anchor"
+        else args="$args --output $o --auto --pos 0x0"; fi
+        anchor=$o
+    done
+    # shellcheck disable=SC2086
+    [ -n "$args" ] && { xrandr $args >&2 2>&1 || sos_log "hotplug: xrandr rejected: $args"; }
+    if [ -n "$known" ]; then
+        # shellcheck disable=SC2046
+        xrandr $(head -n 1 "$SAVED") >&2 2>&1 || sos_log "hotplug: saved layout rejected"
+    fi
+    query
+    on=0
+    for o in $(connected); do is_on "$o" && on=1; done
+    if [ "$on" -eq 0 ] && [ -n "$(connected)" ]; then
+        args= anchor=
+        for o in $(connected); do
+            if [ -n "$anchor" ]; then args="$args --output $o --auto --right-of $anchor"
+            else args="$args --output $o --auto --primary --pos 0x0"; fi
+            anchor=$o
+        done
+        # shellcheck disable=SC2086
+        xrandr $args >&2 2>&1 || sos_log "hotplug: switching all on failed: $args"
+    fi
+    fresh=
+    for o in $added; do
+        case " $seen " in *" $o "*) ;; *) fresh="$fresh $o"; seen="$seen $o " ;; esac
+    done
+    printf '%s\n%s\n' "$now" "$seen" > "$HP_STATE"
+    if [ -n "$fresh" ]; then
+        names=
+        for o in $fresh; do names="${names:+$names, }$(pretty "$o")"; done
+        sos_notify "Display connected: $names. The desktop now extends onto it – Super+P changes that." low
+    fi
+}
+watch_displays() {
+    command -v udevadm >/dev/null || { sos_log "udevadm missing"; return 0; }
+    query
+    now=$(connected | tr '\n' ' ')
+    printf '%s\n%s\n' "$now" "$now" > "$HP_STATE"
+    udevadm monitor --udev --subsystem-match=drm 2>/dev/null | while read -r _ _ ev _; do
+        [ "$ev" = change ] || continue
+        sleep 1
+        hotplug
+    done
+}
 case "${1:-}" in
     --restore)
         if [ -s "$SAVED" ]; then
@@ -95,22 +189,10 @@ case "${1:-}" in
         fi
         exit 0 ;;
     --best) best; exit 0 ;;
+    --hotplug) hotplug; exit 0 ;;
+    --watch) watch_displays; exit 0 ;;
 esac
 command -v rofi >/dev/null || { sos_log "rofi missing"; sos_rofi_failed; }
-hz() { printf '%s' "$1" | awk '{ printf "%d Hz", $1 + 0.5 }'; }
-# Display name instead of the output name
-pretty() {
-    n=${1##*-}; sos_is_num "$n" || n=
-    case "$1" in
-        eDP*|LVDS*|DSI*)            echo "Built-in display" ;;
-        HDMI*)                      echo "HDMI${n:+ $n}" ;;
-        DP*|DisplayPort*)           echo "DisplayPort${n:+ $n}" ;;
-        DVI*)                       echo "DVI${n:+ $n}" ;;
-        VGA*)                       echo "VGA${n:+ $n}" ;;
-        Virtual*|qxl*|default|XWAYLAND*) echo "Screen${n:+ $n}" ;;
-        *)                          echo "$1" ;;
-    esac
-}
 # Current state of all connected outputs as xrandr arguments (for reverting/saving)
 snapshot() {
     args=

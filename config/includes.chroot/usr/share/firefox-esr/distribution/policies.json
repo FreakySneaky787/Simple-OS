@@ -1,6 +1,5 @@
 {
   "policies": {
-    "RequestedLocales": ["en-US"],
     "DisableTelemetry": true,
     "DisableFirefoxStudies": true,
     "DisablePocket": true,

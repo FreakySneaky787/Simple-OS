@@ -30,6 +30,9 @@ LIB=/usr/local/lib/simpleos/common.sh
 . "$LIB"
 sos_log_init "$@"
 export LC_ALL=C
+# iw, rfkill, swapon … live in /usr/sbin, which a normal user's PATH on Debian does not contain: without this the report
+# said "(iw not installed)" and had no Wi-Fi data at all
+PATH=$PATH:${SIMPLEOS_SBIN:-/usr/sbin:/sbin}
 
 osr() { sed -n "s/^$1=//p" "$OS_RELEASE" 2>/dev/null | head -n 1 | sed 's/^"//; s/"$//'; }
 # Command with a time limit; if it is missing, the report says so instead of an empty spot
@@ -115,7 +118,14 @@ collect() {
         echo "--- Wi-Fi $i: driver $(basename "$(readlink -f "$SYS/sys/class/net/$i/device/driver" 2>/dev/null)" 2>/dev/null)"
         run iw dev "$i" link | grep -E 'signal|bitrate|freq'
         run iw dev "$i" get power_save
+        # Transmission quality: many retries/failures or a low bitrate with good signal = interference (Bluetooth on 2.4 GHz,
+        # a crowded channel), beacon loss = the chip loses the router now and then
+        run iw dev "$i" station dump | grep -E 'signal:|signal avg|tx bitrate|rx bitrate|tx retries|tx failed|beacon loss|expected throughput|connected time'
     done
+    run iw reg get | grep -E 'country|phy#'
+    # Bluetooth shares the antenna/2.4 GHz band with Wi-Fi on most laptop chips: searching for devices or streaming to
+    # headphones can pull the Wi-Fi speed down to a few kB/s
+    echo "Bluetooth:    $(run bluetoothctl show | grep -E 'Powered|Discovering' | tr -d '\t' | tr '\n' ' ') connected devices: $(run bluetoothctl devices Connected | grep -c Device)"
     for p in "$SYS"/sys/module/rtw89_core/parameters/disable_ps_mode "$SYS"/sys/module/rtw89_pci/parameters/disable_aspm_l1 \
              "$SYS"/sys/module/rtw88_pci/parameters/disable_aspm "$SYS"/sys/module/mt7921e/parameters/disable_aspm; do
         [ -r "$p" ] && echo "${p#"$SYS"/sys/module/} = $(cat "$p")"

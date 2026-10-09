@@ -14,6 +14,8 @@
 SOS_NAME=simpleos-bluetooth SOS_TITLE=Bluetooth SOS_ICON=bluetooth SOS_PROMPT=Bluetooth SOS_CORNER=1
 TAB=$(printf '\t')
 SCAN=${SIMPLEOS_BT_SCAN:-10}
+# rfkill lives in /usr/sbin, which a normal user's PATH on Debian does not contain (the unblock below never ran)
+PATH=$PATH:${SIMPLEOS_SBIN:-/usr/sbin:/sbin}
 LIB=/usr/local/lib/simpleos/common.sh
 [ -r "$LIB" ] || { notify-send "Bluetooth" "Simple OS is incomplete (missing $LIB)." 2>/dev/null; exit 0; }
 . "$LIB"

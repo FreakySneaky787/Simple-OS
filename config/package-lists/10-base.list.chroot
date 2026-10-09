@@ -13,6 +13,13 @@ systemd-timesyncd
 polkitd
 # pkexec: graphical password prompt (lxpolkit) for installations from the Setup Wizard
 pkexec
+# The tools every tutorial and install script assumes (curl/wget downloads, unzip/zip archives, ssh); the image is
+# built without Recommends and Priority: standard, so none of them was there (~10 MB)
+curl
+wget
+unzip
+zip
+openssh-client
 dosfstools
 exfatprogs
 ntfs-3g

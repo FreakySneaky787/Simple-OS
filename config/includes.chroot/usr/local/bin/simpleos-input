@@ -1,0 +1,105 @@
+#!/bin/sh
+# Simple OS – mouse and touchpad settings (Control Center → Mouse & Touchpad)
+#   simpleos-input --status        one "key=value" per line: touchpad=yes|no mouse=yes|no natural=on|off tap=on|off
+#                                  tspeed=<-1..1> mnatural=on|off mspeed=<-1..1> (the values in force)
+#   simpleos-input --set KEY VALUE natural|tap|mnatural: on|off; tspeed|mspeed: -1 … 1 – applies right away and is saved
+#   simpleos-input --apply         apply the saved values (once, silently)
+#   simpleos-input --watch         (Openbox autostart) apply, and again when an input device is plugged in later
+#                                  (Bluetooth mouse, USB mouse); waits for udev events, no CPU in between
+# natural = touchpad scrolling direction like a phone (Simple OS default, as on macOS), tap = tap to click,
+# tspeed/mspeed = pointer speed of touchpad/mouse, mnatural = same scrolling direction for a mouse wheel.
+# Mechanism: libinput properties through xinput (the same options as /etc/X11/xorg.conf.d/40-simpleos-input.conf,
+# which sets the defaults). Saved in ~/.config/simpleos/input; without a saved value the defaults stay untouched.
+# A touchpad is a device with "libinput Tapping Enabled", a mouse any other with "libinput Accel Speed".
+# No set -e, exit 0 (except usage). Tests: SIMPLEOS_INPUT_CONF replaces the file.
+
+SOS_NAME=simpleos-input SOS_TITLE="Mouse & Touchpad" SOS_ICON=input-mouse
+LIB=/usr/local/lib/simpleos/common.sh
+[ -r "$LIB" ] || exit 0
+. "$LIB"
+sos_log_init "$@"
+CONF=${SIMPLEOS_INPUT_CONF:-${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/simpleos/input}
+command -v xinput >/dev/null || { sos_log "xinput missing"; [ "${1:-}" = --status ] && echo "touchpad=no" && echo "mouse=no"; exit 0; }
+
+# "touchpad" or "mouse" per device id: "<id> touchpad|mouse", slave pointers only, virtual devices left out
+devices() {
+    for id in $(xinput list --id-only 2>/dev/null); do
+        props=$(xinput list-props "$id" 2>/dev/null) || continue
+        case "$props" in
+            *"libinput Tapping Enabled"*) echo "$id touchpad" ;;
+            *"libinput Accel Speed"*)     echo "$id mouse" ;;
+        esac
+    done
+}
+saved() { sed -n "s/^$1=//p" "$CONF" 2>/dev/null | head -n 1; }
+# set_prop ID "libinput …" VALUE: only if the device has the property
+set_prop() {
+    xinput list-props "$1" 2>/dev/null | grep -qF "$2" && xinput set-prop "$1" "$2" "$3" >&2 2>&1
+}
+onoff() { [ "$1" = on ] && echo 1 || echo 0; }
+valid_speed() { awk -v v="$1" 'BEGIN { exit !(v ~ /^-?[0-9]*[.]?[0-9]+$/ && v + 0 >= -1 && v + 0 <= 1) }'; }
+
+apply() {
+    # Nothing saved: the Xorg defaults stay as they are (and no xinput calls at every login / device event)
+    [ -s "$CONF" ] || return 0
+    devices | while read -r id kind; do
+        if [ "$kind" = touchpad ]; then
+            v=$(saved natural); [ -n "$v" ] && set_prop "$id" "libinput Natural Scrolling Enabled" "$(onoff "$v")"
+            v=$(saved tap);     [ -n "$v" ] && set_prop "$id" "libinput Tapping Enabled" "$(onoff "$v")"
+            v=$(saved tspeed);  [ -n "$v" ] && set_prop "$id" "libinput Accel Speed" "$v"
+        else
+            v=$(saved mnatural); [ -n "$v" ] && set_prop "$id" "libinput Natural Scrolling Enabled" "$(onoff "$v")"
+            v=$(saved mspeed);   [ -n "$v" ] && set_prop "$id" "libinput Accel Speed" "$v"
+        fi
+    done
+    return 0
+}
+# Value in force of the first device of this kind: PROP-NAME KIND
+current() {
+    id=$(devices | awk -v k="$2" '$2 == k { print $1; exit }')
+    [ -n "$id" ] || return 0
+    xinput list-props "$id" 2>/dev/null | sed -n "s/^[[:space:]]*$1 ([0-9]*):[[:space:]]*//p" | head -n 1
+}
+
+case "${1:-}" in
+    --status)
+        d=$(devices)
+        tp=no mo=no
+        printf '%s\n' "$d" | grep -q ' touchpad$' && tp=yes
+        printf '%s\n' "$d" | grep -q ' mouse$' && mo=yes
+        echo "touchpad=$tp"
+        echo "mouse=$mo"
+        if [ "$tp" = yes ]; then
+            [ "$(current "libinput Natural Scrolling Enabled" touchpad)" = 1 ] && echo natural=on || echo natural=off
+            [ "$(current "libinput Tapping Enabled" touchpad)" = 1 ] && echo tap=on || echo tap=off
+            echo "tspeed=$(current "libinput Accel Speed" touchpad)"
+        fi
+        if [ "$mo" = yes ]; then
+            [ "$(current "libinput Natural Scrolling Enabled" mouse)" = 1 ] && echo mnatural=on || echo mnatural=off
+            echo "mspeed=$(current "libinput Accel Speed" mouse)"
+        fi
+        exit 0 ;;
+    --set)
+        key=${2:-} val=${3:-}
+        case "$key" in
+            natural|tap|mnatural) case "$val" in on|off) ;; *) echo "Usage: $0 --set $key on|off" >&2; exit 2 ;; esac ;;
+            tspeed|mspeed)        valid_speed "$val" || { echo "Usage: $0 --set $key -1…1" >&2; exit 2; } ;;
+            *) echo "Usage: $0 --set natural|tap|mnatural on|off | tspeed|mspeed -1…1" >&2; exit 2 ;;
+        esac
+        mkdir -p "${CONF%/*}" 2>/dev/null
+        { grep -v "^$key=" "$CONF" 2>/dev/null; echo "$key=$val"; } > "$CONF.new" && cat "$CONF.new" > "$CONF"
+        rm -f "$CONF.new"
+        apply
+        exit 0 ;;
+    --apply) apply; exit 0 ;;
+    --watch)
+        apply
+        command -v udevadm >/dev/null || exit 0
+        udevadm monitor --udev --subsystem-match=input 2>/dev/null | while read -r _ _ ev _; do
+            [ "$ev" = add ] || continue
+            sleep 2
+            apply
+        done
+        exit 0 ;;
+    *) echo "Usage: $0 --status | --set KEY VALUE | --apply | --watch" >&2; exit 2 ;;
+esac

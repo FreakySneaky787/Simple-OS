@@ -191,7 +191,29 @@ the lb default files, the generated graphics and the fastfetch package.
 - Keyboard layout (`simpleos-keyboard-setup`, Control Center → System, Menu → Settings): common layouts including
   variants (Swiss German/French, German without dead keys, US international …), applied at once with `setxkbmap`,
   for the account and system-wide via `localectl` (`/etc/default/keyboard`, also the login screen).
+- Monitor plugged in later (`simpleos-display --watch`, Openbox autostart): Xorg only reports a new screen, it stays dark
+  until someone configures it. The watcher waits for udev's DRM events (no polling), switches the new screen on to the
+  right of the existing ones with a hint (Super+P changes the layout), releases unplugged ones and turns all screens on
+  again if none is left. It remembers the connected outputs in `$XDG_RUNTIME_DIR/simpleos-display.outputs`.
+- Mouse & touchpad (`simpleos-input`, Control Center → Mouse & Touchpad): natural scrolling, tap to click and pointer
+  speed through libinput properties (`xinput`), saved in `~/.config/simpleos/input`; the Xorg defaults
+  (`40-simpleos-input.conf`) stay untouched until a value is saved. `--watch` re-applies when a device is plugged in.
+- Wi-Fi band (Control Center → Wi-Fi, shown while connected): Automatic / 5 GHz only / 2.4 GHz only per connection
+  (`nmcli connection modify … 802-11-wireless.band a|bg`, then reconnect). Found on a Sunrise router whose wide DFS channel
+  on 5 GHz (160 MHz, ch. 124) made downloads drop to a few kB/s with a perfect signal; 2.4 GHz was steady.
+- Date & time (Control Center → System): automatic time (`timedatectl set-ntp`) and time zone (region + city,
+  `timedatectl set-timezone`; polkit asks for the password); "Password" opens `passwd` in a terminal.
 - Fonts: Inter, JetBrains Mono, Noto Color Emoji, Liberation 2; fontconfig with RGB subpixel and slight hinting.
+  Noto Sans (`fonts-noto-core`, all writing systems) and WenQuanYi Micro Hei (small CJK font) fill the gaps so web pages in
+  Arabic, Thai, Hindi, Chinese … show letters instead of empty boxes; Chinese/Japanese/Korean systems get Noto CJK.
+- Language packs (`simpleos-system-setup --language`): the image is English; for the system language chosen in the
+  installer the dictionary (hunspell), Firefox and LibreOffice language packs are installed – after the installation
+  (`simpleos-post-install`, needs the internet), by the Setup Wizard and by Software Updates. Names are resolved with
+  `apt-cache` (`<prefix>-<language>-<country>`, then `<prefix>-<language>`). Firefox's `policies.json` no longer
+  forces `en-US`.
+- Everyday tools in the image: curl, wget, unzip, zip, openssh-client (tutorials and install scripts expect them),
+  alsa-ucm-conf (audio profiles of current laptops) and alsa-utils (alsamixer), OpenVPN for NetworkManager.
+  journald keeps at most 200 MB of logs (`/etc/systemd/journald.conf.d/10-simpleos.conf`).
 - picom: short fades (~50 ms) for windows only, menus/Rofi/tooltips instant; on real hardware full-screen unredirect
   (games/videos without compositor latency). GLX with `use-damage`, `glx-no-stencil`, `glx-no-rebind-pixmap`.
   Software OpenGL only (llvmpipe, e.g. a VM without 3D; detected with `glxinfo`): `simpleos-picom` starts

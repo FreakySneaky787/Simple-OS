@@ -110,6 +110,43 @@ for pkg in systemd-timesyncd python3-xdg libpam-gnome-keyring tumbler gvfs-fuse 
 done
 check "openbox-xdg-autostart cannot import PyXDG" "python3 -c 'from xdg import BaseDirectory; from xdg.DesktopEntry import DesktopEntry'"
 check "systemd-timesyncd not enabled" "systemctl is-enabled systemd-timesyncd >/dev/null 2>&1"
+# What every beginner's tutorial assumes (curl/wget/unzip/ssh), audio profiles of current laptops (libasound2-data only
+# Recommends alsa-ucm-conf), fonts for all writing systems, OpenVPN in the network menu
+for pkg in curl wget unzip zip openssh-client alsa-ucm-conf alsa-utils fonts-noto-core fonts-wqy-microhei network-manager-openvpn-gnome; do
+    check "package $pkg not installed (the image is built without Recommends)" "dpkg-query -W -f='\${Status}' $pkg 2>/dev/null | grep -q 'install ok installed'"
+done
+for lang in ar he th hi bn ta ka hy zh-cn ja ko; do
+    check "no font for ':lang=$lang' – web pages would show empty boxes" "fc-list ':lang=$lang' family | grep -q ."
+done
+check "journald is not limited (/etc/systemd/journald.conf.d/10-simpleos.conf)" "grep -qx 'SystemMaxUse=200M' /etc/systemd/journald.conf.d/10-simpleos.conf"
+check "Firefox policies.json: invalid JSON" "python3 -c 'import json,sys; json.load(open(sys.argv[1]))' /usr/share/firefox-esr/distribution/policies.json"
+check "Firefox policies.json forces en-US (RequestedLocales) – a language pack would never be used" "! grep -q RequestedLocales /usr/share/firefox-esr/distribution/policies.json"
+# Language packs (simpleos-system-setup --language): which packages belong to which system language. apt-cache mock = list of
+# known packages; the functions are cut out of the script
+LT=$(mktemp -d)
+mkdir -p "$LT/bin"
+printf '#!/bin/sh\ngrep -qx "$2" "$LT/known"\n' > "$LT/bin/apt-cache"
+chmod 0755 "$LT/bin/apt-cache"
+printf '%s\n' hunspell-de-de firefox-esr-l10n-de libreoffice-l10n-de hunspell-fr firefox-esr-l10n-fr libreoffice-l10n-fr \
+    hunspell-pt-br firefox-esr-l10n-pt-br libreoffice-l10n-pt-br libreoffice-l10n-pt hunspell-en-us hunspell-en-gb firefox-esr-l10n-en-gb \
+    libreoffice-l10n-en-gb libreoffice-l10n-en-us firefox-esr-l10n-zh-cn libreoffice-l10n-zh-cn > "$LT/known"
+awk '/^sys_locale\(\)/ { p = 1 } p { print } /^language_install\(\)/ { q = 1 } q && /^}/ { exit }' /usr/local/sbin/simpleos-system-setup > "$LT/lang.sh"
+cat > "$LT/run.sh" <<'LSH'
+step() { :; }
+installed() { case "$1" in firefox-esr|libreoffice-common) return 0 ;; esac; return 1; }
+. "$LT/lang.sh"
+echo "LANG=$1" > "$LT/locale"
+SIMPLEOS_LOCALE_FILE=$LT/locale lang_pkgs | tr '\n' ' '
+LSH
+for t in 'de_DE.UTF-8|hunspell-de-de firefox-esr-l10n-de libreoffice-l10n-de ' 'fr_CA.UTF-8|hunspell-fr firefox-esr-l10n-fr libreoffice-l10n-fr ' \
+         'pt_BR.UTF-8|hunspell-pt-br firefox-esr-l10n-pt-br libreoffice-l10n-pt-br ' 'pt_PT.UTF-8|libreoffice-l10n-pt ' \
+         'en_US.UTF-8|hunspell-en-us ' 'en_GB.UTF-8|hunspell-en-gb firefox-esr-l10n-en-gb libreoffice-l10n-en-gb ' 'en_IE.UTF-8|hunspell-en-us ' \
+         'zh_CN.UTF-8|firefox-esr-l10n-zh-cn libreoffice-l10n-zh-cn fonts-noto-cjk ' 'ja_JP.UTF-8|fonts-noto-cjk ' 'C.UTF-8|' ; do
+    lt_loc=${t%%|*} lt_want=${t#*|}
+    lt_got=$(LT=$LT PATH="$LT/bin:$PATH" sh "$LT/run.sh" "$lt_loc" 2>&1)
+    check "language packs for $lt_loc: got [$lt_got] instead of [$lt_want]" "[ '$lt_got' = '$lt_want' ]"
+done
+rm -rf "$LT"
 # ---- Graphics/firmware for new laptops (e.g. Intel Core 5 210H, Raptor Lake 0xA7AA): kernel from bookworm-backports
 #      (6.1 does not know the graphics -> 800x600), firmware 2025 incl. firmware-intel-graphics, microcode; a fixed
 #      firmware list instead of live-build's automatic selection (tools/lb_config.sh --firmware-chroot false)
@@ -826,11 +863,11 @@ rm -f "$wt/apt-stamp"
 hcase "$U" "checking fails, updates known -> window with a hint" "" "UPDATES=1 PKEXEC_RC=1" "1" \
     'grep -q "could not check online" $S/rofi.args && [ "$(row 0 1)" = "Install now" ]'
 hcase "$U" "checking fails, nothing known -> notification instead of 'up to date'" "" "UPDATES=0 PKEXEC_RC=1" "" \
-    'grep -q "could not be checked right now" $S/notify && ! grep -q "up to date" $S/notify'
+    'grep -q "could not be checked right now" $S/notify && ! grep -qs "up to date" $S/notify'
 hcase "$U" "an update that would only work by removing does not count" "" "UPDATES=2 NEEDREMOVE=1" "-" \
     'grep -q "<b>2 updates available</b>" $S/rofi.args && ! grep -q "firmware-misc-nonfree\|linux-image-6" $S/rofi.args'
 hcase "$U" "held-back updates -> an honest notification instead of 'up to date'" "" "UPDATES=1 PKEXEC_OUT=HELD:_2" "0" \
-    'grep -q "2 updates could not be installed automatically" $S/notify && ! grep -q "up to date" $S/notify'
+    'grep -q "2 updates could not be installed automatically" $S/notify && ! grep -qs "up to date" $S/notify'
 # Restart: never directly from the notification, only after asking ("Restart now" / "Later")
 touch "$wt/reboot-required"
 hcase "$U" "restart: notification clicked, then Later -> no restart" "" \
@@ -847,7 +884,7 @@ rm -f "$wt/reboot-required"
 hcase "$U" "new Simple OS edition first, by name" "" "UPDATES=2 NEWEDITION=1" "-" \
     'grep -q "<b>3 updates available</b>" $S/rofi.args && grep -q "^Simple OS 1.1, firefox-esr, libc6" $S/rofi.args && ! grep -q "simpleos" $S/rofi.args'
 hcase "$U" "new edition installed -> sign-in hint instead of 'up to date'" "" "UPDATES=1 NEWEDITION=1" "0" \
-    'grep -q "Simple OS 1.1 is installed. Sign out and back in" $S/notify && ! grep -q "up to date" $S/notify'
+    'grep -q "Simple OS 1.1 is installed. Sign out and back in" $S/notify && ! grep -qs "up to date" $S/notify'
 hcase "$U" "nothing to do -> its own notification" "" "UPDATES=1 PKEXEC_OUT=UPTODATE:_1" "0" 'grep -q "there was nothing to install" $S/notify'
 hcase "$U" "password cancelled" "" "UPDATES=1 PKEXEC_RC=126" "0" 'grep -q "No password entered" $S/notify'
 hcase "$U" "installation fails" "" "UPDATES=1 PKEXEC_RC=1" "0" 'grep -q "could not be installed. Details: ~/.cache/simpleos-update.log" $S/notify'
@@ -885,9 +922,9 @@ hcase "$U" "window: firmware first, release names not as devices" "" "UPDATES=1 
     'grep -q "<b>3 updates available</b>" $S/rofi.args && grep -q "^System Firmware (firmware), UEFI dbx (firmware), firefox-esr" $S/rofi.args &&
      ! grep -q "ThinkBook System Update" $S/rofi.args'
 hcase "$U" "firmware needs the charger -> hint instead of 'up to date'" "" "UPDATES=0 FIRMWARE=1 PKEXEC_OUT=FIRMWARE:_needs-power" "0" \
-    'grep -q "plug in the charger" $S/notify && ! grep -q "up to date" $S/notify'
+    'grep -q "plug in the charger" $S/notify && ! grep -qs "up to date" $S/notify'
 hcase "$U" "firmware update fails -> its own notification" "" "UPDATES=0 FIRMWARE=1 PKEXEC_OUT=FIRMWARE:_failed" "0" \
-    'grep -q "firmware update could not be installed" $S/notify && ! grep -q "up to date" $S/notify'
+    'grep -q "firmware update could not be installed" $S/notify && ! grep -qs "up to date" $S/notify'
 hcase "$U" "fwupdmgr missing -> packages only" "fwupdmgr" "UPDATES=1" "-" 'grep -q "<b>1 update available</b>" $S/rofi.args'
 # BIOS update installed, still pending after the restart -> report it honestly once, marker gone
 mkdir -p "$wt/home/.cache/simpleos"
@@ -984,7 +1021,7 @@ hcase "$SHOT --area" "Shift+Print: area" "" "" "" \
 hcase "$SHOT --area" "Shift+Print: selection cancelled -> silent" "" \
     "MAIM_RC=1 MAIM_ERR=Selection_was_cancelled_by_keystroke" "" '[ ! -s $S/notify ] && [ ! -s $S/xclip ]'
 hcase "$SHOT" "xclip missing -> saved, not copied" "xclip" "" "" \
-    'grep -q "Screenshot saved" $S/notify && ! grep -q "copied" $S/notify'
+    'grep -q "Screenshot saved" $S/notify && ! grep -qs "copied" $S/notify'
 hcase "$SHOT" "maim fails -> notification" "" "MAIM_RC=1" "" 'grep -q "could not be saved" $S/notify && [ ! -s $S/xclip ]'
 hcase "$SHOT" "maim missing -> notification" "maim" "" "" 'grep -q "maim is missing" $S/notify'
 rm -rf "${wt:?}/home/Pictures"
@@ -1110,9 +1147,96 @@ hcase "$DISP" "HDMI only" "" "XR=dual" "6 0 -" 'grep -qx "xrandr --output HDMI-1
 hcase "$DISP" "screen submenu: HDMI resolution" "" "XR=dual" "1 0 1 0 -" \
     '[ "$(row 1 1)" = "Resolution  1280x1024" ] && grep -qx "xrandr --output HDMI-1 --mode 1280x720" $S/xrandr'
 rm -f "$SAVED_DISP"
+# Hotplug: SIMPLEOS_DISPLAY_STATE holds the outputs of the last check
+HPS=$wt/hotplug-state
+rm -f "$HPS"
+hcase "$DISP --hotplug" "hotplug: first call only remembers" "" "XR=dual SIMPLEOS_DISPLAY_STATE=$HPS" "" \
+    '! grep -q -- "--output" $S/xrandr && [ ! -s $S/notify ] && grep -q "Virtual-1 HDMI-1" '"$HPS"
+printf 'Virtual-1 ' > "$HPS"
+hcase "$DISP --hotplug" "hotplug: monitor plugged in -> extend right, hint" "" "XR=dual SIMPLEOS_DISPLAY_STATE=$HPS" "" \
+    'grep -qx "xrandr --output HDMI-1 --auto --right-of Virtual-1" $S/xrandr && grep -q "Display connected: HDMI 1" $S/notify &&
+     grep -q "Virtual-1 HDMI-1" '"$HPS"
+hcase "$DISP --hotplug" "hotplug: nothing changed -> nothing happens" "" "XR=dual SIMPLEOS_DISPLAY_STATE=$HPS" "" \
+    '! grep -q -- "--output" $S/xrandr && [ ! -s $S/notify ]'
+hcase "$DISP --hotplug" "hotplug: monitor unplugged -> released, silent" "" "SIMPLEOS_DISPLAY_STATE=$HPS" "" \
+    'grep -qx "xrandr --output HDMI-1 --off" $S/xrandr && ! grep -q -- "--right-of" $S/xrandr && [ ! -s $S/notify ]'
+printf 'HDMI-1 ' > "$HPS"
+hcase "$DISP --hotplug" "hotplug: the only screen was replaced -> new one at 0x0" "" "SIMPLEOS_DISPLAY_STATE=$HPS" "" \
+    'grep -qx "xrandr --output HDMI-1 --off --output Virtual-1 --auto --pos 0x0" $S/xrandr'
+# a saved layout (Super+P, confirmed) knows the monitor: it comes back where it was; a monitor that drops its signal in
+# standby (comes back = "new" again) gets no second hint
+mkdir -p "${SAVED_DISP%/*}"
+HPL="--output Virtual-1 --mode 1920x1080 --rate 60.00 --pos 0x0 --primary --output HDMI-1 --mode 1280x1024 --rate 60.02 --pos 1920x0"
+echo "$HPL" > "$SAVED_DISP"
+printf 'Virtual-1 \nVirtual-1 \n' > "$HPS"
+hcase "$DISP --hotplug" "hotplug: saved layout is applied again, hint the first time" "" "XR=dual SIMPLEOS_DISPLAY_STATE=$HPS" "" \
+    'grep -qx "xrandr $HPL" $S/xrandr && ! grep -q -- "--right-of" $S/xrandr && grep -q "Display connected: HDMI 1" $S/notify'
+printf 'Virtual-1 \nVirtual-1 HDMI-1 \n' > "$HPS"
+hcase "$DISP --hotplug" "hotplug: the same monitor comes back (standby) -> saved layout, no second hint" "" "XR=dual SIMPLEOS_DISPLAY_STATE=$HPS" "" \
+    'grep -qx "xrandr $HPL" $S/xrandr && [ ! -s $S/notify ]'
+rm -f "$HPS" "$SAVED_DISP"
 hcase "$DISP" "advanced -> arandr" "" "" "2" 'waitfor $S/arandr'
 hcase "$DISP" "rofi missing -> arandr" "rofi" "" "" 'waitfor $S/arandr && grep -q "could not open" $S/notify'
 hcase "$DISP" "xrandr missing -> notification" "xrandr" "" "" 'grep -q "xrandr missing" $S/notify'
+
+# ---- Mouse & touchpad (simpleos-input, Control Center → Mouse & Touchpad): libinput properties through xinput.
+#      Dummy: device 11 = touchpad (tap, natural scrolling, speed), 12 = mouse, 13 = keyboard
+IN=/usr/local/bin/simpleos-input
+check "$IN: missing/syntax error" "[ -x $IN ] && sh -n $IN"
+cat > "$wt/mock/xinput" <<'MOCK'
+#!/bin/sh
+echo "xinput $*" >> "$WT/xinput"
+case "$1" in
+    list) printf '11\n12\n13\n' ;;
+    list-props)
+        case "$2" in
+            11) printf "Device 'Touchpad':\n\tDevice Enabled (170):\t1\n\tlibinput Tapping Enabled (329):\t1\n\tlibinput Natural Scrolling Enabled (333):\t1\n\tlibinput Accel Speed (343):\t0.000000\n" ;;
+            12) printf "Device 'Mouse':\n\tDevice Enabled (170):\t1\n\tlibinput Natural Scrolling Enabled (333):\t0\n\tlibinput Accel Speed (343):\t-0.200000\n" ;;
+            *)  printf "Device 'Keyboard':\n\tDevice Enabled (170):\t1\n" ;;
+        esac ;;
+esac
+exit 0
+MOCK
+chmod 0755 "$wt/mock/xinput"
+INC=$wt/home/.config/simpleos/input
+rm -f "$INC"
+hcase "$IN --status" "status: touchpad and mouse" "" "" "" \
+    '[ "$(cat $S/out)" = "touchpad=yes
+mouse=yes
+natural=on
+tap=on
+tspeed=0.000000
+mnatural=off
+mspeed=-0.200000" ]'
+hcase "$IN --apply" "nothing saved -> the defaults stay untouched" "" "" "" '! grep -qs "set-prop" $S/xinput'
+hcase "$IN --set natural off" "touchpad: natural scrolling off – only the touchpad, saved" "" "" "" \
+    'grep -qx "xinput set-prop 11 libinput Natural Scrolling Enabled 0" $S/xinput && ! grep -qs "set-prop 12" $S/xinput &&
+     grep -qx "natural=off" '"$INC"
+hcase "$IN --set mspeed 0.5" "mouse speed: only the mouse; earlier values are applied again" "" "" "" \
+    'grep -qx "xinput set-prop 12 libinput Accel Speed 0.5" $S/xinput && ! grep -qs "set-prop 12 libinput Natural" $S/xinput &&
+     grep -qx "natural=off" '"$INC"' && grep -qx "mspeed=0.5" '"$INC"
+hcase "$IN --set tap off" "tap to click off" "" "" "" 'grep -qx "xinput set-prop 11 libinput Tapping Enabled 0" $S/xinput'
+hcase "$IN --set natural on" "a value is replaced, not duplicated" "" "" "" '[ "$(grep -c "^natural=" '"$INC"')" = 1 ] && grep -qx "natural=on" '"$INC"
+hcase "$IN --apply" "login: all saved values" "" "" "" \
+    'grep -qx "xinput set-prop 11 libinput Tapping Enabled 0" $S/xinput && grep -qx "xinput set-prop 12 libinput Accel Speed 0.5" $S/xinput'
+for bad in "--set tspeed 2" "--set tspeed abc" "--set natural maybe" "--set foo on" "--bogus"; do
+    # shellcheck disable=SC2086
+    check "simpleos-input: '$bad' accepted" "$ENV -i HOME=$wt/home WT=$wt PATH=$wt/mock:$wt/sys $wt/sys/sh $IN $bad >/dev/null 2>&1; [ \$? -eq 2 ]"
+done
+check "simpleos-input: a value with a semicolon was accepted" \
+      "$ENV -i HOME=$wt/home WT=$wt PATH=$wt/mock:$wt/sys $wt/sys/sh $IN --set mspeed '0;reboot' >/dev/null 2>&1; [ \$? -eq 2 ]"
+check "simpleos-input: invalid values were saved" "! grep -qE 'foo|abc|maybe|reboot|tspeed=2' $INC"
+hcase "$IN --status" "no xinput -> no device, no error" "xinput" "" "" '[ "$(cat $S/out)" = "touchpad=no
+mouse=no" ]'
+rm -f "$INC" "$wt/mock/xinput"
+for home in /etc/skel /home/simple; do
+    check "autostart: simpleos-input --watch is missing in $home" "grep -qx 'simpleos-input --watch &' '$home/.config/openbox/autostart'"
+done
+check "package xinput not installed" "dpkg-query -W -f='\${Status}' xinput 2>/dev/null | grep -q 'install ok installed'"
+check "Control Center: Mouse & Touchpad page missing" "grep -qF '(\"input\", \"Mouse & Touchpad\", \"input-mouse\")' /usr/local/bin/simpleos-control-center"
+check "Control Center: Wi-Fi band selector missing" "grep -qF '\"802-11-wireless.band\"' /usr/local/bin/simpleos-control-center && grep -qF 'self.set_band(state' /usr/local/bin/simpleos-control-center"
+check "Control Center: Date & Time missing" "grep -qF 'cmd(\"timedatectl\", \"set-timezone\", zone, timeout=120)' /usr/local/bin/simpleos-control-center &&
+      grep -qF 'cmd(\"timedatectl\", \"set-ntp\"' /usr/local/bin/simpleos-control-center"
 
 # ---- Clipboard history (simpleos-clipboard, Super+V): Python, Rofi via rofi-retry, xclip dummy
 CLIP=/usr/local/bin/simpleos-clipboard
@@ -1154,6 +1278,7 @@ rm -rf "${wt:?}/home/.cache/simpleos"
 for home in /etc/skel /home/simple; do
     check "autostart: clipboard service missing in $home" "grep -qx 'simpleos-clipboard --daemon &' '$home/.config/openbox/autostart'"
     check "autostart: saved display setting is not applied in $home" "grep -qx 'simpleos-display --restore' '$home/.config/openbox/autostart'"
+    check "autostart: display hotplug (simpleos-display --watch) is missing in $home" "grep -qx 'simpleos-display --watch &' '$home/.config/openbox/autostart'"
     rc=$home/.config/openbox/rc.xml
     for kc in 'W-v|/usr/local/bin/simpleos-clipboard' 'W-a|/usr/local/bin/simpleos-volume' 'W-p|/usr/local/bin/simpleos-display' \
               'Print|/usr/local/bin/simpleos-screenshot' 'S-Print|/usr/local/bin/simpleos-screenshot --area'; do
@@ -1172,7 +1297,7 @@ done
 
 # ---- Night light (simpleos-nightlight, gammastep): on/off/automatic (20–7 o'clock), warmth, errors in VMs.
 #      the gammastep dummy logs, GAMMA_RC = exit code; SIMPLEOS_HOUR = time of day
-printf '#!/bin/sh\necho "gammastep $*" >> "$WT/gamma"\nexit ${GAMMA_RC:-0}\n' > "$wt/mock/gammastep"
+printf '#!/bin/sh\necho "gammastep $*" >> "$WT/gamma"\n[ -n "$GAMMA_OUT" ] && echo "$GAMMA_OUT"\nexit ${GAMMA_RC:-0}\n' > "$wt/mock/gammastep"
 chmod 0755 "$wt/mock/gammastep"
 NL=/usr/local/bin/simpleos-nightlight
 NLC=$wt/home/.config/simpleos/nightlight
@@ -1183,30 +1308,33 @@ for f in $NL /usr/local/bin/simpleos-bluetooth /usr/local/bin/simpleos-power /us
     check "$f: set -e/-u (aborts silently)" "! grep -qE '^[[:space:]]*set -[a-z]*[eu]' $f"
 done
 rm -f "$NLC"
-hcase "$NL --on" "on" "" "" "" 'grep -qx "gammastep -P -O 4000" $S/gamma && grep -qx "mode=on" $NLC'
-hcase "$NL --temp 3500" "warmer" "" "" "" 'grep -qx "gammastep -P -O 3500" $S/gamma && grep -qx "temp=3500" $NLC'
-hcase "$NL --off" "off" "" "" "" 'grep -qx "gammastep -x" $S/gamma && grep -qx "mode=off" $NLC && grep -qx "temp=3500" $NLC'
+hcase "$NL --on" "on" "" "" "" 'grep -qx "gammastep -m randr -P -O 4000" $S/gamma && grep -qx "mode=on" $NLC'
+hcase "$NL --temp 3500" "warmer" "" "" "" 'grep -qx "gammastep -m randr -P -O 3500" $S/gamma && grep -qx "temp=3500" $NLC'
+hcase "$NL --off" "off" "" "" "" 'grep -qx "gammastep -m randr -x" $S/gamma && grep -qx "mode=off" $NLC && grep -qx "temp=3500" $NLC'
 rm -f "$NLC"
-hcase "$NL --auto" "automatic, evening" "" "SIMPLEOS_HOUR=22" "" 'grep -qx "gammastep -P -O 4000" $S/gamma'
-hcase "$NL --auto" "automatic, night" "" "SIMPLEOS_HOUR=03" "" 'grep -qx "gammastep -P -O 4000" $S/gamma'
-hcase "$NL --auto" "automatic, daytime" "" "SIMPLEOS_HOUR=12" "" 'grep -qx "gammastep -x" $S/gamma'
+hcase "$NL --auto" "automatic, evening" "" "SIMPLEOS_HOUR=22" "" 'grep -qx "gammastep -m randr -P -O 4000" $S/gamma'
+hcase "$NL --auto" "automatic, night" "" "SIMPLEOS_HOUR=03" "" 'grep -qx "gammastep -m randr -P -O 4000" $S/gamma'
+hcase "$NL --auto" "automatic, daytime" "" "SIMPLEOS_HOUR=12" "" 'grep -qx "gammastep -m randr -x" $S/gamma'
 hcase "$NL --status" "status" "" "SIMPLEOS_HOUR=12" "" '[ "$(cat $S/out)" = "off
 auto
 4000" ]'
 rm -f "$NLC"
 hcase "$NL --on" "VM without color tables -> notification, back to off" "" "GAMMA_RC=1" "" \
     'grep -q "not supported by this display" $S/notify && grep -qx "mode=off" $NLC'
+# gammastep 2.0.9 reports "Could not connect to wayland display" with exit code 0 – an "Error:" line counts as failure
+hcase "$NL --on" "error text but exit code 0 -> notification, back to off" "" "GAMMA_OUT=Error:_Could_not_connect" "" \
+    'grep -q "not supported by this display" $S/notify && grep -qx "mode=off" $NLC'
 hcase "$NL --on" "gammastep missing -> notification" "gammastep" "" "" 'grep -q "gammastep missing" $S/notify'
 # Feedback after switching (only on success; daemon/--apply silent)
 hcase "$NL --on" "feedback on" "" "" "" 'grep -qE "Night light is on – warmer colors \([0-9]+ K\)" $S/notify'
 hcase "$NL --off" "feedback off" "" "" "" 'grep -q "Night light is off." $S/notify'
 hcase "$NL --auto" "feedback automatic (on in the evening)" "" "SIMPLEOS_HOUR=21" "" 'grep -q "Night light is automatic – warmer colors from 20:00 to 07:00 (on now)" $S/notify'
-hcase "$NL --on" "error -> no success notification" "" "GAMMA_RC=1" "" '! grep -q "Night light is on" $S/notify'
+hcase "$NL --on" "error -> no success notification" "" "GAMMA_RC=1" "" '! grep -qs "Night light is on" $S/notify'
 hcase "$NL --apply" "--apply stays silent" "" "" "" '[ ! -s $S/notify ]'
 rm -f "$NLC"
 hcase "$NL" "menu + switch on" "" "" "0 -" \
     '[ "$(row 0 1)" = "Turn on" ] && [ "$(row 0 2)" = "Turn off  Current" ] && [ "$(row 0 3)" = "Automatic (20:00–07:00)" ] &&
-     [ "$(row 0 5)" = "Warm (4000 K)  Current" ] && [ $(grep -c . $S/rofi.0) -eq 7 ] && grep -qx "gammastep -P -O 4000" $S/gamma &&
+     [ "$(row 0 5)" = "Warm (4000 K)  Current" ] && [ $(grep -c . $S/rofi.0) -eq 7 ] && grep -qx "gammastep -m randr -P -O 4000" $S/gamma &&
      [ "$(row 1 1)" = "Turn on  Current" ]'
 hcase "$NL" "menu: very warm" "" "" "3 -" 'grep -qx "temp=3500" $NLC'
 hcase "$NL" "rofi missing -> notification" "rofi" "" "" 'grep -q "could not open" $S/notify'
@@ -1222,7 +1350,8 @@ echo "bluetoothctl $*" >> "$WT/bt"
 case "$*" in
     list) [ "$BT" = none ] || echo "Controller 00:11:22:33:44:55 simple [default]" ;;
     show) if [ "$BT_OFF" = 1 ] && [ ! -e "$WT/bt-on" ]; then echo "	Powered: no"; else echo "	Powered: yes"; fi ;;
-    "power on") touch "$WT/bt-on"; echo "Changing power on succeeded" ;;
+    "power on") if [ "$BT_BLOCKED" = 1 ] && [ ! -e "$WT/unblocked" ]; then echo "Failed to set power on: org.bluez.Error.Blocked"; exit 1; fi
+                touch "$WT/bt-on"; echo "Changing power on succeeded" ;;
     "power off") echo "Changing power off succeeded" ;;
     "devices Paired") printf 'Device AA:00:00:00:00:01 WH-1000XM4\nDevice AA:00:00:00:00:02 MX Master\n' ;;
     devices) printf 'Device AA:00:00:00:00:01 WH-1000XM4\nDevice AA:00:00:00:00:02 MX Master\nDevice AA:00:00:00:00:03 Xbox Controller\nDevice AA:00:00:00:00:04 AA-00-00-00-00-04\n' ;;
@@ -1239,7 +1368,10 @@ esac
 exit 0
 MOCK
 printf '#!/bin/sh\ntouch "$WT/blueman"\n' > "$wt/mock/blueman-manager"
-chmod 0755 "$wt/mock/bluetoothctl" "$wt/mock/blueman-manager"
+# rfkill lives in /usr/sbin, which a normal user's PATH lacks: the tools must find it anyway (the mock sits in /usr/sbin's place)
+mkdir -p "$wt/sbin"
+printf '#!/bin/sh\necho "rfkill $*" >> "$WT/rfkill"\ntouch "$WT/unblocked"\n' > "$wt/sbin/rfkill"
+chmod 0755 "$wt/mock/bluetoothctl" "$wt/mock/blueman-manager" "$wt/sbin/rfkill"
 B=/usr/local/bin/simpleos-bluetooth
 hcase "$B" "menu" "" "" "-" \
     '[ "$(row 0 1)" = "Turn off Bluetooth" ] && [ "$(row 0 2)" = "WH-1000XM4  Headphones · Connected" ] &&
@@ -1259,6 +1391,8 @@ hcase "$B" "switch off" "" "" "0 -" 'grep -qx "bluetoothctl power off" $S/bt'
 hcase "$B" "off -> switch on" "" "BT_OFF=1" "0 -" \
     '[ "$(row 0 1)" = "Turn on Bluetooth" ] && [ $(grep -c . $S/rofi.0) -eq 2 ] && grep -qx "bluetoothctl power on" $S/bt &&
      [ "$(row 1 1)" = "Turn off Bluetooth" ]'
+hcase "$B" "blocked by rfkill -> unblocked (rfkill from /usr/sbin), then on" "" "BT_OFF=1 BT_BLOCKED=1 SIMPLEOS_SBIN=$wt/sbin" "0 -" \
+    'grep -qx "rfkill unblock bluetooth" $S/rfkill && [ "$(row 1 1)" = "Turn off Bluetooth" ] && ! grep -qs "could not be turned on" $S/notify'
 hcase "$B" "no adapter (VM) -> notification" "" "BT=none" "" 'grep -q "No Bluetooth adapter found" $S/notify && [ ! -e $S/rofi.0 ]'
 hcase "$B" "More Bluetooth settings -> blueman" "" "" "4" 'waitfor $S/blueman'
 hcase "$B" "rofi missing -> blueman" "rofi" "" "" 'waitfor $S/blueman'
@@ -2751,11 +2885,11 @@ hcase "$BU" "timeshift fails -> message without guessing about disk space" "" "$
 # Progress: without a display as a dunst bar; exactly ONE result notification afterwards, no extra "Creating…" notification
 hcase "$BU" "progress while creating" "" "$BV TS_PROGRESS=1" "0 With-bar -" \
     'grep -q "string:x-dunst-stack-tag:simpleos-progress" $S/notify && grep -q "int:value:" $S/notify &&
-     [ "$(grep -c "Restore point created." $S/notify)" -eq 1 ] && ! grep -q "The first one copies" $S/notify &&
+     [ "$(grep -c "Restore point created." $S/notify)" -eq 1 ] && ! grep -qs "The first one copies" $S/notify &&
      [ "$(tail -n 1 $S/notify | grep -c "Restore point created.")" -eq 1 ] && ! grep -q "^EXIT\|PROGRESS:" $S/out'
 hcase "$BU" "progress: error -> bar gone, only the log hint" "" "$BV TS_MODE=other" "0 x -" \
     '[ "$(grep -c -- "-u critical" $S/notify)" -eq 1 ] && grep -q "Details: ~/.cache/simpleos-backup.log" $S/notify &&
-     ! grep -q "Restore point created" $S/notify'
+     ! grep -qs "Restore point created" $S/notify'
 # ---- Backup: first setup (timeshift.json) and clean error classes
 TJ=$bt/etc/timeshift/timeshift.json
 rm -f "$TJ"
@@ -2819,10 +2953,10 @@ hcase "$BU" "window: no target device" "" "$BV FM_FS=overlay FM_UUID=" "0 x -" \
 : > "$bt/ts.log"
 hcase "$BU" "window: not enough space -> only the space warning" "" "$BV SIMPLEOS_FAKE_DISK=/=600000000000:500000000" "0 x -" \
     '[ "$(grep -c . $S/notify)" -eq 1 ] && grep -q "Not enough free space for a restore point: 500 MB free, at least 1 GB needed." $S/notify &&
-     ! grep -q "Details" $S/notify && ! grep -q "Creating" $S/notify && ! grep -q -- "--create" '"$bt"'/ts.log'
+     ! grep -qs "Details" $S/notify && ! grep -qs "Creating" $S/notify && ! grep -q -- "--create" '"$bt"'/ts.log'
 hcase "$BU" "window: gigabytes rounded correctly" "" "$BV SIMPLEOS_FAKE_DISK=/=600000000000:1250000000 TS_MODE=space" "0 x -" \
-    'grep -q ": 1.3 GB free, but Timeshift needs more for this one." $S/notify && ! grep -q "0.0 GB" $S/notify &&
-     [ "$(grep -c -- "-u critical" $S/notify)" -eq 1 ] && ! grep -q "Details" $S/notify'
+    'grep -q ": 1.3 GB free, but Timeshift needs more for this one." $S/notify && ! grep -qs "0.0 GB" $S/notify &&
+     [ "$(grep -c -- "-u critical" $S/notify)" -eq 1 ] && ! grep -qs "Details" $S/notify'
 hcase "$BU" "window: other error -> only the log hint" "" "$BV TS_MODE=other" "0 x -" \
     '[ "$(grep -c -- "-u critical" $S/notify)" -eq 1 ] && grep -q "could not be created. Details: ~/.cache/simpleos-backup.log" $S/notify &&
      ! grep -qi "space" $S/notify'
@@ -2882,7 +3016,7 @@ head -c 1234 /dev/zero > "$wt/home/.cache/thumbnails/x.png"
 hcase "$CL --clean thumbnails" "thumbnails only: no password" "" "$CV" "" '[ ! -e $S/pkexec ] && [ ! -e '"$wt"'/home/.cache/thumbnails/x.png ]'
 hcase "$CL --clean journal" "password cancelled" "" "$CV PKEXEC_RC=126" "" 'grep -q "No password entered" $S/notify'
 hcase "$CL --clean journal" "helper fails -> exactly one notification" "" "$CV PKEXEC_RC=1" "" \
-    '[ "$(grep -c . $S/notify)" -eq 1 ] && grep -q "could not be cleaned (.* freed)" $S/notify && ! grep -q "Done" $S/notify'
+    '[ "$(grep -c . $S/notify)" -eq 1 ] && grep -q "could not be cleaned (.* freed)" $S/notify && ! grep -qs "Done" $S/notify'
 check "Cleaner: unknown item accepted" "! $CL --clean everything-else >/dev/null 2>&1"
 head -c 1234 /dev/zero > "$wt/home/.cache/thumbnails/y.png"
 hcase "$CL" "window: overview + single item" "" "$CV" "1 0 -" \

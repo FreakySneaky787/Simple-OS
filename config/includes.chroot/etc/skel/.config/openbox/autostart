@@ -16,6 +16,10 @@ mkdir -p ~/.config/gtk-3.0
 done > ~/.config/gtk-3.0/bookmarks
 # Your own display setting (Settings → Display, confirmed with "Keep changes") takes precedence
 simpleos-display --restore
+# A monitor/projector/TV plugged in later is switched on and extends the desktop (Xorg only reports it)
+simpleos-display --watch &
+# Saved touchpad/mouse settings (Control Center → Mouse & Touchpad), again for devices connected later
+simpleos-input --watch &
 # Keyboard layout of the account (simpleos-keyboard-setup; system-wide it is in /etc/default/keyboard)
 simpleos-keyboard-setup --apply
 # Live session (USB stick/ISO): desktop icon "Install Simple OS" + Welcome with the install banner;

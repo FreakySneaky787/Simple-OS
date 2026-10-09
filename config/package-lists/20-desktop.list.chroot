@@ -35,6 +35,11 @@ fonts-jetbrains-mono
 # Color emoji (browsers, chats, file names) and fonts metric-compatible with Arial/Times/Courier – office documents
 # from Windows keep their line breaks and page count
 fonts-noto-color-emoji
+# Every other writing system (Arabic, Hebrew, Thai, Indic, Georgian …) and a small CJK font (WenQuanYi Micro Hei, 5 MB:
+# Chinese, Japanese, Korean): without them web pages and file names in these scripts show empty boxes (nothing in the
+# image has the glyphs). Chinese/Japanese/Korean systems get the full Noto CJK from simpleos-system-setup --language
+fonts-noto-core
+fonts-wqy-microhei
 fonts-liberation2
 fonts-font-awesome
 # Store GTK settings permanently (dark/light, accent) + Setup Wizard (Python/GTK3)
@@ -53,9 +58,17 @@ arandr
 lxrandr
 # Network, Bluetooth, audio in the taskbar
 network-manager-gnome
+# VPN (OpenVPN, the common work/school VPN) in the network menu: Edit Connections → Add → Import a saved VPN
+network-manager-openvpn-gnome
 bluez
 blueman
 libspa-0.2-bluetooth
+# alsa-ucm-conf: device profiles without which the speakers/microphones of many current laptops (Intel SOF, AMD,
+# Chromebook-style codecs) show up as "Dummy Output" or only as headphones – libasound2-data only Recommends it.
+# alsa-utils: alsamixer/amixer (an unmuted-by-hand "Speaker"/"Headphone" switch is the classic fix for "no sound")
+# and the saving of the mixer state between boots
+alsa-ucm-conf
+alsa-utils
 pipewire
 pipewire-alsa
 pipewire-pulse
@@ -87,3 +100,5 @@ wmctrl
 x11-utils
 # Restore points (simpleos-backup)
 timeshift
+# xinput: touchpad/mouse settings (simpleos-input: natural scrolling, tap to click, speed)
+xinput
