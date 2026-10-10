@@ -87,6 +87,15 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
   (`~/.local/share/simpleos-release/gnupg`): installed systems only trust that key.
 - A new Debian base (Debian 13) is a bigger step than an edition update and is not covered by this.
 
+## How we work
+
+- **Work is committed locally, pushed only with a release.** Between releases nothing goes to GitHub: `main` always matches
+  the newest published edition. The release day is the only push (`git push`, then build, test, `sign`, `publish`).
+- **Issues and the project board follow the work, not the push:** when something is done and tested without hardware, its issue
+  is closed (comment: "done, ships in X.Y.Z") and its board item set to Done – even before the release. What still needs a
+  real computer stays open as a "Verify …" issue.
+- Plan and cadence: `ROADMAP.md`; what to test before a release: `TESTING.md`.
+
 ## Structure
 
 ```
