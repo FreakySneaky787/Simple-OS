@@ -1,7 +1,10 @@
 #!/bin/sh
 # Simple OS – power options (Control Center → Power)
-#   simpleos-power --get                 print settings (screen_off=<minutes, 0 = never>, charge_limit=on|off|unsupported)
+#   simpleos-power --get                 print settings (screen_off=<minutes, 0 = never>, lock=on|off,
+#                                        charge_limit=on|off|unsupported)
 #   simpleos-power --screen-off MIN      turn the screen off after MIN minutes (0 = never), takes effect immediately
+#   simpleos-power --lock on|off|status  lock the screen when it turns off (xss-lock + LightDM), default on
+#   simpleos-power --suspend             screen stays on (video playing, see simpleos-screensaver); --apply ends it
 #   simpleos-power --charge-limit on|off|status
 #                                        battery protection: charge only up to ~80 % (Lenovo "Conservation Mode" or
 #                                        charge_control_end_threshold of other laptops), takes effect immediately
@@ -10,12 +13,19 @@
 #   simpleos-power --profile NAME        set power-saver | balanced | performance (the service remembers it itself;
 #                                        the active session may do that without a password, polkit of power-profiles-daemon)
 #   simpleos-power --apply               apply saved settings (Openbox autostart)
-# X screensaver + DPMS via xset; settings in ~/.config/simpleos/power. In VMs DPMS only turns off the
-# virtual display – harmless. This script does not start battery programs (see simpleos-battery).
+# Screen off: on a computer WITHOUT a battery via xset (X screensaver + DPMS); settings in ~/.config/simpleos/power.
+# With a battery xfce4-power-manager runs and owns both: it sets the X screensaver time (blank-on-ac/-battery) and
+# the DPMS times (dpms-on-ac-*/dpms-on-battery-*) itself and sets them again at every plug/unplug and while a
+# browser inhibits (source: xfpm-power.c, xfpm-dpms.c) – an xset from here would be overwritten at the first plug.
+# So there the value goes into its xfconf channel instead (xfconf-query, which also survives restarts).
+# Locking: xss-lock waits for the X screensaver and runs "dm-tool lock" (not in the live session: nobody knows
+# the password there). In VMs DPMS only turns off the virtual display – harmless.
+# This script does not start battery programs (see simpleos-battery).
 # Battery protection: /etc/udev/rules.d/60-simpleos-charge-limit.rules gives the sudo group write access.
 # Lenovo stores the mode in the laptop itself; with other manufacturers it is sometimes lost on restart,
 # so --apply sets a self-chosen setting again at login (without your own choice: touch nothing).
-# Test: SIMPLEOS_POWER_SUPPLY (instead of /sys/class/power_supply), SIMPLEOS_IDEAPAD (instead of the ideapad_acpi driver).
+# Test: SIMPLEOS_POWER_SUPPLY (instead of /sys/class/power_supply, also for simpleos-battery), SIMPLEOS_IDEAPAD
+# (instead of the ideapad_acpi driver).
 # No set -e, exit 0 (except on wrong usage or --charge-limit without support/permissions: exit 1).
 CONF=${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/simpleos/power
 PS=${SIMPLEOS_POWER_SUPPLY:-/sys/class/power_supply}
@@ -24,18 +34,39 @@ LIMIT=80
 is_num() { case "$1" in ''|*[!0-9]*) return 1 ;; esac; return 0; }
 
 screen_off=10
+lock_idle=on
 charge_limit=
 if [ -r "$CONF" ]; then
     v=$(sed -n 's/^screen_off=//p' "$CONF" | head -n 1)
     is_num "$v" && screen_off=$v
+    v=$(sed -n 's/^lock=//p' "$CONF" | head -n 1)
+    case "$v" in on|off) lock_idle=$v ;; esac
     v=$(sed -n 's/^charge_limit=//p' "$CONF" | head -n 1)
     case "$v" in on|off) charge_limit=$v ;; esac
 fi
 save() {
     mkdir -p "${CONF%/*}" 2>/dev/null
-    { echo "screen_off=$screen_off"; [ -n "$charge_limit" ] && echo "charge_limit=$charge_limit"; } > "$CONF" 2>/dev/null
+    { echo "screen_off=$screen_off"; echo "lock=$lock_idle"; [ -n "$charge_limit" ] && echo "charge_limit=$charge_limit"; } > "$CONF" 2>/dev/null
 }
+# xfce4-power-manager runs (Openbox autostart) exactly when there is a real battery
+has_battery() { command -v simpleos-battery >/dev/null && simpleos-battery --present; }
 apply_screen() {
+    if has_battery; then
+        # xfconf: minutes; 0 = never (blank 0, DPMS off). Sleep and off together, the screen simply goes dark
+        command -v xfconf-query >/dev/null || return 0
+        # At sign-in ("--apply") only if xfconf does not have it yet: eight processes would delay the desktop for nothing
+        if [ "${1:-}" = check ] && [ "$(xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/blank-on-ac 2>/dev/null)" = "$screen_off" ]; then
+            return 0
+        fi
+        xq() { xfconf-query -c xfce4-power-manager -n -t "$1" -p "/xfce4-power-manager/$2" -s "$3" 2>/dev/null; }
+        for src in ac battery; do
+            xq int "blank-on-$src" "$screen_off"
+            xq int "dpms-on-$src-sleep" "$screen_off"
+            xq int "dpms-on-$src-off" "$screen_off"
+        done
+        if [ "$screen_off" -eq 0 ]; then xq bool dpms-enabled false; else xq bool dpms-enabled true; fi
+        return 0
+    fi
     command -v xset >/dev/null && [ -n "${DISPLAY:-}" ] || return 0
     if [ "$screen_off" -eq 0 ]; then
         xset s off -dpms 2>/dev/null
@@ -43,6 +74,15 @@ apply_screen() {
         secs=$((screen_off * 60))
         xset s "$secs" "$secs" +dpms dpms "$secs" "$secs" "$secs" 2>/dev/null
     fi
+}
+# Lock when the screen turns off: xss-lock follows the X screensaver (the time above) and the logind lock signal
+# (loginctl lock-session). Not in the live session. Restarted at every call, so a changed setting takes effect.
+apply_lock() {
+    command -v xss-lock >/dev/null && [ -n "${DISPLAY:-}" ] || return 0
+    pkill -U "$(id -u)" -x xss-lock 2>/dev/null
+    [ "$lock_idle" = on ] || return 0
+    if command -v simpleos-live >/dev/null && simpleos-live --check; then return 0; fi
+    setsid xss-lock -- dm-tool lock >/dev/null 2>&1 &
 }
 
 # Battery protection: Lenovo first (ideapad_acpi), otherwise the kernel standard on the battery
@@ -114,12 +154,22 @@ case "${1:-}" in
                 timeout 10 powerprofilesctl set "$2" || { echo "simpleos-power: power mode could not be changed" >&2; exit 1; } ;;
             *) echo "simpleos-power: --profile [power-saver|balanced|performance]" >&2; exit 2 ;;
         esac ;;
-    --get)   echo "screen_off=$screen_off"; echo "charge_limit=$(limit_status)" ;;
+    --get)   echo "screen_off=$screen_off"; echo "lock=$lock_idle"; echo "charge_limit=$(limit_status)" ;;
     --screen-off)
         is_num "${2:-}" && [ "$2" -le 240 ] || { echo "simpleos-power: --screen-off 0–240" >&2; exit 2; }
         screen_off=$2
         save
         apply_screen ;;
+    --lock)
+        case "${2:-}" in
+            status) echo "$lock_idle" ;;
+            on|off) lock_idle=$2; save; apply_lock ;;
+            *) echo "simpleos-power: --lock on|off|status" >&2; exit 2 ;;
+        esac ;;
+    # A video is playing (simpleos-screensaver): keep the screen on until --apply. Only without a battery –
+    # with one, xfce4-power-manager does that itself
+    --suspend)
+        has_battery || { command -v xset >/dev/null && [ -n "${DISPLAY:-}" ] && xset s off -dpms 2>/dev/null; } ;;
     --charge-limit)
         case "${2:-}" in
             status) limit_status ;;
@@ -134,10 +184,11 @@ case "${1:-}" in
             *) echo "simpleos-power: --charge-limit on|off|status" >&2; exit 2 ;;
         esac ;;
     --apply)
-        apply_screen
+        apply_screen check
+        apply_lock
         if [ -n "$charge_limit" ] && [ "$(limit_status)" != unsupported ] && [ "$(limit_status)" != "$charge_limit" ]; then
             limit_set "$charge_limit"
         fi ;;
-    *) echo "Usage: simpleos-power --get | --screen-off MIN | --charge-limit on|off|status | --profile [NAME] | --apply" >&2; exit 2 ;;
+    *) echo "Usage: simpleos-power --get | --screen-off MIN | --lock on|off|status | --suspend | --charge-limit on|off|status | --profile [NAME] | --apply" >&2; exit 2 ;;
 esac
 exit 0

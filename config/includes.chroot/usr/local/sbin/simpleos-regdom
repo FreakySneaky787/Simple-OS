@@ -1,0 +1,31 @@
+#!/bin/sh
+# Simple OS – Wi-Fi regulatory country from the time zone (systemd: simpleos-regdom.service).
+# Without a country the Wi-Fi chip uses the "world" rules or guesses it from the access points around it (a Swiss
+# laptop showed NL): wrong channels/power, 5 GHz channels missing. The installed time zone says where the computer
+# is: Europe/Zurich -> CH. "iw reg set" is only a hint to the kernel (wireless-regdb holds the rules); chips that
+# know their country themselves (Intel AX2xx) may still decide otherwise – "iw reg get" shows the result.
+# Started when a Wi-Fi device appears (udev, /etc/udev/rules.d/61-simpleos-regdom.rules), at boot and when the time
+# zone changes (simpleos-regdom.path). Never an error: no zone, no country, no Wi-Fi -> nothing happens.
+# Tests: SIMPLEOS_ZONEINFO (instead of /usr/share/zoneinfo), SIMPLEOS_TIMEZONE_FILE (instead of /etc/timezone),
+# SIMPLEOS_LOCALTIME (instead of /etc/localtime), SIMPLEOS_IW (instead of iw).
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+ZI=${SIMPLEOS_ZONEINFO:-/usr/share/zoneinfo}
+IW=${SIMPLEOS_IW:-iw}
+
+zone=
+if [ -r "${SIMPLEOS_TIMEZONE_FILE:-/etc/timezone}" ]; then
+    zone=$(head -n 1 "${SIMPLEOS_TIMEZONE_FILE:-/etc/timezone}")
+fi
+if [ -z "$zone" ]; then
+    zone=$(readlink "${SIMPLEOS_LOCALTIME:-/etc/localtime}" 2>/dev/null | sed -n 's|.*/zoneinfo/||p')
+fi
+case "$zone" in ''|*[!A-Za-z0-9_/+-]*) exit 0 ;; esac
+
+# zone.tab: country<TAB>coordinates<TAB>zone; zone1970.tab (a zone shared by several countries: "CH,DE,LI") as fallback
+cc=$(awk -F'\t' -v z="$zone" '$0 !~ /^#/ && $3 == z { print $1; exit }' "$ZI/zone.tab" 2>/dev/null)
+[ -n "$cc" ] || cc=$(awk -F'\t' -v z="$zone" '$0 !~ /^#/ && $3 == z { split($1, a, ","); print a[1]; exit }' "$ZI/zone1970.tab" 2>/dev/null)
+case "$cc" in [A-Z][A-Z]) ;; *) exit 0 ;; esac
+
+command -v "$IW" >/dev/null 2>&1 || exit 0
+"$IW" reg set "$cc" 2>/dev/null
+exit 0

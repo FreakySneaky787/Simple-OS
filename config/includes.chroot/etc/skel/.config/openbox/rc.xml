@@ -98,6 +98,10 @@
     <keybind key="W-x">
       <action name="Execute"><command>/usr/local/bin/simpleos-powermenu</command></action>
     </keybind>
+    <!-- Power button: ask first (logind does not shut down meanwhile, see the Openbox autostart) -->
+    <keybind key="XF86PowerOff">
+      <action name="Execute"><command>/usr/local/bin/simpleos-powermenu</command></action>
+    </keybind>
     <!-- Lock the screen (like Windows+L) -->
     <keybind key="W-l">
       <action name="Execute"><command>/usr/local/bin/simpleos-powermenu --lock</command></action>

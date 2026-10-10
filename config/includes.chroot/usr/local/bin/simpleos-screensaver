@@ -1,0 +1,150 @@
+#!/usr/bin/python3
+"""Simple OS – "do not turn off the screen while a video plays" for computers WITHOUT a battery.
+
+Browsers and video players ask the session bus for org.freedesktop.ScreenSaver.Inhibit while a video plays
+(Firefox, Chromium, mpv, VLC …). Nobody answered on a desktop PC: xfce4-power-manager, which does that on laptops,
+only runs with a battery (simpleos-battery). This small service answers instead:
+
+  first Inhibit      simpleos-power --suspend   (xset s off -dpms)
+  last UnInhibit /   simpleos-power --apply     (the saved "turn off the screen after" again)
+  the program quits
+
+It is started by D-Bus on the first request (/usr/local/share/dbus-1/services/org.freedesktop.ScreenSaver.service) and
+quits 30 s after the last inhibitor is gone – nothing runs while no video plays. With a battery it exits at once
+(xfce4-power-manager owns the name there). Cookies of programs that crash are dropped when they leave the bus.
+Tests: SIMPLEOS_POWER_SUPPLY (as in simpleos-battery), SIMPLEOS_POWER (the simpleos-power program), SIMPLEOS_IDLE_EXIT
+(seconds before quitting, default 30).
+"""
+import os
+import subprocess
+import sys
+
+import gi
+
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio, GLib  # noqa: E402
+
+NAME = "org.freedesktop.ScreenSaver"
+PATHS = ("/org/freedesktop/ScreenSaver", "/ScreenSaver")
+POWER = os.environ.get("SIMPLEOS_POWER") or "/usr/local/bin/simpleos-power"
+IDLE_EXIT = int(os.environ.get("SIMPLEOS_IDLE_EXIT") or 30)
+
+XML = """<node>
+  <interface name="org.freedesktop.ScreenSaver">
+    <method name="Inhibit"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="u" direction="out"/></method>
+    <method name="UnInhibit"><arg type="u" direction="in"/></method>
+    <method name="GetActive"><arg type="b" direction="out"/></method>
+    <method name="GetActiveTime"><arg type="u" direction="out"/></method>
+    <method name="GetSessionIdleTime"><arg type="u" direction="out"/></method>
+    <method name="SetActive"><arg type="b" direction="in"/><arg type="b" direction="out"/></method>
+    <method name="Lock"/>
+    <method name="SimulateUserActivity"/>
+  </interface>
+</node>"""
+
+
+def battery_present():
+    try:
+        return subprocess.run(["simpleos-battery", "--present"], check=False).returncode == 0
+    except OSError:
+        return False
+
+
+class Service:
+    def __init__(self, loop):
+        self.loop = loop
+        self.cookies = {}      # cookie -> (sender, application)
+        self.watches = {}      # sender -> watch id
+        self.next_cookie = 1
+        self.idle_id = None
+        self.schedule_exit()
+
+    def power(self, arg):
+        # the activated service has no DISPLAY from the session unless it was imported
+        env = dict(os.environ)
+        env.setdefault("DISPLAY", ":0")
+        try:
+            subprocess.run([POWER, arg], env=env, check=False, timeout=20,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+
+    def schedule_exit(self):
+        if self.idle_id:
+            GLib.source_remove(self.idle_id)
+        self.idle_id = GLib.timeout_add_seconds(IDLE_EXIT, self.quit) if not self.cookies else None
+
+    def quit(self):
+        self.loop.quit()
+        return False
+
+    def add(self, sender, app, conn):
+        was_empty = not self.cookies
+        cookie = self.next_cookie
+        self.next_cookie += 1
+        self.cookies[cookie] = (sender, app)
+        if sender not in self.watches:
+            self.watches[sender] = Gio.bus_watch_name_on_connection(
+                conn, sender, Gio.BusNameWatcherFlags.NONE, None, lambda c, n: self.vanished(n))
+        if was_empty:
+            self.power("--suspend")
+        self.schedule_exit()
+        return cookie
+
+    def drop(self, cookie):
+        if self.cookies.pop(cookie, None) is None:
+            return
+        if not self.cookies:
+            self.power("--apply")
+        self.schedule_exit()
+
+    def vanished(self, sender):
+        for cookie in [c for c, (s, _a) in self.cookies.items() if s == sender]:
+            self.drop(cookie)
+        wid = self.watches.pop(sender, None)
+        if wid:
+            Gio.bus_unwatch_name(wid)
+
+    def call(self, conn, sender, _path, _iface, method, params, invocation):
+        a = params.unpack()
+        ret = None
+        if method == "Inhibit":
+            ret = GLib.Variant("(u)", (self.add(sender, a[0], conn),))
+        elif method == "UnInhibit":
+            # only the program that asked may release it
+            if self.cookies.get(a[0], (None,))[0] == sender:
+                self.drop(a[0])
+        elif method in ("GetActive", "SetActive"):
+            ret = GLib.Variant("(b)", (False,))
+        elif method in ("GetActiveTime", "GetSessionIdleTime"):
+            ret = GLib.Variant("(u)", (0,))
+        elif method == "SimulateUserActivity":
+            subprocess.run(["xset", "s", "reset"], check=False, stderr=subprocess.DEVNULL)
+        invocation.return_value(ret)
+
+
+def main():
+    if battery_present():
+        return 0
+    loop = GLib.MainLoop()
+    svc = Service(loop)
+    info = Gio.DBusNodeInfo.new_for_xml(XML)
+
+    def on_bus(conn, _name):
+        for path in PATHS:
+            conn.register_object(path, info.interfaces[0], svc.call, None, None)
+
+    def lost(_conn, _name):
+        loop.quit()
+
+    Gio.bus_own_name(Gio.BusType.SESSION, NAME, Gio.BusNameOwnerFlags.NONE, on_bus, None, lost)
+    try:
+        loop.run()
+    finally:
+        if svc.cookies:       # killed while a video was playing: give the screen blanking back
+            svc.power("--apply")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

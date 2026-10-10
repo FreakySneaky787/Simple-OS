@@ -1,0 +1,12 @@
+# Simple OS – Wi-Fi regulatory country from the time zone (/usr/local/sbin/simpleos-regdom)
+[Unit]
+Description=Simple OS Wi-Fi regulatory country from the time zone
+ConditionPathExists=/usr/share/zoneinfo
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/simpleos-regdom
+
+[Install]
+WantedBy=multi-user.target

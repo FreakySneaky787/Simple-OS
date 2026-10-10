@@ -346,6 +346,17 @@ def charge_limit():
     return m.group(1) if m else "unsupported"
 
 
+def brightness_get():
+    """Screen brightness in % (simpleos-osd), None without a backlight (desktop monitor, VM)"""
+    out = cmd("simpleos-osd", "brightness", "get").stdout.strip()
+    return int(out) if out.isdigit() else None
+
+
+def lock_idle():
+    """True if the screen locks when it turns off (simpleos-power --lock)"""
+    return cmd("simpleos-power", "--lock", "status").stdout.strip() != "off"
+
+
 def power_profile():
     """(current, [available]) via simpleos-power; ("unsupported", []) without power-profiles-daemon"""
     out = cmd("simpleos-power", "--profile").stdout
@@ -647,6 +658,26 @@ def main(argv):
                 self.put(card([("Multiple displays", "Like Windows+P",
                                 lay), ("", None, button("Apply", lambda: self.apply(
                                     layout_args(scr, main, lay.get_active_id() or "right")), "suggested-action"))]))
+            # Brightness of the built-in screen (not every keyboard has brightness keys)
+            level = brightness_get()
+            if level is not None:
+                bright = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 5, 100, 5)
+                bright.set_value(level)
+                bright.set_size_request(220, -1)
+                bpending = [None]
+
+                def apply_brightness():
+                    bpending[0] = None
+                    cmd("simpleos-osd", "brightness", "set", str(int(bright.get_value())))
+                    return False
+
+                def bright_changed(_s):
+                    if bpending[0]:
+                        GLib.source_remove(bpending[0])
+                    bpending[0] = GLib.timeout_add(150, apply_brightness)
+                bright.connect("value-changed", bright_changed)
+                self.put(label("<b>Brightness</b>", markup=True))
+                self.put(card([("Screen brightness", "The brightness keys do the same", bright)]))
             # Night light
             mode, temp = nightlight_status()
             nl = Gtk.ComboBoxText()
@@ -982,6 +1013,10 @@ def main(argv):
                 off.set_active_id(str(cur_off))
             off.connect("changed", lambda c: cmd("simpleos-power", "--screen-off", c.get_active_id() or "10"))
             self.put(card([("Turn off the screen after", "When the computer is not used", off)]))
+            lock = Gtk.Switch(active=lock_idle())
+            lock.connect("notify::active", lambda sw, _p: cmd("simpleos-power", "--lock",
+                                                              "on" if sw.get_active() else "off"))
+            self.put(card([("Lock when the screen turns off", "Your password is asked when you come back", lock)]))
             cur, avail = power_profile()
             if cur != "unsupported":
                 mode = Gtk.ComboBoxText()

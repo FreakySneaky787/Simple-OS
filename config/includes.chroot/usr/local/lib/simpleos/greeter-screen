@@ -1,0 +1,8 @@
+#!/bin/sh
+# Simple OS – LightDM display-setup-script (runs as root when the login screen starts; lightdm.conf.d/10_simpleos.conf).
+# After "lock when the screen turns off" the lock screen is a second X server (LightDM greeter) whose screen is not
+# controlled by the session's settings: Xorg's default would keep it lit for 10 more minutes. So turn it off after
+# 2 minutes without input (any key or mouse movement wakes it). Never an error: a failing script must not stop the login.
+PATH=/usr/bin:/bin
+command -v xset >/dev/null && xset s 120 120 +dpms dpms 120 120 120 2>/dev/null
+exit 0

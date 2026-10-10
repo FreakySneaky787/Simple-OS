@@ -1,0 +1,5 @@
+# Simple OS: answers org.freedesktop.ScreenSaver.Inhibit on computers without a battery (on laptops
+# xfce4-power-manager owns the name), see /usr/local/bin/simpleos-screensaver. Started on the first request.
+[D-BUS Service]
+Name=org.freedesktop.ScreenSaver
+Exec=/usr/local/bin/simpleos-screensaver

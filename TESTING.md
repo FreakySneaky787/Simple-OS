@@ -170,3 +170,30 @@ through Software Updates, or `sudo apt install ./simpleos_1.0.3_all.deb`) and on
       monitor as the default source ("stereo-fallback" profile gone after alsa-ucm-conf).
 - [ ] **VPN:** the network menu → Edit Connections → Add offers OpenVPN.
 
+
+## 9. What changed in 1.0.4
+
+Screen blanking, power button, Wi-Fi country, brightness, git. Test on the ThinkPad/ThinkBook **updated from 1.0.3
+through Software Updates** (or `sudo apt install ./simpleos_1.0.4_all.deb`, then sign out and in – the new autostart
+lines only run at the next login) and on a PC without a battery (or a VM: there the PC path is used).
+
+- [ ] **Turn off the screen (laptop, issue #25):** Control Center → Power → "Turn off the screen after" 1 minute (pick an
+      odd value first: `simpleos-power --screen-off 1`). Do nothing: the screen goes dark after ~1 minute **on battery and
+      after plugging in the charger** (before, xfce4-power-manager put its own 15/10 minutes back at every plug/unplug).
+      `xfconf-query -c xfce4-power-manager -lv | grep -E 'blank|dpms'` shows the value.
+- [ ] **Lock when the screen turns off:** the switch below it is on. After the time above the login screen is in front
+      (password needed), and ~2 minutes later the login screen itself goes dark (any key wakes it). Switch it off →
+      the screen only goes dark, no password. Super+L and the lock before sleep still work.
+- [ ] **A video keeps the screen on:** set the time to 1 minute, play a video in Firefox/Chromium fullscreen for 2 minutes →
+      stays on, no lock. Stop the video → it goes dark after the time. Laptop *and* a PC without a battery
+      (`gdbus introspect --session -d org.freedesktop.ScreenSaver -o /org/freedesktop/ScreenSaver` answers on both).
+- [ ] **Power button (issue #35):** a short press opens the power menu (Lock, Sleep, Restart, Shut down, Sign out); nothing
+      shuts down by itself. `systemd-inhibit --list` shows "Simple OS … handle-power-key". At the login screen a press still
+      shuts down as before. **If a press does nothing at all, X does not see the key – then tell me, do not publish.**
+- [ ] **Brightness slider (issue #34):** Control Center → Display → Brightness follows the slider at once and the Fn keys
+      (the slider shows the new value after reopening); on a desktop PC the row is not there.
+- [ ] **Wi-Fi country (issue #40):** `iw reg get` shows your country (from Date & Time → time zone) after a restart; after
+      changing the time zone and a restart it follows. (Intel AX2xx chips may keep deciding themselves – note the result.)
+- [ ] **git:** `git --version` works after the update (arrives with the first Software Updates).
+- [ ] **Updating from 1.0.3:** Software Updates offers 1.0.4, the 1.0.3 setting "Turn off the screen after" is kept
+      (e.g. 5 minutes stays 5 minutes in `xfconf-query`), nothing asks for a password besides the update.

@@ -1,0 +1,3 @@
+# Simple OS: a Wi-Fi device appeared (cfg80211 is loaded now) -> set the regulatory country from the time zone
+# (/usr/local/sbin/simpleos-regdom). At boot the service alone would often run before the driver is there.
+ACTION=="add", SUBSYSTEM=="ieee80211", TAG+="systemd", ENV{SYSTEMD_WANTS}+="simpleos-regdom.service"

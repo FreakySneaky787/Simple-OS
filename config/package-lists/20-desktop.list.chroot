@@ -27,6 +27,9 @@ gnome-keyring
 # (Chromium, Signal, Discord, VS Code) ask for a new keyring password
 libpam-gnome-keyring
 xfce4-power-manager
+# Locks the screen when the X screensaver starts (Control Center → Power → "Lock when the screen turns off") and on
+# "loginctl lock-session": simpleos-power starts it with "dm-tool lock". 40 KB
+xss-lock
 # Theme & fonts
 arc-theme
 papirus-icon-theme

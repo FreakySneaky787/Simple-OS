@@ -4,6 +4,8 @@
 # in Catppuccin Mocha, briefly visible, not in the history – rule [simpleos-osd] in ~/.config/dunst/dunstrc).
 #   simpleos-osd volume up|down|mute     ±5 %, at most 100 % (pactl, pipewire-pulse); mute on/off
 #   simpleos-osd brightness up|down      ±5 % of the screen brightness, at least 5 % (never completely black)
+#   simpleos-osd brightness get          current brightness in % ("unsupported" without a backlight, e.g. desktop monitor)
+#   simpleos-osd brightness set PCT      5–100 %, without the on-screen display (Control Center → Display slider)
 # Brightness: /sys/class/backlight (preferably "raw"/"platform" like intel_backlight, amdgpu_bl0, otherwise "firmware"
 # like acpi_video0), set via logind (org.freedesktop.login1.Session.SetBrightness) – the logged-in session may do that
 # without root and without udev rules. Without a backlight (desktop monitor, VM): a short hint.
@@ -76,17 +78,25 @@ backlight() {
 }
 
 brightness() {
-    case "$1" in up|down) ;; *) echo "Usage: simpleos-osd brightness up|down" >&2; exit 2 ;; esac
+    case "$1" in up|down|get) ;; set) sos_is_num "${2:-}" || { echo "Usage: simpleos-osd brightness set PERCENT" >&2; exit 2; } ;;
+        *) echo "Usage: simpleos-osd brightness up|down|get|set PERCENT" >&2; exit 2 ;; esac
     dev=$(backlight)
     if [ -z "$dev" ]; then
+        [ "$1" = get ] && { echo unsupported; exit 0; }
+        [ "$1" = set ] && exit 1
         osd Brightness "This screen's brightness can't be changed here – use the buttons on the monitor." 0 notification-display-brightness
         exit 0
     fi
     max=$(cat "$dev/max_brightness" 2>/dev/null) cur=$(cat "$dev/brightness" 2>/dev/null)
-    sos_is_num "$max" && sos_is_num "$cur" && [ "$max" -gt 0 ] || { sos_log "unlesbar: $dev"; exit 0; }
+    sos_is_num "$max" && sos_is_num "$cur" && [ "$max" -gt 0 ] || { sos_log "unreadable: $dev"; [ "$1" = get ] && echo unsupported; exit 0; }
+    if [ "$1" = get ]; then echo $(( (cur * 100 + max / 2) / max )); exit 0; fi
     step=$((max * STEP / 100)); [ "$step" -lt 1 ] && step=1
     floor=$((max * 5 / 100)); [ "$floor" -lt 1 ] && floor=1
-    if [ "$1" = up ]; then new=$((cur + step)); else new=$((cur - step)); fi
+    case "$1" in
+        up)   new=$((cur + step)) ;;
+        down) new=$((cur - step)) ;;
+        set)  new=$(( (max * $2 + 50) / 100 )) ;;
+    esac
     [ "$new" -gt "$max" ] && new=$max
     [ "$new" -lt "$floor" ] && new=$floor
     name=${dev##*/}
@@ -95,15 +105,17 @@ brightness() {
         :
     else
         sos_log "SetBrightness $name $new failed"
+        [ "$1" = set ] && exit 1
         new=$cur
     fi
+    [ "$1" = set ] && exit 0
     pct=$(( (new * 100 + max / 2) / max ))
     osd Brightness "$pct%" "$pct" notification-display-brightness
 }
 
 case "${1:-}" in
     volume)     volume "${2:-}" ;;
-    brightness) brightness "${2:-}" ;;
-    *) echo "Usage: simpleos-osd volume up|down|mute | brightness up|down" >&2; exit 2 ;;
+    brightness) brightness "${2:-}" "${3:-}" ;;
+    *) echo "Usage: simpleos-osd volume up|down|mute | brightness up|down|get|set PERCENT" >&2; exit 2 ;;
 esac
 exit 0

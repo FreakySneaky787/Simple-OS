@@ -13,7 +13,8 @@ for f in /usr/local/bin/simpleos-powermenu /usr/local/bin/simpleos-screenshot /u
          /usr/local/bin/simpleos-clipboard /usr/local/bin/simpleos-control-center /usr/local/bin/simpleos-software-center \
          /usr/local/bin/simpleos-bluetooth /usr/local/bin/simpleos-nightlight /usr/local/bin/simpleos-power \
          /usr/local/bin/simpleos-wallpaper /usr/local/bin/simpleos-admin-open /usr/local/bin/simpleos-copy-file \
-         /usr/local/bin/simpleos-live /usr/local/bin/simpleos-install \
+         /usr/local/bin/simpleos-live /usr/local/bin/simpleos-install /usr/local/bin/simpleos-screensaver \
+         /usr/local/lib/simpleos/greeter-screen /usr/local/sbin/simpleos-regdom \
          /usr/local/bin/simpleos-snap /usr/local/bin/simpleos-search /usr/local/bin/simpleos-dnd \
          /usr/local/bin/simpleos-picom /usr/local/bin/simpleos-backup /usr/local/bin/simpleos-cleaner \
          /usr/local/bin/simpleos-wallpaper-schedule /usr/local/bin/simpleos-progress /usr/local/bin/simpleos-taskmanager \
@@ -30,11 +31,11 @@ for c in maim pactl rofi dm-tool notify-send flatpak gnome-software xdg-mime fas
          pkill setsid udiskie thunar systemctl loginctl apt xclip xrandr arandr timeout systemd-detect-virt dunst \
          viewnior atril mpv file-roller mousepad lspci lsusb lscpu gammastep rfkill file bluetoothctl blueman-manager xset \
          dbus-run-session findmnt udiskie-umount broadwayd xdotool wmctrl xprop xwininfo timeshift dunstctl \
-         gtk-launch journalctl glxinfo ufw earlyoom powerprofilesctl fwupdmgr gnome-disks lpstat lpadmin system-config-printer simple-scan scanimage ipp-usb xdg-user-dirs-update; do
+         gtk-launch journalctl glxinfo ufw earlyoom powerprofilesctl fwupdmgr gnome-disks lpstat lpadmin system-config-printer simple-scan scanimage ipp-usb xdg-user-dirs-update git xss-lock systemd-inhibit; do
     check "program $c missing" "command -v $c >/dev/null"
 done
 for rc in /etc/skel/.config/openbox/rc.xml /home/simple/.config/openbox/rc.xml; do
-    for key in W-x Print S-Print W-v W-a W-p W-i C-S-Escape XF86AudioRaiseVolume XF86AudioLowerVolume XF86AudioMute W-h W-S-question W-b W-n W-l XF86AudioPlay XF86AudioPause XF86AudioNext XF86AudioPrev; do
+    for key in W-x Print S-Print W-v W-a W-p W-i C-S-Escape XF86AudioRaiseVolume XF86AudioLowerVolume XF86AudioMute W-h W-S-question W-b W-n W-l XF86AudioPlay XF86AudioPause XF86AudioNext XF86AudioPrev XF86PowerOff; do
         check "keybinding $key missing in $rc" "grep -q 'keybind key=\"$key\"' '$rc'"
     done
 done
@@ -1414,6 +1415,7 @@ echo 90 > "$cl/thinkpad/ps/BAT0/charge_control_start_threshold"
 chl() { echo "SIMPLEOS_POWER_SUPPLY=$cl/$1/ps SIMPLEOS_IDEAPAD=$cl/$1/ideapad"; }
 hcase "$PW --get" "default 10 minutes, without a charge limit" "" "$(chl none)" "" \
     '[ "$(cat $S/out)" = "screen_off=10
+lock=on
 charge_limit=unsupported" ]'
 check "simpleos-power: --charge-limit without support reports success" \
       "! env HOME=$wt/home $(chl none) $PW --charge-limit on >/dev/null 2>&1 && [ ! -e $wt/home/.config/simpleos/power ]"
@@ -1463,6 +1465,99 @@ hcase "$PW --apply" "login applies it" "" "DISPLAY=:0" "" 'grep -qx "xset s 300 
 hcase "$PW --screen-off 0" "never" "" "DISPLAY=:0" "" 'grep -qx "xset s off -dpms" $S/xset'
 check "simpleos-power: invalid value accepted" "! env HOME=$wt/home $PW --screen-off 9999 >/dev/null 2>&1"
 rm -f "$wt/home/.config/simpleos/power"
+
+# Since 1.0.4: laptops (xfce4-power-manager owns screen blanking and DPMS, source xfpm-power.c / xfpm-dpms.c) get the
+# setting through xfconf, PCs through xset; lock when the screen turns off (xss-lock); "video playing" = --suspend
+pw=$wt/pw; mkdir -p "$pw/lap" "$pw/pc"
+printf '#!/bin/sh\nexit 0\n' > "$pw/lap/simpleos-battery"
+printf '#!/bin/sh\nexit 1\n' > "$pw/pc/simpleos-battery"
+printf '#!/bin/sh\necho "xss-lock $*" >> "$WT/xss"\n' > "$pw/xss-lock"
+printf '#!/bin/sh\necho "pkill $*" >> "$WT/xss"\n' > "$pw/pkill"
+printf '#!/bin/sh\nexec "$@"\n' > "$pw/setsid"
+printf '#!/bin/sh\ncase "$*" in *" -s "*) echo "$*" >> "$WT/xfconf" ;; *) echo "$XQ_CUR" ;; esac\n' > "$pw/xfconf-query"
+chmod 0755 "$pw"/* "$pw/lap/simpleos-battery" "$pw/pc/simpleos-battery"
+pwr() {   # lap|pc [ENV=VALUE] -- args
+    kind=$1; shift; extra=
+    while [ "$1" != -- ]; do extra="$extra $1"; shift; done; shift
+    rm -rf "${S:?}"; mkdir -p "$S"
+    # shellcheck disable=SC2086
+    $ENV -i HOME="$wt/home" WT="$S" DISPLAY=:0 $extra PATH="$pw/$kind:$pw:$wt/mock:$wt/sys" "$wt/sys/sh" "$PW" "$@" >"$S/out" 2>&1
+}
+rm -f "$wt/home/.config/simpleos/power"
+pwr pc -- --screen-off 5
+check "simpleos-power: PC without a battery does not use xset" \
+      'grep -qx "xset s 300 300 +dpms dpms 300 300 300" $S/xset && [ ! -e $S/xfconf ]'
+pwr lap -- --screen-off 5
+check "simpleos-power: laptop sets the times in xfce4-power-manager (xfpm sets DPMS itself at every plug/unplug)" \
+      '(for k in blank-on-ac blank-on-battery dpms-on-ac-sleep dpms-on-ac-off dpms-on-battery-sleep dpms-on-battery-off; do
+           grep -qx -- "-c xfce4-power-manager -n -t int -p /xfce4-power-manager/$k -s 5" $S/xfconf || exit 1
+       done) && grep -qx -- "-c xfce4-power-manager -n -t bool -p /xfce4-power-manager/dpms-enabled -s true" $S/xfconf && [ ! -e $S/xset ]'
+pwr lap -- --screen-off 0
+check "simpleos-power: laptop, never: blanking 0 and DPMS off in xfce4-power-manager" \
+      'grep -qx -- "-c xfce4-power-manager -n -t int -p /xfce4-power-manager/blank-on-ac -s 0" $S/xfconf &&
+       grep -qx -- "-c xfce4-power-manager -n -t bool -p /xfce4-power-manager/dpms-enabled -s false" $S/xfconf'
+pwr lap -- --screen-off 5
+pwr lap XQ_CUR=5 -- --apply
+check "simpleos-power --apply: laptop with the value already in xfconf starts no xfconf-query writes (faster sign-in)" '[ ! -e $S/xfconf ]'
+pwr lap XQ_CUR=10 -- --apply
+check "simpleos-power --apply: laptop whose xfconf differs from the saved choice gets it" \
+      'grep -qx -- "-c xfce4-power-manager -n -t int -p /xfce4-power-manager/blank-on-ac -s 5" $S/xfconf'
+pwr pc -- --suspend
+check "simpleos-power --suspend: PC keeps the screen on while a video plays" 'grep -qx "xset s off -dpms" $S/xset'
+pwr lap -- --suspend
+check "simpleos-power --suspend: on a laptop xfce4-power-manager does that (no xset)" '[ ! -e $S/xset ]'
+pwr pc -- --lock off
+check "simpleos-power --lock off: saved, xss-lock stopped and not started" \
+      'grep -qx "lock=off" $wt/home/.config/simpleos/power && grep -q "^pkill .*xss-lock" $S/xss && ! grep -q "^xss-lock" $S/xss'
+pwr pc -- --lock on
+waitfor "$S/xss" && sleep 0.3
+check "simpleos-power --lock on: saved, xss-lock follows the screensaver and locks with dm-tool" \
+      'grep -qx "lock=on" $wt/home/.config/simpleos/power && grep -qx "xss-lock -- dm-tool lock" $S/xss'
+pwr pc SIMPLEOS_LIVE=1 -- --lock on
+check "simpleos-power --lock on: no xss-lock in the live session (password unknown)" '! grep -q "^xss-lock" $S/xss'
+pwr pc -- --lock maybe; rc=$?
+check "simpleos-power --lock: invalid value accepted" '[ $rc -eq 2 ]'
+check "simpleos-power: --lock status" '[ "$(env -i HOME=$wt/home $wt/sys/sh $PW --lock status)" = on ]'
+rm -f "$wt/home/.config/simpleos/power"
+
+# "Keep the screen on while a video plays" for PCs: org.freedesktop.ScreenSaver on the session bus, started by D-Bus
+SSV=/usr/local/bin/simpleos-screensaver
+check "$SSV: missing or not executable" "[ -x $SSV ] && python3 -m py_compile $SSV"
+check "D-Bus: org.freedesktop.ScreenSaver is not started by simpleos-screensaver" \
+      "grep -qx 'Name=org.freedesktop.ScreenSaver' /usr/local/share/dbus-1/services/org.freedesktop.ScreenSaver.service &&
+       grep -qx 'Exec=$SSV' /usr/local/share/dbus-1/services/org.freedesktop.ScreenSaver.service"
+cat > "$wt/ss-power" <<'MOCK'
+#!/bin/sh
+echo "$*" >> "$SSLOG"
+MOCK
+chmod 0755 "$wt/ss-power"
+cat > "$wt/ss-test.py" <<'PY'
+import sys, time
+from gi.repository import Gio, GLib
+b = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+def call(path, m, args=None, sig=None):
+    return b.call_sync("org.freedesktop.ScreenSaver", path, "org.freedesktop.ScreenSaver", m,
+                       GLib.Variant(sig, args) if sig else None, None, Gio.DBusCallFlags.NONE, -1, None).unpack()
+c1 = call("/org/freedesktop/ScreenSaver", "Inhibit", ("firefox", "video"), "(ss)")[0]
+c2 = call("/ScreenSaver", "Inhibit", ("mpv", "video"), "(ss)")[0]
+assert c1 != c2
+call("/org/freedesktop/ScreenSaver", "UnInhibit", (c1,), "(u)")
+time.sleep(0.5)
+assert open(sys.argv[1]).read().split() == ["--suspend"], open(sys.argv[1]).read()
+call("/ScreenSaver", "UnInhibit", (c2,), "(u)")
+time.sleep(0.5)
+assert open(sys.argv[1]).read().split() == ["--suspend", "--apply"], open(sys.argv[1]).read()
+# a program that dies without UnInhibit
+call("/org/freedesktop/ScreenSaver", "Inhibit", ("chromium", "video"), "(ss)")
+b.close_sync(None)
+PY
+rm -f "$wt/ss.log"
+check "simpleos-screensaver: Inhibit/UnInhibit over D-Bus (suspend at the first, apply after the last, apply when the program quits)" \
+      "env SSLOG=$wt/ss.log SIMPLEOS_POWER=$wt/ss-power SIMPLEOS_IDLE_EXIT=2 SIMPLEOS_POWER_SUPPLY=$wt/nope DISPLAY=:0 \
+         dbus-run-session -- python3 $wt/ss-test.py $wt/ss.log >$wt/ss.out 2>&1; rc=\$?; sleep 1
+       { [ \$rc -eq 0 ] && [ \"\$(tr '\n' ' ' < $wt/ss.log)\" = '--suspend --apply --suspend --apply ' ]; } || { cat $wt/ss.out >&2; false; }"
+check "simpleos-screensaver: answers on a laptop (xfce4-power-manager owns the name)" \
+      "env SIMPLEOS_POWER_SUPPLY=$wt/nope PATH=$pw/lap:\$PATH timeout 5 $SSV"
 
 # ---- Printing and scanning: CUPS with network discovery (Avahi), USB without drivers (ipp-usb), drivers for older devices
 for svc in cups avahi-daemon; do
@@ -3273,6 +3368,15 @@ hcase "$OSD brightness down" "brightness never below 5 % (never black)" "" "SIMP
     'grep -q "SetBrightness ssu backlight intel_backlight 50\$" $S/busctl'
 hcase "$OSD brightness up" "without a backlight -> hint" "" "SIMPLEOS_BACKLIGHT=$wt/none" "" \
     'grep -q "brightness can.t be changed here" $S/notify && [ ! -e $S/busctl ]'
+echo 500 > "$bl/intel_backlight/brightness"
+hcase "$OSD brightness get" "slider: current value in %" "" "SIMPLEOS_BACKLIGHT=$bl" "" '[ "$(cat $S/out)" = 50 ]'
+hcase "$OSD brightness get" "slider: no backlight -> unsupported" "" "SIMPLEOS_BACKLIGHT=$wt/none" "" '[ "$(cat $S/out)" = unsupported ]'
+hcase "$OSD brightness set 80" "slider: 80 % via logind, no on-screen display" "" "SIMPLEOS_BACKLIGHT=$bl" "" \
+    'grep -q "SetBrightness ssu backlight intel_backlight 800\$" $S/busctl && [ ! -e $S/notify ]'
+hcase "$OSD brightness set 0" "slider: never black (5 %)" "" "SIMPLEOS_BACKLIGHT=$bl" "" \
+    'grep -q "SetBrightness ssu backlight intel_backlight 50\$" $S/busctl'
+check "simpleos-osd: 'set' without a number accepted" "! env -i HOME=$wt/home PATH=$wt/mock:$wt/sys SIMPLEOS_BACKLIGHT=$bl $wt/sys/sh $OSD brightness set abc >/dev/null 2>&1"
+check "Control Center: brightness slider missing" "grep -q '\"brightness\", \"set\"' /usr/local/bin/simpleos-control-center"
 rm -rf "${bl:?}" "$wt/mock/pactl" "$wt/mock/busctl"
 [ -e "$wt/pactl.keep" ] && mv "$wt/pactl.keep" "$wt/mock/pactl"
 for home in /etc/skel /home/simple; do
@@ -3809,6 +3913,57 @@ emig || true; emig || true  # 030-fails fails on purpose (set -e)
 check "edition: a new migration did not run exactly once" "[ \"\$(cat $et/ran)\" = 2 ]"
 check "edition: a failed migration counts as done" "! grep -qx 030-fails $et/done && ! emig"
 rm -rf "${et:?}"
+
+# ---- 1.0.4: power button, idle lock, screen blanking defaults, Wi-Fi country, git
+for home in /etc/skel /home/simple; do
+    rc=$home/.config/openbox/rc.xml; auto=$home/.config/openbox/autostart
+    check "rc.xml: XF86PowerOff does not open the power menu in $home" \
+          "grep -A1 'keybind key=\"XF86PowerOff\"' '$rc' | grep -qF '<command>/usr/local/bin/simpleos-powermenu</command>'"
+    check "autostart: the power button inhibitor (logind) missing in $home" \
+          "grep -q '^systemd-inhibit --what=handle-power-key ' '$auto'"
+    check "autostart: D-Bus activation environment (DISPLAY for simpleos-screensaver) missing in $home" \
+          "grep -qx 'dbus-update-activation-environment --systemd DISPLAY XAUTHORITY 2>/dev/null' '$auto'"
+done
+check "xfce4-power-manager: screen-off defaults (10 minutes, DPMS on) or 'lock before sleep' off missing" \
+      "python3 -c 'import sys, xml.etree.ElementTree as E; r = E.parse(sys.argv[1]).getroot()
+want = {\"dpms-enabled\": \"true\", \"lock-screen-suspend-hibernate\": \"false\"}
+for k in (\"blank-on-ac\", \"blank-on-battery\", \"dpms-on-ac-sleep\", \"dpms-on-ac-off\", \"dpms-on-battery-sleep\", \"dpms-on-battery-off\"):
+    want[k] = \"10\"
+for k, v in want.items():
+    p = r.find(\"./property[@name=\x27xfce4-power-manager\x27]/property[@name=\x27%s\x27]\" % k); assert p is not None and p.get(\"value\") == v, k' $XFPM"
+GS=/usr/local/lib/simpleos/greeter-screen
+check "LightDM: the lock screen is not turned off (display-setup-script missing)" \
+      "grep -qx 'display-setup-script=$GS' /etc/lightdm/lightdm.conf.d/10_simpleos.conf && sh -n $GS && grep -q 'xset s 120' $GS"
+check "greeter-screen: error exit stops the login" "env -i PATH=/nonexistent /bin/sh $GS"
+check "Control Center: lock switch missing" "grep -q '\"--lock\"' /usr/local/bin/simpleos-control-center"
+for pkg in git xss-lock; do
+    check "package $pkg missing (package list)" "dpkg -s $pkg >/dev/null 2>&1"
+done
+# Wi-Fi regulatory country from the time zone
+RD=/usr/local/sbin/simpleos-regdom
+check "simpleos-regdom: missing/syntax error" "[ -x $RD ] && sh -n $RD"
+check "simpleos-regdom: service/path/udev rule missing or not enabled" \
+      "grep -qx 'ExecStart=$RD' /etc/systemd/system/simpleos-regdom.service &&
+       grep -qx 'PathChanged=/etc/localtime' /etc/systemd/system/simpleos-regdom.path &&
+       [ -L /etc/systemd/system/multi-user.target.wants/simpleos-regdom.service ] &&
+       [ -L /etc/systemd/system/multi-user.target.wants/simpleos-regdom.path ] &&
+       grep -q 'SUBSYSTEM==\"ieee80211\".*SYSTEMD_WANTS}+=\"simpleos-regdom.service\"' /etc/udev/rules.d/61-simpleos-regdom.rules"
+# ($wt of the tests above is gone by now: own directory with the few tools the script needs)
+rz=$(mktemp -d); mkdir -p "$rz/sys"
+for t in sh awk head sed readlink env; do p=$(command -v "$t") && ln -s "$p" "$rz/sys/$t"; done
+printf 'CH\t+4723+00832\tEurope/Zurich\nDE\t+5230+01322\tEurope/Berlin\n' > "$rz/zone.tab"
+printf 'CH,DE,LI\t+4723+00832\tEurope/Zurich\nUS\t+4042-07400\tAmerica/New_York\n' > "$rz/zone1970.tab"
+printf '#!/bin/sh\necho "$*" > "%s/iw.out"\n' "$rz" > "$rz/iw"; chmod 0755 "$rz/iw"
+rd() {   # time zone -> what "iw" was called with
+    echo "$1" > "$rz/tz"; rm -f "$rz/iw.out"
+    env -i PATH="$rz/sys" SIMPLEOS_ZONEINFO="$rz" SIMPLEOS_TIMEZONE_FILE="$rz/tz" SIMPLEOS_LOCALTIME=/nonexistent SIMPLEOS_IW="$rz/iw" \
+        "$rz/sys/sh" $RD; cat "$rz/iw.out" 2>/dev/null
+}
+check "simpleos-regdom: Europe/Zurich -> CH"  '[ "$(rd Europe/Zurich)" = "reg set CH" ]'
+check "simpleos-regdom: America/New_York (only in zone1970.tab shape) -> US" '[ "$(rd America/New_York)" = "reg set US" ]'
+check "simpleos-regdom: UTC sets no country" '[ -z "$(rd UTC)" ]'
+check "simpleos-regdom: odd time zone text reaches iw" '[ -z "$(rd "Europe/Zu;rich")" ]'
+rm -rf "${rz:?}"
 
 [ "$fail" -eq 0 ]
 echo "Simple OS verify: OK"

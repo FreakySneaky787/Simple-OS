@@ -1,0 +1,10 @@
+# Simple OS – run simpleos-regdom.service again when the time zone is changed (Control Center → System → Date & Time)
+[Unit]
+Description=Simple OS Wi-Fi regulatory country: watch the time zone
+
+[Path]
+PathChanged=/etc/localtime
+Unit=simpleos-regdom.service
+
+[Install]
+WantedBy=multi-user.target

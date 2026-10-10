@@ -274,6 +274,17 @@ the lb default files, the generated graphics and the fastfetch package.
   errors in plain language. A tray icon for ejecting is shown only while a drive is plugged in. pcmanfm autorun
   is off; dunst: a left click triggers a notification's action (hook 09, dunst 1.9 has no drop-ins).
 - Power menu: `simpleos-powermenu` (Super+X, taskbar button, Menu → Power); Sleep locks the screen first.
+  The power button opens it too (`XF86PowerOff` in `rc.xml`; the Openbox autostart holds a logind inhibitor
+  `handle-power-key` for the session, the login screen keeps logind's default).
+- Screen blanking and lock (`simpleos-power --screen-off MIN | --lock on|off|status | --suspend | --apply`, Control Center
+  → Power): **with a battery xfce4-power-manager owns the X screensaver time and the DPMS times** (it sets them again at
+  every plug/unplug and keeps the screen on while a browser plays a video; source `xfpm-power.c`/`xfpm-dpms.c`), so the
+  setting is written to its xfconf channel; without a battery `xset` is used and `simpleos-screensaver` (D-Bus-activated,
+  `org.freedesktop.ScreenSaver`, quits 30 s after the last video) answers the browsers' inhibit request. `xss-lock`
+  locks with `dm-tool lock` when the screensaver starts (not in the live session); LightDM's `display-setup-script`
+  (`greeter-screen`) darkens the lock screen after 2 minutes. Brightness: `simpleos-osd brightness get|set PCT`
+  (Control Center → Display). Wi-Fi regulatory country from the time zone: `simpleos-regdom` (service, path unit on
+  `/etc/localtime`, udev rule on `ieee80211`).
 - Live mode (`simpleos-live`, detected by `boot=live` or `/run/live/medium`): desktop icon "Install Simple OS",
   Welcome window with a banner and the button "Install Simple OS Now", an entry at the top of the right-click menu
   and a mauve badge in the taskbar – all start `simpleos-install` (Calamares via pkexec). After the installation

@@ -8,16 +8,17 @@ Written after 1.0.3 (2026-10-09). What is already done is in `RELEASE_NOTES.md`;
 
 | Kind | When | What goes in |
 |---|---|---|
-| **Hotfix** (1.0.x) | within days | only what breaks starting, installing, data or security, or a core function (Wi-Fi, sound, login) |
-| **Point release** (1.0.x, 1.1.x) | every 3–4 weeks | everything collected below, bundled; one restart for the users |
-| **Minor release** (1.1, 1.2 …) | about every 3 months | new features |
-| **New ISO** | with a minor release, or when the installer / hardware detection changed | everyone already installed gets the rest through Software Updates, so a pure update can be published with `./tools/release.sh publish --no-iso` |
+| **Hotfix** (1.0.x) | within days, when needed | only what breaks starting, installing, data or security, or a core function (Wi-Fi, sound, login) |
+| **Bugfix release** (1.0.x, 1.1.x) | every 2–3 weeks | everything collected below, bundled; one restart for the users |
+| **Feature release** (1.1, 1.2 …) | every 2–3 months | new features |
+| **Big release** (2.0, 3.0 …) | only with a new Debian version | new base system, new ISO, upgrade path |
+| **New ISO** | with a feature or big release, or when the installer / hardware detection changed | everyone already installed gets the rest through Software Updates, so a pure update is published with `./tools/release.sh publish --no-iso` |
 
 Rules that keep it small: no new always-running process without a good reason (the image is built without Recommends
 on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook.chroot`; anything that mocks can hide
 (night light in 1.0.3!) is run for real once, e.g. in a container with Xvfb; nothing is published untested on hardware.
 
-## Now: verify 1.0.3 on real hardware (feeds the next point release)
+## Now: verify 1.0.3 on real hardware (feeds 1.0.4)
 
 These could only be tested without hardware. Tick them off on the ThinkPad E16 / ThinkBook and report in the issues.
 
@@ -32,7 +33,7 @@ These could only be tested without hardware. Tick them off on the ThinkPad E16 /
       lightdm journal – harmless or not?)
 - [ ] Update from 1.0.2 to 1.0.3 through Software Updates on an installed system.
 
-## 1.0.4 – next point release (about 3–4 weeks after 1.0.3)
+## 1.0.4 – next bugfix release (planned for the weekend of 2026-10-17)
 
 Small, safe, mostly things users hit in the first hour.
 
@@ -48,7 +49,7 @@ Small, safe, mostly things users hit in the first hour.
 | Startup apps page | enable/disable autostart entries without the terminal | M |
 | Wi-Fi: regulatory country from the time zone | the chip guessed NL for a Swiss user | S |
 
-## 1.1 – next minor release (about 3 months)
+## 1.1 – next feature release (2–3 months after 1.0)
 
 - **HiDPI / display scaling** – the biggest gap: nothing scales today (no Xft/DPI, no GDK scale, tint2/Openbox use
   pixels). On a 2.8K/4K laptop everything is tiny. Plan: a "Scale" setting in Control Center → Display (100/125/150/200 %)

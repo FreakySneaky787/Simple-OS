@@ -20,6 +20,8 @@ wget
 unzip
 zip
 openssh-client
+# The first thing most guides ask for (git clone …); ~45 MB
+git
 dosfstools
 exfatprogs
 ntfs-3g
