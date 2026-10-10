@@ -54,7 +54,7 @@ volume() {
     esac
     vol=$(pactl get-sink-volume @DEFAULT_SINK@ 2>/dev/null | grep -o '[0-9]*%' | head -n 1 | tr -d %)
     sos_is_num "$vol" || vol=0
-    if pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null | grep -q 'yes'; then
+    if LC_ALL=C pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null | grep -q 'yes'; then
         osd Volume "Muted" 0 notification-audio-volume-muted
     else
         # notification-*: Papirus has these in notification size (48 px); audio-volume-* only as 16–24 px panel icons

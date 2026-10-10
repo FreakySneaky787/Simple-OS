@@ -25,7 +25,7 @@ kind="Ethernet"
 [ -d "/sys/class/net/$dev/wireless" ] && kind="Wi-Fi"
 
 vpn_status() {
-    vpn=$(nmcli -t -f TYPE,NAME connection show --active 2>/dev/null |
+    vpn=$(LC_ALL=C.UTF-8 nmcli -t -f TYPE,NAME connection show --active 2>/dev/null |
           awk -F: '$1 == "vpn" || $1 == "wireguard" { print $2; exit }')
     [ -n "$vpn" ] || vpn=$(ip -o link show up 2>/dev/null |
           awk -F': ' '$2 ~ /^(tun|tap|wg|ppp|tailscale)/ { sub("@.*", "", $2); print $2; exit }')
@@ -60,7 +60,7 @@ fi
 
 info() {
     conn=
-    [ -n "$dev" ] && conn=$(nmcli -t -g GENERAL.CONNECTION device show "$dev" 2>/dev/null)
+    [ -n "$dev" ] && conn=$(LC_ALL=C.UTF-8 nmcli -t -g GENERAL.CONNECTION device show "$dev" 2>/dev/null)
     printf '%-12s %s\n' \
         "LAN IP"     "${ip:-not connected}" \
         "Interface"  "${dev:-none}${dev:+ ($kind${conn:+, $conn})}" \

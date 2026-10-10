@@ -162,7 +162,7 @@ def run_gui(selftest=False):
     import gi
     gi.require_version("Gtk", "3.0")
     gi.require_version("Gdk", "3.0")
-    from gi.repository import Gdk, GLib, GObject, Gtk
+    from gi.repository import Gdk, GLib, GObject, Gtk, Pango
 
     COLS = ("pid", "name", "user", "cpu", "mem", "cpu_s", "mem_s", "start", "uid")
 
@@ -199,19 +199,31 @@ def run_gui(selftest=False):
             self.sorted = Gtk.TreeModelSort(model=self.filter)
             self.sorted.set_sort_column_id(3, Gtk.SortType.DESCENDING)
             self.view = Gtk.TreeView(model=self.sorted)
-            for title, col, sort, xalign, expand in (("Name", 1, 1, 0.0, True), ("PID", 0, 0, 1.0, False),
-                                                      ("User", 2, 2, 0.0, False), ("CPU", 5, 3, 1.0, False),
-                                                      ("Memory", 6, 4, 1.0, False)):
+            # Fixed widths for the numbers, only Name stretches (and gives way): with all columns sized by their content
+            # the list came out wider than the window and the Memory column was cut off
+            for title, col, sort, xalign, expand, width in (("Name", 1, 1, 0.0, True, 0), ("PID", 0, 0, 1.0, False, 70),
+                                                            ("User", 2, 2, 0.0, False, 100), ("CPU", 5, 3, 1.0, False, 80),
+                                                            ("Memory", 6, 4, 1.0, False, 100)):
                 r = Gtk.CellRendererText(xalign=xalign)
                 c = Gtk.TreeViewColumn(title, r, text=col)
                 c.set_sort_column_id(sort)
                 c.set_expand(expand)
                 c.set_resizable(True)
+                if expand:
+                    r.set_property("ellipsize", Pango.EllipsizeMode.END)
+                    c.set_min_width(120)
+                else:
+                    r.set_property("ellipsize", Pango.EllipsizeMode.END)
+                    c.set_sizing(Gtk.TreeViewColumnSizing.FIXED)
+                    c.set_fixed_width(width)
                 self.view.append_column(c)
             self.view.connect("button-press-event", self.on_button)
             self.view.connect("key-press-event", self.on_key)
             self.view.get_selection().connect("changed", lambda *_: self.update_button())
             sw = Gtk.ScrolledWindow()
+            # No horizontal scrolling: the view takes the window's width and the Name column gives way – otherwise
+            # a long process name made the list wider than the window and cut off the Memory column
+            sw.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
             sw.add(self.view)
             box.pack_start(sw, True, True, 0)
 

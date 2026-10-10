@@ -50,7 +50,7 @@ while [ $# -gt 0 ]; do
         --show)   echo "mode=$mode"; echo "accent=$accent"; exit 0 ;;
         --no-wallpaper) set_wallpaper=0; shift ;;
         --xsettings)
-            case "$mode" in light) write_xsettings Arc Papirus ;; *) write_xsettings Arc-Dark Papirus-Dark ;; esac
+            case "$mode" in light) write_xsettings Arc Papirus-Light ;; *) write_xsettings Arc-Dark Papirus-Dark ;; esac
             reload_xsettings
             exit 0 ;;
         --pick)
@@ -100,7 +100,7 @@ old_hex=$(hex_of "$old_accent" 2>/dev/null || echo "$BASE_ACCENT")
 # XSETTINGS); libadwaita/Flatpaks follow color-scheme (gsettings, live via the portal).
 case "$mode" in
     dark)  gtk_theme=Arc-Dark; icons=Papirus-Dark; prefer=0; scheme=prefer-dark ;;
-    light) gtk_theme=Arc;      icons=Papirus;      prefer=0; scheme=prefer-light ;;
+    light) gtk_theme=Arc;      icons=Papirus-Light; prefer=0; scheme=prefer-light ;;
     *) echo "Unknown mode: $mode" >&2; exit 2 ;;
 esac
 

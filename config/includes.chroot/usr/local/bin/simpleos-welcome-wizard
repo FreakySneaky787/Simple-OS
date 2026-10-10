@@ -202,7 +202,9 @@ def run(cmd, wait=True):
 # hangs, the page shows "not connected" instead of crashing.
 def nmcli(*args, timeout=15, input=None):
     try:
-        return subprocess.run(["nmcli", *args], capture_output=True, text=True, timeout=timeout, input=input)
+        # English messages (states, "enabled"/"disabled" are compared below), UTF-8 for names with umlauts
+        return subprocess.run(["nmcli", *args], capture_output=True, text=True, timeout=timeout, input=input,
+                              env=dict(os.environ, LC_ALL="C.UTF-8"))
     except (OSError, subprocess.TimeoutExpired) as err:
         return subprocess.CompletedProcess(["nmcli", *args], 1, "", str(err))
 

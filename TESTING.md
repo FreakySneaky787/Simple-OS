@@ -197,3 +197,11 @@ lines only run at the next login) and on a PC without a battery (or a VM: there 
 - [ ] **git:** `git --version` works after the update (arrives with the first Software Updates).
 - [ ] **Updating from 1.0.3:** Software Updates offers 1.0.4, the 1.0.3 setting "Turn off the screen after" is kept
       (e.g. 5 minutes stays 5 minutes in `xfconf-query`), nothing asks for a password besides the update.
+- [ ] **Task Manager (sixth sweep):** the Memory column is fully visible (it was cut off), long names are shortened with "…".
+- [ ] **Light mode:** Control Center → Appearance → Light: the Sound entry in the Control Center sidebar and other symbol icons are
+      dark and readable (before: light gray on white); the Software Center list has no black frame.
+- [ ] **A non-English installation (e.g. German):** `simpleos-wifi` (network menu) shows "Connected: …" and "Turn off Wi-Fi" while
+      online – before, `nmcli` answered "verbunden"/"aktiviert" and the menu thought you were offline with Wi-Fi off. The Setup
+      Wizard's Internet step says "Connected" too. Mute from the volume keys shows "Muted".
+- [ ] **Small screen (1366x768):** the Welcome window fits on the screen (it was taller than the screen).
+- [ ] **Report a Problem:** a Bluetooth device name like `bluez_output.90_7A_…` is written as `XX:XX:XX:XX:XX:XX` in the saved file.

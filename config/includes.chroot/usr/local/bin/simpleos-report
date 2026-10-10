@@ -201,7 +201,8 @@ for w, r in sorted(words, key=lambda x: -len(x[0])):
     pat = re.escape(w) if w.startswith("/") else r"(?<![\w-])" + re.escape(w) + r"(?![\w-])"
     text = re.sub(pat, r, text)
 
-text = re.sub(r"\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b", "XX:XX:XX:XX:XX:XX", text)
+# ":" and "-" like in "a4:5e:60:12:34:56"; "_" in the names PipeWire/BlueZ make of a device ("bluez_output.90_7A_58_E9_D9_5F.1")
+text = re.sub(r"\b(?:[0-9A-Fa-f]{2}[:_-]){5}[0-9A-Fa-f]{2}\b", "XX:XX:XX:XX:XX:XX", text)
 text = re.sub(r"(?i)(serial(?:\s*number)?\s*[:=]\s*)\S+", r"\1<removed>", text)
 
 def v4(m):

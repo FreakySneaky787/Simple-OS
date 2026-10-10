@@ -458,6 +458,7 @@ printf '#!/bin/sh\nexit 0\n' > "$wt/sys/sleep"
 cat > "$wt/mock/nmcli" <<'MOCK'
 #!/bin/sh
 echo "nmcli $*" >> "$WT/calls"
+echo "${LC_ALL:-unset}" >> "$WT/nmcli-locale"
 # the password is read from stdin with --ask (never from the command line)
 case "$*" in *--ask*) cat > "$WT/stdin-pw" ;; esac
 case "$*" in
@@ -542,6 +543,11 @@ wcase "Wi-Fi: flyout layout" "" "NET=wifi" "-" \
     '[ "$(row 0 1)" = "Connected: Home" ] && row 0 2 | grep -q "^Office  Good" && row 0 3 | grep -q "^Cafe  Weak" &&
      [ "$(row 0 4)" = "Turn off Wi-Fi" ] && [ "$(row 0 5)" = "Network Details" ] && [ $(grep -c . $S/rofi.0) -eq 5 ] &&
      grep -q "<b>Select network</b>" $S/rofi.args && ! grep -q "Wi-Fi Hardware" $S/rofi.0'
+wcase "Wi-Fi: nmcli always runs with English messages (a German system prints verbunden/aktiviert)" "" "NET=wifi LANG=de_DE.UTF-8" "-" \
+    '[ -s $S/nmcli-locale ] && ! grep -qv "^C.UTF-8$" $S/nmcli-locale'
+check "simpleos-netinfo/-welcome-wizard: nmcli without English messages (LC_ALL=C.UTF-8)" \
+      "! grep -n 'nmcli' /usr/local/bin/simpleos-netinfo | grep -v 'LC_ALL=C.UTF-8 nmcli' | grep -v '^[0-9]*:#' | grep -q 'nmcli -t' &&
+       grep -q 'LC_ALL=\"C.UTF-8\"' /usr/local/bin/simpleos-welcome-wizard"
 wcase "Wi-Fi: active network -> Disconnect" "" "NET=wifi" "0 0" \
     '[ "$(row 1 1)" = "Disconnect" ] && [ "$(row 1 2)" = "Network Details" ] && [ "$(row 1 3)" = "Back" ] &&
      grep -q "device disconnect wlan0" $S/calls && grep -q "Disconnected from Home" $S/notify'
@@ -1499,6 +1505,8 @@ check "simpleos-power: laptop, never: blanking 0 and DPMS off in xfce4-power-man
 pwr lap -- --screen-off 5
 pwr lap XQ_CUR=5 -- --apply
 check "simpleos-power --apply: laptop with the value already in xfconf starts no xfconf-query writes (faster sign-in)" '[ ! -e $S/xfconf ]'
+check "simpleos-power --apply: laptop also sets the plain X times (base if xfce4-power-manager does not start)" \
+      'grep -qx "xset s 300 300 +dpms dpms 300 300 300" $S/xset'
 pwr lap XQ_CUR=10 -- --apply
 check "simpleos-power --apply: laptop whose xfconf differs from the saved choice gets it" \
       'grep -qx -- "-c xfce4-power-manager -n -t int -p /xfce4-power-manager/blank-on-ac -s 5" $S/xfconf'
@@ -3474,7 +3482,7 @@ tcase "light, running session" "DISPLAY=:0 XSD_RUNNING=1" "--mode light" \
      grep -qx "gtk-theme-name=Arc" '"$th"'/.config/gtk-4.0/settings.ini && grep -qx "gtk-theme-name=\"Arc\"" '"$th"'/.gtkrc-2.0 &&
      grep -qx "gsettings set org.gnome.desktop.interface color-scheme prefer-light" $S/gsettings &&
      grep -qx "gsettings set org.gnome.desktop.interface gtk-theme Arc" $S/gsettings &&
-     grep -qx "Net/ThemeName \"Arc\"" '"$XSD"' && grep -qx "Net/IconThemeName \"Papirus\"" '"$XSD"' && grep -qx "Gtk/FontName \"Inter 10\"" '"$XSD"' &&
+     grep -qx "Net/ThemeName \"Arc\"" '"$XSD"' && grep -qx "Net/IconThemeName \"Papirus-Light\"" '"$XSD"' && grep -qx "Gtk/FontName \"Inter 10\"" '"$XSD"' &&
      grep -qx "pkill -HUP -x xsettingsd" $S/pkill && [ ! -e $S/xsd ] &&
      grep -qx "openbox --reconfigure" $S/power &&
      grep -qx "/usr/share/backgrounds/simpleos/wallpaper-day.png" $S/wallpaper &&
@@ -3739,6 +3747,7 @@ chmod 0755 "$rt/mock/"*
 cat > "$rt/in" <<'IN'
 log: /home/aaron/.cache/simpleos-wifi.log user aaron logged in (Aaron Example) on aarons-thinkbook
 connected to FRITZ!Box 7590 XY via wlp0s20f3 a4:5E:60:12:34:56 bt 00-1A-7D-DA-71-13
+wireplumber: (bluez_output.90_7A_58_E9_D9_5F.1-23) running -> error
 inet 192.168.178.23/24 gw 10.0.0.1 DHCPACK from 192.168.1.1.
 inet6 fe80::1c2d:3eff:fe4f:5a6b%wlp0s20f3 and 2a02:8106:21:4f00::1/64
 usb 1-2: SerialNumber: 4C530001230817116183 mail aaron.example@example.org
@@ -3746,13 +3755,13 @@ keep: Simple OS v1.0 simple-os /home/simple alsa-topology-conf 1.2.5.1-2 v1.2.3.
 keep: 12:34:56 00:02.0 VGA [8086:a7a0] Mesa 22.3.6 Wired connection 1 aaronson firmware 1.2.3.4.5
 IN
 HOME=/home/aaron PATH="$rt/mock:/usr/bin:/bin" $RP --redact < "$rt/in" > "$rt/out" 2>/dev/null
-for bad in aaron Aaron aarons-thinkbook FRITZ a4:5E 00-1A-7D 192.168.178.23 10.0.0.1 192.168.1.1 fe80:: 2a02:8106 \
+for bad in aaron Aaron aarons-thinkbook FRITZ a4:5E 00-1A-7D 90_7A_58 192.168.178.23 10.0.0.1 192.168.1.1 fe80:: 2a02:8106 \
            4C530001230817116183 example.org; do
     check "Report redaction: '$bad' still there" "! grep -v '^keep:' $rt/out | grep -qF '$bad'"
 done
 for good in 'Simple OS v1.0' 'simple-os' '/home/simple ' '1.2.5.1-2' 'v1.2.3.4' '127.0.0.1' ' ::1' '12:34:56' '00:02.0 VGA' \
             '[8086:a7a0]' 'Mesa 22.3.6' 'Wired connection 1' 'aaronson' '1.2.3.4.5' 'DHCPACK from <ip>.' '/home/<user>/.cache' \
-            'user <user> logged in (<name>) on <hostname>' 'connected to <network> via'; do
+            'user <user> logged in (<name>) on <hostname>' 'connected to <network> via' 'bluez_output.XX:XX:XX:XX:XX:XX.1-23'; do
     check "Report redaction: '$good' changed" "grep -qF -- '$good' $rt/out"
 done
 

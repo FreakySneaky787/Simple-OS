@@ -152,7 +152,16 @@ def main():
     view.connect("context-menu", lambda *_: True)  # no "Reload/Inspect" menu
 
     window = Gtk.Window(title="Welcome to Simple OS")
-    window.set_default_size(900, 760)
+    # 900x760 is taller than a 1366x768 laptop screen (minus taskbar and title bar): fit the window to the screen
+    width, height = 900, 760
+    try:
+        from gi.repository import Gdk
+        mon = Gdk.Display.get_default().get_primary_monitor() or Gdk.Display.get_default().get_monitor(0)
+        area = mon.get_workarea()
+        width, height = min(width, area.width - 40), min(height, area.height - 90)
+    except Exception:
+        pass
+    window.set_default_size(max(width, 480), max(height, 360))
     window.set_position(Gtk.WindowPosition.CENTER)
     window.set_icon_name("user-home")
     banner = live_banner()

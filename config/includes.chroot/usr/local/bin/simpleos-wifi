@@ -48,6 +48,9 @@ $summary}" critical
 }
 
 command -v nmcli >/dev/null || { sos_notify "Network management is not installed (NetworkManager missing)." critical; exit 0; }
+# nmcli prints states and "enabled"/"disabled" in the system language ("verbunden", "aktiviert" …) and this script compares
+# them with the English words. C.UTF-8 = English messages, but UTF-8 stays (an SSID with an umlaut would be escaped in "C")
+nmcli() { LC_ALL=C.UTF-8 command nmcli "$@"; }
 command -v rofi >/dev/null || { sos_log "rofi missing"; sos_rofi_failed; }
 
 while :; do

@@ -50,23 +50,7 @@ save() {
 }
 # xfce4-power-manager runs (Openbox autostart) exactly when there is a real battery
 has_battery() { command -v simpleos-battery >/dev/null && simpleos-battery --present; }
-apply_screen() {
-    if has_battery; then
-        # xfconf: minutes; 0 = never (blank 0, DPMS off). Sleep and off together, the screen simply goes dark
-        command -v xfconf-query >/dev/null || return 0
-        # At sign-in ("--apply") only if xfconf does not have it yet: eight processes would delay the desktop for nothing
-        if [ "${1:-}" = check ] && [ "$(xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/blank-on-ac 2>/dev/null)" = "$screen_off" ]; then
-            return 0
-        fi
-        xq() { xfconf-query -c xfce4-power-manager -n -t "$1" -p "/xfce4-power-manager/$2" -s "$3" 2>/dev/null; }
-        for src in ac battery; do
-            xq int "blank-on-$src" "$screen_off"
-            xq int "dpms-on-$src-sleep" "$screen_off"
-            xq int "dpms-on-$src-off" "$screen_off"
-        done
-        if [ "$screen_off" -eq 0 ]; then xq bool dpms-enabled false; else xq bool dpms-enabled true; fi
-        return 0
-    fi
+xset_screen() {
     command -v xset >/dev/null && [ -n "${DISPLAY:-}" ] || return 0
     if [ "$screen_off" -eq 0 ]; then
         xset s off -dpms 2>/dev/null
@@ -74,6 +58,33 @@ apply_screen() {
         secs=$((screen_off * 60))
         xset s "$secs" "$secs" +dpms dpms "$secs" "$secs" "$secs" 2>/dev/null
     fi
+}
+# Laptop: the times belong to xfce4-power-manager. xfconf: minutes; 0 = never (blank 0, DPMS off). Sleep and off together,
+# the screen simply goes dark
+xfpm_screen() {
+    command -v xfconf-query >/dev/null || return 0
+    # At sign-in ("--apply") only if xfconf does not have it yet: eight processes would delay the desktop for nothing
+    if [ "${1:-}" = check ] && [ "$(xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/blank-on-ac 2>/dev/null)" = "$screen_off" ]; then
+        return 0
+    fi
+    xq() { xfconf-query -c xfce4-power-manager -n -t "$1" -p "/xfce4-power-manager/$2" -s "$3" 2>/dev/null; }
+    for src in ac battery; do
+        xq int "blank-on-$src" "$screen_off"
+        xq int "dpms-on-$src-sleep" "$screen_off"
+        xq int "dpms-on-$src-off" "$screen_off"
+    done
+    if [ "$screen_off" -eq 0 ]; then xq bool dpms-enabled false; else xq bool dpms-enabled true; fi
+}
+apply_screen() {
+    if has_battery; then
+        xfpm_screen "${1:-}"
+        # At sign-in also the plain X times as a base: the LightDM lock screen leaves its 2 minutes behind
+        # (greeter-screen) and xfce4-power-manager replaces them within a second with the same value – but if it did
+        # not start, they would stay and switch the screen off after 2 minutes
+        [ "${1:-}" = check ] && xset_screen
+        return 0
+    fi
+    xset_screen
 }
 # Lock when the screen turns off: xss-lock follows the X screensaver (the time above) and the logind lock signal
 # (loginctl lock-session). Not in the live session. Restarted at every call, so a changed setting takes effect.

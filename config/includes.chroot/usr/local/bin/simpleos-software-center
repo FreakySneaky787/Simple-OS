@@ -236,8 +236,11 @@ def main(argv):
             outer.pack_start(cats, False, False, 0)
             self.progress = Gtk.ProgressBar(show_text=True, no_show_all=True, margin_start=10, margin_end=10)
             outer.pack_start(self.progress, False, False, 0)
-            scroll = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER)
-            self.list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, margin=10)
+            # The margin belongs to the scrolled window: as the list's own margin it showed the viewport's background
+            # around the list – a black frame (very visible in light mode)
+            scroll = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, margin_start=10, margin_end=10,
+                                        margin_bottom=10)
+            self.list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
             self.list.get_style_context().add_class("frame")
             scroll.add(self.list)
             outer.pack_start(scroll, True, True, 0)
