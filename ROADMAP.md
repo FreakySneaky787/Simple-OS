@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Written after 1.0.3 (2026-10-09). What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
+Written after 1.0.3 (2026-10-09), updated 2026-10-11. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -31,23 +31,36 @@ These could only be tested without hardware. Tick them off on the ThinkPad E16 /
 - [ ] Language packs: install in German with internet → Firefox and the dictionary are German; offline → they follow with Software Updates.
 - [ ] The keyring: no "new keyring" prompt in Chromium/Discord. (`gkr-pam: unable to locate daemon control file` in the
       lightdm journal – harmless or not?)
-- [ ] Update from 1.0.2 to 1.0.3 through Software Updates on an installed system.
+- [x] Update from 1.0.2 to 1.0.3 through Software Updates on an installed system (#33, works).
 
 ## 1.0.4 – next bugfix release (planned for the weekend of 2026-10-17)
 
 Small, safe, mostly things users hit in the first hour.
 
+Small, safe, mostly things users hit in the first hour. Feature freeze Thu 2026-10-15; published with
+`./tools/release.sh publish --no-iso` (an update only, the 1.0.3 ISO stays the one to install from).
+
+| Item | Status |
+|---|---|
+| Fixes from the checklist above | waiting for the hardware checks |
+| Idle screen lock + blank, video inhibit (#25) | done |
+| Power button opens the power menu (#35) | done – **hardware test is the blocker** (does X see `XF86PowerOff`?) |
+| Brightness slider in Control Center → Display (#34) | done |
+| Wi-Fi: regulatory country from the time zone (#40) | done |
+| `git` in the image (#36) | done |
+| Sixth bug hunt (nmcli in other languages, Task Manager, light-mode icons, small screens, report privacy) | done |
+| App menu / search: typed text readable (#61) | done |
+
+## 1.0.5 – bugfix release (about 3 weeks after 1.0.4)
+
+Moved from 1.0.4 to keep it small:
+
 | Item | Why | Effort |
 |---|---|---|
-| Fixes from the checklist above | whatever turns out broken | ? |
-| Brightness slider in Control Center → Display | Fn keys do not exist on every keyboard; the OSD already knows how | S |
-| Idle screen lock + blank (issue #25) | no lock after leaving the laptop; check xfce4-power-manager vs `simpleos-power`, add a screensaver inhibit for video | M |
-| Power button | pressing it shuts down at once; ask first / open the power menu (needs a hardware test of what X sees) | S–M |
-| `git` in the image | first tool many tutorials ask for; 45 MB, decide | S |
-| Bluetooth battery level of headphones | BlueZ needs `--experimental`; nice in the taskbar | S |
-| "Default apps" page (browser, mail, PDF …) | today only the browser has a chooser | M |
-| Startup apps page | enable/disable autostart entries without the terminal | M |
-| Wi-Fi: regulatory country from the time zone | the chip guessed NL for a Swiss user | S |
+| Bluetooth battery level of headphones (#37) | BlueZ needs `--experimental`; nice in the taskbar | S |
+| "Default apps" page (browser, mail, PDF …) (#38) | today only the browser has a chooser | M |
+| Startup apps page (#39) | enable/disable autostart entries without the terminal | M |
+| Whatever the 1.0.4 hardware checks turn up | | ? |
 
 ## 1.1 – next feature release (2–3 months after 1.0)
 
@@ -98,7 +111,7 @@ Moving to it is the one big job of the next year, and it has to be planned, not 
 |---|---|---|
 | 10 | Bluetooth pairing for keyboards/phones (passkey) | fixed in 1.0.2 through blueman's agent; still to be confirmed with a real keyboard and phone |
 | 19 | squashfs uses xz; zstd would be faster | 1.1, decide about the +18 % ISO size |
-| 25 | screen blanking conflicts / no screensaver inhibit | 1.0.4 |
+| 25 | screen blanking conflicts / no screensaver inhibit | fixed, ships in 1.0.4 |
 
 ## Decisions we have made (so we don't argue them again)
 

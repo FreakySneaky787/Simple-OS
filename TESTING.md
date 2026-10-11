@@ -204,4 +204,6 @@ lines only run at the next login) and on a PC without a battery (or a VM: there 
       online – before, `nmcli` answered "verbunden"/"aktiviert" and the menu thought you were offline with Wi-Fi off. The Setup
       Wizard's Internet step says "Connected" too. Mute from the volume keys shows "Muted".
 - [ ] **Small screen (1366x768):** the Welcome window fits on the screen (it was taller than the screen).
+- [ ] **App menu and search (issue #61):** text typed into the app menu (☰ / Super) and the search (Super+Space) is light
+      and readable (before: dark teal on the dark field); in light mode it is dark.
 - [ ] **Report a Problem:** a Bluetooth device name like `bluez_output.90_7A_…` is written as `XX:XX:XX:XX:XX:XX` in the saved file.

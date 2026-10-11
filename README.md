@@ -89,8 +89,10 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
 
 ## How we work
 
-- **Work is committed locally, pushed only with a release.** Between releases nothing goes to GitHub: `main` always matches
-  the newest published edition. The release day is the only push (`git push`, then build, test, `sign`, `publish`).
+- **Work is committed locally, pushed with a release.** Normally nothing goes to GitHub between releases, so `main` matches
+  the newest published edition; an earlier push happens only when asked for. The release tags (`v1.0.3` …) always match
+  exactly what was published. Release day: `git push`, then build, test, `sign`, `publish`.
+- **Website** (freakysneaky787.github.io, its own repository): updated after every release – version, download, roadmap.
 - **Issues and the project board follow the work, not the push:** when something is done and tested without hardware, its issue
   is closed (comment: "done, ships in X.Y.Z") and its board item set to Done – even before the release. What still needs a
   real computer stays open as a "Verify …" issue.
@@ -220,7 +222,7 @@ the lb default files, the generated graphics and the fastfetch package.
   (`simpleos-post-install`, needs the internet), by the Setup Wizard and by Software Updates. Names are resolved with
   `apt-cache` (`<prefix>-<language>-<country>`, then `<prefix>-<language>`). Firefox's `policies.json` no longer
   forces `en-US`.
-- Everyday tools in the image: curl, wget, unzip, zip, openssh-client (tutorials and install scripts expect them),
+- Everyday tools in the image: curl, wget, unzip, zip, openssh-client, git (tutorials and install scripts expect them),
   alsa-ucm-conf (audio profiles of current laptops) and alsa-utils (alsamixer), OpenVPN for NetworkManager.
   journald keeps at most 200 MB of logs (`/etc/systemd/journald.conf.d/10-simpleos.conf`).
 - picom: short fades (~50 ms) for windows only, menus/Rofi/tooltips instant; on real hardware full-screen unredirect
