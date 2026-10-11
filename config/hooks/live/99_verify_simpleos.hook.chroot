@@ -1870,6 +1870,7 @@ for home in /etc/skel /home/simple; do
           "grep -A8 '^window {' '$c/rofi/config.rasi' | grep -q 'border-radius: *16px;' && grep -A8 '^window {' '$c/rofi/config.rasi' | grep -q 'border: *1px;'"
     check "Rofi: entries not round in $home" "grep -A4 '^element {' '$c/rofi/config.rasi' | grep -q 'border-radius: *10px;'"
     check "Rofi: accent marker missing in $home" "grep -A5 '^element selected.normal' '$c/rofi/config.rasi' | grep -q 'border-color: *@accent;'"
+    check "Rofi: typed search text has no own color in $home (Rofi 1.7.3 draws it dark teal)" "awk '/^entry \\{/,/^\\}/' '$c/rofi/config.rasi' | grep -qE '^ *text-color: *@fg;'"
     check "Rofi: accent color for simpleos-theme missing in $home" "grep -qE '^ *accent: *#[0-9a-fA-F]{6};' '$c/rofi/config.rasi'"
     # Start menu/search/flyouts: ONE click opens (in configuration { }, so it applies to all Rofi calls);
     # tapping Super (XF86Search) again closes; the desktop (pcmanfm) stays with a double click

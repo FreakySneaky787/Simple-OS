@@ -64,6 +64,8 @@ prompt {
 }
 
 entry {
+    /* Rofi 1.7.3 does not hand "* { text-color }" down to the entry: typed text came out dark teal, barely visible */
+    text-color:        @fg;
     placeholder:       "Search";
     placeholder-color: @fg-dim;
     cursor:            text;
