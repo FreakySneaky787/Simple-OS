@@ -2272,11 +2272,19 @@ check "installer: finished.conf does not restart via $IR" \
       "grep -qx 'restartNowCommand: \"$IR\"' /etc/calamares/modules/finished.conf && grep -qx 'restartNowChecked: true' /etc/calamares/modules/finished.conf"
 check "$IR missing or broken" "[ -x $IR ] && python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' $IR"
 check "$IR: medium gone -> not through the kernel" \
-      "[ \"\$(env -i SIMPLEOS_RESTART_DRYRUN=1 SIMPLEOS_LIVE_MEDIUM_DEV=/dev/simpleos-gone python3 $IR --no-dialog)\" = 'restart: sysrq' ]"
+      "[ \"\$(env -i SIMPLEOS_RESTART_DRYRUN=1 SIMPLEOS_MOUNTS=/dev/null SIMPLEOS_LIVE_MEDIUM_DEV=/dev/simpleos-gone python3 $IR --no-dialog)\" = 'restart: sysrq' ]"
 check "$IR: medium readable -> not a normal restart" \
-      "[ \"\$(env -i SIMPLEOS_RESTART_DRYRUN=1 SIMPLEOS_LIVE_MEDIUM_DEV=/etc/os-release python3 $IR --no-dialog)\" = 'restart: systemctl' ]"
+      "[ \"\$(env -i SIMPLEOS_RESTART_DRYRUN=1 SIMPLEOS_MOUNTS=/dev/null SIMPLEOS_LIVE_MEDIUM_DEV=/etc/os-release python3 $IR --no-dialog)\" = 'restart: systemctl' ]"
 check "$IR: unknown medium -> not a normal restart" \
-      "[ \"\$(env -i SIMPLEOS_RESTART_DRYRUN=1 SIMPLEOS_LIVE_MEDIUM_DEV= python3 $IR --no-dialog)\" = 'restart: systemctl' ]"
+      "[ \"\$(env -i SIMPLEOS_RESTART_DRYRUN=1 SIMPLEOS_MOUNTS=/dev/null SIMPLEOS_LIVE_MEDIUM_DEV= python3 $IR --no-dialog)\" = 'restart: systemctl' ]"
+# Calamares' umount step ignores errors: what is left of the new system is unmounted before the window (only the
+# top mount, umount -R takes the rest); the live system's own mounts stay
+irm=$(mktemp)
+printf '%s\n' '/dev/sr0 /run/live/medium iso9660 ro 0 0' '/dev/sda1 /tmp/calamares-root-ab12 ext4 rw 0 0' \
+    'udev /tmp/calamares-root-ab12/dev devtmpfs rw 0 0' '/dev/sda2 /tmp/calamares-root-ab12/boot/efi vfat rw 0 0' > "$irm"
+check "$IR: does not unmount exactly the new system's root left by Calamares" \
+      "[ \"\$(env -i SIMPLEOS_RESTART_DRYRUN=1 SIMPLEOS_MOUNTS=$irm SIMPLEOS_LIVE_MEDIUM_DEV= python3 $IR --no-dialog | tr '\n' ' ')\" = 'unmount: /tmp/calamares-root-ab12 restart: systemctl ' ]"
+rm -f "$irm"
 check "$IR: imports something only after the window (could not be loaded after the stick is pulled)" \
       "! sed -n '/^def restart/,/^def ask/p' $IR | grep -q 'import'"
 check "simpleos-post-install does not remove $IR" "grep -qx 'rm -f $IR' /usr/local/sbin/simpleos-post-install"

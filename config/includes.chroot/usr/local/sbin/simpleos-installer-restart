@@ -7,36 +7,56 @@ live system again instead of the new installation. "Restart now" then restarts:
   - medium gone            -> sync + restart through the kernel (sysrq): the live system runs from that medium, and a
                               normal shutdown that has to load programs from it can hang (#62). Nothing is lost: the
                               live session keeps nothing, and Calamares has already unmounted the new system.
+Before the window: Calamares' umount step ignores errors, the new system can still be mounted read-write (seen in
+the VM: its root under /tmp/calamares-root-*). It is unmounted now, while programs can still be loaded from the
+medium – so even the restart through the kernel leaves its file systems clean.
 Without a screen or GTK: a normal restart, as before.
-Tests: SIMPLEOS_RESTART_DRYRUN=1 prints the decision instead of restarting; SIMPLEOS_LIVE_MEDIUM_DEV replaces the
-device of the live medium (empty = unknown); --no-dialog skips the window.
+Tests: SIMPLEOS_RESTART_DRYRUN=1 prints the decisions instead of acting; SIMPLEOS_LIVE_MEDIUM_DEV replaces the
+device of the live medium (empty = unknown), SIMPLEOS_MOUNTS replaces /proc/self/mounts; --no-dialog skips the window.
 """
 # Everything is imported before the window opens: after the stick is pulled, nothing more can be loaded from it
 import errno
 import mmap
 import os
+import subprocess
 import sys
 import threading
 
 DRYRUN = os.environ.get("SIMPLEOS_RESTART_DRYRUN") == "1"
+MOUNTS = os.environ.get("SIMPLEOS_MOUNTS", "/proc/self/mounts")
 TITLE = "Simple OS is installed"
 TEXT = ("Remove the USB stick (or take out the disc) now.\n\n"
         "Then click “Restart now” – the computer starts your new Simple OS.")
+
+
+def mounts():
+    """(device, mount point) of every mount"""
+    try:
+        with open(MOUNTS) as f:
+            return [tuple(line.split()[:2]) for line in f if len(line.split()) > 1]
+    except OSError:
+        return []
 
 
 def medium_device():
     if "SIMPLEOS_LIVE_MEDIUM_DEV" in os.environ:
         return os.environ["SIMPLEOS_LIVE_MEDIUM_DEV"]
     for mnt in ("/run/live/medium", "/lib/live/mount/medium"):
-        try:
-            with open("/proc/self/mounts") as f:
-                for line in f:
-                    parts = line.split()
-                    if len(parts) > 1 and parts[1] == mnt and parts[0].startswith("/dev/"):
-                        return parts[0]
-        except OSError:
-            pass
+        for dev, target in mounts():
+            if target == mnt and dev.startswith("/dev/"):
+                return dev
     return ""
+
+
+def release_target():
+    """Unmount what Calamares left mounted of the new system; if that fails, at least make it read-only."""
+    roots = sorted({t for _, t in mounts() if t.startswith("/tmp/calamares-root-")})
+    for root in [r for r in roots if not any(r.startswith(o + "/") for o in roots)]:
+        if DRYRUN:
+            print("unmount: " + root)
+            continue
+        if subprocess.call(["umount", "-R", root]) != 0:
+            subprocess.call(["mount", "-o", "remount,ro", root])
 
 
 def medium_present(dev, timeout=4.0):
@@ -129,6 +149,7 @@ def ask():
 
 
 if __name__ == "__main__":
+    release_target()
     if "--no-dialog" not in sys.argv:
         ask()
     restart()
