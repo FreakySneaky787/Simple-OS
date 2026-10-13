@@ -2,16 +2,61 @@
 # Simple OS – start the installer (desktop icon, top of the menu, taskbar badge, Welcome banner)
 # Debian's wrapper install-debian calls "pkexec calamares" and removes the live fstab first (otherwise
 # partitioning stumbles); if it is missing, pkexec calamares directly. Only in the live session, only once.
+# Safety while it runs (#62, #64 – an interrupted resize left every system on the disk unable to start):
+#   - only one installer: a lock held for the whole run. pgrep alone missed a double click, the icon plus the
+#     Welcome button: between the click and the Calamares window there is no calamares process yet. Calamares
+#     itself then quits ("already running"), but the second install-debian went on: it put the live /etc/fstab
+#     back while the first installer was partitioning and took root's access to the screen away (xhost -)
+#   - partitions of this computer's drives that are mounted (opened in the file manager) are unmounted first:
+#     Calamares cannot shrink, replace or format a mounted partition. If one is in use: a clear hint instead
+#     of an installation that stops right after it started
+#   - shutting down, sleep (also closing the laptop lid) and the idle screen are blocked (systemd-inhibit);
+#     the power button and the power menu ask first (simpleos-powermenu)
 note() { notify-send -c x-simpleos -i system-os-installer "Install Simple OS" "$1" 2>/dev/null; }
 if [ -x /usr/local/bin/simpleos-live ] && ! /usr/local/bin/simpleos-live --check; then
     note "Simple OS is already installed on this computer."
     exit 0
 fi
+# "exec 9>" on a file that cannot be written would end dash -> check first. Children inherit fd 9, so the lock
+# lasts until the installer is closed.
+lock=${XDG_RUNTIME_DIR:-/tmp}/simpleos-install.lock
+if command -v flock >/dev/null && touch "$lock" 2>/dev/null && [ -w "$lock" ]; then
+    exec 9>"$lock"
+    if ! flock -n 9; then
+        note "The installer is already open."
+        exit 0
+    fi
+fi
 if pgrep -x calamares >/dev/null 2>&1; then
     note "The installer is already open."
     exit 0
 fi
-if command -v install-debian >/dev/null; then exec install-debian; fi
-if command -v calamares >/dev/null && command -v pkexec >/dev/null; then exec pkexec calamares; fi
+
+# Mounted partitions of internal drives (not USB: HOTPLUG 0) under /media – the live medium itself is in
+# /run/live and stays. Output: names of those that could not be unmounted.
+busy=$(findmnt -rn -o SOURCE,TARGET 2>/dev/null | while read -r src target; do
+    case "$src" in /dev/*) ;; *) continue ;; esac
+    case "$target" in /media/*|/run/media/*) ;; *) continue ;; esac
+    [ "$(lsblk -ndo HOTPLUG "$src" 2>/dev/null | tr -d ' ')" = 0 ] || continue
+    udisksctl unmount -b "$src" --no-user-interaction >/dev/null 2>&1 || umount "$src" 2>/dev/null && continue
+    name=$(lsblk -ndo LABEL "$src" 2>/dev/null)
+    echo "${name:-${src#/dev/}}"
+done)
+if [ -n "$busy" ]; then
+    note "A drive of this computer is still in use: $(printf '%s' "$busy" | sed ':a;N;$!ba;s/\n/, /g'). Close the windows that show its files, then start the installer again."
+    exit 0
+fi
+
+run() {
+    what=shutdown:sleep:idle:handle-power-key:handle-suspend-key:handle-hibernate-key:handle-lid-switch
+    if command -v systemd-inhibit >/dev/null && systemd-inhibit --what="$what" --mode=block true 2>/dev/null; then
+        systemd-inhibit --what="$what" --who="Simple OS installer" \
+            --why="Installing Simple OS – switching off now can leave the disk unable to start" --mode=block "$@"
+    else
+        "$@"
+    fi
+}
+if command -v install-debian >/dev/null; then run install-debian; exit 0; fi
+if command -v calamares >/dev/null && command -v pkexec >/dev/null; then run pkexec calamares; exit 0; fi
 note "The installer is missing on this system."
 exit 0

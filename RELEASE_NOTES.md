@@ -26,6 +26,19 @@ It adds `git` and a small screen-lock helper (`xss-lock`) and removes nothing. S
 - **`git` is included**, the first tool many tutorials ask for.
 - **Systems in other languages:** on a German (or any non-English) installation the network menu and the Setup Wizard
   thought you were offline with Wi-Fi off, although you were connected. Fixed.
+- **Computers without UEFI (older PCs, "legacy BIOS"): GRUB updates work.** The installer never told the system which
+  disk holds the boot loader, so the next GRUB update from Debian would have stopped with an error – and every update
+  after it. 1.0.4 answers that once by itself; GRUB updates then go to the disk it is on. If another boot loader owns
+  the start of the disk, updates leave it alone.
+- **Installing from the USB stick** (issues #62, #64):
+  - The installer can no longer run twice. A double click (or the desktop icon plus the Welcome button) started a
+    second copy that put a live-system file back while the first one was partitioning.
+  - While it installs, the computer does not go to sleep, also not when the laptop lid is closed. The power button and
+    the power menu ask first: switching off while the installer resizes a partition can leave every system on the disk
+    unable to start. "Shut down anyway" is still there if the installer really hangs.
+  - Partitions of this computer that you opened in the file manager are closed before the installer starts; if one is
+    still in use, a message says so instead of an installation that stops right after it started.
+  - "Lock" and Super+L in Live Mode no longer lock you out of the live session (its password is unknown to you).
 - **Fixes:**
   - Text you type into the app menu and the search was dark teal on a dark field and hard to read.
   - The Task Manager cut off the Memory column.

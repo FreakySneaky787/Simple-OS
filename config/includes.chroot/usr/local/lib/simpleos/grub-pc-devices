@@ -1,0 +1,47 @@
+#!/bin/sh
+# Simple OS – BIOS systems: tell the package grub-pc which disk holds GRUB (debconf grub-pc/install_devices).
+# Calamares runs grub-install itself and never answers that question. With it empty, the next GRUB update from Debian
+# stopped in grub-pc's postinst ("You must correct your GRUB install devices", exit 1 without a dialog) – the update
+# failed and every later one too, because dpkg kept grub-pc half-configured.
+# Runs as root: simpleos-post-install (fresh installation), simpleos-system-setup --upgrade (before every update) and
+# the one-time migration 030-grub-pc-devices (systems installed before 1.0.4). Idempotent, never touches the disk.
+#   - not a BIOS installation of GRUB (UEFI, no core.img) or already answered: nothing to do
+#   - the disk with /boot/grub has GRUB in its first sector: that disk (a stable /dev/disk/by-id name, like Debian
+#     chooses), so updates keep GRUB on it up to date
+#   - otherwise (GRUB in a partition, another boot loader in the MBR): "install to no device" is confirmed – updates
+#     work and leave the boot sectors alone, as Calamares set them up
+# Exit 0 = answered or nothing to do, 1 = could not answer (runs again next time).
+# Tests: SIMPLEOS_GRUB_DIR replaces /boot/grub, SIMPLEOS_DISK_BY_ID replaces /dev/disk/by-id.
+GRUB_DIR=${SIMPLEOS_GRUB_DIR:-/boot/grub}
+BY_ID=${SIMPLEOS_DISK_BY_ID:-/dev/disk/by-id}
+log() { echo "grub-pc-devices: $*" >&2; }
+
+dpkg-query -W -f='${Status}' grub-pc 2>/dev/null | grep -q 'install ok installed' || exit 0
+[ -e "$GRUB_DIR/i386-pc/core.img" ] || exit 0
+# "0 <value>" = answered; the line is "0" alone (or an error) when it is empty
+case "$(echo 'GET grub-pc/install_devices' | debconf-communicate grub-pc 2>/dev/null)" in
+    "0 "?*) exit 0 ;;
+esac
+
+disk=$(grub-probe -t disk "$GRUB_DIR" 2>/dev/null)
+if [ -n "$disk" ] && [ -e "$disk" ] && head -c 512 "$disk" 2>/dev/null | grep -aq 'GRUB '; then
+    # Debian's own choice: a by-id name of the whole disk; wwn-/eui- names only if there is nothing else
+    id= alt=
+    for l in "$BY_ID"/*; do
+        [ -L "$l" ] || continue
+        case "${l##*/}" in *-part[0-9]*) continue ;; esac
+        [ "$(readlink -f "$l")" = "$(readlink -f "$disk")" ] || continue
+        case "${l##*/}" in
+            wwn-*|nvme-eui.*|nvme-nvme.*) [ -n "$alt" ] || alt=$l ;;
+            *) id=$l; break ;;
+        esac
+    done
+    dev=${id:-${alt:-$disk}}
+    printf 'grub-pc grub-pc/install_devices multiselect %s\n' "$dev" | debconf-set-selections || exit 1
+    log "GRUB updates go to $dev"
+else
+    printf 'grub-pc grub-pc/install_devices multiselect \ngrub-pc grub-pc/install_devices_empty boolean true\n' \
+        | debconf-set-selections || exit 1
+    log "GRUB is not in the first sector of ${disk:-the boot disk}: updates leave the boot sectors alone"
+fi
+exit 0

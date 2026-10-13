@@ -1,0 +1,5 @@
+#!/bin/sh
+# Simple OS 1.0.4 – BIOS systems: tell grub-pc which disk holds GRUB (runs once, as root, from the postinst of the package
+# simpleos via "edition --system"). Systems installed before 1.0.4 never answered it, so the next GRUB update from
+# Debian would stop with an error. Details: /usr/local/lib/simpleos/grub-pc-devices. Exit != 0 -> again next time.
+exec /usr/local/lib/simpleos/grub-pc-devices

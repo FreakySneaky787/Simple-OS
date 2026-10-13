@@ -409,6 +409,9 @@ fi
 
 if [ "$upgrade" -eq 1 ]; then
     step "Checking for updates"
+    # BIOS systems from before 1.0.4: grub-pc did not know its disk and stopped every GRUB update (and with it this
+    # repair) – answer that first (/usr/local/lib/simpleos/grub-pc-devices)
+    /usr/local/lib/simpleos/grub-pc-devices || echo "GRUB install device could not be set" >&2
     dpkg --configure -a || fail "an interrupted installation could not be repaired"
     apt_get_update || { fail "package lists could not be downloaded"; exit 1; }
     # Check first what is pending: without system and app updates done right away ("UPTODATE: 1", the progress window

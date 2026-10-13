@@ -207,3 +207,13 @@ lines only run at the next login) and on a PC without a battery (or a VM: there 
 - [ ] **App menu and search (issue #61):** text typed into the app menu (☰ / Super) and the search (Super+Space) is light
       and readable (before: dark teal on the dark field); in light mode it is dark.
 - [ ] **Report a Problem:** a Bluetooth device name like `bluez_output.90_7A_…` is written as `XX:XX:XX:XX:XX:XX` in the saved file.
+- [ ] **BIOS computer, GRUB updates:** on a computer or VM installed in BIOS mode (`./test_vm.sh` + `./test_installed_vm.sh`),
+      after the update to 1.0.4: `sudo debconf-show grub-pc | grep install_devices` shows the disk (`/dev/disk/by-id/…` or
+      `/dev/sda`), and `sudo dpkg-reconfigure -f noninteractive grub-pc` ends without "You must correct your GRUB install
+      devices" and says "grub-install success". A fresh BIOS installation from a new ISO shows the same right away.
+- [ ] **Installer (new ISO, issues #62/#64), in the live session:** double-click "Install Simple OS" quickly twice → one
+      installer window, a notification "The installer is already open". `systemd-inhibit --list` shows "Simple OS installer"
+      (shutdown, sleep, lid). Super+X → Shut down → the menu asks "The installer is still working" (Keep installing / Shut
+      down anyway); "Keep installing" does nothing, "Shut down anyway" switches off within seconds. Open a partition of the
+      computer's disk in the file manager, start the installer → it is closed first (with a terminal open in it: a message
+      instead of the installer). Super+L in the live session: a message, no lock screen.

@@ -46,4 +46,8 @@ rm -rf /usr/share/simpleos/bootloader-debs
 # this after the bootloader module; /boot/efi is mounted in the target). Does nothing on BIOS systems.
 /usr/local/sbin/simpleos-efi-refresh || true
 
+# BIOS: grub-pc learns which disk holds GRUB (Calamares does not tell it) – otherwise the next GRUB update fails.
+# Does nothing on UEFI systems; if it fails, simpleos-system-setup --upgrade tries again before every update.
+/usr/local/lib/simpleos/grub-pc-devices || echo "simpleos-post-install: GRUB install device not set (retried before updates)" >&2
+
 rm -f "$0"

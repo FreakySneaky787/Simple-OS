@@ -760,6 +760,44 @@ check "helper: time stamp despite a failed apt-get update" \
 check "helper: gaming installs despite failed package lists" \
       "grep -q 'if ! apt_update; then' /usr/local/sbin/simpleos-system-setup && ! grep -q 'apt-get -o DPkg::Lock::Timeout=300 update ||' /usr/local/sbin/simpleos-system-setup"
 rm -rf "${aw:?}"
+# BIOS: grub-pc learns which disk holds GRUB (otherwise the next GRUB update fails without a dialog). Model: disk file
+# $gp/disk (first sector with or without GRUB), /dev/disk/by-id in $gp/byid, debconf answers via ANSWER / $gp/set
+gp=$(mktemp -d)
+mkdir -p "$gp/bin" "$gp/grub/i386-pc" "$gp/byid"
+printf '#!/bin/sh\n[ "$NOGRUBPC" = 1 ] && exit 1\necho "install ok installed"\n' > "$gp/bin/dpkg-query"
+printf '#!/bin/sh\necho "$GP/disk"\n' > "$gp/bin/grub-probe"
+printf '#!/bin/sh\ncat > /dev/null\n[ -n "$ANSWER" ] && echo "0 $ANSWER" || echo 0\n' > "$gp/bin/debconf-communicate"
+printf '#!/bin/sh\ncat >> "$GP/set"\n' > "$gp/bin/debconf-set-selections"
+chmod 0755 "$gp/bin/"*
+GPH=/usr/local/lib/simpleos/grub-pc-devices
+gprun() {   # grub|other (first sector of the disk), then variables
+    rm -f "$gp/set"
+    if [ "$1" = grub ]; then head -c 384 /dev/zero > "$gp/disk"; printf 'GRUB \0Geom' >> "$gp/disk"; else head -c 512 /dev/zero > "$gp/disk"; fi
+    shift
+    env -i GP="$gp" PATH="$gp/bin:/usr/bin:/bin" SIMPLEOS_GRUB_DIR="$gp/grub" SIMPLEOS_DISK_BY_ID="$gp/byid" "$@" sh $GPH 2>/dev/null
+}
+touch "$gp/grub/i386-pc/core.img"
+check "grub-pc-devices: without a by-id name the device itself is not used" \
+      "gprun grub && grep -qx 'grub-pc grub-pc/install_devices multiselect $gp/disk' $gp/set"
+ln -s "$gp/disk" "$gp/byid/wwn-0x50014ee2"
+ln -s "$gp/disk" "$gp/byid/ata-WDC_WD5000AAKX_WCC2E"
+ln -s /dev/null "$gp/byid/ata-WDC_WD5000AAKX_WCC2E-part1"
+check "grub-pc-devices: the GRUB disk is not set by its by-id name (ata- before wwn-, no partition)" \
+      "gprun grub && grep -qx 'grub-pc grub-pc/install_devices multiselect $gp/byid/ata-WDC_WD5000AAKX_WCC2E' $gp/set"
+rm -f "$gp/byid/ata-WDC_WD5000AAKX_WCC2E"
+check "grub-pc-devices: only a wwn- name -> not used" \
+      "gprun grub && grep -qx 'grub-pc grub-pc/install_devices multiselect $gp/byid/wwn-0x50014ee2' $gp/set"
+check "grub-pc-devices: another boot loader in the first sector -> not 'no device, confirmed'" \
+      "gprun other && grep -qx 'grub-pc grub-pc/install_devices_empty boolean true' $gp/set && ! grep -q 'multiselect /' $gp/set"
+check "grub-pc-devices: an existing answer is changed" "gprun grub ANSWER=/dev/sdb && [ ! -e $gp/set ]"
+check "grub-pc-devices: changes something without grub-pc (UEFI)" "gprun grub NOGRUBPC=1 && [ ! -e $gp/set ]"
+rm -f "$gp/grub/i386-pc/core.img"
+check "grub-pc-devices: changes something without core.img (GRUB never installed for BIOS)" "gprun grub && [ ! -e $gp/set ]"
+rm -rf "${gp:?}"
+check "grub-pc-devices not run by simpleos-post-install, --upgrade or a migration" \
+      "grep -q '^/usr/local/lib/simpleos/grub-pc-devices ||' /usr/local/sbin/simpleos-post-install &&
+       grep -q '^    /usr/local/lib/simpleos/grub-pc-devices ||' /usr/local/sbin/simpleos-system-setup &&
+       [ -x /usr/share/simpleos/edition/migrations/system/030-grub-pc-devices ] && [ -x $GPH ]"
 check "helper: --upgrade can be mixed with other actions" "! /usr/local/sbin/simpleos-system-setup --upgrade --gaming >/dev/null 2>&1"
 # Every call a tool really makes must be accepted (simpleos-update --upgrade/--refresh,
 # wizard/Software Center, browser selection, Control Center firewall, drivers, simpleos-post-install --repos) – a
@@ -832,7 +870,9 @@ P=/usr/local/bin/simpleos-powermenu
 hcase "$P" "menu" "" "" "-" \
     '[ "$(row 0 1)" = "Lock" ] && [ "$(row 0 2)" = "Sleep" ] && [ "$(row 0 3)" = "Restart" ] &&
      [ "$(row 0 4)" = "Shut down" ] && [ "$(row 0 5)" = "Sign out" ] && [ $(grep -c . $S/rofi.0) -eq 5 ] && [ ! -s $S/power ]'
-hcase "$P" "Lock" "" "" "0" 'grep -qx "dm-tool lock" $S/power'
+hcase "$P" "Lock" "" "SIMPLEOS_LIVE=0" "0" 'grep -qx "dm-tool lock" $S/power'
+hcase "$P" "Lock in the live session: hint instead (password unknown)" "" "SIMPLEOS_LIVE=1" "0" '[ ! -s $S/power ] && grep -q "not locked in Live Mode" $S/notify'
+hcase "$P --lock" "Super+L in the live session: hint instead" "" "SIMPLEOS_LIVE=1" "" '[ ! -s $S/power ] && grep -q "not locked in Live Mode" $S/notify'
 hcase "$P" "Sleep locks first" "" "SIMPLEOS_LIVE=0" "1" '[ "$(cat $S/power)" = "dm-tool lock
 systemctl suspend" ]'
 hcase "$P" "Sleep in the live session does not lock (password unknown)" "" "SIMPLEOS_LIVE=1" "1" '[ "$(cat $S/power)" = "systemctl suspend" ]'
@@ -840,7 +880,7 @@ hcase "$P" "Restart" "" "" "2" 'grep -qx "systemctl reboot" $S/power'
 hcase "$P" "Shut down" "" "" "3" 'grep -qx "systemctl poweroff" $S/power'
 hcase "$P" "Sign out" "" "" "4" 'grep -qx "openbox --exit" $S/power'
 hcase "$P" "Restart fails -> notification" "" "POWER_RC=1" "2" 'grep -q "could not restart" $S/notify'
-hcase "$P" "Lock without dm-tool -> loginctl" "dm-tool" "" "0" 'grep -qx "loginctl lock-session" $S/power'
+hcase "$P" "Lock without dm-tool -> loginctl" "dm-tool" "SIMPLEOS_LIVE=0" "0" 'grep -qx "loginctl lock-session" $S/power'
 hcase "$P" "rofi missing -> notification" "rofi" "" "" 'grep -q "Right-click the desktop" $S/notify'
 hcase "$P" "rofi grab error -> new attempt" "" "ROFI=grab" "-" '[ -s $S/rofi.0 ] && [ ! -s $S/notify ]'
 HELP=/usr/local/bin/simpleos-help
@@ -1523,7 +1563,7 @@ check "simpleos-power --lock on: saved, xss-lock follows the screensaver and loc
       'grep -qx "lock=on" $wt/home/.config/simpleos/power && grep -qx "xss-lock -- dm-tool lock" $S/xss'
 pwr pc SIMPLEOS_LIVE=1 -- --lock on
 check "simpleos-power --lock on: no xss-lock in the live session (password unknown)" '! grep -q "^xss-lock" $S/xss'
-pwr pc -- --lock maybe; rc=$?
+rc=0; pwr pc -- --lock maybe || rc=$?
 check "simpleos-power --lock: invalid value accepted" '[ $rc -eq 2 ]'
 check "simpleos-power: --lock status" '[ "$(env -i HOME=$wt/home $wt/sys/sh $PW --lock status)" = on ]'
 rm -f "$wt/home/.config/simpleos/power"
@@ -2236,6 +2276,61 @@ hcase "$INS" "live -> install-debian" "" "SIMPLEOS_LIVE=1" "" 'grep -qx install-
 hcase "$INS" "installer already running -> hint" "" "SIMPLEOS_LIVE=1 PGREP_RC=0" "" 'grep -q "already open" $S/notify && [ ! -e $S/installer ]'
 hcase "$INS" "without install-debian -> pkexec calamares" "install-debian" "SIMPLEOS_LIVE=1" "" 'grep -qx calamares $S/pkexec'
 hcase "$INS" "no installer -> hint" "install-debian calamares" "SIMPLEOS_LIVE=1" "" 'grep -q "installer is missing" $S/notify'
+# #62/#64: shutdown/sleep blocked while it runs; mounted partitions of internal drives (HOTPLUG 0) unmounted first,
+# USB drives and the live medium stay; one in use -> hint, no installer; a second start while the first one is
+# still starting (lock) -> hint
+cat > "$wt/mock/systemd-inhibit" <<'MOCK'
+#!/bin/sh
+echo "$*" >> "$WT/inhibit"
+while [ $# -gt 0 ]; do case "$1" in --*) shift ;; *) break ;; esac; done
+[ "$1" = true ] && exit 0
+exec "$@"
+MOCK
+printf '#!/bin/sh
+printf "/dev/sda5 /media/simple/Data\n/dev/sdb1 /media/simple/STICK\n/dev/sr0 /run/live/medium\n/dev/sda2 /\n"
+' > "$wt/mock/findmnt"
+cat > "$wt/mock/lsblk" <<'MOCK'
+#!/bin/sh
+for a; do dev=$a; done
+case "$*" in
+    *HOTPLUG*) case "$dev" in /dev/sdb*) echo "      1" ;; *) echo "      0" ;; esac ;;
+    *LABEL*) [ "$dev" = /dev/sda5 ] && echo Data ;;
+esac
+exit 0
+MOCK
+printf '#!/bin/sh
+echo "udisksctl $*" >> "$WT/unmount"
+exit ${UNMOUNT_RC:-0}
+' > "$wt/mock/udisksctl"
+printf '#!/bin/sh
+echo "umount $*" >> "$WT/unmount"
+exit ${UNMOUNT_RC:-0}
+' > "$wt/mock/umount"
+chmod 0755 "$wt/mock/systemd-inhibit" "$wt/mock/findmnt" "$wt/mock/lsblk" "$wt/mock/udisksctl" "$wt/mock/umount"
+hcase "$INS" "installer runs with shutdown/sleep/lid blocked" "" "SIMPLEOS_LIVE=1" "" \
+    'grep -qx install-debian $S/installer && grep -q -- "--what=shutdown:sleep:idle:handle-power-key:.*handle-lid-switch .*--mode=block install-debian" $S/inhibit'
+hcase "$INS" "internal partition unmounted, USB and live medium not" "" "SIMPLEOS_LIVE=1" "" \
+    '[ "$(cat $S/unmount)" = "udisksctl unmount -b /dev/sda5 --no-user-interaction" ] && grep -qx install-debian $S/installer'
+hcase "$INS" "internal partition in use -> hint, no installer" "" "SIMPLEOS_LIVE=1 UNMOUNT_RC=1" "" \
+    'grep -q "still in use: Data\." $S/notify && [ ! -e $S/installer ]'
+ln -s "$(command -v flock)" "$wt/sys/flock"
+mkdir -p "$wt/rundir"
+# The first start holds the lock for 3 s (no kill: wait would return 143 and end this hook with set -e)
+flock "$wt/rundir/simpleos-install.lock" sleep 3 & lockpid=$!
+sleep 1
+hcase "$INS" "second start while the first one is starting -> hint" "" "SIMPLEOS_LIVE=1 XDG_RUNTIME_DIR=$wt/rundir" "" \
+    'grep -q "already open" $S/notify && [ ! -e $S/installer ]'
+wait $lockpid || true
+hcase "$INS" "lock free -> installer starts" "" "SIMPLEOS_LIVE=1 XDG_RUNTIME_DIR=$wt/rundir" "" 'grep -qx install-debian $S/installer'
+rm -f "$wt/sys/flock" "$wt/mock/systemd-inhibit" "$wt/mock/findmnt" "$wt/mock/lsblk" "$wt/mock/udisksctl" "$wt/mock/umount"
+# Power menu while the installer runs: asks once more, "Keep installing"/Esc does nothing
+hcase "$P" "installer running: shut down -> warning" "" "PGREP_RC=0" "3 -" \
+    '[ "$(row 1 1)" = "Keep installing" ] && [ "$(row 1 2)" = "Shut down anyway" ] && [ ! -s $S/power ]'
+hcase "$P" "installer running: Keep installing" "" "PGREP_RC=0" "3 0" '[ ! -s $S/power ]'
+hcase "$P" "installer running: shut down anyway" "" "PGREP_RC=0" "3 1" 'grep -qx "systemctl poweroff" $S/power'
+hcase "$P" "installer running: restart anyway" "" "PGREP_RC=0" "2 1" 'grep -qx "systemctl reboot" $S/power'
+hcase "$P" "installer running: Lock does not ask" "" "PGREP_RC=0 SIMPLEOS_LIVE=0" "0" 'grep -qx "dm-tool lock" $S/power && [ ! -e $S/rofi.1 ]'
+hcase "$P" "installer not running: shut down at once" "" "PGREP_RC=1" "3" 'grep -qx "systemctl poweroff" $S/power && [ ! -e $S/rofi.1 ]'
 rm -f "$wt/mock/pgrep"
 
 # ==== Power features: snapping, search, Do Not Disturb, backups, cleaner, dynamic wallpaper ====
