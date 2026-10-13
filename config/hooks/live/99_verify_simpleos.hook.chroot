@@ -2265,6 +2265,21 @@ check "Welcome: live banner outside the live session" "env -u DISPLAY SIMPLEOS_L
 check "Welcome: banner text/button missing" \
       "grep -qF 'You are running Simple OS in Live Mode! Try out everything safely or install it to your system.' $WV && grep -qF 'Install Simple OS Now' $WV && grep -qF '/usr/local/bin/simpleos-install' $WV"
 rm -rf "${lt:?}"
+# End of the installer: "Restart now" asks to remove the USB stick first, then restarts – the normal way while the live
+# medium is still readable, through the kernel (sysrq) when it is gone (a normal shutdown would load programs from it)
+IR=/usr/local/sbin/simpleos-installer-restart
+check "installer: finished.conf does not restart via $IR" \
+      "grep -qx 'restartNowCommand: \"$IR\"' /etc/calamares/modules/finished.conf && grep -qx 'restartNowChecked: true' /etc/calamares/modules/finished.conf"
+check "$IR missing or broken" "[ -x $IR ] && python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' $IR"
+check "$IR: medium gone -> not through the kernel" \
+      "[ \"\$(env -i SIMPLEOS_RESTART_DRYRUN=1 SIMPLEOS_LIVE_MEDIUM_DEV=/dev/simpleos-gone python3 $IR --no-dialog)\" = 'restart: sysrq' ]"
+check "$IR: medium readable -> not a normal restart" \
+      "[ \"\$(env -i SIMPLEOS_RESTART_DRYRUN=1 SIMPLEOS_LIVE_MEDIUM_DEV=/etc/os-release python3 $IR --no-dialog)\" = 'restart: systemctl' ]"
+check "$IR: unknown medium -> not a normal restart" \
+      "[ \"\$(env -i SIMPLEOS_RESTART_DRYRUN=1 SIMPLEOS_LIVE_MEDIUM_DEV= python3 $IR --no-dialog)\" = 'restart: systemctl' ]"
+check "$IR: imports something only after the window (could not be loaded after the stick is pulled)" \
+      "! sed -n '/^def restart/,/^def ask/p' $IR | grep -q 'import'"
+check "simpleos-post-install does not remove $IR" "grep -qx 'rm -f $IR' /usr/local/sbin/simpleos-post-install"
 # Installer launcher: only live, only once; install-debian (removes the live fstab), otherwise pkexec calamares
 printf '#!/bin/sh\necho install-debian >> "$WT/installer"\n' > "$wt/mock/install-debian"
 printf '#!/bin/sh\nexit ${PGREP_RC:-1}\n' > "$wt/mock/pgrep"

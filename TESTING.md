@@ -217,3 +217,7 @@ lines only run at the next login) and on a PC without a battery (or a VM: there 
       down anyway); "Keep installing" does nothing, "Shut down anyway" switches off within seconds. Open a partition of the
       computer's disk in the file manager, start the installer → it is closed first (with a terminal open in it: a message
       instead of the installer). Super+L in the live session: a message, no lock screen.
+- [ ] **Remove the USB stick (new ISO):** at the end of an installation keep "Restart now" ticked and click Done → a window
+      "Simple OS is installed – Remove the USB stick …". Pull the stick (VM: `eject -f ide1-cd0` in the QEMU monitor, or
+      remove the ISO), click "Restart now" → the computer restarts within seconds and starts the new system. Once more
+      **without** pulling the stick → a normal restart.

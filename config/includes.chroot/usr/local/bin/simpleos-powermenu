@@ -18,11 +18,11 @@ sos_rofi_failed() {
 }
 
 is_live() { [ -x /usr/local/bin/simpleos-live ] && /usr/local/bin/simpleos-live --check; }
-# Lock the screen: LightDM (dm-tool), otherwise logind. Not in the live session: nobody knows the live account's
+# Lock the screen: LightDM (dm-tool), otherwise logind. Not in the live session: hardly anyone knows the live account's
 # password ("live"), the session – maybe with the installer running – would be lost behind the lock screen
 lock_screen() {
     if is_live; then
-        sos_notify "The screen is not locked in Live Mode – the live account has no password you would know."
+        sos_notify "The screen is not locked in Live Mode – there is nothing to protect, and unlocking would ask for the live password."
         return 0
     fi
     command -v dm-tool >/dev/null && dm-tool lock >&2 2>&1 && return 0

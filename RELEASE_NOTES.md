@@ -8,7 +8,8 @@ need a terminal.
 
 ## What's new in 1.0.4
 
-A bugfix update. If you run Simple OS 1.0 to 1.0.3, you get it through **Software Updates** – no need to reinstall.
+A bugfix update with a **new ISO** (the installer changed). If you run Simple OS 1.0 to 1.0.3, you get it through
+**Software Updates** – no need to reinstall.
 It adds `git` and a small screen-lock helper (`xss-lock`) and removes nothing. Sign out and in once after the update
 (or restart) so the new screen and power-button settings start.
 
@@ -39,6 +40,8 @@ It adds `git` and a small screen-lock helper (`xss-lock`) and removes nothing. S
   - Partitions of this computer that you opened in the file manager are closed before the installer starts; if one is
     still in use, a message says so instead of an installation that stops right after it started.
   - "Lock" and Super+L in Live Mode no longer lock you out of the live session (its password is unknown to you).
+  - Before the restart at the end, a window asks you to **remove the USB stick** – otherwise the computer could start the
+    live system again instead of your new Simple OS. Pulling the stick before the restart is safe now.
 - **Fixes:**
   - Text you type into the app menu and the search was dark teal on a dark field and hard to read.
   - The Task Manager cut off the Memory column.
@@ -49,15 +52,30 @@ It adds `git` and a small screen-lock helper (`xss-lock`) and removes nothing. S
 
 ## Download
 
-There is **no new ISO** with 1.0.4: it is an update for installed systems. To install Simple OS on a new computer, use
-the [Simple OS 1.0.3 ISO](https://github.com/FreakySneaky787/Simple-OS/releases/tag/v1.0.3). After installing, the
-first **Software Updates** brings it to 1.0.4.
+| File | What it is |
+|---|---|
+| `Simple-OS.iso` | The live and installer image (about 1.5 GB) |
+| `Simple-OS.iso.sha256` | Checksum to make sure the download is complete and unchanged |
+| `Simple-OS.packages.txt` | Every Debian package with its exact version (for source code requests) |
 
-The files attached here (`simpleos_1.0.4_all.deb`, `Packages`, `InRelease` …) are the signed update repository that
+### Check the download
+
+- **Linux:** `sha256sum -c Simple-OS.iso.sha256` (in the download folder) should print `Simple-OS.iso: OK`
+- **Windows (PowerShell):** `Get-FileHash Simple-OS.iso` and compare the hash with the one in `Simple-OS.iso.sha256`
+
+### Make a USB stick (4 GB or larger, everything on it is erased)
+
+- **Windows / macOS / Linux:** [balenaEtcher](https://etcher.balena.io) – pick the ISO, pick the stick, Flash.
+- **Windows:** [Rufus](https://rufus.ie) also works. If it asks, choose **"Write in DD Image mode"**.
+- **Linux:** open *Disks* (gnome-disks), select the stick, choose *Restore Disk Image…* and pick the ISO.
+
+Start the computer from the stick. Usually that's F12, F9, F2 or Esc right after power-on, depending on the brand.
+The live system needs no password – not for the installer either. Only if something unexpected asks: the user is
+`simple` and the password is `live`.
+To install, use **Install Simple OS** on the desktop.
+
+The other files attached here (`simpleos_1.0.4_all.deb`, `Packages`, `InRelease` …) are the signed update repository that
 installed systems use. You don't need to download them yourself.
-
-How to check the ISO and make a USB stick is described in the
-[1.0.3 release notes](https://github.com/FreakySneaky787/Simple-OS/releases/tag/v1.0.3).
 
 ## System requirements
 

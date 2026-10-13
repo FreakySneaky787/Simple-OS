@@ -37,8 +37,9 @@ These could only be tested without hardware. Tick them off on the ThinkPad E16 /
 
 Small, safe, mostly things users hit in the first hour.
 
-Small, safe, mostly things users hit in the first hour. Feature freeze Thu 2026-10-15; published with
-`./tools/release.sh publish --no-iso` (an update only, the 1.0.3 ISO stays the one to install from).
+Small, safe, mostly things users hit in the first hour. Feature freeze Thu 2026-10-15; published **with a new ISO**
+(`./tools/release.sh publish`): the installer changed (#62, #64 – one installer only, no switching off while it works,
+"remove the USB stick" before the restart).
 
 | Item | Status |
 |---|---|

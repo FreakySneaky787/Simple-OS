@@ -38,6 +38,8 @@ SOS_SRC=/etc/apt/sources.list.d/simpleos.sources
 
 # Installer links as the live user (hook 15) – no longer needed, root keeps its normal defaults
 rm -f /root/.config/mimeapps.list /root/.local/share/applications/simpleos-open-as-user.desktop /usr/local/lib/simpleos/open-as-user
+# Restart at the end of the installer ("remove the USB stick") – the installed system never needs it
+rm -f /usr/local/sbin/simpleos-installer-restart
 
 # Offline packages for bootloader-config (grub-pc/grub-efi-amd64/cryptsetup-initramfs) are no longer needed
 rm -rf /usr/share/simpleos/bootloader-debs

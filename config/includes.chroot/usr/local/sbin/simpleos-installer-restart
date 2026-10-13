@@ -1,0 +1,134 @@
+#!/usr/bin/python3
+"""Simple OS – restart at the end of the installation (Calamares finished.conf: restartNowCommand, runs as root).
+
+Before restarting it asks to pull out the USB stick (or take out the disc): otherwise the computer may start the
+live system again instead of the new installation. "Restart now" then restarts:
+  - medium still readable  -> a normal restart (systemctl)
+  - medium gone            -> sync + restart through the kernel (sysrq): the live system runs from that medium, and a
+                              normal shutdown that has to load programs from it can hang (#62). Nothing is lost: the
+                              live session keeps nothing, and Calamares has already unmounted the new system.
+Without a screen or GTK: a normal restart, as before.
+Tests: SIMPLEOS_RESTART_DRYRUN=1 prints the decision instead of restarting; SIMPLEOS_LIVE_MEDIUM_DEV replaces the
+device of the live medium (empty = unknown); --no-dialog skips the window.
+"""
+# Everything is imported before the window opens: after the stick is pulled, nothing more can be loaded from it
+import errno
+import mmap
+import os
+import sys
+import threading
+
+DRYRUN = os.environ.get("SIMPLEOS_RESTART_DRYRUN") == "1"
+TITLE = "Simple OS is installed"
+TEXT = ("Remove the USB stick (or take out the disc) now.\n\n"
+        "Then click “Restart now” – the computer starts your new Simple OS.")
+
+
+def medium_device():
+    if "SIMPLEOS_LIVE_MEDIUM_DEV" in os.environ:
+        return os.environ["SIMPLEOS_LIVE_MEDIUM_DEV"]
+    for mnt in ("/run/live/medium", "/lib/live/mount/medium"):
+        try:
+            with open("/proc/self/mounts") as f:
+                for line in f:
+                    parts = line.split()
+                    if len(parts) > 1 and parts[1] == mnt and parts[0].startswith("/dev/"):
+                        return parts[0]
+        except OSError:
+            pass
+    return ""
+
+
+def medium_present(dev, timeout=4.0):
+    """True if the first block of the live medium can still be read (a pulled USB stick: the device is gone; an
+    ejected disc: ENOMEDIUM). Unknown device -> True (normal restart). A read that hangs counts as gone."""
+    if not dev:
+        return True
+    result = []
+
+    def read(flags):
+        fd = os.open(dev, os.O_RDONLY | flags)
+        try:
+            # O_DIRECT needs an aligned buffer: mmap memory is page aligned
+            os.readv(fd, [mmap.mmap(-1, 4096)])
+        finally:
+            os.close(fd)
+
+    def probe():
+        try:
+            try:
+                read(getattr(os, "O_DIRECT", 0))   # past the page cache: really asks the drive
+            except OSError as e:
+                if e.errno != errno.EINVAL:         # EINVAL: no O_DIRECT here -> an ordinary read
+                    raise
+                read(0)
+            result.append(True)
+        except OSError:
+            result.append(False)
+
+    t = threading.Thread(target=probe, daemon=True)
+    t.start()
+    t.join(timeout)
+    return bool(result and result[0])
+
+
+def restart():
+    present = medium_present(medium_device())
+    if DRYRUN:
+        print("restart: " + ("systemctl" if present else "sysrq"))
+        return
+    if present:
+        os.execvp("systemctl", ["systemctl", "-i", "reboot"])
+    os.sync()
+    try:
+        with open("/proc/sysrq-trigger", "w") as f:
+            f.write("b")
+    except OSError:
+        pass
+    # sysrq refused (should not happen as root): try the normal way after all
+    os.execvp("systemctl", ["systemctl", "-i", "reboot"])
+
+
+def ask():
+    """The window; returns when "Restart now" was clicked (or the window could not open)."""
+    try:
+        import gi
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk
+    except Exception:
+        return
+    if not Gtk.init_check(sys.argv)[0]:
+        return
+    win = Gtk.Window(title=TITLE)
+    win.set_position(Gtk.WindowPosition.CENTER)
+    win.set_keep_above(True)
+    win.set_resizable(False)
+    win.set_deletable(False)  # closing would leave the installer waiting
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
+    box.set_border_width(24)
+    head = Gtk.Label()
+    head.set_markup("<span size='x-large' weight='bold'>%s</span>" % TITLE)
+    head.set_xalign(0)
+    body = Gtk.Label(label=TEXT)
+    body.set_xalign(0)
+    body.set_line_wrap(True)
+    body.set_max_width_chars(48)
+    button = Gtk.Button(label="Restart now")
+    button.get_style_context().add_class("suggested-action")
+    button.set_halign(Gtk.Align.END)
+    button.connect("clicked", lambda *_: Gtk.main_quit())
+    for w in (head, body, button):
+        box.pack_start(w, False, False, 0)
+    win.add(box)
+    win.show_all()
+    button.grab_focus()
+    Gtk.main()
+    win.hide()
+    while Gtk.events_pending():
+        Gtk.main_iteration()
+
+
+if __name__ == "__main__":
+    if "--no-dialog" not in sys.argv:
+        ask()
+    restart()

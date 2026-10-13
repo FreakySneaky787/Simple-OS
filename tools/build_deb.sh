@@ -53,6 +53,7 @@ EXCLUDE=(
     etc/calamares/
     usr/sbin/bootloader-config
     usr/local/sbin/simpleos-post-install
+    usr/local/sbin/simpleos-installer-restart
     usr/local/lib/simpleos/open-as-user
     usr/share/applications/simpleos-install.desktop
     etc/skel/.config/autostart/calamares-desktop-icon.desktop
