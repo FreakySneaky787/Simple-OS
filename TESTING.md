@@ -203,6 +203,11 @@ lines only run at the next login) and on a PC without a battery (or a VM: there 
 - [ ] **A non-English installation (e.g. German):** `simpleos-wifi` (network menu) shows "Connected: …" and "Turn off Wi-Fi" while
       online – before, `nmcli` answered "verbunden"/"aktiviert" and the menu thought you were offline with Wi-Fi off. The Setup
       Wizard's Internet step says "Connected" too. Mute from the volume keys shows "Muted".
+- [ ] **Setup Wizard, Internet step (issue #63):** `simpleos-welcome-wizard` with a cable or a known Wi-Fi → step 2 shows
+      "Internet ✔" and Next goes from Welcome straight to Browser (Back as well). Without a connection (Wi-Fi off in the
+      network menu first, then on again): the page shows "1. Click … 2. Type … 3. Click Connect", clicking a network with a
+      password shows "Password for “name”:" with an eye button; typing the password and clicking **Next** (not Connect)
+      connects and then moves on. Once online, the list is hidden behind "Use a different network".
 - [ ] **Small screen (1366x768):** the Welcome window fits on the screen (it was taller than the screen).
 - [ ] **App menu and search (issue #61):** text typed into the app menu (☰ / Super) and the search (Super+Space) is light
       and readable (before: dark teal on the dark field); in light mode it is dark.

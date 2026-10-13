@@ -33,9 +33,7 @@ These could only be tested without hardware. Tick them off on the ThinkPad E16 /
       lightdm journal – harmless or not?)
 - [x] Update from 1.0.2 to 1.0.3 through Software Updates on an installed system (#33, works).
 
-## 1.0.4 – next bugfix release (planned for the weekend of 2026-10-17)
-
-Small, safe, mostly things users hit in the first hour.
+## 1.0.4 – next bugfix release (planned for the weekend of 2026-10-17, possibly a few days earlier)
 
 Small, safe, mostly things users hit in the first hour. Feature freeze Thu 2026-10-15; published **with a new ISO**
 (`./tools/release.sh publish`): the installer changed (#62, #64 – one installer only, no switching off while it works,
@@ -45,12 +43,14 @@ Small, safe, mostly things users hit in the first hour. Feature freeze Thu 2026-
 |---|---|
 | Fixes from the checklist above | waiting for the hardware checks |
 | Idle screen lock + blank, video inhibit (#25) | done |
-| Power button opens the power menu (#35) | done – **hardware test is the blocker** (does X see `XF86PowerOff`?) |
+| Power button opens the power menu (#35) | done – check on real hardware after the update (TESTING.md section 9) |
 | Brightness slider in Control Center → Display (#34) | done |
 | Wi-Fi: regulatory country from the time zone (#40) | done |
 | `git` in the image (#36) | done |
 | Sixth bug hunt (nmcli in other languages, Task Manager, light-mode icons, small screens, report privacy) | done |
 | App menu / search: typed text readable (#61) | done |
+| Installer safety: one installer, no switching off while it works, "remove the USB stick" (#62, #64) | done, VM-tested (BIOS) |
+| Setup Wizard: internet step skipped when online, simpler Wi-Fi page (#63) | done |
 
 ## 1.0.5 – bugfix release (about 3 weeks after 1.0.4)
 

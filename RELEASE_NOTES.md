@@ -42,6 +42,10 @@ It adds `git` and a small screen-lock helper (`xss-lock`) and removes nothing. S
   - "Lock" and Super+L in Live Mode no longer lock you out of the live session (its password is unknown to you).
   - Before the restart at the end, a window asks you to **remove the USB stick** – otherwise the computer could start the
     live system again instead of your new Simple OS. Pulling the stick before the restart is safe now.
+- **Setup Wizard: easier internet step** (issue #63). Already online (network cable or a known Wi-Fi)? Then the
+  wizard skips the step. Otherwise it shows three numbered steps (click your network, type its password, click
+  Connect), says for which network the password is, and has an eye button to show what you typed. Clicking Next
+  after typing the password connects first instead of moving on offline.
 - **Fixes:**
   - Text you type into the app menu and the search was dark teal on a dark field and hard to read.
   - The Task Manager cut off the Memory column.

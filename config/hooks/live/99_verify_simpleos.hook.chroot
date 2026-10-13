@@ -607,9 +607,9 @@ for home in /etc/skel /home/simple; do
           "grep -qE '^ *children: \\[ inputbar, message, listview \\];' '$home/.config/rofi/config.rasi'"
 done
 
-# Setup Wizard, step "Internet" (like Windows): status at the top, below it ALWAYS the Wi-Fi list – even if the
-# PC is already online; connected network = "Disconnect", every other = "Connect" (switch). The same
-# dummies, call the functions without a screen.
+# Setup Wizard, step "Internet" (#63): skipped when the PC is online at the start; online on the page = only
+# "You're online" + Next, the Wi-Fi list only after "Use a different network"; offline = list with numbered steps,
+# no "Disconnect" in the wizard. The same dummies, call the functions without a screen.
 WIZ=/usr/local/bin/simpleos-welcome-wizard
 check "wizard: step Internet missing" "grep -q 'STEPS = \[\"Welcome\", \"Internet\"' $WIZ"
 check "wizard: 'You're all set' without a list" "! grep -q \"You're all set\" $WIZ"
@@ -617,22 +617,30 @@ WZ="import importlib.machinery as m; w = m.SourceFileLoader('w', '$WIZ').load_mo
 mkdir -p "$wt/py" && ln -s "$(command -v python3)" "$wt/py/python3"   # only python3, no real nmcli
 wiz() { rm -rf "${S:?}"; mkdir -p "$S"; $ENV -i HOME="$wt/home" WT="$S" PATH="$wt/mock:$wt/py:$wt/sys" "$@" 2>/dev/null; }
 check "wizard: Wi-Fi list read incorrectly" "[ \"\$(wiz NET=wifi python3 -c \"$WZ; print(w.wifi_networks('wlan0'))\")\" = \"[('Home', 80, True, True), ('Office', 60, True, False), ('Cafe', 30, False, False)]\" ]"
-check "wizard: online via Wi-Fi -> list missing or no switching possible" "wiz NET=wifi python3 -c \"$WZ
+check "wizard: online via Wi-Fi -> list shown or no 'Use a different network'" "wiz NET=wifi python3 -c \"$WZ
+s = w.network_state(); n = w.wifi_networks(s['wifi']); v = w.network_view(s, n)
+assert 'Connected to Home'.lower() in v['status'].lower() and v['online'] and not v['show_list'], v
+assert v['action'] == 'Use a different network' and 'Next' in v['hint'], v
+v = w.network_view(s, n, True)
+assert v['show_list'] and [r[0] for r in v['rows']] == ['Home', 'Office', 'Cafe'] and v['rows'][0][1] == 'Connected', v
+assert not any(x in str(v) for x in ('wlan0', 'eth0', 'Disconnect')), v\""
+check "wizard: offline -> no list with numbered steps" "wiz NET=wifi-down python3 -c \"$WZ
+s = w.network_state(); v = w.network_view(s, [('Home', 80, True, False)])
+assert not v['online'] and v['show_list'] and v['hint'].startswith('1.') and 'needs password' in v['rows'][0][1], v\""
+check "wizard: online via cable -> wrong status" "wiz NET=wifi-eth python3 -c \"$WZ
 s = w.network_state(); v = w.network_view(s, w.wifi_networks(s['wifi']))
-assert v['status'] == 'Connected to Home' and v['online'] and v['show_list'], v
-assert [(r[0], r[4]) for r in v['rows']] == [('Home', 'Disconnect'), ('Office', 'Connect'), ('Cafe', 'Connect')], v
-assert not any(x in str(v) for x in ('wlan0', 'eth0')), v\""
-check "wizard: online via cable -> Wi-Fi list missing" "wiz NET=wifi-eth python3 -c \"$WZ
-s = w.network_state(); v = w.network_view(s, w.wifi_networks(s['wifi']))
-assert v['status'].startswith('Connected to Ethernet') and v['show_list'] and len(v['rows']) == 3, v\""
+assert 'network cable' in v['status'] and v['online'] and not v['show_list'], v\""
+check "wizard: Internet step not skipped when already online (#63)" \
+      "grep -q 'self.skip_network = True' $WIZ && grep -q 'self.skip_network and self.page + 1 == NETWORK_PAGE' $WIZ"
+check "wizard: Next with a typed Wi-Fi password does not connect first" \
+      "grep -q 'self.net_then_next = True' $WIZ && grep -q 'if then_next and self.page == NETWORK_PAGE' $WIZ"
 check "wizard: Wi-Fi off -> no 'Turn on Wi-Fi'" "wiz NET=wifi-off python3 -c \"$WZ
 s = w.network_state(); v = w.network_view(s, [])
 assert v['action'] == 'Turn on Wi-Fi' and not v['show_list'], v\""
 check "wizard: wrong status without Wi-Fi hardware" "wiz NET=eth python3 -c \"$WZ
 s = w.network_state(); v = w.network_view(s, [])
-assert s['wifi'] is None and s['kind'] == 'ethernet' and v['online'] and 'no Wi-Fi hardware' in v['hint'], v\""
+assert s['wifi'] is None and s['kind'] == 'ethernet' and v['online'] and v['action'] is None, v\""
 check "wizard: switching networks (connected to Home -> Office) does not work" "wiz NET=wifi python3 -c \"$WZ; ok, msg = w.connect_wifi('wlan0', 'Office', 'secret'); assert ok and 'Office' in msg, msg\" && grep -q 'nmcli --ask --wait 30 device wifi connect Office ifname wlan0$' $S/calls && ! grep -q 'secret' $S/calls && grep -qx 'secret' $S/stdin-pw"
-check "wizard: disconnecting does not work" "wiz NET=wifi python3 -c \"$WZ; ok, msg = w.disconnect_wifi('wlan0'); assert ok, msg\" && grep -q 'device disconnect wlan0' $S/calls"
 check "wizard: wrong password without a clear message" "wiz NET=wifi BADPW=1 python3 -c \"$WZ; ok, msg = w.connect_wifi('wlan0', 'Office', 'x'); assert not ok and 'password may be wrong' in msg, msg\" && grep -q 'connection delete id Office' $S/calls"
 check "wizard: saved network, the new password does not replace the profile (stdin, not the command line)" "wiz NET=wifi-down UPFAIL=1 python3 -c \"$WZ; ok, msg = w.connect_wifi('wlan0', 'Home', 'new', True); assert ok, msg\" && grep -q 'connection delete id Home' $S/calls && grep -q 'nmcli --ask --wait 30 device wifi connect Home ifname wlan0$' $S/calls && ! grep -qw 'new' $S/calls && grep -qx 'new' $S/stdin-pw"
 check "wizard: saved password wrong -> misleading message" "wiz NET=wifi-down UPFAIL=1 BADPW=1 python3 -c \"$WZ; ok, msg = w.connect_wifi('wlan0', 'Home', '', True); assert not ok and 'saved password may be wrong' in msg, msg\""
@@ -1520,6 +1528,7 @@ printf '#!/bin/sh\nexit 1\n' > "$pw/pc/simpleos-battery"
 printf '#!/bin/sh\necho "xss-lock $*" >> "$WT/xss"\n' > "$pw/xss-lock"
 printf '#!/bin/sh\necho "pkill $*" >> "$WT/xss"\n' > "$pw/pkill"
 printf '#!/bin/sh\nexec "$@"\n' > "$pw/setsid"
+ln -s /usr/local/bin/simpleos-live "$pw/simpleos-live"   # the real one: SIMPLEOS_LIVE=1/0 decides
 printf '#!/bin/sh\ncase "$*" in *" -s "*) echo "$*" >> "$WT/xfconf" ;; *) echo "$XQ_CUR" ;; esac\n' > "$pw/xfconf-query"
 chmod 0755 "$pw"/* "$pw/lap/simpleos-battery" "$pw/pc/simpleos-battery"
 pwr() {   # lap|pc [ENV=VALUE] -- args
@@ -1557,11 +1566,14 @@ check "simpleos-power --suspend: on a laptop xfce4-power-manager does that (no x
 pwr pc -- --lock off
 check "simpleos-power --lock off: saved, xss-lock stopped and not started" \
       'grep -qx "lock=off" $wt/home/.config/simpleos/power && grep -q "^pkill .*xss-lock" $S/xss && ! grep -q "^xss-lock" $S/xss'
-pwr pc -- --lock on
-waitfor "$S/xss" && sleep 0.3
+pwr pc SIMPLEOS_LIVE=0 -- --lock on
+# the xss-lock dummy runs in the background (setsid … &) and pkill already created $S/xss: wait for its own line,
+# otherwise it lands late in the next test's $S (the live-session check below then failed now and then)
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do grep -q "^xss-lock" "$S/xss" 2>/dev/null && break; sleep 0.1; done
 check "simpleos-power --lock on: saved, xss-lock follows the screensaver and locks with dm-tool" \
       'grep -qx "lock=on" $wt/home/.config/simpleos/power && grep -qx "xss-lock -- dm-tool lock" $S/xss'
 pwr pc SIMPLEOS_LIVE=1 -- --lock on
+sleep 0.5   # an xss-lock started by mistake writes in the background – give it time to show up
 check "simpleos-power --lock on: no xss-lock in the live session (password unknown)" '! grep -q "^xss-lock" $S/xss'
 rc=0; pwr pc -- --lock maybe || rc=$?
 check "simpleos-power --lock: invalid value accepted" '[ $rc -eq 2 ]'
