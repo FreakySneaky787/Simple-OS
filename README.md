@@ -54,7 +54,7 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
   - **System** (`--system`, from the package's postinst): `/etc` files dpkg kept although they are an unchanged
     older Simple OS version (`system.history`); files of Debian packages that dpkg would refuse in our package
     (`/etc/issue`, `/etc/motd`, `zramswap`, LightDM greeter, xfce4-power-manager – copies in `edition/system`, same rule);
-    the build hooks marked "Re-run on Simple OS updates" (00, 07, 09, 10, 11, 14 – derived settings, must stay
+    the build hooks marked "Re-run on Simple OS updates" (00, 07, 09, 10, 11, 14, 17 – derived settings, must stay
     idempotent; never 12, it would switch a firewall turned off by the user back on); a new boot splash → initramfs.
   - **New packages** in `config/package-lists` (except installer/bootloader): installed once after the upgrade
     (`--todo-packages`, `--mark-packages`); what the user removes later is not installed again, a package that
@@ -66,7 +66,9 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
     entries that the 1.0 Setup Wizard wrote into `/etc/skel/.config/openbox/menu.xml` out again – with them the
     file counted as changed, and no later menu change would have reached those systems.
     `system/020-browser-defaults` (1.0.2) gives the shipped browser (`firefox-esr`) back to `/etc/xdg/mimeapps.list` and
-    `defaults.list`, which the Setup Wizard's Firefox removal used to rewrite.
+    `defaults.list`, which the Setup Wizard's Firefox removal used to rewrite. 1.0.4: `030-grub-pc-devices` (BIOS: tell
+    grub-pc which disk holds GRUB), `040-locale-gen` (generate the system language that up to 1.0.3 was never
+    generated), `050-os-prober` (rebuild the GRUB menu once with other systems in it).
   - **Files the system changes itself:** tools never write into package files under `/etc/skel` (or other conffiles)
     for everyday settings – a changed conffile is kept by dpkg and the edition tool forever. Per-account changes go
     into the home copies (merged by the edition tool), see `office-menu` below.
@@ -148,7 +150,9 @@ the lb default files, the generated graphics and the fastfetch package.
 | `etc/apt/apt.conf.d/20simpleos-periodic` | refresh package lists daily (check only, never install automatically) |
 | `usr/local/sbin/simpleos-efi-refresh` | keeps shim + signed GRUB in `EFI/Simple_OS` on the EFI partition at the installed packages' version (Debian's postinst only refreshes `EFI/<GRUB_DISTRIBUTOR>`) and creates the fallback loader `EFI/BOOT/BOOTX64.EFI` if none exists; called by the package's postinst/dpkg trigger (`/usr/lib/shim`, `/usr/lib/grub/x86_64-efi-signed`) and by `simpleos-post-install` |
 | `usr/sbin/bootloader-config` | replaces Debian's Calamares script: installs GRUB (BIOS/UEFI) offline from `usr/share/simpleos/bootloader-debs` (hook 08) |
-| `usr/local/sbin/simpleos-post-install` | runs after the installation (Calamares): removes the installer and live leftovers |
+| `usr/local/sbin/simpleos-post-install` | runs after the installation (Calamares): removes the installer and live leftovers, language packs |
+| `usr/local/lib/simpleos/sfdisk-installer` | live session only (put in front of `/usr/sbin/sfdisk` by `simpleos-live-tune`): "Install alongside" inside an extended partition – moves the new logical partition's start past its EBR; keeps the active primary partition when Calamares marks a logical one |
+| `etc/default/grub.d/simpleos-os-prober.cfg` | os-prober on (other systems in the GRUB menu); here because grub-pc/grub-efi switch a line in `/etc/default/grub` off at every update |
 | `usr/local/lib/simpleos/open-as-user` | live image only: links in the installer (runs as root) open in the live user's browser – browsers refuse to run as root; root's http(s) default from hook 15 |
 | `usr/local/sbin/simpleos-system-setup` | root helper of the Setup Wizard (browser, Firefox removal, office, gaming) |
 | `usr/share/polkit-1/actions/` | Polkit action for the root helper (pkexec with a graphical password dialog) |
@@ -219,7 +223,9 @@ the lb default files, the generated graphics and the fastfetch package.
   Arabic, Thai, Hindi, Chinese … show letters instead of empty boxes; Chinese/Japanese/Korean systems get Noto CJK.
 - Language packs (`simpleos-system-setup --language`): the image is English; for the system language chosen in the
   installer the dictionary (hunspell), Firefox and LibreOffice language packs are installed – after the installation
-  (`simpleos-post-install`, needs the internet), by the Setup Wizard and by Software Updates. Names are resolved with
+  (`simpleos-post-install`, needs the internet; only the download has a time limit, dpkg is never interrupted), by the
+  Setup Wizard and by Software Updates. The language itself: hook 04 lists every locale in `/etc/locale.gen` (commented
+  out, only en_US generated) – Calamares can only switch on a locale that is listed there. Names are resolved with
   `apt-cache` (`<prefix>-<language>-<country>`, then `<prefix>-<language>`). Firefox's `policies.json` no longer
   forces `en-US`.
 - Everyday tools in the image: curl, wget, unzip, zip, openssh-client, git (tutorials and install scripts expect them),
@@ -286,7 +292,10 @@ the lb default files, the generated graphics and the fastfetch package.
   is off; dunst: a left click triggers a notification's action (hook 09, dunst 1.9 has no drop-ins).
 - Power menu: `simpleos-powermenu` (Super+X, taskbar button, Menu → Power); Sleep locks the screen first.
   The power button opens it too (`XF86PowerOff` in `rc.xml`; the Openbox autostart holds a logind inhibitor
-  `handle-power-key` for the session, the login screen keeps logind's default).
+  `handle-power-key` for the session, the login screen keeps logind's default). Some laptops (ThinkBook E16) only
+  report the button when it is held for about a second – the firmware drops a quick tap.
+- Keyring: hook 17 masks `gnome-keyring-daemon.socket` (globally) so `pam_gnome_keyring` starts the daemon at login –
+  with the systemd socket the login keyring created at the first login was unusable for that whole session.
 - Screen blanking and lock (`simpleos-power --screen-off MIN | --lock on|off|status | --suspend | --apply`, Control Center
   → Power): **with a battery xfce4-power-manager owns the X screensaver time and the DPMS times** (it sets them again at
   every plug/unplug and keeps the screen on while a browser plays a video; source `xfpm-power.c`/`xfpm-dpms.c`), so the

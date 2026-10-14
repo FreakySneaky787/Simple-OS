@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Written after 1.0.3 (2026-10-09), updated 2026-10-11. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
+Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -18,15 +18,15 @@ Rules that keep it small: no new always-running process without a good reason (t
 on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook.chroot`; anything that mocks can hide
 (night light in 1.0.3!) is run for real once, e.g. in a container with Xvfb; nothing is published untested on hardware.
 
-## Now: verify 1.0.3 on real hardware (feeds 1.0.4)
+## Done: 1.0.3 verified on real hardware (fed 1.0.4)
 
-These could only be tested without hardware. Tick them off on the ThinkPad E16 / ThinkBook and report in the issues.
+These could only be tested without hardware at first; all checked on the ThinkPad E16 / ThinkBook or in a VM.
 
-- [ ] Night light turns the screen warm (before: nothing happened on real hardware).
-- [ ] Microphone appears in Sound (alsa-ucm-conf; before only "stereo-fallback" with no input).
-- [ ] Plugging in an HDMI/USB-C monitor lights it up on its own; unplugging leaves the laptop screen; standby of a DisplayPort
-      monitor does not re-arrange the desktop.
-- [ ] Mouse & Touchpad page: natural scrolling, tap, speed apply and survive a restart (Synaptics touchpad of the E16).
+- [x] Night light turns the screen warm (before: nothing happened on real hardware).
+- [x] Microphone appears in Sound (alsa-ucm-conf; before only "stereo-fallback" with no input).
+- [x] Plugging in an HDMI/USB-C monitor lights it up on its own; unplugging leaves the laptop screen; standby of a DisplayPort
+      monitor does not re-arrange the desktop (#28, ThinkBook 2026-10-14).
+- [x] Mouse & Touchpad page: natural scrolling, tap, speed apply and survive a restart (Synaptics touchpad of the E16).
 - [x] Date & Time: time zone dialog and automatic time ask for the password and apply (#30, VM 2026-10-14; Cancel no
       longer shows an error – fixed in 1.0.4).
 - [x] Language packs: install in German with internet → Firefox and the dictionary are German (#31, VM 2026-10-14: they were
@@ -35,26 +35,29 @@ These could only be tested without hardware. Tick them off on the ThinkPad E16 /
       installation – fixed in 1.0.4; the `gkr-pam: unable to locate daemon control file` line is harmless).
 - [x] Update from 1.0.2 to 1.0.3 through Software Updates on an installed system (#33, works).
 
-## 1.0.4 – next bugfix release (planned for the weekend of 2026-10-17, possibly a few days earlier)
+## 1.0.4 – bugfix release (published 2026-10-14)
 
-Small, safe, mostly things users hit in the first hour. Feature freeze Thu 2026-10-15; published **with a new ISO**
+Small, safe, mostly things users hit in the first hour. Published **with a new ISO**
 (`./tools/release.sh publish`): the installer changed (#62, #64 – one installer only, no switching off while it works,
 "remove the USB stick" before the restart).
 
 | Item | Status |
 |---|---|
-| Fixes from the checklist above | waiting for the hardware checks |
+| Fixes from the checklist above (#30, #31, #32: language, language packs, first-login keyring, Date & Time) | done |
 | Idle screen lock + blank, video inhibit (#25) | done |
-| Power button opens the power menu (#35) | done – check on real hardware after the update (TESTING.md section 9) |
+| Power button opens the power menu (#35) | done – ThinkBook: hold ~1 s, the firmware ignores a quick tap |
 | Brightness slider in Control Center → Display (#34) | done |
 | Wi-Fi: regulatory country from the time zone (#40) | done |
 | `git` in the image (#36) | done |
 | Sixth bug hunt (nmcli in other languages, Task Manager, light-mode icons, small screens, report privacy) | done |
 | App menu / search: typed text readable (#61) | done |
-| Installer safety: one installer, no switching off while it works, "remove the USB stick" (#62, #64) | done, VM-tested (BIOS) |
+| Installer safety: one installer, no switching off while it works, "remove the USB stick" (#62, #64) | done, VM-tested (BIOS, UEFI + Secure Boot) |
 | Setup Wizard: internet step skipped when online, simpler Wi-Fi page (#63) | done |
+| Older PCs (BIOS/MBR): "Install alongside" inside an extended partition, active partition kept | done, VM shaped like a Dell OptiPlex 9020 |
+| Other systems stay in the GRUB menu after GRUB updates | done |
+| Bluetooth pairing with a keyboard/phone (#10), monitor hotplug (#28) | confirmed on the ThinkBook |
 
-## 1.0.5 – bugfix release (about 3 weeks after 1.0.4)
+## 1.0.5 – next bugfix release (about 3 weeks after 1.0.4, early November 2026)
 
 Moved from 1.0.4 to keep it small:
 
@@ -63,7 +66,7 @@ Moved from 1.0.4 to keep it small:
 | Bluetooth battery level of headphones (#37) | BlueZ needs `--experimental`; nice in the taskbar | S |
 | "Default apps" page (browser, mail, PDF …) (#38) | today only the browser has a chooser | M |
 | Startup apps page (#39) | enable/disable autostart entries without the terminal | M |
-| Whatever the 1.0.4 hardware checks turn up | | ? |
+| Whatever 1.0.4 users report | | ? |
 
 ## 1.1 – next feature release (2–3 months after 1.0)
 
@@ -112,9 +115,7 @@ Moving to it is the one big job of the next year, and it has to be planned, not 
 
 | # | Title | Status |
 |---|---|---|
-| 10 | Bluetooth pairing for keyboards/phones (passkey) | fixed in 1.0.2 through blueman's agent; still to be confirmed with a real keyboard and phone |
 | 19 | squashfs uses xz; zstd would be faster | 1.1, decide about the +18 % ISO size |
-| 25 | screen blanking conflicts / no screensaver inhibit | fixed, ships in 1.0.4 |
 
 ## Decisions we have made (so we don't argue them again)
 
