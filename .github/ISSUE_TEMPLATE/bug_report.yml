@@ -1,0 +1,66 @@
+name: Bug report
+description: Something does not work in Simple OS
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for testing Simple OS! The more details you give, the faster the bug can be fixed.
+  - type: input
+    id: version
+    attributes:
+      label: Simple OS version
+      description: Shown in the Setup Wizard, the release name, or `cat /etc/os-release`.
+      placeholder: e.g. 1.0.3
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: Computer / hardware
+      description: Make and model, or CPU, RAM and graphics card.
+      placeholder: e.g. Dell OptiPlex 9020, i5-4590, 8 GB RAM, Intel HD 4600
+    validations:
+      required: true
+  - type: dropdown
+    id: boot
+    attributes:
+      label: Boot mode
+      options:
+        - UEFI
+        - Legacy BIOS / MBR
+        - Virtual machine
+        - Don't know
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where did it happen?
+      options:
+        - Live session (USB / DVD)
+        - Installer (Calamares)
+        - Installed system
+        - Setup Wizard
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots (optional)
+      description: e.g. `journalctl -b -p err`, or `/var/log/installer/` after an install. Drag screenshots in here.
+      render: shell
