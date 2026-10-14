@@ -46,7 +46,21 @@ It adds `git` and a small screen-lock helper (`xss-lock`) and removes nothing. S
   wizard skips the step. Otherwise it shows three numbered steps (click your network, type its password, click
   Connect), says for which network the password is, and has an eye button to show what you typed. Clicking Next
   after typing the password connects first instead of moving on offline.
+- **Installations in other languages** (issue #31): the language you picked in the installer (e.g. German) was set,
+  but never generated – programs stayed in English and every update printed "perl: warning: Setting locale failed".
+  The dictionary and Firefox in your language were never installed during the installation either. Both work now;
+  on an installed system the update generates the missing language once (sign out and in afterwards).
+- **The login keyring works from the first login on** (issue #32). In the first session after the installation
+  Chromium, Discord and other apps asked for a password for a new keyring – or waited for a window that never
+  appeared. Now the keyring is unlocked with your login password right away.
+- **Other systems stay in the boot menu.** With Windows or another Linux on the disk, the first GRUB update from
+  Debian removed them from the menu at startup. The update brings them back once and keeps them there.
+- **Install next to another system on older PCs (BIOS/MBR):** "Install alongside" stopped with "The installer failed
+  to create a partition" when the partition to shrink was inside an extended partition (logical partitions, common on
+  older PCs with several systems). It works now, and the partition that was marked as active stays active (some older
+  BIOSes do not start a disk without one).
 - **Fixes:**
+  - Control Center → System → Date & Time: cancelling the password window showed "The setting could not be changed".
   - Text you type into the app menu and the search was dark teal on a dark field and hard to read.
   - The Task Manager cut off the Memory column.
   - In light mode some symbols (like Sound in the Control Center) were light gray on white.

@@ -147,7 +147,43 @@ for t in 'de_DE.UTF-8|hunspell-de-de firefox-esr-l10n-de libreoffice-l10n-de ' '
     lt_got=$(LT=$LT PATH="$LT/bin:$PATH" sh "$LT/run.sh" "$lt_loc" 2>&1)
     check "language packs for $lt_loc: got [$lt_got] instead of [$lt_want]" "[ '$lt_got' = '$lt_want' ]"
 done
+# During the installation (chroot) systemctl says "active" to everything: apt_wait must not wait for apt-daily there
+awk '/^apt_busy\(\)/ { p = 1 } p { print } p && /^}/ { exit }' /usr/local/sbin/simpleos-system-setup > "$LT/busy.sh"
+printf '#!/bin/sh\nexit 0\n' > "$LT/bin/systemctl"; printf '#!/bin/sh\nexit 1\n' > "$LT/bin/pgrep"
+printf '#!/bin/sh\n[ "$LT_CHROOT" = 1 ]\n' > "$LT/bin/systemd-detect-virt"; chmod 0755 "$LT/bin/"*
+check "simpleos-system-setup: apt_wait waits for apt-daily inside a chroot (language packs never installed)" \
+      "! LT_CHROOT=1 PATH=\"$LT/bin:\$PATH\" sh -c '. $LT/busy.sh; apt_busy'"
+check "simpleos-system-setup: apt_wait no longer waits for a running apt-daily" \
+      "LT_CHROOT=0 PATH=\"$LT/bin:\$PATH\" sh -c '. $LT/busy.sh; apt_busy'"
 rm -rf "$LT"
+# Locales: the installer (Calamares localecfg) can only switch on a locale listed in /etc/locale.gen – up to 1.0.3 it held
+# only en_US, every other language stayed "# Missing" and was never generated. Migration 040 repairs those systems.
+check "/etc/locale.gen does not list every locale (commented) with only en_US.UTF-8 generated (hook 04)" \
+      "grep -qx '# de_DE.UTF-8 UTF-8' /etc/locale.gen && grep -qx '# pt_BR.UTF-8 UTF-8' /etc/locale.gen &&
+       [ \"\$(grep -c '^[^#]' /etc/locale.gen)\" -eq 1 ] && grep -qx 'en_US.UTF-8 UTF-8' /etc/locale.gen && locale -a | grep -qx en_US.utf8"
+MIG4=/usr/share/simpleos/edition/migrations/system/040-locale-gen
+lg=$(mktemp -d)
+printf 'LANG=de_DE.UTF-8\nLC_TIME="de_CH.UTF-8"\nLC_PAPER=xx_XX.UTF-8\nLC_NUMERIC=C.UTF-8\n' > "$lg/default"
+printf 'en_US.UTF-8 UTF-8\n\n###\n#\n# Locales enabled by Calamares\n# Missing: de_DE.UTF-8\n' > "$lg/gen"
+printf 'de_CH.UTF-8 UTF-8\nde_DE ISO-8859-1\nde_DE.UTF-8 UTF-8\nen_US.UTF-8 UTF-8\n' > "$lg/supported"
+printf '#!/bin/sh\necho run >> "%s/gen.log"\n' "$lg" > "$lg/locale-gen"; chmod 0755 "$lg/locale-gen"
+printf 'C\nC.utf8\nen_US.utf8\nPOSIX\n' > "$lg/have"
+mig4() { SIMPLEOS_LOCALE_FILE=$lg/default SIMPLEOS_LOCALE_GEN=$lg/gen SIMPLEOS_SUPPORTED=$lg/supported \
+         SIMPLEOS_LOCALE_GEN_CMD=$lg/locale-gen SIMPLEOS_LOCALE_A_CMD="cat $lg/have" sh "$MIG4" >/dev/null 2>&1; }
+check "migration 040-locale-gen: missing system language (de_DE, de_CH) not switched on and generated" \
+      "[ -x $MIG4 ] && mig4 && grep -qx 'de_DE.UTF-8 UTF-8' $lg/gen && grep -qx 'de_CH.UTF-8 UTF-8' $lg/gen &&
+       ! grep -q 'xx_XX\|^C' $lg/gen && [ \"\$(grep -c . $lg/gen.log)\" -eq 1 ]"
+printf 'de_CH.utf8\nde_DE.utf8\n' >> "$lg/have"; cp "$lg/gen" "$lg/gen.before"
+check "migration 040-locale-gen: runs locale-gen or changes /etc/locale.gen when nothing is missing" \
+      "mig4 && cmp -s $lg/gen $lg/gen.before && [ \"\$(grep -c . $lg/gen.log)\" -eq 1 ]"
+rm -rf "${lg:?}"
+# Login keyring (#32): pam_gnome_keyring must start the daemon itself – with the systemd socket the login keyring created
+# at the first login was not usable in that session (hook 17)
+check "Keyring: gnome-keyring socket not masked or service masked (first login: programs ask for a new keyring)" \
+      "[ \"\$(readlink /etc/systemd/user/gnome-keyring-daemon.socket)\" = /dev/null ] &&
+       [ ! -e /etc/systemd/user/gnome-keyring-daemon.service ] &&
+       grep -qE '^-?session[[:space:]]+optional[[:space:]]+pam_gnome_keyring.so auto_start' /etc/pam.d/lightdm &&
+       grep -qE '^-?auth[[:space:]]+optional[[:space:]]+pam_gnome_keyring.so' /etc/pam.d/lightdm"
 # ---- Graphics/firmware for new laptops (e.g. Intel Core 5 210H, Raptor Lake 0xA7AA): kernel from bookworm-backports
 #      (6.1 does not know the graphics -> 800x600), firmware 2025 incl. firmware-intel-graphics, microcode; a fixed
 #      firmware list instead of live-build's automatic selection (tools/lb_config.sh --firmware-chroot false)
@@ -749,8 +785,9 @@ check "simpleos-progress: the helper's final text DONE: is not taken over" \
 # and tries once more; gaming does not go on installing with outdated lists (":i386" unknown)
 aw=$(mktemp -d)
 mkdir -p "$aw/bin"
-sed -n '/^apt_wait() {/,/^}/p;/^apt_get_update() {/,/^}/p;/^SOS_SOURCE=/p;/^apt_update_once() {/,/^}/p' /usr/local/sbin/simpleos-system-setup > "$aw/fn.sh"
+sed -n '/^apt_busy() {/,/^}/p;/^apt_wait() {/,/^}/p;/^apt_get_update() {/,/^}/p;/^SOS_SOURCE=/p;/^apt_update_once() {/,/^}/p' /usr/local/sbin/simpleos-system-setup > "$aw/fn.sh"
 printf '#!/bin/sh\nn=$(cat $T/sc 2>/dev/null || echo 0); echo $((n+1)) > $T/sc; [ "$n" -lt "${BUSY:-0}" ]\n' > "$aw/bin/systemctl"
+printf '#!/bin/sh\nexit 1\n' > "$aw/bin/systemd-detect-virt"   # an installed system, not the installer's chroot
 printf '#!/bin/sh\nexit 1\n' > "$aw/bin/pgrep"
 printf '#!/bin/sh\nexit 0\n' > "$aw/bin/sleep"
 printf '#!/bin/sh\nn=$(cat $T/ag 2>/dev/null || echo 0); echo $((n+1)) > $T/ag; [ "$n" -ge "${FAIL:-0}" ]\n' > "$aw/bin/apt-get"
@@ -3292,6 +3329,34 @@ check "simpleos-live-tune: live overlay/Flatpak reserve not adjusted" \
 cp "$lt/config" "$lt/before"; printf 'min-free-space-size=500MB\n' >> "$lt/before"; cp "$lt/before" "$lt/config"
 check "simpleos-live-tune: changes an INSTALLED system" \
       "SIMPLEOS_LIVE=0 SIMPLEOS_TUNE_OVERLAY=/x SIMPLEOS_TUNE_FLATPAK=$lt/config SIMPLEOS_TUNE_DRYRUN=1 $LT | grep -q 'not a live system' && cmp -s $lt/before $lt/config"
+# Installer sfdisk wrapper (Install alongside in an extended partition, older BIOS/MBR PCs): only in the live overlay
+SFW=/usr/local/lib/simpleos/sfdisk-installer
+check "sfdisk: the image's /usr/sbin/sfdisk is not Debian's program (the wrapper belongs into the live overlay only)" \
+      "[ -x $SFW ] && sh -n $SFW && [ ! -e /usr/sbin/sfdisk.simpleos-real ] && ! grep -q 'simpleos' /usr/sbin/sfdisk && /usr/sbin/sfdisk --version >/dev/null"
+mkdir -p "$lt/sbin"; printf '#!/bin/sh\necho real\n' > "$lt/sbin/sfdisk"; chmod 0755 "$lt/sbin/sfdisk"
+check "simpleos-live-tune: sfdisk wrapper not put in front of sfdisk (live) or twice" \
+      "SIMPLEOS_LIVE=1 SIMPLEOS_TUNE_OVERLAY=/x SIMPLEOS_TUNE_FLATPAK=$lt/none SIMPLEOS_TUNE_DRYRUN=1 SIMPLEOS_TUNE_SBIN=$lt/sbin $LT >/dev/null &&
+       cmp -s $SFW $lt/sbin/sfdisk && [ \"\$($lt/sbin/sfdisk.simpleos-real)\" = real ] &&
+       SIMPLEOS_LIVE=1 SIMPLEOS_TUNE_OVERLAY=/x SIMPLEOS_TUNE_FLATPAK=$lt/none SIMPLEOS_TUNE_DRYRUN=1 SIMPLEOS_TUNE_SBIN=$lt/sbin $LT >/dev/null &&
+       [ \"\$($lt/sbin/sfdisk.simpleos-real)\" = real ]"
+# Real sfdisk on a disk image: logical sda5 shrunk by Calamares (odd size), sda6 behind it; kpmcore asks for the new
+# partition 2 sectors after sda5 – sfdisk refuses that (EBR + 1 MiB alignment), the wrapper moves the start
+truncate -s 4G "$lt/disk"
+printf 'label: dos\nunit: sectors\nstart=2048, size=2097152, type=7, bootable\nstart=2099200, type=5\nstart=2101248, size=1048577, type=83\nstart=6293504, type=82\n' |
+    /usr/sbin/sfdisk -q "$lt/disk" >/dev/null 2>&1
+sfw() { SIMPLEOS_SFDISK_REAL=/usr/sbin/sfdisk sh $SFW "$@" >/dev/null 2>&1; }
+p7() { /usr/sbin/sfdisk -d "$lt/disk" 2>/dev/null | sed -n "s|^$lt/disk7 : start= *\([0-9]*\), size= *\([0-9]*\).*|\1 \2|p"; }
+check "sfdisk wrapper: Install alongside in an extended partition fails (new logical partition not created)" \
+      "printf 'start=3149826 size=3141630\nwrite\n' | sfw --force --append $lt/disk &&
+       sh -c '[ \"\${1:-0}\" -gt 3149826 ] && [ \$((\$1 + \$2 - 1)) -eq 6291455 ]' p7 \$(p7)"
+check "sfdisk wrapper: boot flag on the logical partition takes it away from the active primary partition" \
+      "sfw --activate $lt/disk 7 && /usr/sbin/sfdisk -d $lt/disk | grep -q '^$lt/disk1 :.*bootable' && /usr/sbin/sfdisk -d $lt/disk | grep -q '^$lt/disk7 :.*bootable'"
+check "sfdisk wrapper: no active primary partition -> the extended partition not marked active" \
+      "/usr/sbin/sfdisk -q --activate $lt/disk - >/dev/null 2>&1 && sfw --activate $lt/disk 7 &&
+       /usr/sbin/sfdisk -d $lt/disk | grep -q '^$lt/disk2 :.*bootable' && ! /usr/sbin/sfdisk -d $lt/disk | grep -q '^$lt/disk1 :.*bootable'"
+check "sfdisk wrapper: changes a normal call (primary partition, --json)" \
+      "sfw --activate $lt/disk 1 && [ \"\$(/usr/sbin/sfdisk -d $lt/disk | grep -c bootable)\" -eq 1 ] &&
+       SIMPLEOS_SFDISK_REAL=/usr/sbin/sfdisk sh $SFW --json $lt/disk | grep -q '\"label\": \"dos\"'"
 rm -rf "${lt:?}"
 # simpleos-software with a Flatpak dummy: FP_INSTALLED=1 (already there), FP_RUNTIME=1 (GNOME runtime there),
 # FP_MODE=ok|space|net|other (result of flatpak install)
@@ -3785,6 +3850,22 @@ check "$BLC is not the Simple OS version (the Debian original needs a package po
 check "$BLC: shell syntax error" "bash -n $BLC"
 check "Calamares: module bootloader-config does not call $BLC" "grep -q '\"$BLC\"' /usr/lib/calamares/modules/bootloader-config/module.desc"
 check "Calamares: bootloader-config not before bootloader" "awk '/^  - bootloader-config\$/{c=NR} /^  - bootloader\$/{b=NR} END{exit !(c && b && c < b)}' /etc/calamares/settings.conf"
+# os-prober in /etc/default/grub.d: every GRUB update from Debian turns an os-prober line in /etc/default/grub "off" again
+# (grub-pc.config sets grub2/enable_os_prober=false for ANY GRUB_DISABLE_OS_PROBER line) -> other systems vanished
+OPC=/etc/default/grub.d/simpleos-os-prober.cfg
+check "GRUB: os-prober not switched on in $OPC (other systems vanish from the menu at the next GRUB update)" \
+      "grep -qx 'GRUB_DISABLE_OS_PROBER=false' $OPC && [ \"\$(sh -c '. /etc/default/grub; . $OPC; echo \$GRUB_DISABLE_OS_PROBER')\" = false ]"
+check "$BLC writes an os-prober line into /etc/default/grub (GRUB updates switch it off again)" \
+      "! grep -q 'GRUB_DISABLE_OS_PROBER.*GRUB_DEFAULT_FILE' $BLC && grep -q 'simpleos-os-prober.cfg' $BLC &&
+       ! grep -q 'GRUB_DISABLE_OS_PROBER' /etc/default/grub"
+MIG5=/usr/share/simpleos/edition/migrations/system/050-os-prober
+op=$(mktemp -d)
+printf '#!/bin/sh\necho run >> "%s/update"\n' "$op" > "$op/update-grub"; chmod 0755 "$op/update-grub"
+check "migration 050-os-prober: GRUB menu not rebuilt (other systems stay missing until the next kernel update)" \
+      "[ -x $MIG5 ] && : > $op/grub.cfg && SIMPLEOS_GRUB_CFG=$op/grub.cfg SIMPLEOS_UPDATE_GRUB=$op/update-grub sh $MIG5 && [ -s $op/update ]"
+check "migration 050-os-prober: runs update-grub without a GRUB menu" \
+      "rm -f $op/update && SIMPLEOS_GRUB_CFG=$op/none SIMPLEOS_UPDATE_GRUB=$op/update-grub sh $MIG5 && [ ! -e $op/update ]"
+rm -rf "${op:?}"
 for pkg in grub-common grub2-common grub-pc-bin grub-efi-amd64-bin os-prober efibootmgr ucf cryptsetup keyutils \
            initramfs-tools; do
     check "package $pkg not installed" "dpkg-query -W -f='\${Status}' $pkg 2>/dev/null | grep -q 'install ok installed'"

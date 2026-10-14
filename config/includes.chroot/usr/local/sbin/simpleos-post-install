@@ -15,9 +15,10 @@ apt-get -y autoremove --purge || echo "simpleos-post-install: autoremove failed 
 /usr/local/sbin/simpleos-system-setup --repos
 
 # Dictionary and Firefox/LibreOffice language packs for the language chosen in the installer (the image itself is English).
-# Needs the internet; without it nothing happens here and Software Updates installs them later. Limited in time so an
-# unreachable network cannot hold up the installation.
-timeout 300 /usr/local/sbin/simpleos-system-setup --language || echo "simpleos-post-install: language packs skipped" >&2
+# Needs the internet; without it nothing happens here and Software Updates installs them later. Package lists and the
+# download are limited in time (a slow or unreachable network cannot hold up the installation), the installation
+# from the downloaded packages is not (an interrupted dpkg would leave the new system broken).
+SIMPLEOS_LANG_LIMIT=150 /usr/local/sbin/simpleos-system-setup --language || echo "simpleos-post-install: language packs skipped" >&2
 
 # Remove the menu entry "Install Simple OS" from skel and all user homes
 for f in /etc/skel/.config/openbox/menu.xml /home/*/.config/openbox/menu.xml; do

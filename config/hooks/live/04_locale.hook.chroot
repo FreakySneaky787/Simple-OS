@@ -1,4 +1,16 @@
 #!/bin/sh
 set -e
+# /etc/locale.gen: every locale Debian knows (/usr/share/i18n/SUPPORTED), commented out; only en_US.UTF-8 (the image's
+# language) is generated. The installer (Calamares localecfg) can only switch on a locale that is listed here – with
+# just en_US in the file, every other language chosen in the installer stayed "# Missing" and the new system ran
+# without its locale (programs in English, perl/apt locale warnings). Up to 1.0.3; migration 040 repairs those systems.
+{
+    echo "# Simple OS: all locales of /usr/share/i18n/SUPPORTED; only en_US.UTF-8 is generated in the image,"
+    echo "# the installer switches on the language you choose."
+    sed 's/^/# /' /usr/share/i18n/SUPPORTED
+} > /etc/locale.gen
+sed -i 's/^# \(en_US\.UTF-8 UTF-8\)$/\1/' /etc/locale.gen
+[ "$(grep -c '^[^#]' /etc/locale.gen)" -eq 1 ] && grep -qx 'en_US.UTF-8 UTF-8' /etc/locale.gen
+grep -qx '# de_DE.UTF-8 UTF-8' /etc/locale.gen
 locale-gen
 update-locale LANG=en_US.UTF-8

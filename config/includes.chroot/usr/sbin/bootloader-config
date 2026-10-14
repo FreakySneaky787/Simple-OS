@@ -59,12 +59,13 @@ fi
 # Commands that this job and then the Calamares modules grubcfg/bootloader call
 need grub-install grub-mkconfig grub-probe update-grub
 
-# Re-enable os-prober (GRUB 2.06 disables it by default), so other systems end up in the menu
-GRUB_DEFAULT_FILE="$CHROOT/etc/default/grub"
-if grep -q '^#GRUB_DISABLE_OS_PROBER=false' "$GRUB_DEFAULT_FILE"; then
-    sed -i "s/^#GRUB_DISABLE_OS_PROBER=false/# OS_PROBER re-enabled by Debian Calamares installation:\nGRUB_DISABLE_OS_PROBER=false/" "$GRUB_DEFAULT_FILE"
-elif ! grep -q '^GRUB_DISABLE_OS_PROBER=' "$GRUB_DEFAULT_FILE"; then
-    echo 'GRUB_DISABLE_OS_PROBER=false' >> "$GRUB_DEFAULT_FILE"
+# os-prober (GRUB 2.06 disables it by default), so other systems end up in the menu: the image carries
+# /etc/default/grub.d/simpleos-os-prober.cfg. Not in /etc/default/grub – every GRUB update from Debian turns an os-prober
+# line there into "off" again (grub-pc.config sets grub2/enable_os_prober=false for any GRUB_DISABLE_OS_PROBER line).
+OS_PROBER_CFG="$CHROOT/etc/default/grub.d/simpleos-os-prober.cfg"
+if ! grep -qx 'GRUB_DISABLE_OS_PROBER=false' "$OS_PROBER_CFG" 2>/dev/null; then
+    mkdir -p "${OS_PROBER_CFG%/*}"
+    echo 'GRUB_DISABLE_OS_PROBER=false' > "$OS_PROBER_CFG"
 fi
 
 in_target update-grub || die "update-grub failed"

@@ -1,0 +1,64 @@
+#!/bin/sh
+# Simple OS – sfdisk for the installer in the live session (simpleos-live-tune puts it in front of the real one;
+# the installed system is unpacked from the squashfs and keeps Debian's sfdisk).
+# Calamares 3.2 "Install alongside" with a partition inside an extended partition (older BIOS/MBR PCs): it asks
+# kpmcore for the new partition 2 sectors after the shrunk one ("sfdisk --force --append", "start=S size=N").
+# A logical partition needs room for its EBR and libfdisk aligns it to 1 MiB, so sfdisk refuses ("No free sectors
+# available" / "out of range") and the installation stops after the partition was already shrunk.
+# Here: only for --append, and only when the dry run fails that way, the start moves to the first position sfdisk
+# accepts (next MiB boundaries, at most 4 MiB later); the end stays where Calamares put it. Everything else is
+# passed through unchanged.
+# Boot flag: Calamares marks the new system partition with "sfdisk --activate DISK N", which takes the flag away from all
+# others. With the system in a logical partition no primary partition stays active – some older BIOSes (legacy mode)
+# then skip the disk. A primary partition that was active keeps its flag; if none was, the extended partition gets it.
+# Tests: SIMPLEOS_SFDISK_REAL replaces the real sfdisk.
+REAL=${SIMPLEOS_SFDISK_REAL:-/usr/sbin/sfdisk.simpleos-real}
+if [ "${1:-}" = --activate ] && [ $# -ge 3 ]; then
+    disk=$2
+    shift 2
+    logical=1
+    for n in "$@"; do
+        case "$n" in [5-9]|[1-9][0-9]) ;; *) logical=0 ;; esac
+    done
+    if [ "$logical" = 1 ] && dump=$(LC_ALL=C "$REAL" -d "$disk" 2>/dev/null) && printf '%s\n' "$dump" | grep -qx 'label: dos'; then
+        keep=$(printf '%s\n' "$dump" | awk -F' *: *' '/^\// {
+                   n = $1; sub(/.*[^0-9]/, "", n); n += 0
+                   if (n < 1 || n > 4) next
+                   if ($2 ~ /bootable/) act = act " " n
+                   if ($2 ~ /type= *(5|f|85)(,|$)/ && ext == "") ext = n
+               } END { print (act != "" ? act : ext) }')
+        if [ -n "$keep" ]; then
+            logger -t simpleos-sfdisk "boot flag on logical partition $*: primary partition(s)$keep stay(s) active" 2>/dev/null || true
+            # shellcheck disable=SC2086
+            exec "$REAL" --activate "$disk" $keep "$@"
+        fi
+    fi
+    exec "$REAL" --activate "$disk" "$@"
+fi
+case " $* " in
+    *" --append "*|*" -a "*) ;;
+    *) exec "$REAL" "$@" ;;
+esac
+in=$(mktemp) || exec "$REAL" "$@"
+out=$(mktemp) || exec "$REAL" "$@"
+trap 'rm -f "$in" "$in.try" "$out"' EXIT
+cat > "$in"
+start=$(sed -n 's/^.*start= *\([0-9][0-9]*\).*$/\1/p' "$in" | head -n 1)
+size=$(sed -n 's/^.*size= *\([0-9][0-9]*\).*$/\1/p' "$in" | head -n 1)
+dry() { LC_ALL=C "$REAL" --no-act "$@" > "$out" 2>&1 && grep -q 'Created a new partition' "$out"; }
+if [ -z "$start" ] || [ -z "$size" ] || dry "$@" < "$in" ||
+   ! grep -q -e 'No free sectors available' -e 'out of range' "$out"; then
+    "$REAL" "$@" < "$in"; exit $?
+fi
+end=$((start + size - 1))
+try=$(( (start + 2047) / 2048 * 2048 ))
+for _ in 1 2 3 4 5; do
+    [ "$try" -lt "$end" ] || break
+    sed "s/start= *$start\([^0-9]\|\$\)/start=$try\1/; s/size= *$size\([^0-9]\|\$\)/size=$((end - try + 1))\1/" "$in" > "$in.try"
+    if dry "$@" < "$in.try"; then
+        logger -t simpleos-sfdisk "logical partition: start $start -> $try (room for the EBR), end $end unchanged" 2>/dev/null || true
+        "$REAL" "$@" < "$in.try"; exit $?
+    fi
+    try=$((try + 2048))
+done
+"$REAL" "$@" < "$in"; exit $?

@@ -27,10 +27,12 @@ These could only be tested without hardware. Tick them off on the ThinkPad E16 /
 - [ ] Plugging in an HDMI/USB-C monitor lights it up on its own; unplugging leaves the laptop screen; standby of a DisplayPort
       monitor does not re-arrange the desktop.
 - [ ] Mouse & Touchpad page: natural scrolling, tap, speed apply and survive a restart (Synaptics touchpad of the E16).
-- [ ] Date & Time: time zone dialog and automatic time ask for the password and apply.
-- [ ] Language packs: install in German with internet → Firefox and the dictionary are German; offline → they follow with Software Updates.
-- [ ] The keyring: no "new keyring" prompt in Chromium/Discord. (`gkr-pam: unable to locate daemon control file` in the
-      lightdm journal – harmless or not?)
+- [x] Date & Time: time zone dialog and automatic time ask for the password and apply (#30, VM 2026-10-14; Cancel no
+      longer shows an error – fixed in 1.0.4).
+- [x] Language packs: install in German with internet → Firefox and the dictionary are German (#31, VM 2026-10-14: they were
+      never installed and the language itself was never generated – both fixed in 1.0.4).
+- [x] The keyring: no "new keyring" prompt in Chromium/Discord (#32, VM 2026-10-14: it came in the first session after the
+      installation – fixed in 1.0.4; the `gkr-pam: unable to locate daemon control file` line is harmless).
 - [x] Update from 1.0.2 to 1.0.3 through Software Updates on an installed system (#33, works).
 
 ## 1.0.4 – next bugfix release (planned for the weekend of 2026-10-17, possibly a few days earlier)

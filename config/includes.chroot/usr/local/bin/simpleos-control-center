@@ -403,6 +403,11 @@ def clock_info():
     return d.get("Timezone", ""), d.get("NTP") == "yes", d.get("CanNTP", "yes") == "yes", d.get("NTPSynchronized") == "yes"
 
 
+def timedatectl_cancelled(res):
+    """timedatectl after a cancelled password dialog: exit 1, "Access denied" (not pkexec's 126/127)"""
+    return getattr(res, "returncode", 1) != 0 and "Access denied" in (getattr(res, "stderr", "") or "")
+
+
 def timezones():
     return [z.strip() for z in _c("timedatectl", "list-timezones").stdout.splitlines() if z.strip()]
 
@@ -1153,8 +1158,8 @@ def main(argv):
             sw.set_sensitive(False)
 
             def done(res):
-                # 126/127 = password dialog cancelled -> back silently
-                if getattr(res, "returncode", 1) not in (0, 126, 127):
+                # Only the new state counts; password dialog cancelled ("Access denied") -> back silently
+                if clock_info()[1] != want and not timedatectl_cancelled(res):
                     self.win.error("The setting could not be changed.")
                 self.refresh()
             bg(lambda: cmd("timedatectl", "set-ntp", "true" if want else "false", timeout=120), done)
@@ -1169,6 +1174,7 @@ def main(argv):
             d = Gtk.Dialog(title="Time zone", transient_for=self.win, modal=True)
             d.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Set", Gtk.ResponseType.OK)
             d.set_default_response(Gtk.ResponseType.OK)
+            d.set_default_size(340, -1)   # at its natural width the title was cut to "T… ne"
             region, city = Gtk.ComboBoxText(), Gtk.ComboBoxText()
             for r in by:
                 region.append(r, r.replace("_", " "))
@@ -1196,7 +1202,7 @@ def main(argv):
                 return
 
             def done(res):
-                if getattr(res, "returncode", 1) not in (0, 126, 127):
+                if clock_info()[0] != zone and not timedatectl_cancelled(res):
                     self.win.error("The time zone could not be changed.")
                 self.refresh()
             bg(lambda: cmd("timedatectl", "set-timezone", zone, timeout=120), done)

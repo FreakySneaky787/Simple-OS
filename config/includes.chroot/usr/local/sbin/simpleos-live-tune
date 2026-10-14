@@ -6,9 +6,10 @@
 #   1. enlarge the overlay to 85 % of the RAM – zram swap (zram-tools) takes rarely used pages compressed,
 #      only what is really written is used
 #   2. lower Flatpak's space reserve (min-free-space-size, default 500 MB, meant for hard disks) to 100 MB
+#   3. put the installer's sfdisk wrapper in front of sfdisk (Install alongside in an extended partition)
 # Installed systems stay unchanged. No error exit (booting should never depend on it).
 # Tests: SIMPLEOS_TUNE_OVERLAY / SIMPLEOS_TUNE_FLATPAK replace the mount point and repo configuration,
-#        SIMPLEOS_TUNE_DRYRUN=1 only prints the mount command.
+#        SIMPLEOS_TUNE_DRYRUN=1 only prints the mount command, SIMPLEOS_TUNE_SBIN replaces /usr/sbin.
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 OVERLAY=${SIMPLEOS_TUNE_OVERLAY:-/run/live/overlay}
 REPO_CONF=${SIMPLEOS_TUNE_FLATPAK:-/var/lib/flatpak/repo/config}
@@ -42,5 +43,20 @@ if [ -f "$REPO_CONF" ] && grep -q '^\[core\]' "$REPO_CONF"; then
                          { print } /^\[core\]$/ { print "min-free-space-size=" r }' "$REPO_CONF" > "$tmp" &&
         cat "$tmp" > "$REPO_CONF" && echo "simpleos-live-tune: Flatpak space reserve $RESERVE"
     rm -f "$tmp"
+fi
+
+# 3. Installer: sfdisk wrapper for "Install alongside" inside an extended partition (see sfdisk-installer).
+#    Only in the RAM overlay – Calamares unpacks the new system from the squashfs.
+SBIN=${SIMPLEOS_TUNE_SBIN:-/usr/sbin}
+if [ "${SIMPLEOS_TUNE_DRYRUN:-0}" = 1 ] && [ -z "${SIMPLEOS_TUNE_SBIN:-}" ]; then
+    echo "sfdisk wrapper: $SBIN/sfdisk"
+elif [ -x /usr/local/lib/simpleos/sfdisk-installer ] && [ -x "$SBIN/sfdisk" ] && [ ! -e "$SBIN/sfdisk.simpleos-real" ]; then
+    if mv "$SBIN/sfdisk" "$SBIN/sfdisk.simpleos-real" && cp /usr/local/lib/simpleos/sfdisk-installer "$SBIN/sfdisk" &&
+       chmod 0755 "$SBIN/sfdisk"; then
+        echo "simpleos-live-tune: sfdisk wrapper for the installer active"
+    else
+        [ -e "$SBIN/sfdisk" ] || mv "$SBIN/sfdisk.simpleos-real" "$SBIN/sfdisk"
+        echo "simpleos-live-tune: sfdisk wrapper not installed"
+    fi
 fi
 exit 0

@@ -226,3 +226,21 @@ lines only run at the next login) and on a PC without a battery (or a VM: there 
       "Simple OS is installed – Remove the USB stick …". Pull the stick (VM: `eject -f ide1-cd0` in the QEMU monitor, or
       remove the ISO), click "Restart now" → the computer restarts within seconds and starts the new system. Once more
       **without** pulling the stick → a normal restart.
+- [ ] **Install alongside on an older PC (BIOS/MBR, partition inside an extended partition):** on the Dell or in a VM
+      (SeaBIOS, SATA disk with MBR: a primary NTFS partition marked active, an extended partition with an ext4 system
+      and swap) choose "Install alongside" and shrink the ext4 system → the installation finishes (1.0.3: "The installer
+      failed to create a partition"). Afterwards `sudo sfdisk -d /dev/sda`: the new partition sits inside the extended one,
+      the NTFS partition is still "bootable"; the old system passes `sudo e2fsck -fn` and is in the GRUB menu.
+- [ ] **Language (German installation):** `locale -a` lists `de_DE.utf8`, the clock in the taskbar says "Mi"/"Do",
+      `sudo apt update` prints no perl locale warnings; with internet during the installation `hunspell-de-de` and
+      `firefox-esr-l10n-de` are installed right away. **Updated from 1.0.3** (German): after the update `locale -a`
+      lists `de_DE.utf8` (migration 040), sign out and in.
+- [ ] **Keyring at the first login:** right after the installation (first session) open Chromium (or
+      `secret-tool store --label=t a b` from `libsecret-tools`) → no "Choose password for new keyring" window;
+      `ps -C gnome-keyring-daemon -o args=` shows `--daemonize --login`.
+- [ ] **Other systems stay in the GRUB menu:** with Windows or another Linux on the disk, run
+      `sudo dpkg-reconfigure -f noninteractive grub-pc` (UEFI: `grub-efi-amd64`) – what every GRUB update from Debian does –
+      then `sudo grep menuentry /boot/grub/grub.cfg` still lists the other system and the output has no "os-prober will not
+      be executed".
+- [ ] **Date & Time:** Control Center → System → switch "Set the time automatically" off and on (password window each
+      time; **Cancel** goes back without an error message), change the time zone → the taskbar clock follows at once.

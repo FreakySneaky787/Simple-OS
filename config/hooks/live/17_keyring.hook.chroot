@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+# Re-run on Simple OS updates (package simpleos, edition --system): must stay idempotent.
+# Login keyring (issue #32): Debian 12 starts gnome-keyring 42 through a systemd user socket. At the FIRST login – when
+# pam_gnome_keyring creates the login keyring – a daemon started that way does not offer the new "login" collection
+# to programs for the rest of that session: Chromium, Discord & Co. asked for a password for a new keyring (and the
+# dialog often did not even appear). Without the socket pam_gnome_keyring starts the daemon itself (auto_start) and
+# the keyring works right away, unlocked with the login password – also at every later login. Only the socket is
+# masked: where no login started a daemon (a text console), D-Bus can still start the service.
+systemctl --global mask gnome-keyring-daemon.socket >/dev/null 2>&1 ||
+    ln -sf /dev/null /etc/systemd/user/gnome-keyring-daemon.socket
+[ "$(readlink /etc/systemd/user/gnome-keyring-daemon.socket)" = /dev/null ]

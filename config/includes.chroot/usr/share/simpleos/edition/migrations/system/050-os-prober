@@ -1,0 +1,13 @@
+#!/bin/sh
+# Simple OS 1.0.4 – other systems (Windows, other Linux) back into the GRUB menu (runs once, as root, from the postinst of
+# the package simpleos via "edition --system"). The installer switched os-prober on in /etc/default/grub, where every
+# GRUB update from Debian turns it off again (grub-pc.config sets grub2/enable_os_prober=false for any
+# GRUB_DISABLE_OS_PROBER line), and the next update-grub left the other systems out. 1.0.4 ships the setting in
+# /etc/default/grub.d/simpleos-os-prober.cfg (this package); here the menu is rebuilt once with it.
+# Exit != 0 -> again next time. Tests: SIMPLEOS_GRUB_CFG, SIMPLEOS_UPDATE_GRUB
+CFG=${SIMPLEOS_GRUB_CFG:-/boot/grub/grub.cfg}
+UPDATE=${SIMPLEOS_UPDATE_GRUB:-update-grub}
+# Only where GRUB made a menu (not on systems started without GRUB)
+[ -f "$CFG" ] || exit 0
+command -v "${UPDATE%% *}" >/dev/null 2>&1 || exit 0
+$UPDATE
