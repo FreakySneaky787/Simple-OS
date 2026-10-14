@@ -187,9 +187,11 @@ lines only run at the next login) and on a PC without a battery (or a VM: there 
 - [ ] **A video keeps the screen on:** set the time to 1 minute, play a video in Firefox/Chromium fullscreen for 2 minutes →
       stays on, no lock. Stop the video → it goes dark after the time. Laptop *and* a PC without a battery
       (`gdbus introspect --session -d org.freedesktop.ScreenSaver -o /org/freedesktop/ScreenSaver` answers on both).
-- [ ] **Power button (issue #35):** a short press opens the power menu (Lock, Sleep, Restart, Shut down, Sign out); nothing
+- [x] **Power button (issue #35):** a press opens the power menu (Lock, Sleep, Restart, Shut down, Sign out); nothing
       shuts down by itself. `systemd-inhibit --list` shows "Simple OS … handle-power-key". At the login screen a press still
       shuts down as before. **If a press does nothing at all, X does not see the key – then tell me, do not publish.**
+      ThinkBook E16 (2026-10-14): works when held ~1 s; a quick tap reaches neither logind nor X (`xinput test-xi2 --root`
+      shows nothing, also with `intel_hid enable_5_button_array=1`) – firmware, not fixable in software.
 - [ ] **Brightness slider (issue #34):** Control Center → Display → Brightness follows the slider at once and the Fn keys
       (the slider shows the new value after reopening); on a desktop PC the row is not there.
 - [ ] **Wi-Fi country (issue #40):** `iw reg get` shows your country (from Date & Time → time zone) after a restart; after

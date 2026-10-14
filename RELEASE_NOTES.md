@@ -19,8 +19,9 @@ It adds `git` and a small screen-lock helper (`xss-lock`) and removes nothing. S
   plugging the charger in or out (before, the laptop's power manager put its own 15/10 minutes back).
 - **Videos keep the screen on.** Browsers and video players can now stop the screen from turning off – also on desktop
   PCs, where that did not work before.
-- **The power button asks first.** A short press opens the power menu (Lock, Sleep, Restart, Shut down, Sign out)
-  instead of shutting down at once.
+- **The power button asks first.** Pressing it opens the power menu (Lock, Sleep, Restart, Shut down, Sign out)
+  instead of shutting down at once. On some laptops (e.g. Lenovo ThinkBook) the firmware ignores a quick tap while
+  the computer runs – hold the button for about a second.
 - **New: Brightness slider** in Control Center → Display (laptops), for keyboards without brightness keys.
 - **Wi-Fi uses your country's rules.** The Wi-Fi country now follows your time zone (before, a chip could guess the
   wrong country and miss channels your router uses).
