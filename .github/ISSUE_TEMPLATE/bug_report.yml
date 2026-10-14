@@ -62,5 +62,4 @@ body:
     id: logs
     attributes:
       label: Logs or screenshots (optional)
-      description: e.g. `journalctl -b -p err`, or `/var/log/installer/` after an install. Drag screenshots in here.
-      render: shell
+      description: "Best: Menu → Help → Report a Problem saves a report file to your Desktop – drag it in here. Also useful: `journalctl -b -p err`, or `journalctl -b -1 -p err` for the previous start. Screenshots too."

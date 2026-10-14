@@ -2,13 +2,77 @@
 
 <p align="center"><img src="docs/sos-banner.png" alt="SOS – Simple Operating System. Keep it Simple." width="100%"></p>
 
+**A fast, calm Linux desktop based on Debian 12. It sets itself up, updates itself, and you never need a terminal.**
+
+<p align="center">
+  <a href="https://github.com/FreakySneaky787/Simple-OS/releases/latest"><b>⬇ Download Simple OS (latest release, about 1.5 GB)</b></a>
+  &nbsp;·&nbsp; <a href="RELEASE_NOTES.md#known-issues">Known issues</a>
+  &nbsp;·&nbsp; <a href="https://github.com/FreakySneaky787/Simple-OS/discussions">Questions</a>
+  &nbsp;·&nbsp; <a href="https://github.com/FreakySneaky787/Simple-OS/issues/new/choose">Report a bug</a>
+</p>
+
+| | |
+|---|---|
+| <img src="docs/screenshots/desktop.webp" alt="The desktop with the file manager" width="100%"><br>The desktop | <img src="docs/screenshots/setup-wizard.webp" alt="Setup Wizard, choosing the web browser" width="100%"><br>Setup Wizard on the first login |
+| <img src="docs/screenshots/control-center.webp" alt="Control Center, Appearance page" width="100%"><br>Control Center | <img src="docs/screenshots/app-menu.webp" alt="App menu with search" width="100%"><br>App menu |
+
+## System requirements
+
+- 64-bit PC (x86-64) with **UEFI or legacy BIOS**. **Secure Boot is supported**, so you can leave it on.
+- 2 GB RAM (1 GB minimum for the installer, 4 GB or more recommended for browsing and gaming)
+- 20 GB disk space (the installer accepts 10 GB)
+- Internet for the setup wizard (browser, office suite, games) and for updates
+
+## Install
+
+1. **Download** `Simple-OS.iso` and `Simple-OS.iso.sha256` from the [latest release](https://github.com/FreakySneaky787/Simple-OS/releases/latest).
+2. **Check the download** (optional, recommended):
+   - Linux: `sha256sum -c Simple-OS.iso.sha256` should print `Simple-OS.iso: OK`
+   - Windows (PowerShell): `Get-FileHash Simple-OS.iso` and compare the hash with the one in `Simple-OS.iso.sha256`
+3. **Make a USB stick** (4 GB or larger, everything on it is erased):
+   - Windows / macOS / Linux: [balenaEtcher](https://etcher.balena.io) – pick the ISO, pick the stick, Flash.
+   - Windows: [Rufus](https://rufus.ie) also works. If it asks, choose **"Write in DD Image mode"**.
+   - Linux: *Disks* (gnome-disks) → select the stick → *Restore Disk Image…*, or
+     `sudo dd if=Simple-OS.iso of=/dev/sdX bs=4M status=progress oflag=sync` (replace `sdX` with the stick – check with `lsblk`!)
+4. **Start from the stick.** Usually F12, F9, F2 or Esc right after power-on, depending on the brand. The live
+   session needs no password. If something unexpected asks: user `simple`, password `live`.
+5. **Install** with **Install Simple OS** on the desktop.
+
+Already running Simple OS? New versions arrive through **Software Updates** – no need to reinstall.
+
+## Testing Simple OS
+
+Thank you for testing! Every report helps, especially from real hardware.
+
+**Wanted right now** (for 1.0.4):
+
+- **Installing on real hardware**, in **legacy BIOS / MBR** mode as well as **UEFI** – especially next to another
+  system (dual boot) and on a partition you created yourself.
+- **The installer (Calamares):** does it start only once, and does the computer boot afterwards?
+- **Shutting down / restarting** from the live session and the installed system.
+
+**How to report:**
+
+1. Open **Menu → Help → Report a Problem**. It saves a report file to your Desktop (your name, user name, network
+   names and addresses are removed).
+2. Open a [bug report](https://github.com/FreakySneaky787/Simple-OS/issues/new/choose), fill in the form and drag the
+   report file into it.
+3. Useful extra logs, if something went wrong:
+   - errors of the current start: `journalctl -b -p err`
+   - errors of the previous start (e.g. after a hang at shutdown): `journalctl -b -1 -p err`
+   - an install that did not finish (still in the live session): `sudo cat /root/.cache/calamares/session.log`
+
+Not sure if it's a bug, or a question like "does it run on my PC?" – ask in [Discussions](https://github.com/FreakySneaky787/Simple-OS/discussions).
+
+## For developers
+
 A minimal desktop based on Debian 12 "Bookworm" with Openbox, built with live-build.
 
 Brand: **SOS** – Simple Operating System. The "O" is a lifebuoy (red and white – a rescue from Big Tech), the
 slogan is **"Keep it Simple"**. The name stays "Simple OS" (IDs, packages and paths use `simpleos`); SOS is the
 logo and short form.
 
-## Commands
+### Commands
 
 | Command | Purpose |
 |---|---|
@@ -23,7 +87,7 @@ logo and short form.
 Release: test checklist in `TESTING.md`, text for the download page in `RELEASE_NOTES.md` (its `#known-issues`
 section is the target of the installer's "Known issues" button).
 
-## Updates to new Simple OS editions
+### Updates to new Simple OS editions
 
 Installed systems follow the newest Simple OS on their own – through **Software Updates**, like any Debian update:
 
@@ -87,7 +151,7 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
   (`~/.local/share/simpleos-release/gnupg`): installed systems only trust that key.
 - A new Debian base (Debian 13) is a bigger step than an edition update and is not covered by this.
 
-## How we work
+### How we work
 
 - **Work is committed locally, pushed only with a release.** Between releases nothing goes to GitHub: `main` always matches
   the newest published edition. The release day is the only push (`git push`, then build, test, `sign`, `publish`).
@@ -96,7 +160,7 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
   real computer stays open as a "Verify …" issue.
 - Plan and cadence: `ROADMAP.md`; what to test before a release: `TESTING.md`.
 
-## Structure
+### Structure
 
 ```
 simple-os/
@@ -126,7 +190,7 @@ empty in the image are created by a hook (e.g. the standard folders in `00_skel_
 `config/` is never modified by a build: `build_iso.sh` copies it to `build/config`, where `tools/lb_config.sh` adds
 the lb default files, the generated graphics and the fastfetch package.
 
-## Where things live in the image (`config/includes.chroot/`)
+### Where things live in the image (`config/includes.chroot/`)
 
 | Path | Contents |
 |---|---|
@@ -160,7 +224,7 @@ the lb default files, the generated graphics and the fastfetch package.
 | `usr/share/doc/simpleos/copyright` | license notice (GPL-3.0-or-later) with the source code address |
 | `etc/X11/` | libinput profiles, session environment (Flatpak, smooth scrolling, `NO_PROXY` for localhost) |
 
-## User tools
+### User tools
 
 - `simpleos-welcome-wizard` – setup on first login (internet/Wi-Fi, browser, dark/light, accent color, office,
   gaming, Software Store). Run it again: Menu → Settings → Setup Wizard. Done marker:
