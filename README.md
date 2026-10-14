@@ -44,12 +44,15 @@ Already running Simple OS? New versions arrive through **Software Updates** – 
 
 Thank you for testing! Every report helps, especially from real hardware.
 
-**Wanted right now** (for 1.0.4):
+**Wanted right now** (1.0.4 is out):
 
-- **Installing on real hardware**, in **legacy BIOS / MBR** mode as well as **UEFI** – especially next to another
-  system (dual boot) and on a partition you created yourself.
-- **The installer (Calamares):** does it start only once, and does the computer boot afterwards?
-- **Shutting down / restarting** from the live session and the installed system.
+- **Installing on real hardware**, in **legacy BIOS / MBR** mode as well as **UEFI** – especially **next to another
+  system** (dual boot, also inside an extended partition) and on a partition you created yourself. Do your other
+  systems stay in the boot menu after the first GRUB update?
+- **Installing in your language** (not English): does the system come up in your language, with Firefox and the
+  dictionary in it?
+- **Updating from 1.0.3** through Software Updates.
+- **The power button:** does it open the power menu on your computer? (Some laptops need it held for a second.)
 
 **How to report:**
 
