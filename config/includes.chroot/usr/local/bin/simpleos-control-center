@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Simple OS – Control Center (Super+I, Menu → Settings → Control Center).
+"""Simple OS – Control Center (Super+I, Menu → Settings → All Settings).
 
 One window for all settings, the sections on the left, the page on the right:
   Sound        volume, mute, output (speakers/headphones/HDMI), microphone, -> pavucontrol
@@ -12,14 +12,20 @@ One window for all settings, the sections on the left, the page on the right:
   Power        turn off the screen after … (simpleos-power), battery, power profile (power-profiles-daemon),
                battery protection (charge only up to 80 % if the laptop supports it), lock/sleep/restart/off
   Mouse & Touchpad  natural scrolling, tap to click, pointer speed (simpleos-input)
-  System       keyboard layout (simpleos-keyboard-setup), date & time (time zone, automatic time via timedatectl),
-               password, Do Not Disturb (simpleos-dnd: pause notifications, optionally without window effects),
-               Hardware & Drivers (simpleos-drivers: graphics, Wi-Fi, CPU microcode; "Install Recommended Drivers"),
-               backups (simpleos-backup: restore points), storage (free space, simpleos-cleaner),
-               printers & scanners (system-config-printer, simple-scan), firewall (ufw via the root helper),
-               disks (gnome-disks: format USB sticks, write ISOs), report a problem (simpleos-report)
+  Notifications  Do Not Disturb (simpleos-dnd: pause notifications, optionally without window effects)
+  Keyboard     keyboard layout (simpleos-keyboard-setup), keyboard shortcuts (simpleos-help)
+  Printers & Scanners  system-config-printer, simple-scan
+  Apps         default apps (browser, email, PDF, pictures, music, videos, text: ~/.config/mimeapps.list and
+               ~/.local/share/applications/defaults.list), startup apps (XDG autostart: switch on/off, add, remove)
+  Date & Time  time zone, automatic time via timedatectl
+  Storage & Backups  free space, simpleos-cleaner, disks (gnome-disks), restore points (simpleos-backup)
+  Password & Security  password, firewall (ufw via the root helper)
+  System & Updates  Simple OS version, What's new (simpleos-whats-new), Software Updates, Hardware & Drivers
+               (simpleos-drivers: graphics, Wi-Fi, CPU microcode; "Install Recommended Drivers"), Task Manager,
+               Setup Wizard, report a problem (simpleos-report)
+  Up to 1.0.4 one "System" page held most of the last eight; old page names still work (ALIASES).
 
-  simpleos-control-center [sound|display|wifi|bluetooth|appearance|input|power|system]   window (on this page)
+  simpleos-control-center [PAGE]   window (on this page; PAGE = a key of PAGES or ALIASES, e.g. wifi, apps, system)
 Runs only once (Gtk.Application); a second call brings the window to the front.
 Changes go through the same tools as the Rofi flyouts – both always show the same state.
 Display changes must be confirmed (15 s, otherwise reverted); saved like in simpleos-display.
@@ -39,11 +45,22 @@ from pathlib import Path
 # rfkill and iw live in /usr/sbin, which a normal user's PATH on Debian does not contain
 os.environ["PATH"] = os.environ.get("PATH", "") + ":" + os.environ.get("SIMPLEOS_SBIN", "/usr/sbin:/sbin")
 
-PAGES = [("sound", "Sound", "audio-volume-high"), ("display", "Display", "video-display"),
-         ("wifi", "Wi-Fi", "network-wireless"), ("bluetooth", "Bluetooth", "bluetooth"),
-         ("appearance", "Appearance", "preferences-desktop-theme"), ("input", "Mouse & Touchpad", "input-mouse"),
-         ("power", "Power", "battery"),
-         ("system", "System", "computer")]
+# Sidebar in groups (a line between them): connections – screen & sound – devices – apps & system
+PAGES = [("wifi", "Wi-Fi", "network-wireless"), ("bluetooth", "Bluetooth", "bluetooth"),
+         ("sound", "Sound", "audio-volume-high"), ("display", "Display", "video-display"),
+         ("appearance", "Appearance", "preferences-desktop-theme"),
+         ("notifications", "Notifications", "preferences-system-notifications"),
+         ("input", "Mouse & Touchpad", "input-mouse"), ("keyboard", "Keyboard", "input-keyboard"),
+         ("printers", "Printers & Scanners", "printer"), ("power", "Power", "battery"),
+         ("apps", "Apps", "preferences-desktop-default-applications"),
+         ("datetime", "Date & Time", "preferences-system-time"),
+         ("storage", "Storage & Backups", "drive-harddisk"), ("security", "Password & Security", "security-high"),
+         ("system", "System & Updates", "computer")]
+GROUP_STARTS = {"sound", "input", "apps"}
+# Older names and what they open now (simpleos-control-center PAGE from scripts, taskbar clicks …)
+ALIASES = {"dnd": "notifications", "time": "datetime", "date": "datetime", "printer": "printers", "backup": "storage",
+           "backups": "storage", "firewall": "security", "password": "security", "default-apps": "apps",
+           "startup": "apps", "network": "wifi", "about": "system", "updates": "system"}
 WIZARD = "/usr/local/bin/simpleos-welcome-wizard"
 HELPER = "/usr/local/sbin/simpleos-system-setup"
 UFW_CONF = Path(os.environ.get("SIMPLEOS_UFW_CONF", "/etc/ufw/ufw.conf"))
@@ -278,7 +295,7 @@ BT_KINDS = {"audio-headset": "Headphones", "audio-headphones": "Headphones", "au
 
 
 def bt_devices(paired=True):
-    """[(mac, name, connected, kind, paired)]"""
+    """[(mac, name, connected, kind, paired, battery % or None)]"""
     out = bt("devices", "Paired").stdout if paired else bt("devices").stdout
     if paired and "Device " not in out:
         out = bt("paired-devices").stdout   # bluez < 5.65
@@ -286,14 +303,21 @@ def bt_devices(paired=True):
     for mac, name in re.findall(r"^Device ([0-9A-Fa-f:]{17}) (.*)$", out, re.M):
         info = bt("info", mac).stdout
         icon = (re.search(r"^\s*Icon: (\S+)", info, re.M) or [None, ""])[1]
+        # headphones report it through PipeWire -> BlueZ's battery provider (bluetoothd --experimental, Simple OS 1.0.5)
+        bat = re.search(r"^\s*Battery Percentage: 0x[0-9A-Fa-f]+ \((\d+)\)", info, re.M)
         result.append((mac, name, bool(re.search(r"^\s*Connected: yes", info, re.M)),
-                       BT_KINDS.get(icon, "Device"), bool(re.search(r"^\s*Paired: yes", info, re.M))))
+                       BT_KINDS.get(icon, "Device"), bool(re.search(r"^\s*Paired: yes", info, re.M)),
+                       int(bat.group(1)) if bat else None))
     return result
 
 
 def bt_scan(seconds=10):
     bt("--timeout", str(seconds), "scan", "on", timeout=seconds + 5)
     return [d for d in bt_devices(paired=False) if not d[4] and d[1] != d[0].replace(":", "-")]
+
+
+def bt_subtitle(kind, connected, battery):
+    return kind + (" · Connected" if connected else "") + (f" · Battery {battery} %" if connected and battery is not None else "")
 
 
 def _agent_running():
@@ -470,6 +494,257 @@ def power_action(what):
         cmd("dm-tool", "lock")
     verb = {"sleep": "suspend", "restart": "reboot", "shutdown": "poweroff"}[what]
     return cmd("systemctl", verb).returncode == 0 or cmd("loginctl", verb).returncode == 0
+
+
+def os_version():
+    """Simple OS version from os-release ("1.0.5"), "" if unknown"""
+    for f in (os.environ.get("SIMPLEOS_OS_RELEASE", "/etc/os-release"), "/usr/lib/os-release"):
+        try:
+            m = re.search(r'^VERSION_ID="?([^"\n]*)"?$', Path(f).read_text(), re.M)
+            if m:
+                return m.group(1)
+        except OSError:
+            continue
+    return ""
+
+
+# ------------------------------------------------------------------ Apps: default apps, startup apps
+def read_desktop(path):
+    """Keys of the [Desktop Entry] group of a .desktop file ({} if unreadable); not localized"""
+    entry, inside = {}, False
+    try:
+        lines = Path(path).read_text(errors="replace").splitlines()
+    except OSError:
+        return {}
+    for line in lines:
+        line = line.strip()
+        if line.startswith("["):
+            inside = line == "[Desktop Entry]"
+        elif inside and "=" in line and not line.startswith("#"):
+            k, _, v = line.partition("=")
+            entry.setdefault(k.strip(), v.strip())
+    return entry
+
+
+def _true(entry, key):
+    return entry.get(key, "").lower() == "true"
+
+
+def app_dirs():
+    """applications folders in XDG order (user first), Flatpak exports included"""
+    home = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local/share")
+    dirs = [home] + (os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share").split(":")
+    dirs += [home + "/flatpak/exports/share", "/var/lib/flatpak/exports/share"]
+    return [Path(d) / "applications" for d in dict.fromkeys(dirs) if d]
+
+
+def installed_apps():
+    """{desktop id: entry} – the first file of an id counts (a user copy hides the system one)"""
+    apps = {}
+    for d in app_dirs():
+        for f in sorted(d.glob("*.desktop")) if d.is_dir() else []:
+            if f.name in apps:
+                continue
+            e = read_desktop(f)
+            if e.get("TryExec") and not shutil.which(e["TryExec"]):
+                e["Hidden"] = "true"
+            apps[f.name] = e
+    return {k: e for k, e in apps.items() if e.get("Type") == "Application" and not _true(e, "Hidden")}
+
+
+def mime_types(entry):
+    return [m for m in entry.get("MimeType", "").split(";") if m]
+
+
+# (key, title, subtitle, main type, prefix: the whole family follows the choice)
+DEFAULT_APPS = [("browser", "Web browser", "Links and web pages", "x-scheme-handler/https", ""),
+                ("mail", "Email", "Opens “send an email” links", "x-scheme-handler/mailto", ""),
+                ("pdf", "PDF documents", None, "application/pdf", ""),
+                ("image", "Pictures", None, "image/jpeg", "image/"),
+                ("audio", "Music", None, "audio/mpeg", "audio/"),
+                ("video", "Videos", None, "video/mp4", "video/"),
+                ("text", "Text files", None, "text/plain", "")]
+SYSTEM_MIMEAPPS = os.environ.get("SIMPLEOS_SYSTEM_MIMEAPPS", "/etc/xdg/mimeapps.list")
+
+
+def read_defaults(path):
+    """{mime: desktop id} of the [Default Applications] group of a mimeapps.list/defaults.list"""
+    result, inside = {}, False
+    try:
+        lines = Path(path).read_text(errors="replace").splitlines()
+    except OSError:
+        return {}
+    for line in lines:
+        line = line.strip()
+        if line.startswith("["):
+            inside = line == "[Default Applications]"
+        elif inside and "=" in line and not line.startswith("#"):
+            k, _, v = line.partition("=")
+            ids = [i for i in v.split(";") if i.strip()]
+            if ids:
+                result.setdefault(k.strip(), ids[0].strip())
+    return result
+
+
+def user_mimeapps():
+    return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "mimeapps.list"
+
+
+def user_defaults_list():
+    return Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "applications/defaults.list"
+
+
+def current_default(mime, apps):
+    """The app double click / xdg-open uses now: your choice, else Simple OS's – only an installed one"""
+    for src in (user_mimeapps(), user_defaults_list(), Path(SYSTEM_MIMEAPPS)):
+        app = read_defaults(src).get(mime)
+        if app in apps:
+            return app
+    return ""
+
+
+def family(group, app_id, apps):
+    """Types the choice of APP_ID for GROUP (row of DEFAULT_APPS) is set for: the main type and its relatives
+    (same prefix, or the ones Simple OS opens with the same app) that the app can open"""
+    _key, _t, _s, main, prefix = group
+    system = read_defaults(SYSTEM_MIMEAPPS)
+    can = set(mime_types(apps.get(app_id, {})))
+    if prefix:
+        want = {m for m in list(system) + list(can) if m.startswith(prefix)}
+    else:
+        want = {m for m, a in system.items() if a == system.get(main)} | {main}
+        if main.startswith("x-scheme-handler/http"):
+            want |= {"x-scheme-handler/http", "x-scheme-handler/https", "text/html", "application/xhtml+xml"}
+    return sorted(m for m in want if m in can or m == main)
+
+
+def candidates(group, apps):
+    """[(desktop id, name)] that can open the main type of GROUP, sorted by name"""
+    main = group[3]
+    found = [(i, e.get("Name") or i[:-8]) for i, e in apps.items()
+             if main in mime_types(e) and not _true(e, "NoDisplay")]
+    if group[0] == "browser":   # browsers that leave out the https scheme in MimeType
+        found += [(i, e.get("Name") or i[:-8]) for i, e in apps.items() if "WebBrowser" in e.get("Categories", "")
+                  and not _true(e, "NoDisplay") and main not in mime_types(e)]
+    return sorted(found, key=lambda x: x[1].lower())
+
+
+def _set_lines(path, header, pairs):
+    """Put "mime=value" lines of PAIRS into group HEADER of an ini-like file, everything else stays"""
+    try:
+        lines = path.read_text(errors="replace").splitlines()
+    except OSError:
+        lines = []
+    keys = {k for k, _v in pairs}
+    out, inside, done = [], False, False
+    for line in lines:
+        s = line.strip()
+        if s.startswith("["):
+            inside = s == header
+            out.append(line)
+            if inside and not done:   # the new lines right below the group header
+                out += [f"{k}={v}" for k, v in pairs]
+                done = True
+        elif not (inside and "=" in s and s.partition("=")[0].strip() in keys):
+            out.append(line)
+    if not done:
+        out += ([""] if out and out[-1].strip() else []) + [header] + [f"{k}={v}" for k, v in pairs]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".simpleos-new")
+    tmp.write_text("\n".join(out) + "\n")
+    tmp.replace(path)
+
+
+def set_default(group, app_id, apps):
+    """Make APP_ID the default for GROUP: ~/.config/mimeapps.list (GIO: Files, browsers …) and
+    ~/.local/share/applications/defaults.list (xdg-open without a desktop environment reads that one first)"""
+    types = family(group, app_id, apps)
+    try:
+        _set_lines(user_mimeapps(), "[Default Applications]", [(m, app_id + ";") for m in types])
+        _set_lines(user_defaults_list(), "[Default Applications]", [(m, app_id) for m in types])
+    except OSError:
+        return False
+    return True
+
+
+# Autostart entries Simple OS starts or switches off itself (~/.config/openbox/autostart, /etc/skel overrides) – not
+# shown: switching them here would start them twice or break the desktop
+AUTOSTART_OWN = {"blueman.desktop", "calamares-desktop-icon.desktop", "nm-applet.desktop", "spice-vdagent.desktop",
+                 "xdg-user-dirs.desktop", "xfce4-power-manager.desktop", "lxpolkit.desktop"}
+
+
+def autostart_dirs():
+    """(user folder, [system folders]) – XDG autostart, read by openbox-xdg-autostart at sign-in"""
+    user = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "autostart"
+    system = [Path(d) / "autostart" for d in (os.environ.get("XDG_CONFIG_DIRS") or "/etc/xdg").split(":") if d]
+    return user, system
+
+
+def startup_apps():
+    """[(id, name, comment, enabled, own)] – own: only in your autostart folder (can be removed)"""
+    user, system = autostart_dirs()
+    ids = {}
+    for d in [user] + system:
+        for f in sorted(d.glob("*.desktop")) if d.is_dir() else []:
+            ids.setdefault(f.name, []).append(f)
+    result = []
+    for i, files in ids.items():
+        if i in AUTOSTART_OWN:
+            continue
+        mine = files[0].parent == user
+        entry = read_desktop(files[0])
+        sys_entry = read_desktop(next((f for f in files if f.parent != user), files[0]))
+        info = entry if entry.get("Exec") else sys_entry   # a "Hidden=true" override has no Exec of its own
+        # openbox-xdg-autostart runs without a desktop name: OnlyShowIn entries (GNOME, MATE …) never start
+        if info.get("OnlyShowIn") or not info.get("Exec") or (info.get("TryExec") and not shutil.which(info["TryExec"])):
+            continue
+        result.append((i, info.get("Name") or i[:-8], info.get("Comment", ""), not _true(entry, "Hidden"),
+                       mine and len(files) == 1))
+    return sorted(result, key=lambda x: x[1].lower())
+
+
+def set_startup(app_id, on):
+    """Switch an autostart entry on/off for this account (Hidden=true in ~/.config/autostart)"""
+    user, system = autostart_dirs()
+    mine = user / app_id
+    sysfile = next((d / app_id for d in system if (d / app_id).is_file()), None)
+    try:
+        if mine.is_file() and read_desktop(mine).get("Exec"):
+            _set_lines(mine, "[Desktop Entry]", [("Hidden", "false" if on else "true")])
+        elif on:
+            mine.unlink(missing_ok=True)   # only our override hid the system entry
+        elif sysfile:
+            user.mkdir(parents=True, exist_ok=True)
+            name = read_desktop(sysfile).get("Name", app_id)
+            mine.write_text(f"[Desktop Entry]\nType=Application\nName={name}\n"
+                            "# Simple OS: switched off in Control Center → Apps\nHidden=true\n")
+        return True
+    except OSError:
+        return False
+
+
+def add_startup(app_id, apps):
+    """Start an installed app at sign-in: a copy of its .desktop file in ~/.config/autostart"""
+    user, _s = autostart_dirs()
+    src = next((d / app_id for d in app_dirs() if (d / app_id).is_file()), None)
+    if not src or app_id not in apps:
+        return False
+    try:
+        user.mkdir(parents=True, exist_ok=True)
+        text = re.sub(r"(?m)^(Hidden|NoDisplay|X-GNOME-Autostart-enabled)=.*\n?", "", src.read_text(errors="replace"))
+        (user / app_id).write_text(text)
+        return True
+    except OSError:
+        return False
+
+
+def remove_startup(app_id):
+    user, _s = autostart_dirs()
+    try:
+        (user / app_id).unlink(missing_ok=True)
+        return True
+    except OSError:
+        return False
 
 
 # ================================================================== Window
@@ -860,14 +1135,14 @@ def main(argv):
             self.put(card([("Bluetooth", "On" if powered else "Off", sw)]))
             if powered:
                 rows = []
-                for mac, name, conn, kind, _p in devs:
+                for mac, name, conn, kind, _p, battery in devs:
                     acts = Gtk.Box(spacing=6)
                     acts.pack_start(button("Disconnect" if conn else "Connect", lambda m=mac, c=conn: bg(
                         lambda: bt("disconnect" if c else "connect", m, timeout=30), lambda _r: self.refresh())),
                         False, False, 0)
                     acts.pack_start(button("Remove", lambda m=mac: bg(lambda: bt("remove", m), lambda _r: self.refresh()),
                                            "destructive-action"), False, False, 0)
-                    rows.append((name, kind + (" · Connected" if conn else ""), acts))
+                    rows.append((name, bt_subtitle(kind, conn, battery), acts))
                 if rows:
                     self.put(label("<b>Your devices</b>", markup=True))
                     self.put(card(rows))
@@ -892,7 +1167,7 @@ def main(argv):
                 self.put(card([(name, kind, button("Pair", lambda m=mac, n=name: bg(
                     lambda: bt_pair(m), lambda ok, n=n: (None if ok is True else self.win.error(
                         f"Could not pair with {n}. Put it in pairing mode and try again."), self.refresh())),
-                    "suggested-action")) for mac, name, _c, kind, _p in devs]))
+                    "suggested-action")) for mac, name, _c, kind, _p, _b in devs]))
             self.put(card([("Search again", None, button("Search", self.scan)),
                            ("Back", None, button("Back", self.refresh))]))
             self.show_all_now()
@@ -1071,8 +1346,8 @@ def main(argv):
             if not power_action(what):
                 self.win.error("That did not work. Please try again.")
 
-    class SystemPage(Page):
-        title = "System"
+    class NotificationsPage(Page):
+        title = "Notifications"
 
         def refresh(self):
             self.clear()
@@ -1082,7 +1357,16 @@ def main(argv):
             quiet = Gtk.Switch(active=dnd_no_effects())
             quiet.connect("notify::active", lambda s, _p: cmd("simpleos-dnd", "--no-effects",
                                                               "on" if s.get_active() else "off"))
-            self.put(label("<b>Keyboard</b>", markup=True))
+            self.put(card([("Do Not Disturb", "Pause notifications until you turn it off", dnd),
+                           ("Also turn off window effects", "No shadows or transparency while it is on", quiet)]))
+            self.note("Tip: while Do Not Disturb is on, the taskbar shows a bell – click it to turn it off again.")
+            self.show_all_now()
+
+    class KeyboardPage(Page):
+        title = "Keyboard"
+
+        def refresh(self):
+            self.clear()
             kb = Gtk.ComboBoxText()
             cur = keyboard_current()
             for key, name in keyboard_layouts():
@@ -1093,7 +1377,112 @@ def main(argv):
             kb.connect("changed", lambda c: c.get_active_id() and bg(
                 lambda: cmd("simpleos-keyboard-setup", "--set", c.get_active_id(), timeout=120), lambda _r: None))
             self.put(card([("Keyboard layout", "Applies right away – also on the login screen", kb)]))
-            self.put(label("<b>Date &amp; Time</b>", markup=True))
+            self.put(card([("Keyboard shortcuts", "Super+H shows them at any time",
+                            button("Show", lambda: spawn("simpleos-help")))]))
+            self.show_all_now()
+
+    class PrintersPage(Page):
+        title = "Printers & Scanners"
+
+        def refresh(self):
+            self.clear()
+            self.put(card([("Printers", "Most printers on your network or USB are found automatically",
+                            button("Open", lambda: spawn("system-config-printer"))),
+                           ("Scan a document", "Scanners and printers with a scanner",
+                            button("Scan", lambda: spawn("simple-scan")))]))
+            self.show_all_now()
+
+    class AppsPage(Page):
+        title = "Apps"
+
+        def refresh(self):
+            self.clear()
+            self.put(Gtk.Spinner(active=True))
+            self.show_all_now()
+            bg(lambda: (installed_apps(), startup_apps()), self.show)
+
+        def show(self, res):
+            self.clear()
+            if isinstance(res, Exception):
+                self.note(f"The apps could not be read: {res}")
+                return self.show_all_now()
+            apps, startup = res
+            self.put(label("<b>Default apps</b>", markup=True))
+            self.note("Which app opens a file when you double-click it, or a link.")
+            rows = []
+            for group in DEFAULT_APPS:
+                key, title, sub, main, _prefix = group
+                cands = candidates(group, apps)
+                cur = current_default(main, apps)
+                if not cands:
+                    rows.append((title, "No app installed for this yet",
+                                 button("Get one…", lambda: spawn("simpleos-software-center"))))
+                    continue
+                combo = Gtk.ComboBoxText()
+                for i, name in cands:
+                    combo.append(i, name)
+                if cur and not combo.set_active_id(cur):
+                    combo.append(cur, apps.get(cur, {}).get("Name") or cur[:-8])
+                    combo.set_active_id(cur)
+                combo.connect("changed", lambda c, g=group: c.get_active_id() and self.choose(g, c.get_active_id(), apps))
+                rows.append((title, sub, combo))
+            rows.append(("More browsers", "Install Chromium or Mullvad Browser",
+                         button("Choose…", lambda: spawn("simpleos-browser-select"))))
+            self.put(card(rows))
+            self.put(label("<b>Startup apps</b>", markup=True))
+            self.note("Apps that start by themselves when you sign in. Fewer startup apps = a faster start.")
+            rows = []
+            for i, name, comment, on, own in startup:
+                sw = Gtk.Switch(active=on)
+                sw.connect("notify::active", lambda s, _p, i=i: set_startup(i, s.get_active()) or
+                           self.win.error("This could not be changed."))
+                if own:
+                    box = Gtk.Box(spacing=6)
+                    box.pack_start(sw, False, False, 0)
+                    box.pack_start(button("Remove", lambda i=i: (remove_startup(i), self.refresh())), False, False, 0)
+                    sw = box
+                rows.append((name, comment or None, sw))
+            if not rows:
+                rows.append(("No startup apps", "Apps like Steam or Discord add themselves here when you allow it", None))
+            rows.append(("Add an app", "Start an app every time you sign in", button("Add…", lambda: self.add(apps))))
+            self.put(card(rows))
+            self.note("Changes count from the next sign-in.")
+            self.show_all_now()
+
+        def choose(self, group, app_id, apps):
+            if not set_default(group, app_id, apps):
+                self.win.error("The default app could not be changed.")
+
+        def add(self, apps):
+            d = Gtk.Dialog(title="Add a startup app", transient_for=self.win, modal=True)
+            d.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Add", Gtk.ResponseType.OK)
+            d.set_default_response(Gtk.ResponseType.OK)
+            d.set_default_size(360, -1)
+            combo = Gtk.ComboBoxText()
+            shown = sorted(((i, e.get("Name") or i[:-8]) for i, e in apps.items()
+                            if not _true(e, "NoDisplay") and e.get("Exec")), key=lambda x: x[1].lower())
+            for i, name in shown:
+                combo.append(i, name)
+            combo.set_active(0)
+            box = d.get_content_area()
+            box.set_spacing(8)
+            box.set_border_width(12)
+            box.add(label("Which app should start when you sign in?"))
+            box.add(combo)
+            d.show_all()
+            ok = d.run() == Gtk.ResponseType.OK
+            app_id = combo.get_active_id()
+            d.destroy()
+            if ok and app_id:
+                if not add_startup(app_id, apps):
+                    self.win.error("The app could not be added.")
+                self.refresh()
+
+    class DateTimePage(Page):
+        title = "Date & Time"
+
+        def refresh(self):
+            self.clear()
             tz, ntp, can_ntp, synced = clock_info()
             auto = Gtk.Switch(active=ntp)
             auto.set_sensitive(can_ntp and bool(tz))
@@ -1103,52 +1492,6 @@ def main(argv):
                             "Not available on this system", auto),
                            ("Time zone", tz.replace("_", " ") if tz else "Unknown",
                             button("Change…", lambda: self.choose_timezone(tz)))]))
-            if not live_session():
-                self.put(card([("Password", "The password you sign in with",
-                                button("Change…", lambda: spawn(
-                                    "kitty", "--title", "Change password", "sh", "-c",
-                                    "passwd; printf '\\nPress Enter to close.'; read -r _")))]))
-            self.put(label("<b>Focus</b>", markup=True))
-            self.put(card([("Do Not Disturb", "Pause notifications until you turn it off", dnd),
-                           ("Also turn off window effects", "No shadows or transparency while it is on", quiet)]))
-            used, total = disk_usage("/")
-            bar = Gtk.LevelBar(min_value=0, max_value=1, value=(used / total) if total else 0)
-            bar.set_size_request(240, 10)
-            self.put(label("<b>Storage</b>", markup=True))
-            self.put(card([("System disk", f"{human(total - used)} free of {human(total)}", bar),
-                           ("Free up space", "Package cache, unused apps, old logs, thumbnails",
-                            button("Clean up", lambda: spawn("simpleos-cleaner"), "suggested-action")),
-                           ("Disks & USB sticks", "Format a USB stick, write an ISO image, check disk health",
-                            button("Open", lambda: spawn("gnome-disks")))]))
-            self.put(label("<b>Security</b>", markup=True))
-            fw = Gtk.Switch(active=firewall_on())
-            fw.connect("notify::active", self.set_firewall)
-            self.put(card([("Firewall", "Blocks connections from other devices to this computer – "
-                            "browsing, printing and games keep working", fw)]))
-            self.put(label("<b>Printers &amp; Scanners</b>", markup=True))
-            self.put(card([("Printers", "Most printers on your network or USB are found automatically",
-                            button("Open", lambda: spawn("system-config-printer"))),
-                           ("Scan a document", "Scanners and printers with a scanner",
-                            button("Scan", lambda: spawn("simple-scan")))]))
-            self.put(label("<b>Backups</b>", markup=True))
-            if live_session():
-                self.note("Backups can only be created on an installed system.")
-            else:
-                self.put(card([("Restore points", "Undo system changes – your personal files are not touched",
-                                button("Open", lambda: spawn("simpleos-backup"))),
-                               ("Create a restore point now", "The first one can take 10–20 minutes",
-                                button("Create", lambda: spawn("simpleos-backup", "--create"), "suggested-action"))]))
-            self.put(label("<b>Hardware &amp; Drivers</b>", markup=True))
-            hw = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-            hw.pack_start(card([("Checking graphics, Wi-Fi and CPU…", None, Gtk.Spinner(active=True))]),
-                          False, False, 0)
-            self.put(hw)
-            bg(drivers_report, lambda rep: self.show_drivers(hw, rep))
-            self.put(card([("Software Updates", None, button("Open", lambda: spawn("simpleos-update"))),
-                           ("Task Manager", "Ctrl+Shift+Esc",
-                            button("Open", lambda: spawn("simpleos-taskmanager"))),
-                           ("Report a problem", "Saves details about this computer for a bug report",
-                            button("Report", lambda: spawn("simpleos-report")))]))
             self.show_all_now()
 
         def set_ntp(self, sw, _p):
@@ -1207,6 +1550,47 @@ def main(argv):
                 self.refresh()
             bg(lambda: cmd("timedatectl", "set-timezone", zone, timeout=120), done)
 
+    class StoragePage(Page):
+        title = "Storage & Backups"
+
+        def refresh(self):
+            self.clear()
+            used, total = disk_usage("/")
+            bar = Gtk.LevelBar(min_value=0, max_value=1, value=(used / total) if total else 0)
+            bar.set_size_request(240, 10)
+            self.put(card([("System disk", f"{human(total - used)} free of {human(total)}", bar),
+                           ("Free up space", "Package cache, unused apps, old logs, thumbnails",
+                            button("Clean up", lambda: spawn("simpleos-cleaner"), "suggested-action")),
+                           ("Disks & USB sticks", "Format a USB stick, write an ISO image, check disk health",
+                            button("Open", lambda: spawn("gnome-disks")))]))
+            self.put(label("<b>Backups</b>", markup=True))
+            if live_session():
+                self.note("Backups can only be created on an installed system.")
+            else:
+                self.put(card([("Restore points", "Undo system changes – your personal files are not touched",
+                                button("Open", lambda: spawn("simpleos-backup"))),
+                               ("Create a restore point now", "The first one can take 10–20 minutes",
+                                button("Create", lambda: spawn("simpleos-backup", "--create"), "suggested-action"))]))
+            self.show_all_now()
+
+    class SecurityPage(Page):
+        title = "Password & Security"
+
+        def refresh(self):
+            self.clear()
+            if not live_session():
+                self.put(card([("Password", "The password you sign in with",
+                                button("Change…", lambda: spawn(
+                                    "kitty", "--title", "Change password", "sh", "-c",
+                                    "passwd; printf '\\nPress Enter to close.'; read -r _")))]))
+            fw = Gtk.Switch(active=firewall_on())
+            fw.connect("notify::active", self.set_firewall)
+            self.put(card([("Firewall", "Blocks connections from other devices to this computer – "
+                            "browsing, printing and games keep working", fw)]))
+            self.put(card([("Screen lock", "Lock when the screen turns off: Power",
+                            button("Open", lambda: self.win.open("power")))]))
+            self.show_all_now()
+
         def set_firewall(self, sw, _p):
             want = sw.get_active()
             if want == firewall_on():
@@ -1219,6 +1603,31 @@ def main(argv):
                     self.win.error("The firewall could not be changed.")
                 self.refresh()
             bg(lambda: cmd("pkexec", HELPER, "--firewall", "on" if want else "off", timeout=120), done)
+
+    class SystemPage(Page):
+        title = "System & Updates"
+
+        def refresh(self):
+            self.clear()
+            ver = os_version()
+            self.put(card([(f"Simple OS {ver}".strip(), "Based on Debian 12 “bookworm”",
+                            button("What's new", lambda: spawn("simpleos-whats-new"))),
+                           ("Software Updates", "Simple OS, apps and security fixes",
+                            button("Open", lambda: spawn("simpleos-update"), "suggested-action"))]))
+            self.put(label("<b>Hardware &amp; Drivers</b>", markup=True))
+            hw = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            hw.pack_start(card([("Checking graphics, Wi-Fi and CPU…", None, Gtk.Spinner(active=True))]),
+                          False, False, 0)
+            self.put(hw)
+            bg(drivers_report, lambda rep: self.show_drivers(hw, rep))
+            self.put(label("<b>Help</b>", markup=True))
+            self.put(card([("Task Manager", "See what slows the computer down · Ctrl+Shift+Esc",
+                            button("Open", lambda: spawn("simpleos-taskmanager"))),
+                           ("Setup Wizard", "Run the first-start setup again (Wi-Fi, browser, apps)",
+                            button("Open", lambda: spawn("simpleos-welcome-wizard"))),
+                           ("Report a problem", "Saves details about this computer for a bug report",
+                            button("Report", lambda: spawn("simpleos-report")))]))
+            self.show_all_now()
 
         def show_drivers(self, hw, rep):
             for c in hw.get_children():
@@ -1250,24 +1659,31 @@ def main(argv):
     class Window(Gtk.ApplicationWindow):
         def __init__(self, app):
             super().__init__(application=app, title="Control Center")
-            self.set_default_size(880, 600)
+            self.set_default_size(900, 680)
             self.set_icon_name("preferences-system")
             self.set_position(Gtk.WindowPosition.CENTER)
             hb = Gtk.HeaderBar(show_close_button=True, title="Control Center")
             self.set_titlebar(hb)
             pane = Gtk.Box()
             self.side = Gtk.ListBox()
-            self.side.set_size_request(200, -1)
             self.side.get_style_context().add_class("sidebar")
+            # a line between the groups of pages
+            self.side.set_header_func(lambda row, before: row.set_header(
+                Gtk.Separator() if before and row.key in GROUP_STARTS else None))
+            side_scroll = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER)
+            side_scroll.set_size_request(220, -1)
+            side_scroll.add(self.side)
             self.stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE)
             self.pages = {}
-            classes = {"system": SystemPage,
+            classes = {"system": SystemPage, "notifications": NotificationsPage, "keyboard": KeyboardPage,
+                       "printers": PrintersPage, "apps": AppsPage, "datetime": DateTimePage, "storage": StoragePage,
+                       "security": SecurityPage,
                        "sound": SoundPage, "display": DisplayPage, "wifi": WifiPage, "bluetooth": BluetoothPage,
                        "appearance": AppearancePage, "input": InputPage, "power": PowerPage}
             for key, title, icon in PAGES:
                 row = Gtk.ListBoxRow()
                 row.key = key
-                b = Gtk.Box(spacing=10, margin=10)
+                b = Gtk.Box(spacing=10, margin=7)
                 b.pack_start(Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.LARGE_TOOLBAR), False, False, 0)
                 b.pack_start(label(title), False, False, 0)
                 row.add(b)
@@ -1276,14 +1692,15 @@ def main(argv):
                 self.pages[key] = page
                 self.stack.add_named(page, key)
             self.side.connect("row-selected", lambda _l, row: row and self.open(row.key, select=False))
-            pane.pack_start(self.side, False, False, 0)
+            pane.pack_start(side_scroll, False, False, 0)
             pane.pack_start(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL), False, False, 0)
             pane.pack_start(self.stack, True, True, 0)
             self.add(pane)
             self.show_all()
 
         def open(self, key, select=True):
-            key = key if key in self.pages else "sound"
+            key = ALIASES.get(key, key)
+            key = key if key in self.pages else PAGES[0][0]
             if select:
                 for row in self.side.get_children():
                     if row.key == key:
@@ -1338,7 +1755,7 @@ def main(argv):
             args = line.get_arguments()[1:]
             if not self.win:
                 self.win = Window(self)
-            self.win.open(args[0] if args else "sound")
+            self.win.open(args[0] if args else PAGES[0][0])
             self.win.present()
             if selftest:
                 keys = [k for k, _t, _i in PAGES]

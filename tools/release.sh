@@ -97,6 +97,9 @@ cmd_version() {
     [ "$(version)" = "$v" ] && [ "$(grep -cE "^ *(version|shortVersion): *\"$v\"\$|^ *(versionedName|shortVersionedName): *\"Simple OS $v\"\$" "$BRANDING")" = 4 ] ||
         die "could not set the version in $OSR / $BRANDING – check both files"
     echo "Version $v set in $OSR and $BRANDING."
+    local notes=config/includes.chroot/usr/share/simpleos/whats-new
+    [ "$(head -n1 "$notes" 2>/dev/null)" = "# Simple OS $v" ] ||
+        echo "Also write the highlights of $v into $notes (first line '# Simple OS $v') – the build checks it."
     echo "Next: commit and push, ./build_iso.sh, test (TESTING.md), ./tools/release.sh sign, ./tools/release.sh publish"
 }
 

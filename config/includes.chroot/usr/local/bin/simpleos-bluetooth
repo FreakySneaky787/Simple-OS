@@ -3,7 +3,7 @@
 # Rofi menu like Windows 11 on the right above the taskbar:
 #   heading       "Bluetooth" + On/Off
 #   first row     "Turn off Bluetooth" / "Turn on Bluetooth"
-#   below         paired devices ("Sony WH-1000XM4  Headphones · Connected"); click -> Connect/Disconnect,
+#   below         paired devices ("Sony WH-1000XM4  Headphones · Connected · Battery 80 %"); click -> Connect/Disconnect,
 #                 Remove device, Back
 #   at the bottom "Add device…" (search for 10 s, a click pairs + trusts + connects),
 #                 "More Bluetooth settings" -> blueman-manager
@@ -45,6 +45,11 @@ devices() {
     printf '%s\n' "$out" | sed -n 's/^Device \([0-9A-Fa-f:]\{17\}\) \(.*\)$/\1\t\2/p'
 }
 info_field() { bt info "$1" | sed -n "s/^[[:space:]]*$2: //p" | head -n 1; }
+# " · Battery 80 %" if the device reports its battery (headphones via PipeWire need bluetoothd --experimental)
+battery() {
+    _b=$(info_field "$1" "Battery Percentage" | sed -n 's/^0x[0-9A-Fa-f]* (\([0-9]*\))$/\1/p')
+    [ -n "$_b" ] && printf ' · Battery %s %%' "$_b"
+}
 # Device type in plain language from the bluez icon
 kind() {
     case "$(info_field "$1" Icon)" in
@@ -155,7 +160,7 @@ while :; do
         while IFS="$TAB" read -r mac name; do
             [ -n "$mac" ] || continue
             if [ "$(info_field "$mac" Connected)" = yes ]; then
-                sos_add "$(sos_fa "$I_CHECK")  $(sos_esc "$name")  $(sos_dim "$(kind "$mac") · Connected")" "device$TAB$mac$TAB$name"
+                sos_add "$(sos_fa "$I_CHECK")  $(sos_esc "$name")  $(sos_dim "$(kind "$mac") · Connected$(battery "$mac")")" "device$TAB$mac$TAB$name"
             else
                 sos_add "$(sos_fa "$I_BT")  $(sos_esc "$name")  $(sos_dim "$(kind "$mac")")" "device$TAB$mac$TAB$name"
             fi

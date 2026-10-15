@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Simple OS – Software Center (Menu → Software Store, launcher "Software Center").
+"""Simple OS – Software Center (Menu → Software Center, launcher "Software Center").
 
 Install, open and remove selected programs with a click – without a terminal, without apt/flatpak commands:
   Flatpak (Flathub)   system-wide; Flatpak's polkit rule allows that for members of the sudo group without a password,

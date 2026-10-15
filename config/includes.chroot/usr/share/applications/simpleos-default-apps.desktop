@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Default & Startup Apps
+Comment=Choose which app opens links, PDFs, pictures, music and videos – and which apps start when you sign in
+Exec=/usr/local/bin/simpleos-control-center apps
+Icon=preferences-desktop-default-applications
+Categories=Settings;
+Keywords=default;browser;standard;mail;email;pdf;open with;startup;autostart;autostart apps;login;

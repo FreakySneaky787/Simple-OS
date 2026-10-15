@@ -54,4 +54,5 @@ cleaner      places/user-trash-symbolic.svg                     #bac2de
 disks        devices/drive-removable-media-symbolic.svg         #bac2de
 dnd          status/notifications-disabled-symbolic.svg         #bac2de
 search       actions/system-search-symbolic.svg                 #bac2de
+whatsnew     status/starred-symbolic.svg                        #bac2de
 LIST

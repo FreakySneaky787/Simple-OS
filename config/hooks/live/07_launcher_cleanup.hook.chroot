@@ -6,12 +6,17 @@ set -e
 # Settings go through Menu → Settings (Display, Sound, Network, Appearance, Setup Wizard).
 #   arandr (duplicate of lxrandr), lxappearance/obconf/tint2conf (raw theme/WM editors, they overwrite
 #   simpleos-theme), pcmanfm (second file manager, only for desktop icons), helper programs of no use on their own.
+#   Since 1.0.5 also second ways to the same setting – the Control Center page is the one to find:
+#   nm-connection-editor (Wi-Fi → More network options), blueman-manager (Bluetooth → More Bluetooth settings),
+#   lxrandr (Display), gammastep-indicator (Night light), htop (Task Manager), pcmanfm-desktop-pref (Appearance),
+#   xfce4-power-manager-settings (Power: its own screen/sleep times were overwritten by simpleos-power anyway).
 DEST=/usr/local/share/applications
 mkdir -p "$DEST"
 for id in arandr lxappearance obconf tint2 tint2conf picom feh pcmanfm blueman-adapters \
           thunar-settings thunar-bulk-rename org.xfce.mousepad-settings software-properties-gtk \
           python3.11 vim kcm_trash ktelnetservice5 org.kde.kded5 org.kde.kwalletd5 install-debian \
-          timeshift-gtk; do
+          timeshift-gtk nm-connection-editor blueman-manager lxrandr gammastep-indicator htop pcmanfm-desktop-pref \
+          xfce4-power-manager-settings; do
     src=/usr/share/applications/$id.desktop
     [ -f "$src" ] || continue
     sed -e '/^NoDisplay=/d' -e '/^\[Desktop Entry\]/a NoDisplay=true' "$src" > "$DEST/$id.desktop"

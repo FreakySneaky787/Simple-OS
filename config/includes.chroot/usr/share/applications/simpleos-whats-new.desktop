@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=What's New in Simple OS
+Comment=The highlights of this Simple OS version
+Exec=/usr/local/bin/simpleos-whats-new
+Icon=help-about
+Categories=System;Documentation;

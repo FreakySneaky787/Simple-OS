@@ -1,0 +1,14 @@
+# Simple OS 1.0.5
+## Easier to find your way
+- **Clearer menus.** The right-click menu is sorted into Apps, Settings, Tools and Help. Every entry under
+  Settings opens the matching page of the Control Center.
+- **The Control Center has more, smaller pages.** Keyboard, Date & Time, Notifications, Printers, Storage &
+  Backups, Password & Security and System & Updates each have their own page now, so you no longer need to search
+  one long "System" page.
+## New
+- **Choose your default apps.** Control Center → Apps: which app opens web links, emails, PDFs, pictures, music,
+  videos and text files.
+- **Startup apps.** On the same page: switch off apps that start by themselves when you sign in (Steam,
+  Discord …), or add one.
+- **Battery level of Bluetooth headphones** in Control Center → Bluetooth (for headphones that report it).
+- **This window.** After an update you see once what changed. Find it again under Menu → Help → What's New.

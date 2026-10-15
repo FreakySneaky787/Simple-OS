@@ -39,6 +39,13 @@ if [ -n "$bad" ]; then
     echo "build_deb: version $VERSION (VERSION_ID) does not match:$bad – run ./tools/release.sh version $VERSION" >&2
     exit 1
 fi
+# The "What's new" window after an update (simpleos-whats-new) only appears if its notes are for this version –
+# written by hand for every release, so not set by release.sh
+if [ "$(head -n1 "$INC/usr/share/simpleos/whats-new" 2>/dev/null)" != "# Simple OS $VERSION" ]; then
+    echo "build_deb: $INC/usr/share/simpleos/whats-new is not for $VERSION (first line must be '# Simple OS $VERSION')." >&2
+    echo "  Write the highlights of $VERSION there – a few plain bullets, not the changelog." >&2
+    exit 1
+fi
 KEYRING=$INC/usr/share/keyrings/simpleos-archive-keyring.asc
 if ! grep -q 'BEGIN PGP PUBLIC KEY BLOCK' "$KEYRING" 2>/dev/null; then
     echo "build_deb: release key missing ($KEYRING)." >&2

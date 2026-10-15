@@ -43,7 +43,7 @@ HELPER=/usr/local/sbin/simpleos-system-setup
 sos_log_init "$@"
 
 sos_rofi_failed() {
-    sos_notify "The update window could not open. Please try again from Settings → Software Updates." critical
+    sos_notify "The update window could not open. Please try again from Menu → Tools → Software Updates." critical
     exit 0
 }
 is_live() { grep -qw 'boot=live' /proc/cmdline 2>/dev/null; }

@@ -58,12 +58,12 @@ Media keys                  Play / pause, next, previous (browser, Spotify …)
 USB stick plugged in        Message with Open / Safely remove
 Update message              Click it to install updates (asks for your password)
 <b>── Mouse ────────────────────────────────────────────────</b>
-Right-click desktop         Simple OS menu (Settings, Help, Power)
+Right-click desktop         Simple OS menu (Apps, Settings, Tools, Help, Power)
 Panel: left button          Apps
 Panel: network display      Network menu – Wi-Fi, cable, details
 Panel: red button (right)   Power menu
-Settings → Software Updates Check for and install updates
-Settings → Taskbar &amp; Panel  Move or restyle the taskbar
+Menu → Tools → Updates      Check for and install updates
+Control Center → Appearance Taskbar: move or restyle it
 Files: right-click           Set as Wallpaper, Copy to Clipboard, Open as Administrator, Extract Here
 LIST
 exit 0

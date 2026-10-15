@@ -405,7 +405,11 @@ for home in /etc/skel /home/simple; do
     menu=$home/.config/openbox/menu.xml
     check "menu.xml: XML invalid in $home" "python3 -c 'import sys, xml.dom.minidom as m; m.parse(sys.argv[1])' '$menu' 2>/dev/null"
     check "menu.xml: Settings category missing in $home" "grep -q '<menu id=\"simpleos-settings\" label=\"Settings\"' '$menu'"
-    for cmd in /usr/local/bin/simpleos-display /usr/local/bin/simpleos-volume /usr/local/bin/simpleos-wifi simpleos-netinfo 'simpleos-theme --pick' simpleos-welcome-wizard \
+    # 1.0.5: every Settings entry opens its Control Center page (one window to learn instead of a mix of flyouts)
+    for cmd in '/usr/local/bin/simpleos-control-center display' '/usr/local/bin/simpleos-control-center sound' \
+               '/usr/local/bin/simpleos-control-center wifi' '/usr/local/bin/simpleos-control-center appearance' \
+               '/usr/local/bin/simpleos-control-center printers' '/usr/local/bin/simpleos-control-center apps' \
+               simpleos-netinfo simpleos-welcome-wizard /usr/local/bin/simpleos-whats-new \
                /usr/local/bin/simpleos-powermenu /usr/local/bin/simpleos-help /usr/local/bin/simpleos-update; do
         check "menu.xml: '$cmd' missing in $home" "grep -qF '<command>$cmd</command>' '$menu'"
     done
@@ -428,9 +432,9 @@ for home in /etc/skel /home/simple; do
     check "tint2: the power button does not start simpleos-powermenu in $home" "grep -qx 'button_lclick_command = /usr/local/bin/simpleos-powermenu' '$tint2rc'"
     check "tint2: power tooltip missing in $home" "grep -qx 'button_tooltip = Shut down / Restart (Super+X)' '$tint2rc'"
     check "tint2: app button tooltip missing in $home" "grep -qx 'button_tooltip = Apps (Super)' '$tint2rc'"
-    check "menu.xml: Taskbar & Panel missing in $home" "grep -qF '<command>simpleos-taskbar-select</command>' '$home/.config/openbox/menu.xml'"
 done
 check "taskbar launcher missing" "grep -qx 'Exec=simpleos-taskbar-select' /usr/share/applications/simpleos-taskbar.desktop"
+check "Control Center → Appearance: Taskbar button missing" "grep -qF 'spawn(\"simpleos-taskbar-select\")' /usr/local/bin/simpleos-control-center"
 check "simpleos-taskbar-select: shell syntax error" "sh -n /usr/local/bin/simpleos-taskbar-select"
 check "simpleos-theme does not pull the taskbar along (Match theme)" "grep -q 'simpleos-taskbar-select --apply' /usr/local/bin/simpleos-theme"
 check "keyboard shortcut overview without groups" "grep -q -- '-markup-rows' /usr/local/bin/simpleos-help"
@@ -1377,8 +1381,8 @@ for home in /etc/skel /home/simple; do
         check "rc.xml: ${kc%%|*} does not start ${kc#*|} in $home" \
               "grep -A1 'keybind key=\"${kc%%|*}\"' '$rc' | grep -qF '<command>${kc#*|}</command>'"
     done
-    check "menu.xml: Settings → Display does not open simpleos-display in $home" \
-          "grep -A1 '<item label=\"Display (Super+P)\"' '$home/.config/openbox/menu.xml' | grep -qF '<command>/usr/local/bin/simpleos-display</command>'"
+    check "menu.xml: Settings → Display does not open the Control Center's Display page in $home" \
+          "grep -A1 '<item label=\"Display\"' '$home/.config/openbox/menu.xml' | grep -qF '<command>/usr/local/bin/simpleos-control-center display</command>'"
 done
 for k in "Super+V" "Super+A" "Super+P" "Print" "Shift+Print"; do
     check "keyboard shortcut overview: $k missing" "grep -q '^$k ' /usr/local/bin/simpleos-help"
@@ -1447,7 +1451,7 @@ case "$*" in
     "power off") echo "Changing power off succeeded" ;;
     "devices Paired") printf 'Device AA:00:00:00:00:01 WH-1000XM4\nDevice AA:00:00:00:00:02 MX Master\n' ;;
     devices) printf 'Device AA:00:00:00:00:01 WH-1000XM4\nDevice AA:00:00:00:00:02 MX Master\nDevice AA:00:00:00:00:03 Xbox Controller\nDevice AA:00:00:00:00:04 AA-00-00-00-00-04\n' ;;
-    "info AA:00:00:00:00:01") printf '\tIcon: audio-headset\n\tPaired: yes\n\tConnected: yes\n' ;;
+    "info AA:00:00:00:00:01") printf '\tIcon: audio-headset\n\tPaired: yes\n\tConnected: yes\n\tBattery Percentage: 0x50 (80)\n' ;;
     "info AA:00:00:00:00:02") printf '\tIcon: input-mouse\n\tPaired: yes\n\tConnected: no\n' ;;
     "info AA:00:00:00:00:03") printf '\tIcon: input-gaming\n\tPaired: no\n\tConnected: no\n' ;;
     "info "*) printf '\tPaired: no\n\tConnected: no\n' ;;
@@ -1466,7 +1470,7 @@ printf '#!/bin/sh\necho "rfkill $*" >> "$WT/rfkill"\ntouch "$WT/unblocked"\n' > 
 chmod 0755 "$wt/mock/bluetoothctl" "$wt/mock/blueman-manager" "$wt/sbin/rfkill"
 B=/usr/local/bin/simpleos-bluetooth
 hcase "$B" "menu" "" "" "-" \
-    '[ "$(row 0 1)" = "Turn off Bluetooth" ] && [ "$(row 0 2)" = "WH-1000XM4  Headphones · Connected" ] &&
+    '[ "$(row 0 1)" = "Turn off Bluetooth" ] && [ "$(row 0 2)" = "WH-1000XM4  Headphones · Connected · Battery 80 %" ] &&
      [ "$(row 0 3)" = "MX Master  Mouse" ] && [ "$(row 0 4)" = "Add device…" ] && [ "$(row 0 5)" = "More Bluetooth settings" ] &&
      ! grep -q "AA:00" $S/rofi.0'
 hcase "$B" "disconnect headphones" "" "" "1 0 -" \
@@ -1857,9 +1861,107 @@ assert s[0]['modes'] == [('2560x1440', ['59.95', '143.97', '120.00']), ('1920x10
 check "Control Center: Bluetooth read incorrectly" "ccpy python3 -c \"$CCL
 assert c.bt_state() == (True, True)
 d = c.bt_devices()
-assert [(x[1], x[2], x[3]) for x in d] == [('WH-1000XM4', True, 'Headphones'), ('MX Master', False, 'Mouse')], d
+assert [(x[1], x[2], x[3], x[5]) for x in d] == [('WH-1000XM4', True, 'Headphones', 80), ('MX Master', False, 'Mouse', None)], d
+assert c.bt_subtitle('Headphones', True, 80) == 'Headphones · Connected · Battery 80 %' and c.bt_subtitle('Mouse', False, None) == 'Mouse'
 assert [x[1] for x in c.bt_scan(1)] == ['Xbox Controller']\""
 check "Control Center: wrong without a Bluetooth adapter" "ccpy BT=none python3 -c \"$CCL; assert c.bt_state() == (False, False)\""
+# ---- Control Center → Apps (1.0.5): default apps (mimeapps.list + defaults.list) and startup apps (XDG autostart)
+ap=$wt/apps
+rm -rf "$ap"; mkdir -p "$ap/share/applications" "$ap/xdg/autostart" "$wt/home/.config/autostart"
+desk() {  # id name mimetypes [extra line]
+    printf '[Desktop Entry]\nType=Application\nName=%s\nExec=%s\nMimeType=%s\n%s\n' "$2" "${1%.desktop}" "$3" "${4:-}" > "$ap/share/applications/$1"
+}
+desk firefox-esr.desktop "Firefox ESR" "text/html;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;" "Categories=Network;WebBrowser;"
+desk chromium.desktop "Chromium" "text/html;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;application/pdf;" "Categories=Network;WebBrowser;"
+desk atril.desktop "Atril Document Viewer" "application/pdf;application/postscript;"
+desk viewnior.desktop "Viewnior" "image/png;image/jpeg;"
+desk feh.desktop "feh" "image/jpeg;image/webp;" "NoDisplay=true"
+desk gthumb.desktop "gThumb" "image/jpeg;image/png;image/webp;"
+desk mousepad.desktop "Mousepad" "text/plain;"
+desk hidden.desktop "Hidden" "text/plain;" "Hidden=true"
+desk tryexec.desktop "Missing" "text/plain;" "TryExec=/nonexistent/simpleos-test"
+printf '[Default Applications]\ntext/html=firefox-esr.desktop\napplication/xhtml+xml=firefox-esr.desktop\nx-scheme-handler/http=firefox-esr.desktop\nx-scheme-handler/https=firefox-esr.desktop\napplication/pdf=atril.desktop\napplication/postscript=atril.desktop\nimage/png=viewnior.desktop\nimage/jpeg=viewnior.desktop\nimage/webp=feh.desktop\ntext/plain=mousepad.desktop\n' > "$ap/mimeapps.list"
+printf '[Desktop Entry]\nType=Application\nName=Print Queue Applet\nExec=system-config-printer-applet\n' > "$ap/xdg/autostart/print-applet.desktop"
+printf '[Desktop Entry]\nType=Application\nName=GNOME only\nExec=true\nOnlyShowIn=GNOME;\n' > "$ap/xdg/autostart/gnome-only.desktop"
+printf '[Desktop Entry]\nType=Application\nName=nm-applet\nExec=nm-applet\n' > "$ap/xdg/autostart/nm-applet.desktop"
+printf '[Desktop Entry]\nType=Application\nName=Discord\nExec=discord\nX-GNOME-Autostart-enabled=true\n' > "$wt/home/.config/autostart/discord.desktop"
+printf '[Added Associations]\nfoo/bar=x.desktop;\n' > "$wt/home/.config/mimeapps.list"
+check "Control Center → Apps: default apps / startup apps wrong" "ccpy XDG_DATA_DIRS=$ap/share XDG_CONFIG_DIRS=$ap/xdg SIMPLEOS_SYSTEM_MIMEAPPS=$ap/mimeapps.list python3 -c \"$CCL
+apps = c.installed_apps()
+assert 'hidden.desktop' not in apps and 'tryexec.desktop' not in apps and 'feh.desktop' in apps, sorted(apps)
+g = {x[0]: x for x in c.DEFAULT_APPS}
+assert [i for i, _n in c.candidates(g['image'], apps)] == ['gthumb.desktop', 'viewnior.desktop'], c.candidates(g['image'], apps)
+assert [i for i, _n in c.candidates(g['browser'], apps)] == ['chromium.desktop', 'firefox-esr.desktop']
+assert not c.candidates(g['mail'], apps)
+assert c.current_default('image/jpeg', apps) == 'viewnior.desktop'
+assert c.family(g['image'], 'gthumb.desktop', apps) == ['image/jpeg', 'image/png', 'image/webp'], c.family(g['image'], 'gthumb.desktop', apps)
+assert c.family(g['pdf'], 'chromium.desktop', apps) == ['application/pdf']
+assert c.set_default(g['image'], 'gthumb.desktop', apps) and c.set_default(g['browser'], 'chromium.desktop', apps)
+assert c.current_default('image/webp', apps) == 'gthumb.desktop' and c.current_default('x-scheme-handler/http', apps) == 'chromium.desktop'
+assert c.current_default('application/pdf', apps) == 'atril.desktop'
+m = open('$wt/home/.config/mimeapps.list').read()
+assert 'foo/bar=x.desktop;' in m and 'image/webp=gthumb.desktop;' in m and m.count('[Default Applications]') == 1, m
+d = open('$wt/home/.local/share/applications/defaults.list').read()
+assert 'x-scheme-handler/https=chromium.desktop' in d and 'text/html=chromium.desktop' in d, d
+assert c.set_default(g['image'], 'viewnior.desktop', apps) and c.current_default('image/png', apps) == 'viewnior.desktop'
+assert c.read_defaults('$wt/home/.config/mimeapps.list')['image/webp'] == 'gthumb.desktop'
+st = {x[0]: x for x in c.startup_apps()}
+assert sorted(st) == ['discord.desktop', 'print-applet.desktop'], sorted(st)
+assert st['discord.desktop'][3] and st['discord.desktop'][4] and st['print-applet.desktop'][3] and not st['print-applet.desktop'][4]
+assert c.set_startup('print-applet.desktop', False)
+assert not {x[0]: x for x in c.startup_apps()}['print-applet.desktop'][3]
+assert 'Hidden=true' in open('$wt/home/.config/autostart/print-applet.desktop').read()
+assert c.set_startup('print-applet.desktop', True) and not __import__('os').path.exists('$wt/home/.config/autostart/print-applet.desktop')
+assert c.set_startup('discord.desktop', False)
+t = open('$wt/home/.config/autostart/discord.desktop').read()
+assert 'Hidden=true' in t and 'Exec=discord' in t, t
+assert not {x[0]: x for x in c.startup_apps()}['discord.desktop'][3]
+assert c.set_startup('discord.desktop', True) and {x[0]: x for x in c.startup_apps()}['discord.desktop'][3]
+assert c.add_startup('mousepad.desktop', apps) and 'mousepad.desktop' in {x[0] for x in c.startup_apps()}
+assert c.remove_startup('discord.desktop') and 'discord.desktop' not in {x[0] for x in c.startup_apps()}
+keys = [k for k, _t, _i in c.PAGES]
+assert len(set(keys)) == len(keys) and all(v in keys for v in c.ALIASES.values()) and c.GROUP_STARTS <= set(keys)
+\""
+rm -rf "$ap"
+printf 'VERSION_ID="9.9.9"\n' > "$wt/osr"
+check "Control Center: Simple OS version not read" "ccpy SIMPLEOS_OS_RELEASE=$wt/osr python3 -c \"$CCL; assert c.os_version() == '9.9.9'\""
+# Callers that open a page by name: every name must be a page or an alias (otherwise the window opens on Wi-Fi)
+for pg in $(grep -rhoE 'simpleos-control-center [a-z-]+' /etc/skel /usr/local/bin /usr/local/sbin /usr/share/applications 2>/dev/null |
+            awk '{print $2}' | sort -u); do
+    check "simpleos-control-center $pg: no such page" "python3 -c \"$CCL; assert '$pg' in [k for k, _t, _i in c.PAGES] or '$pg' in c.ALIASES\""
+done
+
+# ---- "What's new" window after an update (simpleos-whats-new, 1.0.5)
+WN=/usr/local/bin/simpleos-whats-new
+VID=$(sed -n 's/^VERSION_ID="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' /usr/lib/os-release)
+check "whats-new: notes are not for this version ($VID)" "[ \"\$(head -n1 /usr/share/simpleos/whats-new)\" = '# Simple OS $VID' ]"
+check "whats-new: notes without bullets" "[ \"\$($WN --print | grep -c '^- ')\" -ge 2 ]"
+check "whats-new: not started at sign-in" "grep -qx '(sleep 8; simpleos-whats-new --login) &' /etc/skel/.config/openbox/autostart"
+check "whats-new: missing in Menu → Help" "grep -A1 'label=\"What&apos;s New\"' /etc/skel/.config/openbox/menu.xml | grep -qF '<command>$WN</command>'"
+wn() {  # expected (show|skip) – the account's config folder in $wt/wn
+    r=$($ENV -i HOME="$wt/home" XDG_CONFIG_HOME="$wt/wn" PATH="$wt/mock:/usr/bin:/bin" SIMPLEOS_OS_RELEASE="$wt/wn-osr" \
+        SIMPLEOS_WHATS_NEW="$wt/wn-notes" SIMPLEOS_WHATS_NEW_DRY=1 python3 $WN --login 2>&1)
+    [ "$r" = "$1" ]
+}
+printf '# Simple OS 2.0.1\n- **New** thing\n' > "$wt/wn-notes"
+printf 'VERSION_ID="2.0.1"\n' > "$wt/wn-osr"
+printf '#!/bin/sh\nexit 1\n' > "$wt/mock/simpleos-live"; chmod 0755 "$wt/mock/simpleos-live"
+rm -rf "$wt/wn"
+check "whats-new: shown on a fresh account" "wn skip && wn skip"
+rm -rf "$wt/wn"; mkdir -p "$wt/wn/simpleos"; touch "$wt/wn/simpleos/wizard-done"
+check "whats-new: not shown once after the update (or shown twice)" "wn show && wn skip"
+printf 'VERSION_ID="2.0.2"\n' > "$wt/wn-osr"
+check "whats-new: shown without notes for the version" "wn skip"
+printf '# Simple OS 2.0.2\n- x\n' > "$wt/wn-notes"
+printf 'seen=2.0.1\nshow=no\n' > "$wt/wn/simpleos/whats-new"
+check "whats-new: shown although switched off" "wn skip && grep -qx 'seen=2.0.2' $wt/wn/simpleos/whats-new"
+rm -rf "$wt/wn" "$wt/wn-notes" "$wt/wn-osr" "$wt/mock/simpleos-live"
+
+# ---- Bluetooth: battery level of headphones needs BlueZ's experimental interfaces (#37)
+check "bluetoothd without --experimental (no headphone battery level)" \
+      "systemctl cat bluetooth.service 2>/dev/null | grep -qx 'ExecStart=/usr/libexec/bluetooth/bluetoothd --experimental' ||
+       grep -qx 'ExecStart=/usr/libexec/bluetooth/bluetoothd --experimental' /etc/systemd/system/bluetooth.service.d/10-simpleos-experimental.conf"
+check "bluetoothd binary moved (drop-in starts nothing)" "[ -x /usr/libexec/bluetooth/bluetoothd ]"
 SCL="import importlib.machinery as m; s = m.SourceFileLoader('s', '$SC').load_module()"
 printf '#!/bin/sh\n[ "$1 $2" = "list --app" ] && printf "com.discordapp.Discord\\tsystem\\nus.zoom.Zoom\\tuser\\n"\nexit 0\n' > "$wt/mock/flatpak"
 printf '#!/bin/sh\ncase "$*" in *libreoffice-writer*) echo "install ok installed" ;; esac\n' > "$wt/mock/dpkg-query"
@@ -1916,7 +2018,7 @@ for home in /etc/skel /home/simple; do
               "grep -A1 'keybind key=\"${kc%%|*}\"' '$rc' | grep -qF '<command>${kc#*|}</command>'"
     done
     menu=$home/.config/openbox/menu.xml
-    for cmd in /usr/local/bin/simpleos-control-center /usr/local/bin/simpleos-bluetooth /usr/local/bin/simpleos-nightlight \
+    for cmd in /usr/local/bin/simpleos-control-center '/usr/local/bin/simpleos-control-center bluetooth' /usr/local/bin/simpleos-nightlight \
                /usr/local/bin/simpleos-software-center /usr/local/bin/simpleos-taskmanager; do
         check "menu.xml: '$cmd' missing in $home" "grep -qF '<command>$cmd</command>' '$menu'"
     done
@@ -3503,7 +3605,7 @@ check "simpleos-keyboard-setup: layout list contains entries XKB does not know: 
 rm -f "$KBC" "$wt/mock/setxkbmap" "$wt/mock/localectl"
 for home in /etc/skel /home/simple; do
     check "autostart: keyboard layout is not applied at login in $home" "grep -qx 'simpleos-keyboard-setup --apply' '$home/.config/openbox/autostart'"
-    check "menu.xml: Keyboard Layout missing in $home" "grep -qF '<command>/usr/local/bin/simpleos-keyboard-setup</command>' '$home/.config/openbox/menu.xml'"
+    check "menu.xml: Keyboard missing in $home" "grep -qF '<command>/usr/local/bin/simpleos-control-center keyboard</command>' '$home/.config/openbox/menu.xml'"
 done
 check "Control Center: keyboard layout selection missing" "grep -qF '(\"Keyboard layout\", \"Applies right away – also on the login screen\", kb)' /usr/local/bin/simpleos-control-center"
 check "Keyboard layout: launcher missing" "grep -qx 'Exec=/usr/local/bin/simpleos-keyboard-setup' /usr/share/applications/simpleos-keyboard.desktop"
@@ -3751,7 +3853,7 @@ for home in /etc/skel /home/simple; do
     for cmd in /usr/local/bin/simpleos-backup /usr/local/bin/simpleos-cleaner '/usr/local/bin/simpleos-dnd --toggle' /usr/local/bin/simpleos-search; do
         check "menu.xml: '$cmd' missing in $home" "grep -qF '<command>$cmd</command>' '$menu'"
     done
-    check "menu.xml: System submenu missing in $home" "grep -q '<menu id=\"simpleos-system\" label=\"System\"' '$menu'"
+    check "menu.xml: Tools submenu missing in $home" "grep -q '<menu id=\"simpleos-tools\" label=\"Tools\"' '$menu'"
 done
 CCP="import importlib.machinery as m; c = m.SourceFileLoader('c', '/usr/local/bin/simpleos-control-center').load_module()"
 check "Control Center: System page / size display missing" "python3 -c \"$CCP
@@ -3829,7 +3931,7 @@ WEL=/usr/share/simpleos/welcome.html
 for id in start keys tools; do
     check "welcome.html: section #$id missing" "grep -q 'id=\"$id\"' $WEL"
 done
-for txt in '<code>simpleos-wifi</code>' '<code>simpleos-setup</code>' 'Taskbar &amp; Panel' \
+for txt in '<code>simpleos-wifi</code>' '<code>simpleos-setup</code>' 'Control Center → Appearance → Taskbar' \
            '<code>simpleos-taskbar-select</code>' '<code>obconf</code>' '<code>simpleos-netinfo --text</code>' \
            '<kbd>Enter</kbd>' '<kbd>B</kbd>' '<kbd>E</kbd>' '<kbd>H</kbd>' '<kbd>X</kbd>' '<kbd>N</kbd>'; do
     check "welcome.html: '$txt' missing" "grep -qF '$txt' $WEL"

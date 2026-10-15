@@ -161,7 +161,7 @@ execp_background_id = 6
 execp_centered = 1
 execp_tooltip = Do Not Disturb is on – click to turn it off
 execp_lclick_command = /usr/local/bin/simpleos-dnd --toggle
-execp_rclick_command = /usr/local/bin/simpleos-control-center system
+execp_rclick_command = /usr/local/bin/simpleos-control-center notifications
 #---- Do Not Disturb End
 
 #---- Network (LAN IP visible directly, details in the tooltip = stderr; click = Wi-Fi menu, right-click = Super+N)

@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
 Name=Control Center
-Comment=Sound, display, Wi-Fi, Bluetooth, appearance and power in one place (Super+I)
+Comment=All settings in one place: Wi-Fi, sound, display, apps, date & time, updates … (Super+I)
 Exec=/usr/local/bin/simpleos-control-center
 Icon=preferences-system
 Categories=Settings;
-Keywords=settings;preferences;control;panel;sound;display;wifi;bluetooth;wallpaper;power;
+Keywords=settings;preferences;control;panel;sound;display;wifi;bluetooth;wallpaper;power;keyboard;time;date;printer;firewall;password;einstellungen;

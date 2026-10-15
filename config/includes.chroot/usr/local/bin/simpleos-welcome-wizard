@@ -664,7 +664,7 @@ class Wizard(Gtk.Window):
             card.pack_start(radio, False, False, 2)
         box.pack_start(card, False, False, 0)
         box.pack_start(self.firefox_note, False, False, 0)
-        box.pack_start(self.dim("You can change this later in Settings → Default Browser."), False, False, 0)
+        box.pack_start(self.dim("You can change this later in Control Center → Apps."), False, False, 0)
         return box
 
     def page_appearance(self):
@@ -805,7 +805,7 @@ class Wizard(Gtk.Window):
         card.pack_start(row, False, False, 0)
         box.pack_start(card, False, False, 0)
         box.pack_start(self.dim("GNOME Software is also in the menu and works right away.\n"
-                                "Run this wizard again any time from Settings → Setup Wizard."), False, False, 0)
+                                "Run this wizard again any time from Menu → Help → Setup Wizard."), False, False, 0)
         return box
 
     # --------------------------------------------------------- Navigation
@@ -1006,7 +1006,7 @@ def remaining_text(pct, t0):
 def failure_text(lines):
     """Error message by the actual cause – before, every error was "Check your internet connection"."""
     text = "\n".join(lines).lower()
-    again = " Run the wizard again from Settings → Setup Wizard."
+    again = " Run the wizard again from Menu → Help → Setup Wizard."
     if ("not enough free space" in text or "min-free-space" in text or "no space left" in text
             or "not enough disk space" in text):
         return ("Some software could not be installed: not enough free space. In Live mode, apps are kept in "
