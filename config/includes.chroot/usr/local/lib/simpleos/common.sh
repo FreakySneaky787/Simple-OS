@@ -21,7 +21,7 @@ sos_log_init() {
 }
 sos_log() { echo "$SOS_NAME: $*" >&2; }
 
-# Background loops of the Openbox autostart (night light, dynamic wallpaper, update check). Debian keeps a signed-out
+# Background loops of the Openbox autostart (night light, dynamic wallpaper, update check, display/input hotplug). Debian keeps a signed-out
 # user's processes (logind KillUserProcesses=no), so the loop of the last session can still be alive at the next
 # sign-in. sos_single_instance PIDFILE: 0 = go on (this process is now the one), 1 = one of this session runs already.
 # A leftover of another session (XDG_SESSION_ID differs) is ended – before, it made the new one quit, and night light,
@@ -31,6 +31,8 @@ sos_single_instance() {
     [ -r "$1" ] && read -r _old _sess < "$1" 2>/dev/null
     if [ -n "$_old" ] && [ "$_old" != "$$" ] && kill -0 "$_old" 2>/dev/null; then
         [ "$_sess" = "${XDG_SESSION_ID:-}" ] && return 1
+        # its children first (udevadm monitor, the loop's subshell, sleep) – they would stay behind as orphans
+        pkill -P "$_old" 2>/dev/null
         kill "$_old" 2>/dev/null
     fi
     echo "$$ ${XDG_SESSION_ID:-}" > "$1" 2>/dev/null

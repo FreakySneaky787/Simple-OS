@@ -92,7 +92,8 @@ case "${1:-}" in
         apply
         exit 0 ;;
     --apply) apply; exit 0 ;;
-    --watch)
+    --watch)   # one per session; a watcher of a signed-out session is ended (common.sh)
+        sos_single_instance "${XDG_RUNTIME_DIR:-$SOS_LOG_DIR}/simpleos-input-watch.pid" || exit 0
         apply
         command -v udevadm >/dev/null || exit 0
         udevadm monitor --udev --subsystem-match=input 2>/dev/null | while read -r _ _ ev _; do
