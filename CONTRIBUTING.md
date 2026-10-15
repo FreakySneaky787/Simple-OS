@@ -45,4 +45,17 @@ If you would like to help with a language, say so in the [Discussions](https://g
 ## Code of conduct
 
 Please be kind and respectful – see the [Code of Conduct](CODE_OF_CONDUCT.md).
-By contributing you agree that your contribution is licensed under the project's [license](LICENSE).
+## License of contributions
+
+Simple OS's own code is licensed under the [GPL-3.0-or-later](LICENSE). The maintainer may change the license of
+Simple OS in the future, for example to a different version of the GPL or to another license.
+
+So that this stays possible, by contributing (code, scripts, text, artwork or translations) you agree that:
+
+- your contribution is licensed under the project's current license, **and**
+- the maintainer may also publish your contribution under any other license in the future.
+
+You keep the copyright of your contribution. Releases that were already published stay available under the license
+they were published with. Packages that Simple OS takes from Debian and other projects keep their own licenses.
+
+If you don't agree with this, please say so in your pull request before it is merged.

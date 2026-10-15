@@ -12,3 +12,4 @@
 - [ ] The change is small and does one thing
 - [ ] Tested as described above
 - [ ] Text in the UI, code and docs is in English
+- [ ] I agree to the [license terms for contributions](https://github.com/FreakySneaky787/Simple-OS/blob/main/CONTRIBUTING.md#license-of-contributions)
