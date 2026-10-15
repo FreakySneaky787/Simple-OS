@@ -427,6 +427,22 @@ def clock_info():
     return d.get("Timezone", ""), d.get("NTP") == "yes", d.get("CanNTP", "yes") == "yes", d.get("NTPSynchronized") == "yes"
 
 
+GRUB_CFG = os.environ.get("SIMPLEOS_GRUB_CFG", "/boot/grub/grub.cfg")
+
+
+def windows_present():
+    """Windows in the boot menu (os-prober's entries carry "--class windows") – a dual-boot computer"""
+    try:
+        return "--class windows" in Path(GRUB_CFG).read_text(errors="replace")
+    except OSError:
+        return False
+
+
+def local_rtc():
+    """True if the hardware clock runs in local time (like Windows) instead of UTC"""
+    return _c("timedatectl", "show", "-p", "LocalRTC", "--value").stdout.strip() == "yes"
+
+
 def timedatectl_cancelled(res):
     """timedatectl after a cancelled password dialog: exit 1, "Access denied" (not pkexec's 126/127)"""
     return getattr(res, "returncode", 1) != 0 and "Access denied" in (getattr(res, "stderr", "") or "")
@@ -1502,7 +1518,29 @@ def main(argv):
                             "Not available on this system", auto),
                            ("Time zone", tz.replace("_", " ") if tz else "Unknown",
                             button("Change…", lambda: self.choose_timezone(tz)))]))
+            if windows_present():
+                win = Gtk.Switch(active=local_rtc())
+                win.connect("notify::active", self.set_local_rtc)
+                self.put(label("<b>Windows on this computer</b>", markup=True))
+                self.put(card([("Keep the clock like Windows does", "Turn this on if the time is off by an hour or "
+                                "more after you used Windows (Windows keeps the computer's clock in local time)", win)]))
+                self.note("Can't open or change your files on the Windows drive? Windows was not shut down completely. "
+                          "In Windows: Control Panel → Power Options → \"Choose what the power buttons do\" → switch off "
+                          "\"Turn on fast startup\", then shut Windows down once.")
             self.show_all_now()
+
+        def set_local_rtc(self, sw, _p):
+            want = sw.get_active()
+            if want == local_rtc():
+                return
+            sw.set_sensitive(False)
+
+            def done(res):
+                if local_rtc() != want and not timedatectl_cancelled(res):
+                    self.win.error("The setting could not be changed.")
+                self.refresh()
+            # the clock is written in the new mode from the current (correct) system time
+            bg(lambda: cmd("timedatectl", "set-local-rtc", "true" if want else "false", timeout=120), done)
 
         def set_ntp(self, sw, _p):
             want = sw.get_active()

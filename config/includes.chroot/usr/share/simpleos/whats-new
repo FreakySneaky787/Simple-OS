@@ -11,6 +11,10 @@
 - **Startup apps.** On the same page: switch off apps that start by themselves when you sign in (Steam,
   Discord …), or add one.
 - **Battery level of Bluetooth headphones** in Control Center → Bluetooth (for headphones that report it).
+- **A calendar.** Click the clock in the taskbar to see the month; click it again to close it.
+- **Windows and Simple OS on one computer.** The clock no longer jumps by an hour or more after you used Windows:
+  new installations next to Windows keep the clock the way Windows does. Already installed? Control Center → Date &
+  Time → "Keep the clock like Windows does". There is also help if you can't change files on your Windows drive.
 - **This window.** After an update you see once what changed. Find it again under Menu → Help → What's New.
 ## Fixed
 - **Signing out and in again.** Afterwards the power button works on the login screen again, and automatic

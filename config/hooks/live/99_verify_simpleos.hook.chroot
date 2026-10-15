@@ -1935,6 +1935,34 @@ for pg in $(grep -rhoE 'simpleos-control-center [a-z-]+' /etc/skel /usr/local/bi
     check "simpleos-control-center $pg: no such page" "python3 -c \"$CCL; assert '$pg' in [k for k, _t, _i in c.PAGES] or '$pg' in c.ALIASES\""
 done
 
+# ---- Dual boot with Windows (#46): clock in local time like Windows, fast-startup hint
+printf "menuentry 'Windows Boot Manager (on /dev/sda1)' --class windows --class os \$menuentry_id_option 'osprober-efi' {\n}\n" > "$wt/grub-win.cfg"
+printf "menuentry 'Debian GNU/Linux' --class debian --class gnu-linux --class os {\n}\n" > "$wt/grub-lin.cfg"
+check "Control Center: Windows in the boot menu not recognized (dual-boot clock)" \
+      "SIMPLEOS_GRUB_CFG=$wt/grub-win.cfg python3 -c \"$CCL; assert c.windows_present()\" &&
+       SIMPLEOS_GRUB_CFG=$wt/grub-lin.cfg python3 -c \"$CCL; assert not c.windows_present()\" &&
+       SIMPLEOS_GRUB_CFG=/nonexistent python3 -c \"$CCL; assert not c.windows_present()\""
+check "Control Center: dual-boot clock switch / fast-startup hint missing" \
+      "grep -qF 'cmd(\"timedatectl\", \"set-local-rtc\"' $CC && grep -qF 'Turn on fast startup' $CC"
+check "post-install: no local-time clock with Windows on the disk" \
+      "grep -qF -- \"grep -qs -- '--class windows' /boot/grub/grub.cfg\" /usr/local/sbin/simpleos-post-install &&
+       grep -qF 'hwclock --systohc --localtime' /usr/local/sbin/simpleos-post-install"
+rm -f "$wt/grub-win.cfg" "$wt/grub-lin.cfg"
+
+# ---- Calendar of the taskbar clock (#45)
+CAL=/usr/local/bin/simpleos-calendar
+check "calendar: Python syntax error" "python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' $CAL"
+check "calendar: popup outside the work area (taskbar bottom/top, screen edges)" "python3 -c \"
+import importlib.machinery as m; k = m.SourceFileLoader('k', '$CAL').load_module()
+assert k.place(1900, 1060, 300, 320, (0, 0, 1920, 1030)) == (1612, 702), k.place(1900, 1060, 300, 320, (0, 0, 1920, 1030))
+assert k.place(1900, 10, 300, 320, (0, 40, 1920, 1040)) == (1612, 48)
+assert k.place(5, 1060, 300, 320, (0, 0, 1366, 728)) == (8, 400)
+assert k.place(2500, 1060, 300, 320, (1920, 0, 1280, 1000))[0] == 2350\""
+for home in /etc/skel /home/simple; do
+    check "tint2: a click on the clock does not open the calendar in $home" \
+          "grep -qx 'clock_lclick_command = /usr/local/bin/simpleos-calendar' '$home/.config/tint2/tint2rc'"
+done
+
 # ---- "What's new" window after an update (simpleos-whats-new, 1.0.5)
 WN=/usr/local/bin/simpleos-whats-new
 VID=$(sed -n 's/^VERSION_ID="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' /usr/lib/os-release)
@@ -2041,7 +2069,8 @@ for a in $(python3 -c "import importlib.machinery as m; s = m.SourceFileLoader('
 done
 rm -f "$wt/mock/flatpak" "$wt/mock/dpkg-query"
 if command -v broadwayd >/dev/null && command -v dbus-run-session >/dev/null; then
-    for app in "$CC|SIMPLEOS_CC_SELFTEST" "$SC|SIMPLEOS_SC_SELFTEST" "/usr/local/bin/simpleos-taskmanager|SIMPLEOS_TM_SELFTEST"; do
+    for app in "$CC|SIMPLEOS_CC_SELFTEST" "$SC|SIMPLEOS_SC_SELFTEST" "/usr/local/bin/simpleos-taskmanager|SIMPLEOS_TM_SELFTEST" \
+               "/usr/local/bin/simpleos-calendar|SIMPLEOS_CALENDAR_SELFTEST" "/usr/local/bin/simpleos-whats-new|SIMPLEOS_WHATS_NEW_SELFTEST"; do
         mkdir -p "$wt/bw"; chmod 0700 "$wt/bw"
         # server and program with the same XDG_RUNTIME_DIR (the Broadway socket lives there)
         env XDG_RUNTIME_DIR="$wt/bw" HOME="$wt/home" broadwayd :17 >/dev/null 2>&1 &

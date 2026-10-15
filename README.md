@@ -338,6 +338,11 @@ the lb default files, the generated graphics and the fastfetch package.
   **Apps** (default apps → `~/.config/mimeapps.list` + `~/.local/share/applications/defaults.list`; startup apps →
   `~/.config/autostart`, switched off with `Hidden=true`), Date & Time, Storage & Backups, Password & Security, System &
   Updates. `simpleos-control-center PAGE` opens a page; old names (e.g. `system` for the printers) still work.
+- Calendar (`simpleos-calendar`, 1.0.5): click on the taskbar clock (tint2 `clock_lclick_command`) – a GTK month view
+  next to the clock inside the work area, week numbers, "Date & Time settings"; click again / Esc closes it.
+- Dual boot with Windows (1.0.5): with Windows in the GRUB menu (`--class windows`) simpleos-post-install sets the
+  hardware clock to local time like Ubuntu (`hwclock --systohc --localtime`); Control Center → Date & Time shows a
+  switch (`timedatectl set-local-rtc`) and the fast-startup hint whenever Windows is in the boot menu.
 - What's new (`simpleos-whats-new`): once at the first sign-in after an update to a new version (not on a fresh
   install), Menu → Help → What's New. Notes: `usr/share/simpleos/whats-new`, written by hand for every release – the
   build stops if its first line is not `# Simple OS <version>`.

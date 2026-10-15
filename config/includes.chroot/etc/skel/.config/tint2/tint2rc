@@ -206,7 +206,7 @@ clock_font_color = #cdd6f4 100
 clock_padding = 10 0
 clock_background_id = 0
 clock_tooltip = %A, %B %-d, %Y
-clock_lclick_command =
+clock_lclick_command = /usr/local/bin/simpleos-calendar
 clock_rclick_command =
 
 #---- App button (opens rofi)

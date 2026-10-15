@@ -68,6 +68,8 @@ Moved from 1.0.4 to keep it small, plus what came up since:
 | Startup apps page (#39) | done – Control Center → Apps |
 | "What's new" window after an update (#65) | done – `simpleos-whats-new`, notes in `usr/share/simpleos/whats-new` |
 | Clearer menus: right-click menu in Apps / Settings / Tools / Help, Control Center split into smaller pages, duplicate launchers hidden | done |
+| Calendar: clicking the clock shows the month (#45) | done – `simpleos-calendar` |
+| Dual boot: clock like Windows, fast-startup hint (#46) | done – new installs next to Windows: local time; Control Center → Date & Time |
 | Whatever 1.0.4 users report (Pax's Dell test, #64) | waiting |
 
 ## 1.1 – next feature release (2–3 months after 1.0)
@@ -79,8 +81,6 @@ Moved from 1.0.4 to keep it small, plus what came up since:
   development laptop).
 - **Language & Region page** (system language, formats) and German/other translations of Simple OS's own tools (all English today).
 - **Webcam / camera test** app (the camera works, but there is nothing to try it with).
-- **Calendar** (clock click in the taskbar opens a month view).
-- **Dual-boot polish:** tell the user about Windows "fast startup" (NTFS mounted read-only), RTC in local time.
 - **Boot time & size:** initramfs `MODULES=dep` (113 MB → much smaller, faster boot), AppArmor profiles, zstd squashfs
   (issue #19: faster live session and install, ISO +18 %).
 - **Hardware tests still missing:** NVIDIA desktop with the driver, AMD laptop, dual boot with Windows, Secure Boot on.

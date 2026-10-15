@@ -62,6 +62,7 @@ Right-click desktop         Simple OS menu (Apps, Settings, Tools, Help, Power)
 Panel: left button          Apps
 Panel: network display      Network menu – Wi-Fi, cable, details
 Panel: red button (right)   Power menu
+Panel: clock                Calendar of the month (click again to close)
 Menu → Tools → Updates      Check for and install updates
 Control Center → Appearance Taskbar: move or restyle it
 Files: right-click           Set as Wallpaper, Copy to Clipboard, Open as Administrator, Extract Here

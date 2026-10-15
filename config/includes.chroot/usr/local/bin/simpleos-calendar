@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+"""Simple OS – month calendar of the taskbar clock (click the clock; click it again, Esc or a click into another window
+closes it).
+
+  simpleos-calendar           open it next to the mouse pointer (the clock), or close it if it is open
+  simpleos-calendar --print   this month as text (tests, terminal)
+
+Opens above the clock with the taskbar at the bottom, below it with the taskbar at the top (simpleos-taskbar-select),
+inside the screen's work area. Today is marked, week numbers on the left; the first day of the week follows the
+system language (Monday in Germany, Sunday in the US). "Date & Time settings" opens the Control Center page.
+No extra package: GTK's own calendar.
+Test: SIMPLEOS_CALENDAR_SELFTEST=1 (open, then close after a moment; exit 1 on a Python exception).
+"""
+import calendar
+import datetime
+import os
+import signal
+import subprocess
+import sys
+from pathlib import Path
+
+RUN = Path(os.environ.get("XDG_RUNTIME_DIR") or Path.home() / ".cache")
+PIDFILE = RUN / "simpleos-calendar.pid"
+MARGIN = 8
+
+
+def running():
+    """pid of an open calendar of this account, else None"""
+    try:
+        pid = int(PIDFILE.read_text().split()[0])
+        os.kill(pid, 0)
+        if "simpleos-calendar" in Path(f"/proc/{pid}/cmdline").read_text(errors="replace"):
+            return pid
+    except (OSError, ValueError, IndexError):
+        pass
+    return None
+
+
+def place(px, py, w, h, area):
+    """Window position next to the pointer (px, py) inside the work area (x, y, width, height)"""
+    ax, ay, aw, ah = area
+    x = min(max(px - w // 2, ax + MARGIN), ax + aw - w - MARGIN)
+    # pointer in the lower half: the taskbar is at the bottom -> open above it, otherwise below the top taskbar
+    y = ay + ah - h - MARGIN if py > ay + ah // 2 else ay + MARGIN
+    return max(x, ax), max(y, ay)
+
+
+def main(argv):
+    if len(argv) > 1 and argv[1] in ("-h", "--help"):
+        print(__doc__)
+        return 0
+    if len(argv) > 1 and argv[1] == "--print":
+        print(calendar.TextCalendar(calendar.MONDAY).formatmonth(datetime.date.today().year, datetime.date.today().month))
+        return 0
+    pid = running()
+    if pid:   # second click on the clock: close it
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            pass
+        return 0
+    if not os.environ.get("DISPLAY"):
+        print("simpleos-calendar: no display", file=sys.stderr)
+        return 1
+
+    import gi
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("Gdk", "3.0")
+    from gi.repository import Gdk, GLib, Gtk
+
+    try:
+        RUN.mkdir(parents=True, exist_ok=True)
+        PIDFILE.write_text(f"{os.getpid()}\n")
+    except OSError:
+        pass
+    selftest = os.environ.get("SIMPLEOS_CALENDAR_SELFTEST") == "1"
+    errors = []
+    if selftest:
+        def hook(etype, value, tb):
+            errors.append(value)
+            sys.__excepthook__(etype, value, tb)
+        sys.excepthook = hook
+
+    win = Gtk.Window(title="Calendar")
+    win.set_decorated(False)
+    win.set_skip_taskbar_hint(True)
+    win.set_skip_pager_hint(True)
+    win.set_keep_above(True)
+    win.set_resizable(False)
+    win.set_type_hint(Gdk.WindowTypeHint.DIALOG)
+    win.set_icon_name("x-office-calendar")
+    GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, lambda: (win.destroy(), False)[1])
+    win.connect("destroy", Gtk.main_quit)
+    win.connect("key-press-event", lambda w, e: e.keyval == Gdk.KEY_Escape and w.destroy())
+
+    frame = Gtk.Frame()
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10, margin=14)
+    frame.add(box)
+    win.add(frame)
+    today = datetime.date.today()
+    head = Gtk.Label(xalign=0)
+    head.set_markup(f"<span size='large' weight='bold'>{today.strftime('%A')}</span>\n"
+                    f"<span alpha='70%'>{today.strftime('%B %-d, %Y')}</span>")
+    box.pack_start(head, False, False, 0)
+    cal = Gtk.Calendar(show_week_numbers=True, show_heading=True, show_day_names=True)
+    cal.select_month(today.month - 1, today.year)
+    cal.select_day(today.day)
+    cal.mark_day(today.day)
+
+    def month_changed(c):   # the mark belongs to today only, not to the same day of every month
+        y, m, _d = c.get_date()
+        c.clear_marks()
+        if (y, m + 1) == (today.year, today.month):
+            c.mark_day(today.day)
+    cal.connect("month-changed", month_changed)
+    box.pack_start(cal, False, False, 0)
+    btns = Gtk.Box(spacing=8)
+    back = Gtk.Button(label="Today")
+
+    def to_today(_b):
+        cal.select_month(today.month - 1, today.year)
+        cal.select_day(today.day)
+    back.connect("clicked", to_today)
+    btns.pack_start(back, False, False, 0)
+    sets = Gtk.Button(label="Date & Time settings")
+
+    def settings(_b):
+        subprocess.Popen(["simpleos-control-center", "datetime"], start_new_session=True,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        win.destroy()
+    sets.connect("clicked", settings)
+    btns.pack_end(sets, False, False, 0)
+    box.pack_start(btns, False, False, 0)
+
+    # next to the pointer (the click on the clock) inside the work area of its screen
+    disp = Gdk.Display.get_default()
+    _s, px, py = disp.get_default_seat().get_pointer().get_position()
+    mon = disp.get_monitor_at_point(px, py)
+    wa = mon.get_workarea()
+    frame.show_all()
+    w, h = win.get_preferred_size()[1].width, win.get_preferred_size()[1].height
+    win.move(*place(px, py, w, h, (wa.x, wa.y, wa.width, wa.height)))
+
+    # a click into another window closes it (like a menu) – not right at the start, while the window gets the focus
+    armed = [False]
+    GLib.timeout_add(400, lambda: armed.__setitem__(0, True) or False)
+    win.connect("focus-out-event", lambda w, _e: armed[0] and w.destroy())
+    win.show_all()
+    win.present()
+    if selftest:
+        GLib.timeout_add(1200, win.destroy)
+    Gtk.main()
+    try:
+        if PIDFILE.read_text().split()[0] == str(os.getpid()):
+            PIDFILE.unlink()
+    except (OSError, IndexError):
+        pass
+    return 1 if errors else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

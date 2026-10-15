@@ -53,4 +53,12 @@ rm -rf /usr/share/simpleos/bootloader-debs
 # Does nothing on UEFI systems; if it fails, simpleos-system-setup --upgrade tries again before every update.
 /usr/local/lib/simpleos/grub-pc-devices || echo "simpleos-post-install: GRUB install device not set (retried before updates)" >&2
 
+# Dual boot with Windows (os-prober put it into the GRUB menu, "--class windows"): Windows keeps the hardware clock in
+# local time, Linux in UTC – after every switch one of them showed a time off by the UTC offset. Like Ubuntu: local
+# time when Windows is there (Control Center → Date & Time can switch it back). hwclock writes the clock and
+# /etc/adjtime; without access to the clock only the setting.
+if grep -qs -- '--class windows' /boot/grub/grub.cfg; then
+    hwclock --systohc --localtime 2>/dev/null || printf '0.0 0 0.0\n0\nLOCAL\n' > /etc/adjtime
+fi
+
 rm -f "$0"

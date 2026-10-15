@@ -274,3 +274,9 @@ Menus, Control Center pages, default/startup apps, headphone battery, "What's ne
       as before (VM: `virsh shutdown`/ACPI button). Sign in again within a minute: `systemd-inhibit --list` shows
       **one** "Simple OS … handle-power-key", `pgrep -fa 'nightlight --daemon|wallpaper-schedule --daemon|update --watch'`
       shows one of each, and night light "Automatic" still turns warm at 20:00 (`SIMPLEOS_HOUR=21 simpleos-nightlight --apply`).
+- [ ] **Calendar (issue #45):** click the clock → the month opens above it (taskbar at the top: below it); today marked;
+      click the clock again or Esc → closed; "Date & Time settings" opens the Control Center page.
+- [ ] **Dual boot with Windows (issue #46):** install next to Windows (VM with a Windows/fake "Windows" GRUB entry, or
+      Pax's Dell): `timedatectl` shows "RTC in local TZ: yes"; boot Windows and back → the time is right in both.
+      Control Center → Date & Time shows "Windows on this computer" with the switch and the fast-startup hint; without
+      Windows in the boot menu that part is not there.
