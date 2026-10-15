@@ -66,6 +66,7 @@ Moved from 1.0.4 to keep it small:
 | Bluetooth battery level of headphones (#37) | BlueZ needs `--experimental`; nice in the taskbar | S |
 | "Default apps" page (browser, mail, PDF …) (#38) | today only the browser has a chooser | M |
 | Startup apps page (#39) | enable/disable autostart entries without the terminal | M |
+| "What's new" window after an update (#65) | users don't see what changed in a new version | S |
 | Whatever 1.0.4 users report | | ? |
 
 ## 1.1 – next feature release (2–3 months after 1.0)
