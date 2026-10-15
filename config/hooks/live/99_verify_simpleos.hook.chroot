@@ -1073,6 +1073,11 @@ hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "without a file m
 hcase "$USB device_unmounted None STICK Kingston" "safely remove" "" "" "" 'grep -q "\"STICK\" can now be removed safely" $S/notify'
 hcase "$USB job_failed None STICK Kingston" "error" "" "" "" 'grep -q "could not be opened" $S/notify'
 hcase "$USB device_added None STICK Kingston" "other events silent" "" "" "" '[ ! -s $S/notify ]'
+# The installer's own mounts (Calamares: /tmp/calamares-root-…) are no USB drive – no "ready"/"Safely remove" during the
+# installation, and its unmounting no "can be removed safely"
+hcase "$USB device_mounted /tmp/calamares-root-x1/boot/efi SYSTEM None" "installer mount announced as a drive" "" "NOTIFY_ACTION=eject" "" \
+    '[ ! -s $S/notify ] && [ ! -s $S/umount ]'
+hcase "$USB device_unmounted None SYSTEM None" "unmounting of a drive never announced" "" "" "" '[ ! -s $S/notify ]'
 hcase "$USB" "without arguments" "" "" "" '[ ! -s $S/notify ]'
 hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "notify-send missing" "notify-send" "" "" '[ ! -e $S/opened ]'
 

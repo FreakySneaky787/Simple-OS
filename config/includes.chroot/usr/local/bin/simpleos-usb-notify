@@ -4,7 +4,8 @@
 #   simpleos-usb-notify <event> <mount_path> <id_label> <drive_label>
 #   device_mounted   -> "USB drive is ready" with the buttons "Open" (a click on the notification is enough) -> file manager
 #                       and "Safely remove" -> unmount + power off the drive (udiskie-umount --detach)
-#   device_unmounted -> "can be removed safely"
+#   device_unmounted -> "can be removed safely" (only for a drive announced above)
+#   only mounts below /media (udiskie's own); the installer's or other programs' mounts are not announced
 #   job_failed       -> a clear error message
 # Other events are ignored. No set -e, always exit 0; details in ~/.cache/simpleos-usb-notify.log.
 
@@ -40,10 +41,19 @@ eject() {
     sos_notify "\"$name\" is still in use. Close all files and windows from it, then try again." critical
 }
 
+# Drives this script announced as ready (one name per line): only those get "can be removed safely" later
+SEEN=${XDG_RUNTIME_DIR:-$SOS_LOG_DIR}/simpleos-usb-notify.mounted
+
 case "$event" in
     device_mounted)
         [ -n "$path" ] && [ "$path" != None ] || exit 0
+        # Only what udiskie itself opened (/media/<user>/…). udiskie also reports mounts of other programs – the
+        # installer mounts the new system at /tmp/calamares-root-…: "USB drive is ready" with "Safely remove"
+        # (unmount + power off the disk) appeared in the middle of the installation
+        case "$path" in /media/*|/run/media/*) ;; *) sos_log "ignored: $name mounted at $path (not by udiskie)"; exit 0 ;; esac
         command -v notify-send >/dev/null || exit 0
+        seen=$(grep -vxF "$name" "$SEEN" 2>/dev/null)
+        printf '%s\n%s\n' "$seen" "$name" | grep . > "$SEEN" 2>/dev/null
         sos_log "ask: $name mounted at $path"
         # yes/default = Open (a click on the notification itself), eject = Safely remove; waits for the click
         answer=$(notify-send -c x-simpleos -a "$SOS_TITLE" -i "$SOS_ICON" -A "yes=Open" -A "eject=Safely remove" \
@@ -53,6 +63,10 @@ case "$event" in
             eject)       eject "$path" ;;
         esac ;;
     device_unmounted)
+        # only a drive we announced (the installer unmounting its partitions said "SYSTEM can now be removed safely")
+        grep -qxF "$name" "$SEEN" 2>/dev/null || { sos_log "ignored: $name unmounted (not announced)"; exit 0; }
+        seen=$(grep -vxF "$name" "$SEEN" 2>/dev/null)
+        printf '%s\n' "$seen" | grep . > "$SEEN" 2>/dev/null
         sos_notify "\"$name\" can now be removed safely." ;;
     job_failed)
         sos_notify "\"$name\" could not be opened. It may be damaged or use a format Simple OS can't read." critical ;;
