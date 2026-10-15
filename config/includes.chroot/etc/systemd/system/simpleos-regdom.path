@@ -1,4 +1,4 @@
-# Simple OS – run simpleos-regdom.service again when the time zone is changed (Control Center → System → Date & Time)
+# Simple OS – run simpleos-regdom.service again when the time zone is changed (Control Center → Date & Time)
 [Unit]
 Description=Simple OS Wi-Fi regulatory country: watch the time zone
 

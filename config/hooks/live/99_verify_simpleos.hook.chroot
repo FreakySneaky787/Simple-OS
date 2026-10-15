@@ -4336,6 +4336,11 @@ check "simpleos-regdom: Europe/Zurich -> CH"  '[ "$(rd Europe/Zurich)" = "reg se
 check "simpleos-regdom: America/New_York (only in zone1970.tab shape) -> US" '[ "$(rd America/New_York)" = "reg set US" ]'
 check "simpleos-regdom: UTC sets no country" '[ -z "$(rd UTC)" ]'
 check "simpleos-regdom: odd time zone text reaches iw" '[ -z "$(rd "Europe/Zu;rich")" ]'
+# The link wins over a stale /etc/timezone (timedatectl only changes /etc/localtime)
+mkdir -p "$rz/zoneinfo/Europe"; ln -s "$rz/zoneinfo/Europe/Berlin" "$rz/localtime"
+check "simpleos-regdom: a stale /etc/timezone beats the time zone set in Date & Time" \
+      '[ "$(echo Europe/Zurich > "$rz/tz"; rm -f "$rz/iw.out"; env -i PATH="$rz/sys" SIMPLEOS_ZONEINFO="$rz" SIMPLEOS_TIMEZONE_FILE="$rz/tz" \
+           SIMPLEOS_LOCALTIME="$rz/localtime" SIMPLEOS_IW="$rz/iw" "$rz/sys/sh" $RD; cat "$rz/iw.out" 2>/dev/null)" = "reg set DE" ]'
 rm -rf "${rz:?}"
 
 [ "$fail" -eq 0 ]

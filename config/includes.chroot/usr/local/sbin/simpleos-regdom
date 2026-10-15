@@ -12,12 +12,11 @@ PATH=/usr/sbin:/usr/bin:/sbin:/bin
 ZI=${SIMPLEOS_ZONEINFO:-/usr/share/zoneinfo}
 IW=${SIMPLEOS_IW:-iw}
 
-zone=
-if [ -r "${SIMPLEOS_TIMEZONE_FILE:-/etc/timezone}" ]; then
+# /etc/localtime first: "timedatectl set-timezone" (Control Center → Date & Time) changes that link; the old
+# /etc/timezone file is Debian's legacy copy and may still name the zone from the installation
+zone=$(readlink "${SIMPLEOS_LOCALTIME:-/etc/localtime}" 2>/dev/null | sed -n 's|.*/zoneinfo/||p')
+if [ -z "$zone" ] && [ -r "${SIMPLEOS_TIMEZONE_FILE:-/etc/timezone}" ]; then
     zone=$(head -n 1 "${SIMPLEOS_TIMEZONE_FILE:-/etc/timezone}")
-fi
-if [ -z "$zone" ]; then
-    zone=$(readlink "${SIMPLEOS_LOCALTIME:-/etc/localtime}" 2>/dev/null | sed -n 's|.*/zoneinfo/||p')
 fi
 case "$zone" in ''|*[!A-Za-z0-9_/+-]*) exit 0 ;; esac
 
