@@ -1918,6 +1918,10 @@ assert 'Hidden=true' in t and 'Exec=discord' in t, t
 assert not {x[0]: x for x in c.startup_apps()}['discord.desktop'][3]
 assert c.set_startup('discord.desktop', True) and {x[0]: x for x in c.startup_apps()}['discord.desktop'][3]
 assert c.add_startup('mousepad.desktop', apps) and 'mousepad.desktop' in {x[0] for x in c.startup_apps()}
+assert c.autostart_exec('mousepad %U') == 'mousepad' and c.autostart_exec('steam %u -silent') == 'steam -silent'
+fp = '/usr/bin/flatpak run --branch=stable --arch=x86_64 --command=discord com.discordapp.Discord @@u %U @@'
+assert c.autostart_exec(fp) == fp.replace(' @@u %U @@', ''), c.autostart_exec(fp)
+assert c.autostart_exec('notify-send 100%%') == 'notify-send 100%'
 assert c.remove_startup('discord.desktop') and 'discord.desktop' not in {x[0] for x in c.startup_apps()}
 keys = [k for k, _t, _i in c.PAGES]
 assert len(set(keys)) == len(keys) and all(v in keys for v in c.ALIASES.values()) and c.GROUP_STARTS <= set(keys)

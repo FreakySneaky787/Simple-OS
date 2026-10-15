@@ -246,3 +246,27 @@ lines only run at the next login) and on a PC without a battery (or a VM: there 
       be executed".
 - [ ] **Date & Time:** Control Center → System → switch "Set the time automatically" off and on (password window each
       time; **Cancel** goes back without an error message), change the time zone → the taskbar clock follows at once.
+
+## 10. What changed in 1.0.5
+
+Menus, Control Center pages, default/startup apps, headphone battery, "What's new". Test on a machine **updated from
+1.0.4 through Software Updates** (sign out and in once) and on a fresh VM install.
+
+- [ ] **What's new (issue #65):** updated machine: about 8 s after the first sign-in after the update the window "What's
+      new in Simple OS 1.0.5" opens once; the next sign-in it does not. Fresh install / new account: it never opens by
+      itself. Menu → Help → What's New and Control Center → System & Updates open it any time; "Show this after updates"
+      off is remembered (`~/.config/simpleos/whats-new`).
+- [ ] **Right-click menu:** Apps / Settings / Tools / Help; every Settings entry opens the right Control Center page.
+      Updated machine with LibreOffice/ONLYOFFICE: the office entries are still under Apps (the menu was merged, not
+      kept old – `~/.cache/simpleos-edition.log` says "updated" or "merged", not "kept").
+- [ ] **Control Center:** all 15 pages open; the sidebar fits or scrolls on a 1366×768 screen; the taskbar's
+      Do Not Disturb icon (right-click) opens Notifications; `simpleos-drivers` without arguments opens System & Updates.
+- [ ] **Default apps (issue #38):** Control Center → Apps → Pictures = another viewer (install one, e.g. gThumb from the
+      Software Center) → double-click a .jpg/.png/.webp in Files opens it; Web browser = Chromium → Super+B and links from
+      other apps open Chromium. Back to the old choice works.
+- [ ] **Startup apps (issue #39):** install Discord/Steam and let it start at login → it is listed; switch it off → next
+      sign-in it does not start; on again → it does. "Add…" Mousepad → it opens at the next sign-in **without** an error
+      about a file named "%U"; "Remove" takes it out.
+- [ ] **Headphone battery (issue #37):** after a restart, connected Bluetooth headphones show "Battery NN %" in Control
+      Center → Bluetooth and in the Bluetooth flyout (headphones that report it: most Sony/Bose/Jabra). `systemctl cat
+      bluetooth` shows `--experimental`; pairing a keyboard/mouse still works.

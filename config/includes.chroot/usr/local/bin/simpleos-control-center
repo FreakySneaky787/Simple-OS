@@ -723,6 +723,14 @@ def set_startup(app_id, on):
         return False
 
 
+def autostart_exec(line):
+    """An Exec line without file/URL field codes (%U, %f …) and Flatpak's file-forwarding markers (@@u … @@)"""
+    line = re.sub(r"\s+@@u?\s+%[fFuU]\s+@@", "", line)
+    line = re.sub(r"\s+@@u?\s+@@", "", line)
+    line = re.sub(r"\s+%[fFuUdDnNickvm](?=\s|$)", "", line)
+    return line.replace("%%", "%").strip()
+
+
 def add_startup(app_id, apps):
     """Start an installed app at sign-in: a copy of its .desktop file in ~/.config/autostart"""
     user, _s = autostart_dirs()
@@ -732,6 +740,8 @@ def add_startup(app_id, apps):
     try:
         user.mkdir(parents=True, exist_ok=True)
         text = re.sub(r"(?m)^(Hidden|NoDisplay|X-GNOME-Autostart-enabled)=.*\n?", "", src.read_text(errors="replace"))
+        # openbox-xdg-autostart runs Exec as it is (sh -c): without this, "mousepad %U" would open a file named "%U"
+        text = re.sub(r"(?m)^Exec=.*$", lambda m: "Exec=" + autostart_exec(m.group(0)[5:]), text)
         (user / app_id).write_text(text)
         return True
     except OSError:
@@ -1359,7 +1369,7 @@ def main(argv):
                                                               "on" if s.get_active() else "off"))
             self.put(card([("Do Not Disturb", "Pause notifications until you turn it off", dnd),
                            ("Also turn off window effects", "No shadows or transparency while it is on", quiet)]))
-            self.note("Tip: while Do Not Disturb is on, the taskbar shows a bell – click it to turn it off again.")
+            self.note("While Do Not Disturb is on, the taskbar shows a crossed-out bell – click it to turn Do Not Disturb off again.")
             self.show_all_now()
 
     class KeyboardPage(Page):

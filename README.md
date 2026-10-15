@@ -236,7 +236,7 @@ the lb default files, the generated graphics and the fastfetch package.
 ### User tools
 
 - `simpleos-welcome-wizard` – setup on first login (internet/Wi-Fi, browser, dark/light, accent color, office,
-  gaming, Software Store). Run it again: Menu → Settings → Setup Wizard. Done marker:
+  gaming, Software Store). Run it again: Menu → Help → Setup Wizard. Done marker:
   `~/.config/simpleos/wizard-done` (not set if an installation failed).
   - Browser Chromium/Mullvad → Firefox ESR is removed completely afterwards (only once the new browser is installed).
   - Office: LibreOffice (apt), ONLYOFFICE (Flathub) or Minimal. Gaming: Ultimate (i386 + Steam, Lutris, MangoHud) or none.
@@ -270,7 +270,7 @@ the lb default files, the generated graphics and the fastfetch package.
 - Refresh rate: without a saved setting, `simpleos-display --restore` picks the highest rate of the current
   resolution at login (e.g. 144 instead of 60 Hz); if a saved monitor is unplugged it does the same. Choose it in
   Control Center → Display or with Super+P.
-- Keyboard layout (`simpleos-keyboard-setup`, Control Center → System, Menu → Settings): common layouts including
+- Keyboard layout (`simpleos-keyboard-setup`, Control Center → Keyboard, Menu → Settings → Keyboard): common layouts including
   variants (Swiss German/French, German without dead keys, US international …), applied at once with `setxkbmap`,
   for the account and system-wide via `localectl` (`/etc/default/keyboard`, also the login screen).
 - Monitor plugged in later (`simpleos-display --watch`, Openbox autostart): Xorg only reports a new screen, it stays dark
@@ -283,7 +283,7 @@ the lb default files, the generated graphics and the fastfetch package.
 - Wi-Fi band (Control Center → Wi-Fi, shown while connected): Automatic / 5 GHz only / 2.4 GHz only per connection
   (`nmcli connection modify … 802-11-wireless.band a|bg`, then reconnect). Found on a Sunrise router whose wide DFS channel
   on 5 GHz (160 MHz, ch. 124) made downloads drop to a few kB/s with a perfect signal; 2.4 GHz was steady.
-- Date & time (Control Center → System): automatic time (`timedatectl set-ntp`) and time zone (region + city,
+- Date & time (Control Center → Date & Time): automatic time (`timedatectl set-ntp`) and time zone (region + city,
   `timedatectl set-timezone`; polkit asks for the password); "Password" opens `passwd` in a terminal.
 - Fonts: Inter, JetBrains Mono, Noto Color Emoji, Liberation 2; fontconfig with RGB subpixel and slight hinting.
   Noto Sans (`fonts-noto-core`, all writing systems) and WenQuanYi Micro Hei (small CJK font) fill the gaps so web pages in
@@ -322,14 +322,25 @@ the lb default files, the generated graphics and the fastfetch package.
   (`simpleos-grub-install`, called by Calamares with `--uefi-secure-boot`).
 - Performance (built into the image): `gamemode` (`gamemoderun %command%` in Steam),
   `/etc/sysctl.d/99-simpleos-perf.conf` (among others `vm.swappiness=100` + `vm.page-cluster=0` for zram swap, `vm.max_map_count` for Proton).
-- `simpleos-theme --mode dark|light --accent blue|mauve|pink|green|peach|teal` (`--pick`: Rofi selection, Menu → Settings → Appearance)
+- `simpleos-theme --mode dark|light --accent blue|mauve|pink|green|peach|teal` (`--pick`: Rofi selection; Control Center → Appearance)
 - `simpleos-browser-select` (Rofi) or `simpleos-browser-select --set chromium.desktop`
 - `simpleos-netinfo` (Super+N): LAN IP, interface, gateway, hostname, VPN status, public IP (Rofi;
   `--text` for the terminal). tint2 always shows the LAN IP (`--panel`, tooltip with details, click = info
   window); fastfetch lists it as well.
-- Menu (right-click): Terminal, Files, Browser, Software Store, Apps, **Settings** (Control Center, Display, Sound, Bluetooth, Night Light, Network & Wi-Fi,
-  Network Info, Appearance, Taskbar & Panel, Default Browser, Setup Wizard), Help, Power. Raw or duplicate tools
-  (arandr, lxappearance, obconf, tint2conf, pcmanfm …) are hidden from the launcher by hook 07.
+- Menu (right-click, 1.0.5): Search, Files, Browser, Software Center, Terminal, Apps, **Settings** (All Settings, then
+  Wi-Fi & Network, Bluetooth, Sound, Display, Appearance & Wallpaper, Keyboard, Printers & Scanners, Default & Startup
+  Apps – each opens its Control Center page – plus Night Light and Do Not Disturb), **Tools** (Software Updates, Task
+  Manager, Backups, Storage Cleaner, Disks & USB Sticks, Network Info), **Help** (Welcome, What's New, Keyboard
+  Shortcuts, Setup Wizard, Report a Problem), Power. Raw or duplicate tools (arandr, lxappearance, obconf, tint2conf,
+  pcmanfm, nm-connection-editor, blueman-manager, htop …) are hidden from the launcher by hook 07.
+- Control Center pages (1.0.5): Wi-Fi, Bluetooth (with the battery level of headphones: `bluetoothd --experimental`
+  drop-in), Sound, Display, Appearance, Notifications, Mouse & Touchpad, Keyboard, Printers & Scanners, Power,
+  **Apps** (default apps → `~/.config/mimeapps.list` + `~/.local/share/applications/defaults.list`; startup apps →
+  `~/.config/autostart`, switched off with `Hidden=true`), Date & Time, Storage & Backups, Password & Security, System &
+  Updates. `simpleos-control-center PAGE` opens a page; old names (e.g. `system` for the printers) still work.
+- What's new (`simpleos-whats-new`): once at the first sign-in after an update to a new version (not on a fresh
+  install), Menu → Help → What's New. Notes: `usr/share/simpleos/whats-new`, written by hand for every release – the
+  build stops if its first line is not `# Simple OS <version>`.
 - Snappiness: picom with short fades for windows only (GLX + VSync; llvmpipe only: xrender without effects),
   Openbox submenus without delay, double-click 200 ms, no minimize animation.
 - Taskbar (tint2): floating, rounded bar (12/10 px from the edge, 14 px radius, fine border, 40 px):
@@ -348,7 +359,7 @@ the lb default files, the generated graphics and the fastfetch package.
   Logo: a lifebuoy (white, four stripes in Catppuccin Red); the wordmark "SOS" uses the ring as the "O" and the two
   "S" in a blue → pink gradient, slogan "Keep it Simple" – Calamares, boot menu, Plymouth, wizard, Welcome page.
   Tooltips in German/English; tray icons (nm-applet, blueman, volumeicon, power) bring their own tooltips.
-- `simpleos-taskbar-select` (Settings → Taskbar & Panel): position top/bottom, layout (Full/Compact,
+- `simpleos-taskbar-select` (Control Center → Appearance → Taskbar): position top/bottom, layout (Full/Compact,
   Icons + text/Icons only), look (Dark, Dark transparent, Match theme), network/clock display on/off.
   State in `~/.config/simpleos/taskbar`; changes only the affected lines in `tint2rc` and reloads tint2 with
   SIGUSR1. Directly: `--set position=top`, `--apply` (calls `simpleos-theme` itself for "Match theme").
@@ -386,7 +397,7 @@ the lb default files, the generated graphics and the fastfetch package.
 - Task Manager (`simpleos-taskmanager`, Ctrl+Shift+Esc): "End task" sends SIGTERM, then SIGKILL automatically
   after 1.5 s; processes of other users via `pkexec simpleos-taskmanager-helper` (password), protection against
   reused PIDs (start time), the list updates immediately.
-- Hardware & Drivers (`simpleos-drivers`, Control Center → System): detects graphics (NVIDIA Maxwell+ →
+- Hardware & Drivers (`simpleos-drivers`, Control Center → System & Updates): detects graphics (NVIDIA Maxwell+ →
   `nvidia-driver`, Kepler → `nvidia-tesla-470-driver`), Wi-Fi firmware (Intel/Realtek/Atheros/MediaTek/Broadcom,
   also USB) and CPU microcode; "Install Recommended Drivers" installs via `simpleos-system-setup --drivers`
   (fixed package list) with a progress window.
@@ -394,7 +405,7 @@ the lb default files, the generated graphics and the fastfetch package.
   also on AC power; not when docked), battery display only with a real battery. Before every sleep (lid, power
   menu, `systemctl suspend`) `/usr/lib/systemd/system-sleep/simpleos-lock` locks the session (LightDM via D-Bus)
   and waits until the lock screen is in front – after opening the lid the session is locked.
-- Do Not Disturb (`simpleos-dnd`, Control Center → System, Menu → System, click on the icon in the taskbar):
+- Do Not Disturb (`simpleos-dnd`, Control Center → Notifications, Menu → Settings, click on the icon in the taskbar):
   notifications paused (`dunstctl set-paused`), optionally without window effects (`--no-effects on`: picom off);
   a bell icon in the taskbar while it is on.
 - Battery protection (`simpleos-power --charge-limit on|off|status`, Control Center → Power, switch only if the
@@ -404,7 +415,7 @@ the lb default files, the generated graphics and the fastfetch package.
   stored in `~/.config/simpleos/power` and set again at login (without your own choice the laptop is left alone).
 - Firewall (ufw, `15-system`, hook 12): on from the first boot – incoming blocked, outgoing open; mDNS
   (printer discovery), UPnP and DHCP pass through ufw's default rules (`/etc/ufw/before*.rules`). `ENABLED=yes` in
-  `/etc/ufw/ufw.conf` instead of `ufw enable` (does not work in the chroot). Switch: Control Center → System →
+  `/etc/ufw/ufw.conf` instead of `ufw enable` (does not work in the chroot). Switch: Control Center → Password &
   Security (`pkexec simpleos-system-setup --firewall on|off`); the Control Center reads the state from `ufw.conf`.
 - Memory full (earlyoom, hook 12 writes `/etc/default/earlyoom`): only when RAM < 5 % AND swap/zram < 10 % are
   free is the program using the most memory ended; never Xorg, LightDM, Openbox, tint2, PipeWire or
@@ -418,9 +429,9 @@ the lb default files, the generated graphics and the fastfetch package.
   (not in VMs) and reports `FIRMWARE: installed|needs-power|failed`. BIOS capsules are applied at the next restart
   (restart notice); without a charger fwupd refuses → hint "plug in the charger"; a firmware error does not
   invalidate the rest of the update.
-- Disks (gnome-disk-utility, Control Center → System → Storage, Menu → System → Disks & USB Sticks):
+- Disks (gnome-disk-utility, Control Center → Storage & Backups, Menu → Tools → Disks & USB Sticks):
   format USB sticks, write ISO images, SMART values.
-- Report a problem (`simpleos-report`, Menu → Help → Report a Problem, Control Center → System): Rofi window →
+- Report a problem (`simpleos-report`, Menu → Help → Report a Problem, Control Center → System & Updates): Rofi window →
   report as `~/Desktop/simpleos-report-YYYYMMDD-HHMM.txt` (system, hardware, graphics, network, sound, storage,
   battery, failed services, Simple OS logs, session errors; with a password also the system log of this and the
   previous boot, kernel warnings and the apt history via `pkexec simpleos-report-helper`). Before saving,
@@ -428,7 +439,7 @@ the lb default files, the generated graphics and the fastfetch package.
   serial numbers and email addresses. Then `BUG_REPORT_URL` opens (GitHub: `…/issues/new` with a template);
   without an address the report is only saved. `--collect [--system]` / `--redact` / `--url` work without a window
   (tests in the verify hook).
-- Printing & scanning (`45-printing`, Control Center → System, Menu → Settings → Printers & Scanners): CUPS +
+- Printing & scanning (`45-printing`, Control Center → Printers & Scanners, Menu → Settings → Printers & Scanners): CUPS +
   Avahi/libnss-mdns (network printers without drivers, IPP Everywhere/AirPrint), ipp-usb (USB), printer-driver-all
   and Foomatic PPDs for older devices, system-config-printer (+ -udev, cups-pk-helper: password dialog instead of a
   terminal); sane-airscan + simple-scan. Users are in `lpadmin` and `scanner` (Calamares default, the live user
@@ -476,7 +487,7 @@ the lb default files, the generated graphics and the fastfetch package.
   after the restart, a notification says it was not applied. Also via Settings → Software Updates.
 - All Rofi tools use `usr/local/lib/simpleos/common.sh`: no `set -e`, exit 0 on every path, details in
   `~/.cache/<tool>.log`. The verify hook simulates all click paths under dash.
-- Network: `/usr/local/bin/simpleos-wifi` (Settings → Network & Wi-Fi, click on the IP in the taskbar; registered
+- Network: `/usr/local/bin/simpleos-wifi` (click on the IP in the taskbar; registered
   with its absolute path everywhere) – a Rofi flyout like on Windows, without terminals, nmtui or interface names:
   first row the active network ("Connected: Home" / "Connected: Ethernet" / "Not connected"; click → Disconnect,
   Network Details, Back), below it the other Wi-Fi networks by signal (Strong/Good/Weak, lock = password; a click

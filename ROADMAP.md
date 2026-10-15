@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
+Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4 and 2026-10-15 for 1.0.5. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -59,15 +59,16 @@ Small, safe, mostly things users hit in the first hour. Published **with a new I
 
 ## 1.0.5 – next bugfix release (about 3 weeks after 1.0.4, early November 2026)
 
-Moved from 1.0.4 to keep it small:
+Moved from 1.0.4 to keep it small, plus what came up since:
 
-| Item | Why | Effort |
-|---|---|---|
-| Bluetooth battery level of headphones (#37) | BlueZ needs `--experimental`; nice in the taskbar | S |
-| "Default apps" page (browser, mail, PDF …) (#38) | today only the browser has a chooser | M |
-| Startup apps page (#39) | enable/disable autostart entries without the terminal | M |
-| "What's new" window after an update (#65) | users don't see what changed in a new version | S |
-| Whatever 1.0.4 users report | | ? |
+| Item | Status |
+|---|---|
+| Bluetooth battery level of headphones (#37) | done – `bluetoothd --experimental` (drop-in), Control Center + flyout; needs a hardware test with real headphones |
+| "Default apps" page (browser, mail, PDF …) (#38) | done – Control Center → Apps |
+| Startup apps page (#39) | done – Control Center → Apps |
+| "What's new" window after an update (#65) | done – `simpleos-whats-new`, notes in `usr/share/simpleos/whats-new` |
+| Clearer menus: right-click menu in Apps / Settings / Tools / Help, Control Center split into smaller pages, duplicate launchers hidden | done |
+| Whatever 1.0.4 users report (Pax's Dell test, #64) | waiting |
 
 ## 1.1 – next feature release (2–3 months after 1.0)
 
