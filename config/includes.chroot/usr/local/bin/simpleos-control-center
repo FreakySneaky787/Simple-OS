@@ -428,14 +428,34 @@ def clock_info():
 
 
 GRUB_CFG = os.environ.get("SIMPLEOS_GRUB_CFG", "/boot/grub/grub.cfg")
+EFIVARS = os.environ.get("SIMPLEOS_EFIVARS", "/sys/firmware/efi/efivars")
 
 
 def windows_present():
-    """Windows in the boot menu (os-prober's entries carry "--class windows") – a dual-boot computer"""
+    """A dual-boot computer with Windows – found without root: GRUB's menu is often readable by root only (the
+    installer writes it with mode 0600), so also the UEFI boot entries (efivars can be read by everyone) and, for
+    BIOS computers, an NTFS partition on an internal disk (USB drives do not count)"""
     try:
-        return "--class windows" in Path(GRUB_CFG).read_text(errors="replace")
+        if "--class windows" in Path(GRUB_CFG).read_text(errors="replace"):
+            return True
     except OSError:
+        pass
+    wbm = "Windows Boot Manager".encode("utf-16-le")
+    for f in Path(EFIVARS).glob("Boot[0-9A-F][0-9A-F][0-9A-F][0-9A-F]-8be4df61-93ca-11d2-aa0d-00e098032b8c"):
+        try:
+            if wbm in f.read_bytes():
+                return True
+        except OSError:
+            continue
+    import json
+    try:
+        disks = json.loads(cmd("lsblk", "-J", "-o", "NAME,FSTYPE,RM,TRAN,TYPE").stdout or "{}").get("blockdevices", [])
+    except ValueError:
         return False
+
+    def internal(d):
+        return d.get("type") == "disk" and str(d.get("rm")).lower() not in ("1", "true") and d.get("tran") != "usb"
+    return any(c.get("fstype") == "ntfs" for d in disks if internal(d) for c in d.get("children") or [])
 
 
 def local_rtc():

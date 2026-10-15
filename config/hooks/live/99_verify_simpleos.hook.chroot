@@ -1943,10 +1943,29 @@ done
 # ---- Dual boot with Windows (#46): clock in local time like Windows, fast-startup hint
 printf "menuentry 'Windows Boot Manager (on /dev/sda1)' --class windows --class os \$menuentry_id_option 'osprober-efi' {\n}\n" > "$wt/grub-win.cfg"
 printf "menuentry 'Debian GNU/Linux' --class debian --class gnu-linux --class os {\n}\n" > "$wt/grub-lin.cfg"
-check "Control Center: Windows in the boot menu not recognized (dual-boot clock)" \
-      "SIMPLEOS_GRUB_CFG=$wt/grub-win.cfg python3 -c \"$CCL; assert c.windows_present()\" &&
-       SIMPLEOS_GRUB_CFG=$wt/grub-lin.cfg python3 -c \"$CCL; assert not c.windows_present()\" &&
-       SIMPLEOS_GRUB_CFG=/nonexistent python3 -c \"$CCL; assert not c.windows_present()\""
+# GRUB's menu is 0600 on installed systems (Calamares): also UEFI boot entries and NTFS on an internal disk count
+mkdir -p "$wt/efivars-win" "$wt/efivars-lin"
+printf '\007\000\000\000\001\000\000\000\074\000' > "$wt/efivars-win/Boot0000-8be4df61-93ca-11d2-aa0d-00e098032b8c"
+python3 -c "import sys; open(sys.argv[1], 'ab').write('Windows Boot Manager'.encode('utf-16-le') + b'\0\0')" "$wt/efivars-win/Boot0000-8be4df61-93ca-11d2-aa0d-00e098032b8c"
+python3 -c "import sys; open(sys.argv[1], 'wb').write(b'\7\0\0\0' + 'Simple OS'.encode('utf-16-le'))" "$wt/efivars-lin/Boot0001-8be4df61-93ca-11d2-aa0d-00e098032b8c"
+lsblk_mock() {  # internal NTFS (Windows on a BIOS PC) | usb NTFS (a USB drive) | none
+    case "$1" in
+        internal) j='{"blockdevices":[{"name":"sda","fstype":null,"rm":false,"tran":"sata","type":"disk","children":[{"name":"sda1","fstype":"ntfs","rm":false,"tran":null,"type":"part"},{"name":"sda2","fstype":"ext4","rm":false,"tran":null,"type":"part"}]}]}' ;;
+        usb) j='{"blockdevices":[{"name":"sda","fstype":null,"rm":false,"tran":"sata","type":"disk","children":[{"name":"sda1","fstype":"ext4","rm":false,"tran":null,"type":"part"}]},{"name":"sdb","fstype":null,"rm":true,"tran":"usb","type":"disk","children":[{"name":"sdb1","fstype":"ntfs","rm":true,"tran":null,"type":"part"}]}]}' ;;
+        *) j='{"blockdevices":[]}' ;;
+    esac
+    printf '#!/bin/sh\necho %s\n' "'$j'" > "$wt/mock/lsblk"; chmod 0755 "$wt/mock/lsblk"
+}
+wp() {  # GRUB_CFG EFIVARS LSBLK -> True/False
+    lsblk_mock "$3"
+    ccpy SIMPLEOS_GRUB_CFG="$1" SIMPLEOS_EFIVARS="$2" python3 -c "$CCL; print(c.windows_present())"
+}
+check "Control Center: Windows not recognized (dual-boot clock) – boot menu, UEFI entry or internal NTFS" \
+      "[ \"\$(wp $wt/grub-win.cfg /nonexistent none)\" = True ] && [ \"\$(wp /nonexistent $wt/efivars-win none)\" = True ] &&
+       [ \"\$(wp /nonexistent /nonexistent internal)\" = True ]"
+check "Control Center: Windows found where there is none (Linux only, NTFS USB drive)" \
+      "[ \"\$(wp $wt/grub-lin.cfg $wt/efivars-lin none)\" = False ] && [ \"\$(wp /nonexistent /nonexistent usb)\" = False ]"
+rm -rf "$wt/efivars-win" "$wt/efivars-lin" "$wt/mock/lsblk"
 check "Control Center: dual-boot clock switch / fast-startup hint missing" \
       "grep -qF 'cmd(\"timedatectl\", \"set-local-rtc\"' $CC && grep -qF 'Turn on fast startup' $CC"
 check "post-install: no local-time clock with Windows on the disk" \

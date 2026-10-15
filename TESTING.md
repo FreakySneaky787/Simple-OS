@@ -17,6 +17,11 @@ Problem** – that tests the tool at the same time.
 
 ## 1. In the VM (no extra hardware)
 
+> QEMU's standard graphics (`-vga std`, bochs-drm) loses part of the picture when the screen blanks (screen saver/DPMS
+> with "Lock" off, e.g. in the live session): after waking up the upper half stays black until a window changes. Not a
+> Simple OS bug – with `-vga virtio` (or virt-manager's default) it does not happen (checked 2026-10-15). Test screen
+> blanking with virtio graphics or on real hardware.
+
 `./test_vm.sh` boots the ISO, `./test_installed_vm.sh` then boots the installed system, each in the same mode.
 
 | Mode | Command | What to check |
