@@ -99,12 +99,11 @@ case "${1:-}" in
     --status) if wanted; then echo on; else echo off; fi; echo "$mode"; echo "$temp"; exit 0 ;;
     --apply)  apply force; exit 0 ;;
     --daemon)
-        # Only one instance per session
-        pidf=$RUN/simpleos-nightlight.pid
-        if [ -r "$pidf" ] && kill -0 "$(cat "$pidf")" 2>/dev/null; then exit 0; fi
-        echo $$ > "$pidf" 2>/dev/null
+        # Only one instance per session (a leftover of a signed-out session is replaced)
+        sos_single_instance "$RUN/simpleos-nightlight.pid" || exit 0
         rm -f "$RUN/simpleos-nightlight.state"
         while :; do
+            sos_session_alive || exit 0   # signed out
             load
             # While it should be warm: set the color again every time – the driver forgets it after sleep, with some
             # graphics drivers (NVIDIA) and after a screen change; the saved state would say "already applied"

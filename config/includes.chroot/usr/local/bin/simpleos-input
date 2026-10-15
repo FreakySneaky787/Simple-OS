@@ -97,6 +97,7 @@ case "${1:-}" in
         command -v udevadm >/dev/null || exit 0
         udevadm monitor --udev --subsystem-match=input 2>/dev/null | while read -r _ _ ev _; do
             [ "$ev" = add ] || continue
+            sos_session_alive || exit 0   # signed out: this session's X server is gone (ends the udevadm pipe too)
             sleep 2
             apply
         done

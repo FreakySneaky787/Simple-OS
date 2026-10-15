@@ -170,6 +170,7 @@ watch_displays() {
     printf '%s\n%s\n' "$now" "$now" > "$HP_STATE"
     udevadm monitor --udev --subsystem-match=drm 2>/dev/null | while read -r _ _ ev _; do
         [ "$ev" = change ] || continue
+        sos_session_alive || exit 0   # signed out: this session's X server is gone (ends the udevadm pipe too)
         sleep 1
         hotplug
     done

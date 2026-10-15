@@ -21,6 +21,28 @@ sos_log_init() {
 }
 sos_log() { echo "$SOS_NAME: $*" >&2; }
 
+# Background loops of the Openbox autostart (night light, dynamic wallpaper, update check). Debian keeps a signed-out
+# user's processes (logind KillUserProcesses=no), so the loop of the last session can still be alive at the next
+# sign-in. sos_single_instance PIDFILE: 0 = go on (this process is now the one), 1 = one of this session runs already.
+# A leftover of another session (XDG_SESSION_ID differs) is ended – before, it made the new one quit, and night light,
+# wallpaper or update checks did nothing until the next restart.
+sos_single_instance() {
+    _old= _sess=
+    [ -r "$1" ] && read -r _old _sess < "$1" 2>/dev/null
+    if [ -n "$_old" ] && [ "$_old" != "$$" ] && kill -0 "$_old" 2>/dev/null; then
+        [ "$_sess" = "${XDG_SESSION_ID:-}" ] && return 1
+        kill "$_old" 2>/dev/null
+    fi
+    echo "$$ ${XDG_SESSION_ID:-}" > "$1" 2>/dev/null
+    return 0
+}
+# 1 when the session's X server is gone (signed out) – the loop should end. Without DISPLAY (tests): always 0.
+sos_session_alive() {
+    [ -z "${DISPLAY:-}" ] && return 0
+    command -v xprop >/dev/null 2>&1 || return 0
+    xprop -root -notype _NET_SUPPORTING_WM_CHECK >/dev/null 2>&1
+}
+
 # sos_notify "text" [low|normal|critical]
 # Category x-simpleos: the dunst battery filter (simpleos-dunst) lets our own notifications like "Power" through
 sos_notify() {

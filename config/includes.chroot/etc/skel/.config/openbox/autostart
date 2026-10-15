@@ -20,8 +20,11 @@ dbus-update-activation-environment --systemd DISPLAY XAUTHORITY 2>/dev/null
 # The power button opens the power menu instead of shutting down at once: while this runs, logind leaves the key
 # alone (inhibitor "handle-power-key") and Openbox gets XF86PowerOff (rc.xml). Sign-in screen and a session that
 # is not running yet keep logind's own behavior. If it cannot start, the button simply shuts down as before.
+# The inhibitor must end with this session: Debian keeps a signed-out user's processes (KillUserProcesses=no), so
+# a plain endless sleep kept blocking the button at the login screen after signing out (and one more with every sign-in).
+# xprop -spy waits on the X connection and exits when the session's X server goes away.
 systemd-inhibit --what=handle-power-key --who="Simple OS" --why="The power button opens the power menu" \
-    --mode=block sleep infinity &
+    --mode=block xprop -root -spy _SIMPLEOS_POWER_KEY >/dev/null 2>&1 &
 # Your own display setting (Settings → Display, confirmed with "Keep changes") takes precedence
 simpleos-display --restore
 # A monitor/projector/TV plugged in later is switched on and extends the desktop (Xorg only reports it)

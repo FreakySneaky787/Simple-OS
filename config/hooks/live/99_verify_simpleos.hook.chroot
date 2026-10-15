@@ -1961,6 +1961,25 @@ printf 'seen=2.0.1\nshow=no\n' > "$wt/wn/simpleos/whats-new"
 check "whats-new: shown although switched off" "wn skip && grep -qx 'seen=2.0.2' $wt/wn/simpleos/whats-new"
 rm -rf "$wt/wn" "$wt/wn-notes" "$wt/wn-osr" "$wt/mock/simpleos-live"
 
+# ---- Background loops after signing out and in again (KillUserProcesses=no keeps the old session's loop alive):
+#      the new session's loop must take over, a second one in the same session must quit
+cat > "$wt/single.sh" <<'SINGLE'
+SOS_NAME=single-test; . /usr/local/lib/simpleos/common.sh
+sos_single_instance "$1" || exit 3
+sleep 30
+SINGLE
+check "common.sh: a loop of a signed-out session blocks the new session (night light, wallpaper, update check)" \
+      "rm -f $wt/single.pid; XDG_SESSION_ID=3 dash $wt/single.sh $wt/single.pid & a=\$!; sleep 0.5
+       XDG_SESSION_ID=3 dash $wt/single.sh $wt/single.pid; r=\$?
+       XDG_SESSION_ID=7 dash $wt/single.sh $wt/single.pid & b=\$!; sleep 0.5
+       ok=0; [ \$r -eq 3 ] && ! kill -0 \$a 2>/dev/null && kill -0 \$b 2>/dev/null && [ \"\$(cat $wt/single.pid)\" = \"\$b 7\" ] && ok=1
+       kill \$a \$b 2>/dev/null; [ \$ok -eq 1 ]"
+for t in simpleos-nightlight simpleos-wallpaper-schedule simpleos-update; do
+    check "$t: background loop without the session check (keeps running after signing out)" \
+          "grep -q 'sos_single_instance ' /usr/local/bin/$t && grep -q 'sos_session_alive || exit 0' /usr/local/bin/$t"
+done
+rm -f "$wt/single.sh" "$wt/single.pid"
+
 # ---- Bluetooth: battery level of headphones needs BlueZ's experimental interfaces (#37)
 check "bluetoothd without --experimental (no headphone battery level)" \
       "systemctl cat bluetooth.service 2>/dev/null | grep -qx 'ExecStart=/usr/libexec/bluetooth/bluetoothd --experimental' ||
@@ -4248,6 +4267,9 @@ for home in /etc/skel /home/simple; do
           "grep -A1 'keybind key=\"XF86PowerOff\"' '$rc' | grep -qF '<command>/usr/local/bin/simpleos-powermenu</command>'"
     check "autostart: the power button inhibitor (logind) missing in $home" \
           "grep -q '^systemd-inhibit --what=handle-power-key ' '$auto'"
+    check "autostart: the power button inhibitor outlives the session (blocks the button at the login screen) in $home" \
+          "grep -A1 '^systemd-inhibit --what=handle-power-key ' '$auto' | grep -qF -- '--mode=block xprop -root -spy ' &&
+           ! grep -q 'sleep infinity' '$auto'"
     check "autostart: D-Bus activation environment (DISPLAY for simpleos-screensaver) missing in $home" \
           "grep -qx 'dbus-update-activation-environment --systemd DISPLAY XAUTHORITY 2>/dev/null' '$auto'"
 done

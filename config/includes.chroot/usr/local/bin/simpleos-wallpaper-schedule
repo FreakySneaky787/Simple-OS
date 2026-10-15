@@ -79,11 +79,18 @@ case "${1:-}" in
         [ "$theme" = on ] && [ "$mode" = on ] && switch_theme "$(wanted)" ;;
     --apply)  apply ;;
     --daemon)
-        pidf=$RUN/simpleos-wallpaper-schedule.pid
-        if [ -r "$pidf" ] && kill -0 "$(cat "$pidf")" 2>/dev/null; then exit 0; fi
-        echo $$ > "$pidf" 2>/dev/null
+        # Only one instance per session (a leftover of a signed-out session is replaced; helpers: common.sh)
+        SOS_NAME=simpleos-wallpaper-schedule
+        if [ -r /usr/local/lib/simpleos/common.sh ]; then   # "." on a missing file would end dash
+            . /usr/local/lib/simpleos/common.sh
+        else
+            sos_single_instance() { return 0; }
+            sos_session_alive() { return 0; }
+        fi
+        sos_single_instance "$RUN/simpleos-wallpaper-schedule.pid" || exit 0
         rm -f "$RUN/simpleos-wallpaper-schedule.state"
         while :; do
+            sos_session_alive || exit 0   # signed out
             mode=off previous= theme=off
             [ -r "$CONF" ] && . "$CONF" 2>/dev/null
             apply

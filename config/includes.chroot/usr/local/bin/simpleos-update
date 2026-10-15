@@ -53,14 +53,13 @@ is_live() { grep -qw 'boot=live' /proc/cmdline 2>/dev/null; }
 if [ "${1:-}" = --watch ]; then
     is_live && exit 0
     pidf=${XDG_RUNTIME_DIR:-$SOS_LOG_DIR}/simpleos-update-watch.pid
-    if [ -r "$pidf" ] && kill -0 "$(cat "$pidf" 2>/dev/null)" 2>/dev/null; then exit 0; fi
-    echo $$ > "$pidf" 2>/dev/null
+    sos_single_instance "$pidf" || exit 0
     nap=${SIMPLEOS_UPDATE_NAP:-60} every=${SIMPLEOS_UPDATE_EVERY:-43200} rounds=0
     last=$(date +%s); due=$((last + ${SIMPLEOS_UPDATE_FIRST:-120}))
     while :; do
         sleep "$nap"
         # Signed out: the X server is gone -> end (a process of the old session would otherwise keep running)
-        [ -n "${DISPLAY:-}" ] && ! xprop -root -notype _NET_SUPPORTING_WM_CHECK >/dev/null 2>&1 && exit 0
+        sos_session_alive || exit 0
         now=$(date +%s)
         # The clock jumped (woken up from sleep): a due check waits 2 minutes for the network
         [ $((now - last)) -gt $((nap * 5 + 60)) ] && [ "$due" -lt $((now + 120)) ] && due=$((now + 120))
