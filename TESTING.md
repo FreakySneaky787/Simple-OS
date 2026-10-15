@@ -270,3 +270,7 @@ Menus, Control Center pages, default/startup apps, headphone battery, "What's ne
 - [ ] **Headphone battery (issue #37):** after a restart, connected Bluetooth headphones show "Battery NN %" in Control
       Center → Bluetooth and in the Bluetooth flyout (headphones that report it: most Sony/Bose/Jabra). `systemctl cat
       bluetooth` shows `--experimental`; pairing a keyboard/mouse still works.
+- [ ] **Signing out and in (bug hunt):** sign out → at the login screen a short press of the power button shuts down
+      as before (VM: `virsh shutdown`/ACPI button). Sign in again within a minute: `systemd-inhibit --list` shows
+      **one** "Simple OS … handle-power-key", `pgrep -fa 'nightlight --daemon|wallpaper-schedule --daemon|update --watch'`
+      shows one of each, and night light "Automatic" still turns warm at 20:00 (`SIMPLEOS_HOUR=21 simpleos-nightlight --apply`).
