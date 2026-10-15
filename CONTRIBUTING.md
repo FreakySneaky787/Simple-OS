@@ -45,6 +45,7 @@ If you would like to help with a language, say so in the [Discussions](https://g
 ## Code of conduct
 
 Please be kind and respectful – see the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## License of contributions
 
 Simple OS's own code is licensed under the [GPL-3.0-or-later](LICENSE). The maintainer may change the license of
