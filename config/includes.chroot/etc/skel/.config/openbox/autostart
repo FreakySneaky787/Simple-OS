@@ -92,9 +92,10 @@ simpleos-power --apply
 # closes the menu (Rofi: kb-cancel XF86Search). If you hold Super longer than 500 ms, nothing happens.
 pkill -x xcape 2>/dev/null
 xcape -e 'Super_L=XF86Search;Super_R=XF86Search' &
+# After an update to a new Simple OS version: "What's new" once, when the desktop has settled (not on a fresh install;
+# not at the very end of this file: lines you add there must not collide with Simple OS updates)
+(sleep 8; simpleos-whats-new --login) &
 # Setup Wizard at first login (not in the live session). With SPICE wait briefly until
 # spice-vdagent has set the resolution – otherwise the wizard is centered on the old screen size.
 [ -e /dev/virtio-ports/com.redhat.spice.0 ] && sleep 2
 simpleos-welcome-wizard --first-run &
-# After an update to a new Simple OS version: "What's new" once, when the desktop has settled (not on a fresh install)
-(sleep 8; simpleos-whats-new --login) &

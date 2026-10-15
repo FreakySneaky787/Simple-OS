@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Simple OS – right-click menu: deliberately slim. The launcher (Super) finds all apps.
-     Order: everyday apps – Settings (each entry opens its Control Center page) – Tools – Help – Power.
-     Keyboard shortcuts in brackets so you learn them. Papirus icons on every entry: Openbox 3.6
-     has no padding for menu entries, the icon column moves the text away from the edge.
-     Keep the lines right after the installer and office markers as they are: unchanged neighbours let the
-     update merge this menu into accounts whose copy lost the installer entry or got office entries. -->
+<!-- Simple OS – right-click menu: deliberately slim. The launcher (Super) finds all apps;
+     all settings are bundled under "Settings". Papirus icons on every entry: Openbox 3.6
+     has no padding for menu entries, the icon column moves the text away from the edge. -->
 <openbox_menu xmlns="http://openbox.org/3.4/menu">
   <menu id="root-menu" label="Simple OS">
     <!-- simpleos-installer-begin: only in the live session. simpleos-post-install (Calamares) and
@@ -48,6 +45,10 @@
       </item>
     </menu>
     <separator />
+    <!-- Order: everyday apps – Settings (each entry opens its Control Center page) – Tools – Help – Power; keyboard
+         shortcuts in brackets so you learn them. Never change the lines next to the installer markers (the
+         installation removes that block) or the office marker: updates merge this file into every account's copy,
+         and a change next to theirs makes the merge give up and keep the old menu. -->
     <menu id="simpleos-settings" label="Settings" icon="/usr/share/simpleos/menu-icons/settings.svg">
       <item label="All Settings (Super+I)" icon="/usr/share/simpleos/menu-icons/settings.svg">
         <action name="Execute"><command>/usr/local/bin/simpleos-control-center</command></action>

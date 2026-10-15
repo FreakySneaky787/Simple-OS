@@ -120,6 +120,8 @@ skel_ex=()
 for p in "${EXCLUDE[@]}"; do [[ $p == etc/skel/* ]] && skel_ex+=(--exclude "${p#etc/skel/}"); done
 python3 "$TOOLS/managed_history.py" --repo "$PROJECT" --tree "$INC" --base etc/skel "${skel_ex[@]}" \
     --strip-installer "${MENU#etc/skel/}" > "$ED/skel.history"
+# Changed /etc/skel files must merge into the accounts' own copies, or the update never reaches them
+"$TOOLS/check_skel_merge.sh" "$PROJECT" "$INC" || exit 1
 sys_paths=()
 for p in "${DEBIAN_OWNED[@]}"; do sys_paths+=(--path "$p"); done
 while IFS= read -r p; do sys_paths+=(--path "$p"); done < <(cd "$ROOT" && find etc -type f | sort)

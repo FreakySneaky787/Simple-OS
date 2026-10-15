@@ -1980,6 +1980,30 @@ for t in simpleos-nightlight simpleos-wallpaper-schedule simpleos-update; do
 done
 rm -f "$wt/single.sh" "$wt/single.pid"
 
+# ---- edition: merging the menu into an installed account (no installer block) whose base/new still have it. diff3
+#      lined up that same deletion differently on both sides -> conflict -> the account kept its old menu (1.0.5)
+mm=$wt/menumerge; mkdir -p "$mm"
+sed -n '/^merge_file()/,/^}/p' /usr/local/lib/simpleos/edition > "$mm/f.sh"
+# new = the installed /etc/skel (block removed); base = an older edition that still had the block and the 1.0.4 order
+# (Terminal right after Search) – the exact case that conflicted
+sed '/simpleos-installer-begin/,/simpleos-installer-end/d' /etc/skel/.config/openbox/menu.xml > "$mm/new"
+python3 - "$mm" <<'PY'
+import re, sys
+s = open('/etc/skel/.config/openbox/menu.xml').read()
+term = re.search(r'    <item label="Terminal".*?</item>\n', s, re.S).group(0)
+s = s.replace(term, '')
+i = s.index('    <item label="Files"')
+open(sys.argv[1] + '/base', 'w').write(s[:i] + term + s[i:])
+PY
+sed '/simpleos-installer-begin/,/simpleos-installer-end/d' "$mm/base" > "$mm/user"
+SIMPLEOS_OFFICE_APPS="writer calc" sh /usr/local/lib/simpleos/office-menu "$mm/user"
+check "edition: the menu does not merge into an installed account (installer block removed, office entries)" \
+      "(. $mm/f.sh; merge_file $mm/user $mm/base $mm/new) &&
+       [ \$(grep -n 'label=\"Terminal\"' $mm/user | cut -d: -f1) -gt \$(grep -n 'label=\"Files\"' $mm/user | cut -d: -f1) ] &&
+       grep -q 'LibreOffice Calc' $mm/user && ! grep -q 'simpleos-installer-begin' $mm/user &&
+       python3 -c 'import sys, xml.dom.minidom as m; m.parse(sys.argv[1])' $mm/user"
+rm -rf "$mm"
+
 # ---- Bluetooth: battery level of headphones needs BlueZ's experimental interfaces (#37)
 check "bluetoothd without --experimental (no headphone battery level)" \
       "systemctl cat bluetooth.service 2>/dev/null | grep -qx 'ExecStart=/usr/libexec/bluetooth/bluetoothd --experimental' ||

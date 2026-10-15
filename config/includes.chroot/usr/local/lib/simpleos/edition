@@ -53,10 +53,22 @@ install_file() {
 merge_file() {  # FILE BASE NEW
     command -v diff3 >/dev/null 2>&1 || return 1
     _tmp="$1.simpleos-new.$$"
-    if cp "$1" "$_tmp" 2>/dev/null && diff3 -m "$1" "$2" "$3" > "$_tmp" 2>/dev/null && mv -f "$_tmp" "$1" 2>/dev/null; then
+    _b=$2 _n=$3 _strip=
+    # The menu's "Install Simple OS" block is gone from installed accounts (simpleos-post-install, simpleos-live) and
+    # from an installed /etc/skel. When BASE or NEW still has it, diff3 lines up that same deletion differently on
+    # both sides and calls it a conflict – the menu then never got a new edition. Merge without it on all three sides.
+    if ! grep -q simpleos-installer-begin "$1" 2>/dev/null && grep -qs simpleos-installer-begin "$2" "$3"; then
+        _strip=$1.simpleos-base.$$
+        sed '/simpleos-installer-begin/,/simpleos-installer-end/d' "$2" > "$_strip" 2>/dev/null &&
+            sed '/simpleos-installer-begin/,/simpleos-installer-end/d' "$3" > "$_strip.new" 2>/dev/null &&
+            _b=$_strip _n=$_strip.new
+    fi
+    if cp "$1" "$_tmp" 2>/dev/null && diff3 -m "$1" "$_b" "$_n" > "$_tmp" 2>/dev/null && mv -f "$_tmp" "$1" 2>/dev/null; then
+        [ -n "$_strip" ] && rm -f "$_strip" "$_strip.new"
         return 0
     fi
     rm -f "$_tmp"
+    [ -n "$_strip" ] && rm -f "$_strip" "$_strip.new"
     return 1
 }
 # Remember which version of SRC a home copy is based on now (base for the next merge)
