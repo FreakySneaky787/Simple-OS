@@ -3690,13 +3690,19 @@ KB=/usr/local/bin/simpleos-keyboard-setup
 check "$KB: missing/syntax error" "[ -x $KB ] && sh -n $KB"
 printf '#!/bin/sh\necho "setxkbmap $*" >> "$WT/setxkbmap"\n[ "$1" = -query ] && printf "rules:      evdev\\nlayout:     us\\n"\nexit 0\n' > "$wt/mock/setxkbmap"
 printf '#!/bin/sh\necho "localectl $*" >> "$WT/localectl"\nexit ${LOCALECTL_RC:-0}\n' > "$wt/mock/localectl"
-chmod 0755 "$wt/mock/setxkbmap" "$wt/mock/localectl"
+printf '#!/bin/sh\n[ "$*" = "list --id-only Virtual core XTEST keyboard" ] && echo 5\nexit 0\n' > "$wt/mock/xinput"
+printf '#!/bin/sh\necho "xkbcomp $*" >> "$WT/xkbcomp"\ncat >/dev/null\nexit 0\n' > "$wt/mock/xkbcomp"
+chmod 0755 "$wt/mock/setxkbmap" "$wt/mock/localectl" "$wt/mock/xinput" "$wt/mock/xkbcomp"
 KBC=$wt/home/.config/simpleos/keyboard
 rm -f "$KBC"
+# The virtual XTEST keyboard (xcape's Super tap opens search/app menu through it) kept the US layout: y/z swapped in Rofi
+hcase "$KB --apply" "login without an own layout: the XTEST keyboard gets the real keyboard's layout" "" "DISPLAY=:0" "" \
+    '[ ! -e $S/setxkbmap ] && grep -qx "xkbcomp -w 0 -i 5 - :0" $S/xkbcomp'
 check "simpleos-keyboard-setup: XKB list missing (xkb-data)" "[ -r /usr/share/X11/xkb/rules/base.lst ]"
 hcase "$KB --set ch:fr" "Swiss French: right away, account, system-wide" "" "DISPLAY=:0" "" \
     'grep -qx "setxkbmap -layout ch -variant fr" $S/setxkbmap && grep -qx "localectl set-x11-keymap ch pc105 fr" $S/localectl &&
-     grep -qx "layout=ch" '"$KBC"' && grep -qx "variant=fr" '"$KBC"' && grep -q "Keyboard layout: Swiss French" $S/notify'
+     grep -qx "layout=ch" '"$KBC"' && grep -qx "variant=fr" '"$KBC"' && grep -q "Keyboard layout: Swiss French" $S/notify &&
+     grep -qx "xkbcomp -w 0 -i 5 - :0" $S/xkbcomp'
 hcase "$KB --status" "status" "" "" "" '[ "$(cat $S/out)" = "$(printf "ch\tfr")" ]'
 hcase "$KB --apply" "login: apply the saved layout" "" "DISPLAY=:0" "" 'grep -qx "setxkbmap -layout ch -variant fr" $S/setxkbmap && [ ! -s $S/notify ]'
 hcase "$KB --set de" "password cancelled -> only for the account, reported honestly" "" "DISPLAY=:0 LOCALECTL_RC=1" "" \
@@ -3712,7 +3718,7 @@ unknown=$(HOME=$wt/home $KB --list | cut -f1 | while IFS=: read -r l v; do
     awk -v l="$l" -v v="$v" '/^! /{s=$2;next} s=="layout"&&$1==l{a=1} s=="variant"&&$1==v&&$2==l":"{b=1} END{exit !(a&&(v==""||b))}' \
         /usr/share/X11/xkb/rules/base.lst || echo "$l:$v"; done)
 check "simpleos-keyboard-setup: layout list contains entries XKB does not know: $unknown" "[ -z \"$unknown\" ]"
-rm -f "$KBC" "$wt/mock/setxkbmap" "$wt/mock/localectl"
+rm -f "$KBC" "$wt/mock/setxkbmap" "$wt/mock/localectl" "$wt/mock/xinput" "$wt/mock/xkbcomp"
 for home in /etc/skel /home/simple; do
     check "autostart: keyboard layout is not applied at login in $home" "grep -qx 'simpleos-keyboard-setup --apply' '$home/.config/openbox/autostart'"
     check "menu.xml: Keyboard missing in $home" "grep -qF '<command>/usr/local/bin/simpleos-control-center keyboard</command>' '$home/.config/openbox/menu.xml'"

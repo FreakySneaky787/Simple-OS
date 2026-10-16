@@ -73,6 +73,16 @@ apply_x() {  # $1 layout, $2 variant
     [ -n "${DISPLAY:-}" ] || return 0
     setxkbmap -layout "$1" -variant "$2" >&2 2>&1
 }
+# The virtual XTEST keyboard keeps X's built-in US layout (setxkbmap and the installer's /etc/default/keyboard only reach
+# the real keyboards). xcape sends XF86Search through it when Super is tapped, so the search and the app menu (Rofi)
+# started with that layout: on a Swiss or German keyboard y and z came out swapped there and nowhere else. Give it
+# the layout of the real keyboard.
+sync_xtest() {
+    [ -n "${DISPLAY:-}" ] && command -v xinput >/dev/null && command -v xkbcomp >/dev/null || return 0
+    id=$(xinput list --id-only "Virtual core XTEST keyboard" 2>/dev/null)
+    sos_is_num "$id" || return 0
+    xkbcomp -w 0 "$DISPLAY" - 2>/dev/null | xkbcomp -w 0 -i "$id" - "$DISPLAY" >&2 2>&1 || sos_log "XTEST keyboard: layout not copied"
+}
 
 set_layout() {  # $1 "layout[:variant]"
     l=${1%%:*} v=
@@ -83,6 +93,7 @@ set_layout() {  # $1 "layout[:variant]"
         sos_notify "The keyboard layout could not be changed." critical
         return 0
     fi
+    sync_xtest
     mkdir -p "${CONF%/*}" && printf 'layout=%s\nvariant=%s\n' "$l" "$v" > "$CONF"
     name=$(name_of "$l:$v"); name=${name:-$l${v:+ ($v)}}
     # system-wide (login screen, console): localectl -> /etc/default/keyboard; password via polkit
@@ -96,8 +107,11 @@ set_layout() {  # $1 "layout[:variant]"
 case "${1:-}" in
     --set)    [ -n "${2:-}" ] || { echo "Usage: simpleos-keyboard-setup --set LAYOUT[:VARIANT]" >&2; exit 2; }
               set_layout "$2"; exit 0 ;;
-    --apply)  [ -r "$CONF" ] || exit 0
-              cur=$(current); apply_x "${cur%%"$TAB"*}" "${cur#*"$TAB"}" || sos_log "apply failed"; exit 0 ;;
+    --apply)  if [ -r "$CONF" ]; then
+                  cur=$(current); apply_x "${cur%%"$TAB"*}" "${cur#*"$TAB"}" || sos_log "apply failed"
+              fi
+              sync_xtest   # also with the installer's layout only (no own choice saved)
+              exit 0 ;;
     --status) current; exit 0 ;;
     --list)   printf '%s\n' "$LAYOUTS"; exit 0 ;;
     "") ;;

@@ -20,3 +20,5 @@
 ## Fixed
 - **Signing out and in again.** Afterwards the power button works on the login screen again, and automatic
   night light, the day/night wallpaper and update messages keep working without a restart.
+- **Search and app menu with a Swiss, German or French keyboard.** Y and Z (or A and Q) were swapped there when
+  you opened them by tapping the Super key.

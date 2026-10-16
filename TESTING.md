@@ -276,6 +276,9 @@ Menus, Control Center pages, default/startup apps, headphone battery, "What's ne
       Center → Bluetooth and in the Bluetooth flyout (headphones that report it: most Sony/Bose/Jabra). `systemctl cat
       bluetooth` shows `--experimental`; pairing a keyboard/mouse still works. Updated machine with Bluetooth: Software
       Updates asks for a restart after the update to 1.0.5 (migration 060-bluetooth-restart).
+- [ ] **Keyboard layout in search/app menu (ThinkPad test):** installed with the Swiss (or German) layout, no own
+      choice in Control Center → Keyboard: tap Super, type "zy" → the search shows "zy" (not "yz"); same in the app
+      menu. `xkbcomp -i $(xinput list --id-only "Virtual core XTEST keyboard") $DISPLAY - | grep -A2 "<AD06>"` shows z.
 - [ ] **Signing out and in (bug hunt):** sign out → at the login screen a short press of the power button shuts down
       as before (VM: `virsh shutdown`/ACPI button). Sign in again within a minute: `systemd-inhibit --list` shows
       **one** "Simple OS … handle-power-key", `pgrep -fa 'nightlight --daemon|wallpaper-schedule --daemon|update --watch'`
