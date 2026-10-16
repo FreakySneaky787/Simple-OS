@@ -79,6 +79,7 @@ Moved from 1.0.4 to keep it small:
 - **Language & Region page** (system language, formats) and German/other translations of Simple OS's own tools (all English today).
 - **Webcam / camera test** app (the camera works, but there is nothing to try it with).
 - **Calendar** (clock click in the taskbar opens a month view).
+- **Users & accounts page** in Control Center: create, delete and switch users, change passwords and pictures, administrator or standard user, automatic login (#68).
 - **Dual-boot polish:** tell the user about Windows "fast startup" (NTFS mounted read-only), RTC in local time.
 - **Boot time & size:** initramfs `MODULES=dep` (113 MB → much smaller, faster boot), AppArmor profiles, zstd squashfs
   (issue #19: faster live session and install, ISO +18 %).
