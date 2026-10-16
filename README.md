@@ -489,7 +489,7 @@ the lb default files, the generated graphics and the fastfetch package.
   lists are older than 30 minutes; without a password via the Polkit rule from hook `14_update_refresh`) and shows
   "Install now" right away – without updates only a notification. If the installation fails, the apt error line
   is in the notification (with a pending restart: "Restart … first"). If an installed BIOS update is still pending
-  after the restart, a notification says it was not applied. Also via Settings → Software Updates.
+  after the restart, a notification says it was not applied. Also via Menu → Tools → Software Updates.
 - All Rofi tools use `usr/local/lib/simpleos/common.sh`: no `set -e`, exit 0 on every path, details in
   `~/.cache/<tool>.log`. The verify hook simulates all click paths under dash.
 - Network: `/usr/local/bin/simpleos-wifi` (click on the IP in the taskbar; registered

@@ -2061,6 +2061,16 @@ check "bluetoothd without --experimental (no headphone battery level)" \
       "systemctl cat bluetooth.service 2>/dev/null | grep -qx 'ExecStart=/usr/libexec/bluetooth/bluetoothd --experimental' ||
        grep -qx 'ExecStart=/usr/libexec/bluetooth/bluetoothd --experimental' /etc/systemd/system/bluetooth.service.d/10-simpleos-experimental.conf"
 check "bluetoothd binary moved (drop-in starts nothing)" "[ -x /usr/libexec/bluetooth/bluetoothd ]"
+# The drop-in only works after bluetoothd starts again: an update to 1.0.5 must ask for a restart (migration 060)
+MIG6=/usr/share/simpleos/edition/migrations/system/060-bluetooth-restart
+br=$(mktemp -d)
+check "migration 060-bluetooth-restart: no restart asked for while bluetoothd runs without --experimental" \
+      "[ -x $MIG6 ] && SIMPLEOS_BLUETOOTHD_CMDLINE='/usr/libexec/bluetooth/bluetoothd' SIMPLEOS_REBOOT_FLAG=$br/flag sh $MIG6 >/dev/null &&
+       [ -e $br/flag ] && grep -qx simpleos $br/flag.pkgs"
+check "migration 060-bluetooth-restart: asks for a restart although bluetoothd already has --experimental (or is not running)" \
+      "rm -f $br/flag && SIMPLEOS_BLUETOOTHD_CMDLINE='/usr/libexec/bluetooth/bluetoothd --experimental' SIMPLEOS_REBOOT_FLAG=$br/flag sh $MIG6 &&
+       SIMPLEOS_BLUETOOTHD_CMDLINE= SIMPLEOS_REBOOT_FLAG=$br/flag sh $MIG6 && [ ! -e $br/flag ]"
+rm -rf "${br:?}"
 SCL="import importlib.machinery as m; s = m.SourceFileLoader('s', '$SC').load_module()"
 printf '#!/bin/sh\n[ "$1 $2" = "list --app" ] && printf "com.discordapp.Discord\\tsystem\\nus.zoom.Zoom\\tuser\\n"\nexit 0\n' > "$wt/mock/flatpak"
 printf '#!/bin/sh\ncase "$*" in *libreoffice-writer*) echo "install ok installed" ;; esac\n' > "$wt/mock/dpkg-query"

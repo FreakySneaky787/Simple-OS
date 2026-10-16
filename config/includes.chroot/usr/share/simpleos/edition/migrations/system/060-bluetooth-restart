@@ -1,0 +1,28 @@
+#!/bin/sh
+# Simple OS 1.0.5 – ask for a restart when bluetoothd still runs without its experimental interfaces (runs once, as root,
+# from the postinst of the package simpleos via "edition --system").
+# 1.0.5 starts bluetoothd with --experimental (/etc/systemd/system/bluetooth.service.d/10-simpleos-experimental.conf):
+# through it PipeWire reports the battery level of Bluetooth headphones. The drop-in only takes effect when bluetoothd
+# starts again, and an update to 1.0.5 did not ask for a restart – the battery level promised in "What's new" never
+# showed. Restarting bluetoothd right here would drop a Bluetooth mouse, keyboard or headphones in the middle of the
+# update, so this only marks a restart as needed (/var/run/reboot-required); Software Updates then offers it.
+# Not running (no Bluetooth hardware), or already started with --experimental: nothing to do. Never fails (exit 0).
+# Tests: SIMPLEOS_BLUETOOTHD_CMDLINE (the running bluetoothd's command line, words separated by spaces; empty = not
+# running), SIMPLEOS_REBOOT_FLAG (instead of /var/run/reboot-required).
+FLAG=${SIMPLEOS_REBOOT_FLAG:-/var/run/reboot-required}
+
+if [ -n "${SIMPLEOS_BLUETOOTHD_CMDLINE+x}" ]; then
+    args=$SIMPLEOS_BLUETOOTHD_CMDLINE
+else
+    pid=$(systemctl show -p MainPID --value bluetooth.service 2>/dev/null)
+    case "$pid" in ''|0|*[!0-9]*) pid=$(pgrep -x bluetoothd 2>/dev/null | head -n 1) ;; esac
+    args=
+    [ -n "$pid" ] && [ -r "/proc/$pid/cmdline" ] && args=$(tr '\0' ' ' < "/proc/$pid/cmdline")
+fi
+[ -n "$args" ] || exit 0
+case " $args " in *" --experimental "*|*" -E "*) exit 0 ;; esac
+
+: > "$FLAG" 2>/dev/null
+printf 'simpleos\n' >> "$FLAG.pkgs" 2>/dev/null
+echo "060-bluetooth-restart: bluetoothd runs without --experimental – restart needed (headphone battery level)"
+exit 0

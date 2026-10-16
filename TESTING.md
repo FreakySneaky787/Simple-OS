@@ -37,7 +37,7 @@ Last results: 1.0 is installed and in daily use on the ThinkBook (UEFI).
 ## 2. On real hardware
 
 - [ ] **ThinkBook (UEFI):** install, then:
-  - The firewall in Control Center → System → Security is on.
+  - The firewall in Control Center → Password & Security is on.
   - Power mode offers three profiles.
   - Software Updates shows a BIOS update, if there is one.
   - Install updates: clicking the "Updates installed" notification does **not** restart right away but asks
@@ -51,7 +51,7 @@ Last results: 1.0 is installed and in daily use on the ThinkBook (UEFI).
 - [ ] **Secure Boot on** (enable it in the BIOS): the installed system still starts.
 - [ ] **Dual boot with Windows:** choose "Install alongside" in the installer. Afterwards the GRUB menu shows Simple OS
       **and** Windows, and Windows still starts. Make a Windows backup first or use a computer where nothing can be lost.
-- [ ] **NVIDIA computer:** Control Center → System → Hardware & Drivers suggests the driver. Install it with Secure Boot
+- [ ] **NVIDIA computer:** Control Center → System & Updates → Hardware & Drivers suggests the driver. Install it with Secure Boot
       **off**, restart, then check that `glxinfo -B` shows "NVIDIA" as the renderer.
 - [ ] **AMD computer:** graphics, Wi-Fi and sound work. Hardware & Drivers reports nothing missing.
 
@@ -164,7 +164,7 @@ through Software Updates, or `sudo apt install ./simpleos_1.0.3_all.deb`) and on
       Unplug while only the external screen was on → the laptop screen comes back.
 - [ ] **Mouse & Touchpad (Control Center):** natural scrolling off → two-finger scrolling reverses at once; tap to click off;
       pointer speed; the values are still there after signing out; a Bluetooth/USB mouse plugged in later gets them too.
-- [ ] **Date & Time (Control Center → System):** switch "Set the time automatically" off and on (password prompt); change the
+- [ ] **Date & Time (Control Center → Date & Time):** switch "Set the time automatically" off and on (password prompt); change the
       time zone → the taskbar clock follows; "Password → Change…" opens a terminal with `passwd`.
 - [ ] **Logs:** `journalctl --disk-usage` stays below ~200 MB.
 - [ ] **Wi-Fi band (Control Center → Wi-Fi):** while connected a row "Wi-Fi band" shows; choose 2.4 GHz only → the connection
@@ -249,7 +249,7 @@ lines only run at the next login) and on a PC without a battery (or a VM: there 
       `sudo dpkg-reconfigure -f noninteractive grub-pc` (UEFI: `grub-efi-amd64`) – what every GRUB update from Debian does –
       then `sudo grep menuentry /boot/grub/grub.cfg` still lists the other system and the output has no "os-prober will not
       be executed".
-- [ ] **Date & Time:** Control Center → System → switch "Set the time automatically" off and on (password window each
+- [ ] **Date & Time:** Control Center → Date & Time → switch "Set the time automatically" off and on (password window each
       time; **Cancel** goes back without an error message), change the time zone → the taskbar clock follows at once.
 
 ## 10. What changed in 1.0.5
@@ -274,7 +274,8 @@ Menus, Control Center pages, default/startup apps, headphone battery, "What's ne
       about a file named "%U"; "Remove" takes it out.
 - [ ] **Headphone battery (issue #37):** after a restart, connected Bluetooth headphones show "Battery NN %" in Control
       Center → Bluetooth and in the Bluetooth flyout (headphones that report it: most Sony/Bose/Jabra). `systemctl cat
-      bluetooth` shows `--experimental`; pairing a keyboard/mouse still works.
+      bluetooth` shows `--experimental`; pairing a keyboard/mouse still works. Updated machine with Bluetooth: Software
+      Updates asks for a restart after the update to 1.0.5 (migration 060-bluetooth-restart).
 - [ ] **Signing out and in (bug hunt):** sign out → at the login screen a short press of the power button shuts down
       as before (VM: `virsh shutdown`/ACPI button). Sign in again within a minute: `systemd-inhibit --list` shows
       **one** "Simple OS … handle-power-key", `pgrep -fa 'nightlight --daemon|wallpaper-schedule --daemon|update --watch'`

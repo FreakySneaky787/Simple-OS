@@ -139,7 +139,7 @@ firmware_check() {
     still=$(firmware | grep -Fxf "$FW_MARK")
     rm -f "$FW_MARK"
     [ -n "$still" ] || return 0
-    sos_notify "The firmware update ($(printf '%s' "$still" | head -n 1)) was not applied during the restart. Keep the charger plugged in and try again from Settings → Software Updates. Details: ~/.cache/simpleos-update.log" critical
+    sos_notify "The firmware update ($(printf '%s' "$still" | head -n 1)) was not applied during the restart. Keep the charger plugged in and try again from Menu → Tools → Software Updates. Details: ~/.cache/simpleos-update.log" critical
 }
 # Offer a restart: notification with "Restart…"; a click asks first – never restart right away
 offer_restart() {  # $1 text
@@ -232,7 +232,7 @@ install_updates() {
                 *"No space left"*|*"not enough free space"*|*"min-free-space"*|*"You don't have enough free space"*)
                     sos_notify "Some updates could not be installed: not enough free disk space. Free up space with the Storage Cleaner and try again." critical ;;
                 *"Temporary failure resolving"*|*"Could not resolve"*|*"Failed to fetch"*|*"Could not connect"*|*"Network is unreachable"*)
-                    sos_notify "Some updates could not be installed: no internet connection. Check your network and try again from Settings → Software Updates." critical ;;
+                    sos_notify "Some updates could not be installed: no internet connection. Check your network and try again from Menu → Tools → Software Updates." critical ;;
                 *"Could not get lock"*|*"Unable to acquire"*|*"is locked by another process"*)
                     sos_notify "Some updates could not be installed: another installation was still running. Try again in a few minutes." critical ;;
                 *)  # send the first apt/dpkg error line along instead of only pointing to the log; if a restart is
