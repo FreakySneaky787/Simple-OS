@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4 and 2026-10-15 for 1.0.5. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
+Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4 and 2026-10-16 for 1.0.5. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -57,20 +57,21 @@ Small, safe, mostly things users hit in the first hour. Published **with a new I
 | Other systems stay in the GRUB menu after GRUB updates | done |
 | Bluetooth pairing with a keyboard/phone (#10), monitor hotplug (#28) | confirmed on the ThinkBook |
 
-## 1.0.5 – next bugfix release (about 3 weeks after 1.0.4, early November 2026)
+## 1.0.5 – next bugfix release (planned for Sunday, 2026-10-18)
 
 Moved from 1.0.4 to keep it small, plus what came up since:
 
 | Item | Status |
 |---|---|
-| Bluetooth battery level of headphones (#37) | done – `bluetoothd --experimental` (drop-in), Control Center + flyout; needs a hardware test with real headphones |
+| Bluetooth battery level of headphones (#37) | done – `bluetoothd --experimental` (drop-in), Control Center + flyout; tested with real headphones; updates ask for a restart (migration 060) |
 | "Default apps" page (browser, mail, PDF …) (#38) | done – Control Center → Apps |
 | Startup apps page (#39) | done – Control Center → Apps |
 | "What's new" window after an update (#65) | done – `simpleos-whats-new`, notes in `usr/share/simpleos/whats-new` |
 | Clearer menus: right-click menu in Apps / Settings / Tools / Help, Control Center split into smaller pages, duplicate launchers hidden | done |
 | Calendar: clicking the clock shows the month (#45) | done – `simpleos-calendar` |
 | Dual boot: clock like Windows, fast-startup hint (#46) | done – new installs next to Windows: local time; Control Center → Date & Time |
-| Whatever 1.0.4 users report (Pax's Dell test, #64) | waiting |
+| Whatever 1.0.4 users report (Pax's Dell test, #64) | waiting – goes into 1.0.6 if it comes after the release |
+| y/z swapped in search/app menu with Swiss/German keyboards (ThinkPad test) | done – XTEST keyboard gets the real layout |
 
 ## 1.1 – next feature release (2–3 months after 1.0)
 
