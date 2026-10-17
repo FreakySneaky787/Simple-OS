@@ -44,15 +44,15 @@ Already running Simple OS? New versions arrive through **Software Updates** – 
 
 Thank you for testing! Every report helps, especially from real hardware.
 
-**Wanted right now** (1.0.4 is out):
+**Wanted right now** (1.0.5 is out):
 
-- **Installing on real hardware**, in **legacy BIOS / MBR** mode as well as **UEFI** – especially **next to another
-  system** (dual boot, also inside an extended partition) and on a partition you created yourself. Do your other
-  systems stay in the boot menu after the first GRUB update?
-- **Installing in your language** (not English): does the system come up in your language, with Firefox and the
-  dictionary in it?
-- **Updating from 1.0.3** through Software Updates.
-- **The power button:** does it open the power menu on your computer? (Some laptops need it held for a second.)
+- **Installing next to Windows** (dual boot): does the clock stay right after you used Windows? Does Control Center →
+  Date & Time explain Windows "fast startup" when you can't change files on the Windows drive?
+- **Installing on real hardware**, in **legacy BIOS / MBR** mode as well as **UEFI**. Do your other systems stay in the
+  boot menu after the first GRUB update?
+- **Updating from 1.0.4** through Software Updates: does the "What's new" window show up after the restart?
+- **Bluetooth headphones:** is their battery level shown in Control Center → Bluetooth?
+- **Installing in your language** (not English), and the search with a non-US keyboard (Super key, then type).
 
 **How to report:**
 
