@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4 and 2026-10-16 for 1.0.5. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
+Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4 and 2026-10-17 for 1.0.5. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -57,7 +57,7 @@ Small, safe, mostly things users hit in the first hour. Published **with a new I
 | Other systems stay in the GRUB menu after GRUB updates | done |
 | Bluetooth pairing with a keyboard/phone (#10), monitor hotplug (#28) | confirmed on the ThinkBook |
 
-## 1.0.5 – next bugfix release (planned for Sunday, 2026-10-18)
+## 1.0.5 – bugfix release (published 2026-10-17)
 
 Moved from 1.0.4 to keep it small, plus what came up since:
 
@@ -75,22 +75,23 @@ Moved from 1.0.4 to keep it small, plus what came up since:
 
 ## 1.1 – next feature release (2–3 months after 1.0)
 
-- **HiDPI / display scaling** – the biggest gap: nothing scales today (no Xft/DPI, no GDK scale, tint2/Openbox use
+- **HiDPI / display scaling** (#41) – the biggest gap: nothing scales today (no Xft/DPI, no GDK scale, tint2/Openbox use
   pixels). On a 2.8K/4K laptop everything is tiny. Plan: a "Scale" setting in Control Center → Display (100/125/150/200 %)
   that sets Xft.dpi, XSETTINGS (also cursor size), GDK scale for 200 %, Rofi/dunst/kitty sizes and the tint2 panel height;
   automatic default from the screen's real DPI. Needs a HiDPI test screen first (open question: the resolution of the
   development laptop).
-- **Language & Region page** (system language, formats) and German/other translations of Simple OS's own tools (all English today).
-- **Webcam / camera test** app (the camera works, but there is nothing to try it with).
-- **Boot time & size:** initramfs `MODULES=dep` (113 MB → much smaller, faster boot), AppArmor profiles, zstd squashfs
+- **Language & Region page** (system language, formats) (#42) and German/other translations of Simple OS's own tools (all English today) (#43).
+- **Webcam / camera test** app (the camera works, but there is nothing to try it with) (#44).
+- **Users & accounts page** in Control Center: create, delete and switch users, change passwords and pictures, administrator or standard user, automatic login (#68).
+- **Boot time & size:** initramfs `MODULES=dep` (113 MB → much smaller, faster boot) (#47), AppArmor profiles (#48), zstd squashfs
   (issue #19: faster live session and install, ISO +18 %).
-- **Hardware tests still missing:** NVIDIA desktop with the driver, AMD laptop, dual boot with Windows, Secure Boot on.
+- **Hardware tests still missing:** NVIDIA desktop with the driver, AMD laptop, dual boot with Windows, Secure Boot on (#49).
 
 ## 2.0 – Debian 13 "trixie"
 
 Simple OS is built on Debian 12 "bookworm", which moved from the regular security team to Debian LTS in June 2026
 (supported until June 2028 – please re-check the dates). Debian 13 has been the stable release since August 2025.
-Moving to it is the one big job of the next year, and it has to be planned, not rushed:
+Moving to it is the one big job of the next year, and it has to be planned, not rushed (issues #50–#53):
 
 - **Why:** newer kernel and Mesa without backports, newer firmware for new laptops, Firefox ESR / LibreOffice / PipeWire
   versions that bookworm will not get, no more `bookworm-backports` pinning for the kernel, fewer special cases.
@@ -105,14 +106,14 @@ Moving to it is the one big job of the next year, and it has to be planned, not 
 
 ## Ideas, not scheduled
 
-- Automatic security updates as an option (today: a notification, you click Install).
-- Fingerprint reader support (`fprintd`) and a setup page.
-- Accessibility: screen reader, large cursor, high-contrast theme in Appearance.
+- Automatic security updates as an option (today: a notification, you click Install) (#54).
+- Fingerprint reader support (`fprintd`) and a setup page (#55).
+- Accessibility: screen reader, large cursor, high-contrast theme in Appearance (#56).
 - Printer/scanner setup screenshots in the help; a built-in "Get help" that links to the project page.
-- A small web page for the project (download, checksums, screenshots, FAQ).
-- Continuous build check on GitHub (build the ISO in CI and run the verify hook on every push; needs a runner that can do `lb build`).
-- arm64 image (Raspberry Pi / Apple-less ARM laptops) – large work, low priority.
-- Crash/problem reports: a one-click "send to GitHub" option next to the saved file (privacy first).
+- Continuous build check on GitHub (build the ISO in CI and run the verify hook on every push; needs a runner that can do `lb build`) (#58).
+- arm64 image (Raspberry Pi / Apple-less ARM laptops) (#59) – **not planned**; if at all, most likely not before the 2.x
+  versions, and even then unlikely.
+- Crash/problem reports: a one-click "send to GitHub" option next to the saved file (privacy first) (#60).
 
 ## Open issues
 
