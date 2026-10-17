@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4 and 2026-10-17 for 1.0.5. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
+Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4 and 2026-10-17 for 1.0.5 and 1.0.6. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -57,6 +57,16 @@ Small, safe, mostly things users hit in the first hour. Published **with a new I
 | Other systems stay in the GRUB menu after GRUB updates | done |
 | Bluetooth pairing with a keyboard/phone (#10), monitor hotplug (#28) | confirmed on the ThinkBook |
 
+## 1.0.6 – next bugfix release (planned for Saturday, 2026-11-07)
+
+Milestone "1.0.6" on GitHub. Probably an update without a new ISO (`publish --no-iso`), unless the installer changes.
+
+| Item | Status |
+|---|---|
+| Whatever 1.0.5 users report (Pax's Dell test, #64) | waiting |
+| `build_iso.sh`: a docs commit during the build marks it dirty (#72) | open |
+| `release.sh sign`: `output/repo` belongs to root after the build (#71) | open |
+
 ## 1.0.5 – bugfix release (published 2026-10-17)
 
 Moved from 1.0.4 to keep it small, plus what came up since:
@@ -70,7 +80,7 @@ Moved from 1.0.4 to keep it small, plus what came up since:
 | Clearer menus: right-click menu in Apps / Settings / Tools / Help, Control Center split into smaller pages, duplicate launchers hidden | done |
 | Calendar: clicking the clock shows the month (#45) | done – `simpleos-calendar` |
 | Dual boot: clock like Windows, fast-startup hint (#46) | done – new installs next to Windows: local time; Control Center → Date & Time |
-| Whatever 1.0.4 users report (Pax's Dell test, #64) | waiting – goes into 1.0.6 if it comes after the release |
+| Whatever 1.0.4 users report (Pax's Dell test, #64) | nothing came before the release – moved to 1.0.6 |
 | y/z swapped in search/app menu with Swiss/German keyboards (ThinkPad test) | done – XTEST keyboard gets the real layout |
 
 ## 1.1 – next feature release (2–3 months after 1.0)
