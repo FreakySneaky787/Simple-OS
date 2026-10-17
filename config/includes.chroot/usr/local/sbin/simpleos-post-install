@@ -55,10 +55,20 @@ rm -rf /usr/share/simpleos/bootloader-debs
 
 # Dual boot with Windows (os-prober put it into the GRUB menu, "--class windows"): Windows keeps the hardware clock in
 # local time, Linux in UTC – after every switch one of them showed a time off by the UTC offset. Like Ubuntu: local
-# time when Windows is there (Control Center → Date & Time can switch it back). hwclock writes the clock and
-# /etc/adjtime; without access to the clock only the setting.
+# time when Windows is there (Control Center → Date & Time can switch it back).
+# The hardware clock still holds Windows' local time, unless the live session synchronized the clock over the internet
+# (the kernel then writes UTC into it). So hwclock writes the clock (and /etc/adjtime) from the system time only when
+# that time is known to be right; installed offline, the live session read Windows' local time as UTC and writing it
+# back would put the clock off by the UTC offset in both systems – then only the setting.
+# clock_synced: the kernel's "unsynchronized" flag (adjtimex returns TIME_ERROR = 5), cleared by systemd-timesyncd;
+# readable in the installer's chroot, where timedatectl has no D-Bus.
+clock_synced() {
+    python3 -c 'import ctypes, sys; t = ctypes.create_string_buffer(512); sys.exit(0 if ctypes.CDLL(None).adjtimex(t) not in (-1, 5) else 1)' 2>/dev/null
+}
 if grep -qs -- '--class windows' /boot/grub/grub.cfg; then
-    hwclock --systohc --localtime 2>/dev/null || printf '0.0 0 0.0\n0\nLOCAL\n' > /etc/adjtime
+    if ! { clock_synced && hwclock --systohc --localtime 2>/dev/null; }; then
+        printf '0.0 0 0.0\n0\nLOCAL\n' > /etc/adjtime
+    fi
 fi
 
 rm -f "$0"

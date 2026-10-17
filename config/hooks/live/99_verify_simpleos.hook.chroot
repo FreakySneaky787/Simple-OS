@@ -1885,6 +1885,9 @@ desk gthumb.desktop "gThumb" "image/jpeg;image/png;image/webp;"
 desk mousepad.desktop "Mousepad" "text/plain;"
 desk hidden.desktop "Hidden" "text/plain;" "Hidden=true"
 desk tryexec.desktop "Missing" "text/plain;" "TryExec=/nonexistent/simpleos-test"
+# a browser without the https scheme in MimeType still counts (it takes a link: %u); a helper in the same category not
+printf '[Desktop Entry]\nType=Application\nName=NetSurf\nExec=netsurf %%u\nCategories=Network;WebBrowser;\n' > "$ap/share/applications/netsurf.desktop"
+printf '[Desktop Entry]\nType=Application\nName=Tor Browser Launcher Settings\nExec=torbrowser-launcher --settings\nCategories=Network;WebBrowser;\n' > "$ap/share/applications/tor-settings.desktop"
 printf '[Default Applications]\ntext/html=firefox-esr.desktop\napplication/xhtml+xml=firefox-esr.desktop\nx-scheme-handler/http=firefox-esr.desktop\nx-scheme-handler/https=firefox-esr.desktop\napplication/pdf=atril.desktop\napplication/postscript=atril.desktop\nimage/png=viewnior.desktop\nimage/jpeg=viewnior.desktop\nimage/webp=feh.desktop\ntext/plain=mousepad.desktop\n' > "$ap/mimeapps.list"
 printf '[Desktop Entry]\nType=Application\nName=Print Queue Applet\nExec=system-config-printer-applet\n' > "$ap/xdg/autostart/print-applet.desktop"
 printf '[Desktop Entry]\nType=Application\nName=GNOME only\nExec=true\nOnlyShowIn=GNOME;\n' > "$ap/xdg/autostart/gnome-only.desktop"
@@ -1896,7 +1899,7 @@ apps = c.installed_apps()
 assert 'hidden.desktop' not in apps and 'tryexec.desktop' not in apps and 'feh.desktop' in apps, sorted(apps)
 g = {x[0]: x for x in c.DEFAULT_APPS}
 assert [i for i, _n in c.candidates(g['image'], apps)] == ['gthumb.desktop', 'viewnior.desktop'], c.candidates(g['image'], apps)
-assert [i for i, _n in c.candidates(g['browser'], apps)] == ['chromium.desktop', 'firefox-esr.desktop']
+assert [i for i, _n in c.candidates(g['browser'], apps)] == ['chromium.desktop', 'firefox-esr.desktop', 'netsurf.desktop'], c.candidates(g['browser'], apps)
 assert not c.candidates(g['mail'], apps)
 assert c.current_default('image/jpeg', apps) == 'viewnior.desktop'
 assert c.family(g['image'], 'gthumb.desktop', apps) == ['image/jpeg', 'image/png', 'image/webp'], c.family(g['image'], 'gthumb.desktop', apps)
@@ -1971,6 +1974,12 @@ check "Control Center: dual-boot clock switch / fast-startup hint missing" \
 check "post-install: no local-time clock with Windows on the disk" \
       "grep -qF -- \"grep -qs -- '--class windows' /boot/grub/grub.cfg\" /usr/local/sbin/simpleos-post-install &&
        grep -qF 'hwclock --systohc --localtime' /usr/local/sbin/simpleos-post-install"
+# Installed offline, the live session's time is Windows' local time read as UTC: hwclock must not write it back
+check "post-install: writes the hardware clock without knowing the time is right (offline dual-boot install)" \
+      "grep -q 'clock_synced && hwclock --systohc --localtime' /usr/local/sbin/simpleos-post-install"
+# the sync test itself runs: 0 = synchronized, 1 = not – never a Python error
+cs=$(sed -n "s/^    \(python3 -c '.*adjtimex.*'\) 2>.*/\1/p" /usr/local/sbin/simpleos-post-install)
+check "post-install: clock sync test (adjtimex) broken" "[ -n \"\$cs\" ] && { sh -c \"\$cs\"; [ \$? -le 1 ]; }"
 rm -f "$wt/grub-win.cfg" "$wt/grub-lin.cfg"
 
 # ---- Calendar of the taskbar clock (#45)

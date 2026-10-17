@@ -659,9 +659,10 @@ def candidates(group, apps):
     main = group[3]
     found = [(i, e.get("Name") or i[:-8]) for i, e in apps.items()
              if main in mime_types(e) and not _true(e, "NoDisplay")]
-    if group[0] == "browser":   # browsers that leave out the https scheme in MimeType
+    if group[0] == "browser":   # browsers that leave out the https scheme in MimeType – a browser takes a link (%u/%U);
+        # without that it is a helper in the same category ("Tor Browser Launcher Settings"), and links would open it
         found += [(i, e.get("Name") or i[:-8]) for i, e in apps.items() if "WebBrowser" in e.get("Categories", "")
-                  and not _true(e, "NoDisplay") and main not in mime_types(e)]
+                  and not _true(e, "NoDisplay") and main not in mime_types(e) and re.search(r"%[uU]", e.get("Exec", ""))]
     return sorted(found, key=lambda x: x[1].lower())
 
 
