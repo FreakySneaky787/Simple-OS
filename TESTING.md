@@ -315,7 +315,8 @@ machine **updated from 1.0.5 through Software Updates** and on a fresh install f
       was not signed in under 1.0.5: after the update to 1.0.6 the window appears once.
 - [ ] **Dual boot, installed offline (issue #73):** install next to Windows **without network** (VM: no NIC; Windows
       clock = local time): after the first start of Simple OS the time is right, `timedatectl` shows "RTC in local TZ:
-      yes"; boot Windows → its time is right too.
+      yes"; boot Windows → its time is right too. (VM-tested 2026-10-21: QEMU `-rtc base=localtime`, network
+      restricted, fake Windows ESP + NTFS, install alongside – right time; with the 1.0.5 script 2 h off.)
 - [ ] **Release tools (issues #71, #72, #77):** `sudo ./build_iso.sh` (or without sudo) → `output/` and `output/repo`
       belong to you afterwards and `./tools/release.sh sign` works without a chown; a README/ROADMAP commit during the
       build keeps `dirty=0` in `output/repo/.build-state`; the build log says "changes since v1.0.5"; after `publish`,
