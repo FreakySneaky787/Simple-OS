@@ -123,6 +123,8 @@ Moving to it is the one big job of the next year, and it has to be planned, not 
 
 ## Ideas, not scheduled
 
+- Own **Simple OS Software Store** (#86): the whole Flathub catalogue in the Simple OS style, replacing Bazaar/GNOME
+  Software – grown step by step from today's Software Center, no extra multi-GB runtime.
 - Automatic security updates as an option (today: a notification, you click Install) (#54).
 - Fingerprint reader support (`fprintd`) and a setup page (#55).
 - Accessibility: screen reader, large cursor, high-contrast theme in Appearance (#56).
