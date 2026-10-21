@@ -1,5 +1,5 @@
 #!/bin/sh
-# Simple OS – network flyout (click on the network display in the taskbar, Settings → Network & Wi-Fi)
+# Simple OS – network flyout (click on the network display in the taskbar)
 # Built like on Windows, a Rofi menu in plain language, without interface names (wlan0, eth0, …):
 #   heading       "Select network"
 #   first row     active network ("Connected: Home" / "Connected: Ethernet" / "Not connected")

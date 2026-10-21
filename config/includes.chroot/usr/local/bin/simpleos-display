@@ -1,5 +1,5 @@
 #!/bin/sh
-# Simple OS – display settings (Super+P, Settings → Display)
+# Simple OS – display settings (Super+P, launcher "Display")
 # Rofi menu in plain language instead of output names (eDP-1 -> "Built-in display", HDMI-1 -> "HDMI 1"):
 #   one screen         "Resolution", "Refresh rate"
 #   several            a submenu per screen (resolution, refresh rate, main display, off) and

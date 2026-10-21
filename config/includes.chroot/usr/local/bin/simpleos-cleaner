@@ -1,5 +1,5 @@
 #!/bin/sh
-# Simple OS – clean up storage & show disk space (Menu → System → Storage Cleaner, Control Center → System)
+# Simple OS – clean up storage & show disk space (Menu → Tools → Storage Cleaner, Control Center → Storage & Backups)
 # Rofi window: at the top "Clean everything · 1.4 GB", below every item with its size; click -> confirmation with the
 # size -> clean up -> a notification how much was freed. "Disk usage": free space and the largest folders in the
 # home folder (a click opens the folder).

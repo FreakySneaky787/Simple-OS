@@ -1,5 +1,5 @@
 #!/bin/sh
-# Simple OS – keyboard layout (Control Center → System → Keyboard layout, Menu → Settings → Keyboard Layout)
+# Simple OS – keyboard layout (Control Center → Keyboard, Menu → Settings → Keyboard)
 #   simpleos-keyboard-setup                 Rofi selection of the common layouts (current one marked)
 #   simpleos-keyboard-setup --set L[:V]     e.g. "ch", "ch:fr", "de:nodeadkeys", "us:intl"
 #   simpleos-keyboard-setup --apply         apply the saved layout (Openbox autostart), silently

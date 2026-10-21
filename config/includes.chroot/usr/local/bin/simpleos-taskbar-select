@@ -1,5 +1,5 @@
 #!/bin/sh
-# Simple OS – taskbar designer (Menu → Settings → Taskbar & Panel)
+# Simple OS – taskbar designer (Control Center → Appearance → Taskbar)
 #   simpleos-taskbar-select                  selection via Rofi (position, layout, look, network/clock)
 #   simpleos-taskbar-select --set key=value  set directly, e.g. --set position=top --set clock=off
 #   simpleos-taskbar-select --apply          apply the settings again (simpleos-theme after dark/light)

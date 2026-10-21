@@ -1,6 +1,6 @@
 #!/bin/sh
-# Simple OS – Do Not Disturb (Control Center → System, Menu → System → Do Not Disturb, launcher, click on the
-# icon in the taskbar)
+# Simple OS – Do Not Disturb (Control Center → Notifications, Menu → Settings → Do Not Disturb, launcher, click on
+# the icon in the taskbar)
 #   simpleos-dnd --on | --off | --toggle    (without an argument: --toggle)
 #   simpleos-dnd --status                   "on" or "off"
 #   simpleos-dnd --no-effects on|off|status turn window effects (shadows/transparency) off too with DND?

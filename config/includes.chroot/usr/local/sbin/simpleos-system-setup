@@ -15,7 +15,7 @@
 #   pkexec simpleos-system-setup --refresh   only check (simpleos-update when opening): download package lists and
 #                                    firmware metadata, install nothing. Without a password for active
 #                                    administrators (polkit rule 50-simpleos-update-refresh.rules, hook 14)
-#   pkexec simpleos-system-setup --firewall on|off   switch the firewall (ufw) on/off (Control Center → System)
+#   pkexec simpleos-system-setup --firewall on|off   switch the firewall (ufw) on/off (Control Center → Password & Security)
 #   pkexec simpleos-system-setup --drivers PACKAGE…   install drivers/firmware/microcode (simpleos-drivers
 #                                    --install); only packages from the fixed list DRIVER_PACKAGES, the sources get
 #                                    contrib/non-free added (nvidia-driver, broadcom-sta-dkms). Live lines

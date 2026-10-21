@@ -1,5 +1,5 @@
 #!/bin/sh
-# Simple OS – Bluetooth flyout (Settings → Bluetooth, Control Center → Bluetooth)
+# Simple OS – Bluetooth flyout (launcher "Bluetooth" in the search; the same settings: Control Center → Bluetooth)
 # Rofi menu like Windows 11 on the right above the taskbar:
 #   heading       "Bluetooth" + On/Off
 #   first row     "Turn off Bluetooth" / "Turn on Bluetooth"

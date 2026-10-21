@@ -1,8 +1,8 @@
 #!/bin/sh
-# Simple OS – backups / restore points (Menu → System → Backups, Control Center → System)
+# Simple OS – backups / restore points (Menu → Tools → Backups, Control Center → Storage & Backups)
 # Rofi window:
 #   "Create restore point now"                   asks for a name (optional), then the pkexec password
-#   "Restore point before updates: On/Off"       a point before every system update (Settings → Software Updates)
+#   "Restore point before updates: On/Off"       a point before every system update (Software Updates)
 #   below the existing points ("1 Oct 2026, 14:30 · Before system update"); click -> Restore…,
 #   Check, Delete, Back. Restore asks twice and explains: the system is reset, personal files
 #   in /home stay, the PC restarts afterwards.

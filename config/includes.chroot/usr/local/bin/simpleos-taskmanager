@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Simple OS – Task Manager (Ctrl+Shift+Esc, Menu → System → Task Manager, Control Center → System).
+"""Simple OS – Task Manager (Ctrl+Shift+Esc, Menu → Tools → Task Manager, Control Center → System & Updates).
 
 List of programs with CPU (share of all cores, like on Windows), memory and user, read again from /proc
 every 2 s. Rows are updated in place (selection and scroll position stay).

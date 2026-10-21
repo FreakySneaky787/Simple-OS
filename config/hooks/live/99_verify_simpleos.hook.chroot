@@ -440,6 +440,14 @@ check "Control Center → Appearance: Taskbar button missing" "grep -qF 'spawn(\
 check "simpleos-taskbar-select: shell syntax error" "sh -n /usr/local/bin/simpleos-taskbar-select"
 check "simpleos-theme does not pull the taskbar along (Match theme)" "grep -q 'simpleos-taskbar-select --apply' /usr/local/bin/simpleos-theme"
 check "keyboard shortcut overview without groups" "grep -q -- '-markup-rows' /usr/local/bin/simpleos-help"
+# Monospace list: every description starts in column 29 (#80: "Software Updates" / "Files: right-click" were off)
+check "keyboard shortcut overview: a row is out of line" "python3 -c 'import sys; t = open(sys.argv[1]).read()
+rows = [l for l in t.split(\"<<\\x27LIST\\x27\\n\", 1)[1].split(\"\\nLIST\\n\", 1)[0].splitlines() if not l.startswith(\"<b>\")]
+bad = [l for l in rows if not (len(l) > 28 and l[27] == \" \" and l[28] != \" \")]
+print(bad) if bad else None; sys.exit(1 if bad or len(rows) < 20 else 0)' /usr/local/bin/simpleos-help"
+# Since 1.0.5 there is no "System" menu or Control Center page (Tools, System & Updates, Storage & Backups …)
+check "help/docs: old paths 'Menu → System' / 'Control Center → System →' / 'Settings → Software Updates' (#80)" \
+      "! grep -rqsE 'Menu → System|Control Center → System( →|\\)|,)|Settings → Software Updates|Tools → Updates ' /usr/local/bin /usr/local/sbin /usr/local/lib/simpleos"
 check "keyboard shortcut overview: Super+N missing" "grep -q '^Super+N ' /usr/local/bin/simpleos-help"
 check "simpleos-keybindings does not forward to simpleos-help" "grep -q 'exec /usr/local/bin/simpleos-help' /usr/local/bin/simpleos-keybindings"
 # Designer on a copy of the skel configuration: changes end up in tint2rc, the defaults restore the

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Simple OS – graphical system update (Menu → Settings → Software Updates)
+# Simple OS – graphical system update (Menu → Tools → Software Updates)
 #   simpleos-update           Rofi window: available updates, "Install now" -> pkexec (password dialog)
 #   simpleos-update --check   counts updates; if there are any, a notification with "Install" appears -> opens the
 #                             window above. Not in the live session.

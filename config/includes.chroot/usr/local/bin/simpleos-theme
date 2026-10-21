@@ -1,7 +1,7 @@
 #!/bin/sh
 # Simple OS – apply the design (used by the Setup Wizard, but also works directly):
 #   simpleos-theme [--mode dark|light] [--accent blue|mauve|pink|green|peach|teal] [--show]
-#   simpleos-theme --pick    selection via Rofi (Menu → Settings → Appearance)
+#   simpleos-theme --pick    selection via Rofi (launcher "Appearance")
 #   simpleos-theme --xsettings   Openbox autostart: start the XSETTINGS service (xsettingsd) with the current design
 #   simpleos-theme … --no-wallpaper   do not touch the wallpaper (simpleos-wallpaper-schedule sets it itself)
 # --mode   light (Catppuccin Latte) / dark (Mocha) – immediately in the running session:

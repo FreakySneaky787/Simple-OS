@@ -1,5 +1,5 @@
 #!/bin/sh
-# Simple OS – report a problem (Menu → Help → Report a Problem, Control Center → System)
+# Simple OS – report a problem (Menu → Help → Report a Problem, Control Center → System & Updates)
 # Rofi window with three ways:
 #   "Create report"                   system info + logs including the system log (pkexec helper, password)
 #   "Create report without system logs"  the same without a password (only what the user may read)

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-"""Simple OS – drivers & hardware assistant (Control Center → System → Hardware & Drivers).
+"""Simple OS – drivers & hardware assistant (Control Center → System & Updates → Hardware & Drivers).
 
-    simpleos-drivers                 open the Control Center on the System page
+    simpleos-drivers                 open the Control Center on the System & Updates page
     simpleos-drivers --json          report as JSON (the Control Center reads it)
     simpleos-drivers --summary       report as text
     simpleos-drivers --install       install recommended packages (pkexec simpleos-system-setup --drivers …,

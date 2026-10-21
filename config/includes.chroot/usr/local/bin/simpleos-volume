@@ -1,5 +1,5 @@
 #!/bin/sh
-# Simple OS – sound flyout (Super+A, Settings → Sound)
+# Simple OS – sound flyout (Super+A, launcher "Sound")
 # Rofi menu like Windows 11 on the right above the taskbar:
 #   heading     active output and volume ("Speakers · 40%")
 #   volume      "Volume up" / "Volume down" (±10 %, at most 100 %, the menu stays open), "Set volume…" (0–100 %), Mute/Unmute
