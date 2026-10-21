@@ -121,12 +121,12 @@ Moving to it is the one big job of the next year, and it has to be planned, not 
 - **Timeline sketch:** branch + first trixie ISO as a preview in Q1 2027, public beta in Q2, 2.0 when the upgrade
   tool has been run on several real machines.
 
-## 2.1 / 2.2 and 3.0 – Wayland
+## 2.x – Wayland (not in 2.0.x)
 
 - **Wayland session with labwc** (#87): first an extra login session "Simple OS (Wayland, preview)" next to the X11
   default, the tools moved over one by one (taskbar, idle/lock, displays, clipboard, screenshots, night light, menus).
-  Not in 2.0 itself – never change the base and the desktop in the same release. **3.0** (Debian 14): Wayland becomes
-  the default once everything works; X11 stays as a fallback for a while.
+  Not in any 2.0.x release – never change the base and the desktop in the same release. **Later in 2.x** (e.g. 2.2 or
+  2.3): Wayland becomes the default once everything works; X11 stays as a fallback for a while.
 
 ## Ideas, not scheduled
 
@@ -150,7 +150,7 @@ Moving to it is the one big job of the next year, and it has to be planned, not 
 ## Decisions we have made (so we don't argue them again)
 
 - Debian stable base + backports only for kernel/firmware/microcode; no own repository for apps (Flatpak/Flathub instead).
-- Openbox on X11 up to and including 2.0 – everything (night light, screenshot, clipboard, snapping) is built for X11.
-  Wayland comes after 2.0 via labwc, first as a preview session, default in 3.0 (#87).
+- Openbox on X11 for all 1.x and 2.0.x releases – everything (night light, screenshot, clipboard, snapping) is built for
+  X11. Wayland comes after 2.0.x via labwc: first as a preview session, then the default later in 2.x (#87).
 - English interface; translations come later and must not bloat the image.
 - Updates through APT from the signed GitHub release repository; the release key backup lives outside the repo.
