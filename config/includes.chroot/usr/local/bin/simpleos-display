@@ -86,7 +86,18 @@ best() {
         fi
     done
 }
-hz() { printf '%s' "$1" | awk '{ printf "%d Hz", $1 + 0.5 }'; }
+# "60 Hz"; with decimals ("59.97 Hz") only when another rate of the same resolution would also show as 60 Hz (#78:
+# panels with 60.00, 59.97 and 59.96 showed "60 Hz" three times). hz RATE [ALL RATES OF ITS RESOLUTION…]
+hz() {
+    [ -n "$1" ] || return 0
+    printf '%s\n' "$@" | awk 'NR == 1 { r = $1 } { v[NR] = $1 }
+        END { n = 0; for (i = 2; i <= NR; i++) if (int(v[i] + 0.5) == int(r + 0.5) && v[i] != r) n++
+              if (!n) { printf "%d Hz", r + 0.5; exit }
+              t = r; if (t ~ /\./) { sub(/0+$/, "", t); sub(/\.$/, "", t) } printf "%s Hz", t }'
+}
+# hz of the current rate of an output
+# shellcheck disable=SC2046 # the rates as separate arguments
+cur_hz() { hz "$(cur_rate "$1")" $(rates "$1" "$(cur_mode "$1")"); }
 # Display name instead of the output name
 pretty() {
     n=${1##*-}; sos_is_num "$n" || n=
@@ -267,9 +278,11 @@ pick_resolution() {
 pick_rate() {
     cur=$(cur_mode "$1") rate=$(cur_rate "$1")
     [ -n "$cur" ] || { sos_notify "This display is off."; return; }
-    for r in $(rates "$1" "$cur"); do
-        if [ "$r" = "$rate" ]; then sos_add "$(sos_fa "$I_CHECK")  $(hz "$r")  $(sos_dim "Current")" "noop"
-        else sos_add "      $(hz "$r")" "set$TAB$r"; fi
+    all=$(rates "$1" "$cur" | awk '!seen[$0]++')
+    for r in $all; do
+        # shellcheck disable=SC2086 # $all: the rates as separate arguments
+        if [ "$r" = "$rate" ]; then sos_add "$(sos_fa "$I_CHECK")  $(hz "$r" $all)  $(sos_dim "Current")" "noop"
+        else sos_add "      $(hz "$r" $all)" "set$TAB$r"; fi
     done
     sos_pick "<b>Refresh rate</b>   $(sos_dim "$(pretty "$1") · $cur")" 360
     [ "$action" = set ] && apply "--output $1 --mode $cur --rate $arg1"
@@ -277,7 +290,7 @@ pick_rate() {
 # Submenu of a screen (only with several)
 screen_menu() {
     sos_add "$(sos_fa "$I_RES")  Resolution  $(sos_dim "$(cur_mode "$1")")" "res"
-    sos_add "$(sos_fa "$I_RATE")  Refresh rate  $(sos_dim "$(hz "$(cur_rate "$1")")")" "rate"
+    sos_add "$(sos_fa "$I_RATE")  Refresh rate  $(sos_dim "$(cur_hz "$1")")" "rate"
     is_primary "$1" || sos_add "$(sos_fa "$I_STAR")  Make main display" "primary"
     if is_on "$1"; then sos_add "$(sos_fa "$I_OFF")  Turn off" "off"
     else sos_add "$(sos_fa "$I_SCREEN")  Turn on" "on"; fi
@@ -335,11 +348,11 @@ while :; do
     [ -n "$main" ] || main=$(printf '%s\n' "$outs" | head -n 1)
     if [ "$n" -eq 1 ]; then
         sos_add "$(sos_fa "$I_RES")  Resolution  $(sos_dim "$(cur_mode "$main")")" "res$TAB$main"
-        sos_add "$(sos_fa "$I_RATE")  Refresh rate  $(sos_dim "$(hz "$(cur_rate "$main")")")" "rate$TAB$main"
+        sos_add "$(sos_fa "$I_RATE")  Refresh rate  $(sos_dim "$(cur_hz "$main")")" "rate$TAB$main"
         head="<b>Display</b>   $(sos_dim "$(pretty "$main") · $(cur_mode "$main")")"
     else
         for o in $outs; do
-            if is_on "$o"; then state="$(cur_mode "$o") · $(hz "$(cur_rate "$o")")"; else state="Off"; fi
+            if is_on "$o"; then state="$(cur_mode "$o") · $(cur_hz "$o")"; else state="Off"; fi
             is_primary "$o" && state="$state · Main"
             sos_add "$(sos_fa "$I_SCREEN")  $(sos_esc "$(pretty "$o")")  $(sos_dim "$state")" "screen$TAB$o"
         done

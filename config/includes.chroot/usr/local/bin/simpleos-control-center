@@ -15,8 +15,9 @@ One window for all settings, the sections on the left, the page on the right:
   Notifications  Do Not Disturb (simpleos-dnd: pause notifications, optionally without window effects)
   Keyboard     keyboard layout (simpleos-keyboard-setup), keyboard shortcuts (simpleos-help)
   Printers & Scanners  system-config-printer, simple-scan
-  Apps         default apps (browser, email, PDF, pictures, music, videos, text: ~/.config/mimeapps.list and
-               ~/.local/share/applications/defaults.list), startup apps (XDG autostart: switch on/off, add, remove)
+  Apps         default apps (browser, email, PDF, pictures, music, videos, text, documents, spreadsheets,
+               presentations: ~/.config/mimeapps.list and ~/.local/share/applications/defaults.list), startup apps
+               (XDG autostart: switch on/off, add, remove)
   Date & Time  time zone, automatic time via timedatectl
   Storage & Backups  free space, simpleos-cleaner, disks (gnome-disks), restore points (simpleos-backup)
   Password & Security  password, firewall (ufw via the root helper)
@@ -208,6 +209,19 @@ def screens(query=None):
     return result
 
 
+def rate_labels(rates):
+    """[(rate, text)] for the rates of one resolution: whole Hz ("60 Hz"); decimals only where two rates would look
+    the same – "60 Hz", "59.97 Hz", "59.96 Hz" instead of three times "60 Hz" (#78). xrandr's own text, so it is
+    exactly the rate that is set. The same rate twice (several mode lines): once."""
+    uniq = list(dict.fromkeys(rates))
+    whole = [round(float(r)) for r in uniq]
+    out = []
+    for r, w in zip(uniq, whole):
+        text = (r.rstrip("0").rstrip(".") if "." in r else r) if whole.count(w) > 1 else str(w)
+        out.append((r, f"{text} Hz"))
+    return out
+
+
 def pretty(name):
     num = name.rsplit("-", 1)[-1]
     num = f" {num}" if num.isdigit() else ""
@@ -275,6 +289,48 @@ def nightlight_status():
     if len(out) >= 3:
         return out[1], int(out[2]) if out[2].isdigit() else 4000
     return "off", 4000
+
+
+# ------------------------------------------------------------------ Wi-Fi (nmcli through the Setup Wizard's functions)
+def wifi_view(state, nets):
+    """What the Wi-Fi page shows. Its own view, not the Setup Wizard's network_view() (that one hides the list while
+    online and never offers Disconnect – #76): the list of networks whenever there is Wi-Fi and it is on, online or
+    not; the connected network offers Disconnect, every other one Connect (= switch networks). No interface names.
+    state = network_state(), nets = wifi_networks() of the wizard.
+    Returns: status, hint, rows [(ssid, info, secured, in_use, button text)]"""
+    has_wifi, radio, kind = bool(state.get("wifi")), bool(state.get("radio", True)), state.get("kind")
+    current = next((n[0] for n in nets if n[3]), "")
+    if kind == "wifi":
+        status = f"Connected to {current or state.get('name') or 'Wi-Fi'}"
+    elif kind == "ethernet":
+        status = "Connected with a network cable"
+    else:
+        status = "Not connected"
+    rows = []
+    if has_wifi and radio:
+        for ssid, signal, secured, in_use in nets:
+            word = "Strong signal" if signal >= 70 else "Good signal" if signal >= 40 else "Weak signal"
+            rows.append((ssid, "Connected" if in_use else word + (" · needs password" if secured else " · open"),
+                         secured, in_use, "Disconnect" if in_use else "Connect"))
+    if not has_wifi:
+        hint = ("This computer has no Wi-Fi." if kind else
+                "This computer has no Wi-Fi. Plug in a network cable – it connects by itself.")
+    elif not radio:
+        hint = "Wi-Fi is turned off. Turn it on with the switch to see the networks around you."
+    elif not rows:
+        hint = "No Wi-Fi networks found nearby. Move closer to your router and click Refresh."
+    elif any(r[3] for r in rows):
+        hint = "To switch, click Connect next to another network."
+    else:
+        hint = ("Click Connect next to your network and type its password if it asks for one "
+                "(often on a sticker on your router).")
+    return {"status": status, "hint": hint, "rows": rows}
+
+
+def disconnect_wifi(nmcli, dev):
+    """(ok, message) – nmcli = the wizard's nmcli() (English messages, never raises)."""
+    ok = nmcli("device", "disconnect", dev, timeout=30).returncode == 0
+    return ok, "Disconnected." if ok else "Could not disconnect. Please try again."
 
 
 # ------------------------------------------------------------------ Bluetooth (bluetoothctl)
@@ -592,14 +648,35 @@ def mime_types(entry):
     return [m for m in entry.get("MimeType", "").split(";") if m]
 
 
-# (key, title, subtitle, main type, prefix: the whole family follows the choice)
+# Office files (#75): no common prefix – the family is listed. Only the apps that can open the main type are offered.
+OOXML = "application/vnd.openxmlformats-officedocument."
+DOCUMENTS = ("application/vnd.oasis.opendocument.text", "application/vnd.oasis.opendocument.text-template",
+             OOXML + "wordprocessingml.document", OOXML + "wordprocessingml.template", "application/msword",
+             "application/vnd.ms-word.document.macroEnabled.12", "application/vnd.ms-word.template.macroEnabled.12",
+             "application/rtf", "text/rtf")
+SPREADSHEETS = ("application/vnd.oasis.opendocument.spreadsheet", "application/vnd.oasis.opendocument.spreadsheet-template",
+                OOXML + "spreadsheetml.sheet", OOXML + "spreadsheetml.template", "application/vnd.ms-excel",
+                "application/vnd.ms-excel.sheet.macroEnabled.12", "application/vnd.ms-excel.sheet.binary.macroEnabled.12",
+                "text/csv")
+PRESENTATIONS = ("application/vnd.oasis.opendocument.presentation",
+                 "application/vnd.oasis.opendocument.presentation-template", OOXML + "presentationml.presentation",
+                 OOXML + "presentationml.slideshow", OOXML + "presentationml.template", "application/vnd.ms-powerpoint",
+                 "application/vnd.ms-powerpoint.presentation.macroEnabled.12")
+# (key, title, subtitle, main type, family: a prefix ("image/") or a tuple of types – the whole family follows the choice;
+# "" = the types Simple OS opens with the same app as the main type)
 DEFAULT_APPS = [("browser", "Web browser", "Links and web pages", "x-scheme-handler/https", ""),
                 ("mail", "Email", "Opens “send an email” links", "x-scheme-handler/mailto", ""),
                 ("pdf", "PDF documents", None, "application/pdf", ""),
                 ("image", "Pictures", None, "image/jpeg", "image/"),
                 ("audio", "Music", None, "audio/mpeg", "audio/"),
                 ("video", "Videos", None, "video/mp4", "video/"),
-                ("text", "Text files", None, "text/plain", "")]
+                ("text", "Text files", None, "text/plain", ""),
+                ("documents", "Documents", "Word and Writer files (.docx, .odt, .doc …)", OOXML + "wordprocessingml.document",
+                 DOCUMENTS),
+                ("spreadsheets", "Spreadsheets", "Excel and Calc files (.xlsx, .ods, .csv …)", OOXML + "spreadsheetml.sheet",
+                 SPREADSHEETS),
+                ("presentations", "Presentations", "PowerPoint and Impress files (.pptx, .odp …)",
+                 OOXML + "presentationml.presentation", PRESENTATIONS)]
 SYSTEM_MIMEAPPS = os.environ.get("SIMPLEOS_SYSTEM_MIMEAPPS", "/etc/xdg/mimeapps.list")
 
 
@@ -641,11 +718,13 @@ def current_default(mime, apps):
 
 def family(group, app_id, apps):
     """Types the choice of APP_ID for GROUP (row of DEFAULT_APPS) is set for: the main type and its relatives
-    (same prefix, or the ones Simple OS opens with the same app) that the app can open"""
+    (listed, same prefix, or the ones Simple OS opens with the same app) that the app can open"""
     _key, _t, _s, main, prefix = group
     system = read_defaults(SYSTEM_MIMEAPPS)
     can = set(mime_types(apps.get(app_id, {})))
-    if prefix:
+    if isinstance(prefix, tuple):
+        want = set(prefix) | {main}
+    elif prefix:
         want = {m for m in list(system) + list(can) if m.startswith(prefix)}
     else:
         want = {m for m, a in system.items() if a == system.get(main)} | {main}
@@ -693,8 +772,9 @@ def _set_lines(path, header, pairs):
 
 
 def set_default(group, app_id, apps):
-    """Make APP_ID the default for GROUP: ~/.config/mimeapps.list (GIO: Files, browsers …) and
-    ~/.local/share/applications/defaults.list (xdg-open without a desktop environment reads that one first)"""
+    """Make APP_ID the default for GROUP: ~/.config/mimeapps.list (GIO: Files, browsers …; xdg-mime/xdg-open read it
+    first) and ~/.local/share/applications/defaults.list (the older file – Debian's xdg-utils 1.1.3 reads it only after
+    all mimeapps.list files; written too, so no tool that reads only that one keeps an old choice)"""
     types = family(group, app_id, apps)
     try:
         _set_lines(user_mimeapps(), "[Default Applications]", [(m, app_id + ";") for m in types])
@@ -959,8 +1039,8 @@ def main(argv):
                 def fill_rates(_c=None, s=s, res=res, rate=rate):
                     rate.remove_all()
                     rates = dict(s["modes"]).get(res.get_active_id() or "", [])
-                    for r in rates:
-                        rate.append(r, f"{round(float(r))} Hz")
+                    for r, text in rate_labels(rates):
+                        rate.append(r, text)
                     rate.set_active_id(s["rate"] if s["rate"] in rates else (rates[0] if rates else None))
                 fill_rates()
                 res.connect("changed", fill_rates)
@@ -1093,7 +1173,8 @@ def main(argv):
                 self.note(f"Wi-Fi could not be read: {res}")
                 return self.show_all_now()
             state, nets, band = res
-            view = self.w.network_view(state, nets)
+            self.dev = state["wifi"]
+            view = wifi_view(state, nets)
             radio = Gtk.Switch(active=bool(state["radio"]), sensitive=bool(state["wifi"]))
             radio.connect("notify::active", lambda s, _p: bg(
                 lambda: self.w.nmcli("radio", "wifi", "on" if s.get_active() else "off"), lambda _r: self.refresh()))
@@ -1108,13 +1189,12 @@ def main(argv):
                 combo.connect("changed", lambda c: self.set_band(state["name"], c.get_active_id()))
                 self.put(card([("Wi-Fi band", "If downloads keep dropping to a crawl although the signal is strong, try "
                                 "2.4 GHz – the 5 GHz channel of some routers is unstable", combo)]))
-            if view["show_list"]:
-                rows = []
-                for ssid, info, secured, in_use, act in view["rows"]:
-                    rows.append((ssid, info, button(act, lambda s=ssid, sec=secured, u=in_use: self.click(s, sec, u),
-                                                    None if in_use else "suggested-action")))
-                if rows:
-                    self.put(card(rows))
+            rows = []
+            for ssid, info, secured, in_use, act in view["rows"]:
+                rows.append((ssid, info, button(act, lambda s=ssid, sec=secured, u=in_use: self.click(s, sec, u),
+                                                None if in_use else "suggested-action")))
+            if rows:
+                self.put(card(rows))
             self.put(card([("Search again", None, button("Refresh", self.refresh)),
                            ("More network options", "Wired, VPN, hidden networks",
                             button("Open", lambda: spawn("nm-connection-editor")))]))
@@ -1132,9 +1212,9 @@ def main(argv):
             bg(work, lambda ok: (None if ok is True else self.win.error("The Wi-Fi band could not be changed.")) or self.refresh())
 
         def click(self, ssid, secured, in_use, ask=False):
-            dev = self.w.network_state()["wifi"]
+            dev = self.dev   # the Wi-Fi device of the shown list (rows only exist when there is one)
             if in_use:
-                return bg(lambda: self.w.disconnect_wifi(dev), self.done)
+                return bg(lambda: disconnect_wifi(self.w.nmcli, dev), self.done)
             password = ""
             # ask for the password: a new network – or the saved password just did not work (ask)
             if secured and (ask or ssid not in self.w.saved_networks()):
@@ -1464,17 +1544,20 @@ def main(argv):
                 if not cands:
                     rows.append((title, "No app installed for this yet",
                                  button("Get one…", lambda: spawn("simpleos-software-center"))))
-                    continue
-                combo = Gtk.ComboBoxText()
-                for i, name in cands:
-                    combo.append(i, name)
-                if cur and not combo.set_active_id(cur):
-                    combo.append(cur, apps.get(cur, {}).get("Name") or cur[:-8])
-                    combo.set_active_id(cur)
-                combo.connect("changed", lambda c, g=group: c.get_active_id() and self.choose(g, c.get_active_id(), apps))
-                rows.append((title, sub, combo))
-            rows.append(("More browsers", "Install Chromium or Mullvad Browser",
-                         button("Choose…", lambda: spawn("simpleos-browser-select"))))
+                else:
+                    combo = Gtk.ComboBoxText()
+                    for i, name in cands:
+                        combo.append(i, name)
+                    if cur and not combo.set_active_id(cur):
+                        combo.append(cur, apps.get(cur, {}).get("Name") or cur[:-8])
+                        combo.set_active_id(cur)
+                    elif not cur and len(cands) == 1:
+                        combo.set_active(0)   # nothing chosen, but the only app that can open it is the one used
+                    combo.connect("changed", lambda c, g=group: c.get_active_id() and self.choose(g, c.get_active_id(), apps))
+                    rows.append((title, sub, combo))
+                if key == "browser":
+                    rows.append(("More browsers", "Install Chromium or Mullvad Browser",
+                                 button("Choose…", lambda: spawn("simpleos-browser-select"))))
             self.put(card(rows))
             self.put(label("<b>Startup apps</b>", markup=True))
             self.note("Apps that start by themselves when you sign in. Fewer startup apps = a faster start.")

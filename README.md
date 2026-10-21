@@ -141,7 +141,9 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
     `system/020-browser-defaults` (1.0.2) gives the shipped browser (`firefox-esr`) back to `/etc/xdg/mimeapps.list` and
     `defaults.list`, which the Setup Wizard's Firefox removal used to rewrite. 1.0.4: `030-grub-pc-devices` (BIOS: tell
     grub-pc which disk holds GRUB), `040-locale-gen` (generate the system language that up to 1.0.3 was never
-    generated), `050-os-prober` (rebuild the GRUB menu once with other systems in it).
+    generated), `050-os-prober` (rebuild the GRUB menu once with other systems in it). 1.0.5: `060-bluetooth-restart`
+    (ask for a restart so headphone battery levels show). 1.0.6: `user/070-whats-new-existing-account` (an account from
+    before 1.0.5 whose Setup Wizard was closed with the window's X is not taken for a new one – "What's new" shows).
   - **Files the system changes itself:** tools never write into package files under `/etc/skel` (or other conffiles)
     for everyday settings – a changed conffile is kept by dpkg and the edition tool forever. Per-account changes go
     into the home copies (merged by the edition tool), see `office-menu` below.

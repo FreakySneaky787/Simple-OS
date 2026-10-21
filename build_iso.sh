@@ -11,10 +11,17 @@ cd "$(dirname "$0")"
 
 IMAGE="simple-os-builder"
 # Which commit is this build made from, and were config/ and tools/ clean? tools/release.sh publish refuses an ISO that
-# was built from uncommitted files or from another commit than the one it tags (recorded now, checked again after the build)
-build_state() { printf 'commit=%s\ndirty=%s\n' "$(git rev-parse HEAD 2>/dev/null || echo unknown)" \
-    "$([[ -z "$(git status --porcelain -- config tools 2>/dev/null)" ]] && echo 0 || echo 1)"; }
-BUILD_STATE=$(build_state)
+# was built from uncommitted files or from another commit than the one it tags (recorded now, checked again after the
+# build). Only config/ and tools/ count: a commit of README/ROADMAP during the build moved HEAD and marked the 1.0.5
+# build dirty (#72). --no-optional-locks: as root (sudo ./build_iso.sh) git must not rewrite the user's .git/index.
+uncommitted() { [[ -n "$(git --no-optional-locks status --porcelain -- config tools 2>/dev/null)" ]]; }
+START_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo unknown)
+START_DIRTY=0
+uncommitted && START_DIRTY=1
+# The build runs privileged as root and writes build/ and output/ as root: they go back to the person who started it
+# – also with "sudo ./build_iso.sh" (id -u is 0 then; up to 1.0.5 output/repo stayed root's and
+# "./tools/release.sh sign" failed, #71)
+OWNER="${SUDO_UID:-$(id -u)}:${SUDO_GID:-$(id -g)}"
 case "${1:-}" in
     "")            CONFIG_ONLY=0; CONTAINER_CMD="${CONTAINER_CMD:-sudo podman}"; RUN_OPTS=(--privileged) ;;
     --config-only) CONFIG_ONLY=1; CONTAINER_CMD="${CONTAINER_CMD:-podman}";      RUN_OPTS=() ;;
@@ -27,7 +34,7 @@ mkdir -p build output
 # fails (set -e): otherwise the directories belong to root and the next call (also --config-only, which
 # runs rootless) aborts with "operation not permitted".
 if [[ $CONFIG_ONLY == 0 ]]; then
-    trap 'sudo chown -R "$(id -u):$(id -g)" build output 2>/dev/null || true' EXIT
+    trap 'sudo chown -R "$OWNER" build output 2>/dev/null || true' EXIT
 fi
 
 # A fresh copy of the source configuration; lb clean --purge also removes the stage marker .build/config,
@@ -60,9 +67,12 @@ sudo cp build/live-image-amd64.packages output/Simple-OS.packages.txt
 # Marker for tools/release.sh: this repository's simpleos package is the one in this ISO (a later --config-only
 # rebuilds output/repo without the marker). Dot file: not uploaded as a release asset.
 (cd output/repo && sha256sum simpleos_*_all.deb) | sudo tee output/repo/.in-iso >/dev/null
-# ... and the state of the sources it was built from (a change during the build counts as dirty)
-if [[ "$(build_state)" != "$BUILD_STATE" ]]; then BUILD_STATE=$(printf '%s\ndirty=1' "${BUILD_STATE%%$'\n'*}"); fi
-printf '%s\n' "$BUILD_STATE" | sudo tee output/repo/.build-state >/dev/null
+# ... and the state of the sources it was built from: dirty if config/ or tools/ were not committed at the start, are
+# not now, or changed in a commit made during the build (another HEAD with only docs changed stays clean)
+dirty=$START_DIRTY
+uncommitted && dirty=1
+if [[ $START_COMMIT == unknown ]] || ! git diff --quiet "$START_COMMIT" HEAD -- config tools 2>/dev/null; then dirty=1; fi
+printf 'commit=%s\ndirty=%s\n' "$START_COMMIT" "$dirty" | sudo tee output/repo/.build-state >/dev/null
 
 echo "Done: output/Simple-OS.iso (log: build/build.log)"
 echo "  Checksum:     output/Simple-OS.iso.sha256  ($(cut -d' ' -f1 output/Simple-OS.iso.sha256))"

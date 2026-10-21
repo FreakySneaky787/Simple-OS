@@ -8,10 +8,14 @@ Install, open and remove selected programs with a click – without a terminal, 
                       LibreOffice = --office libreoffice) – graphical password prompt, no free package names
 Search and categories at the top, "More apps" below: Bazaar (simpleos-software) and GNOME Software (all Flathub
 and Debian programs). Installations run in the background with a progress display; errors in plain language.
+Runs only once (Gtk.Application): a second start brings the window back. Closed during an installation, the window
+only hides – the installation's output comes through a pipe to this process, so it must live until the end (#83: the
+helper died at its next line, Steam/LibreOffice stayed half installed); then a notification, and the program ends.
 
   simpleos-software-center            window
   simpleos-software-center --list     catalog with status (installed/available) as text (tests)
-Test: SIMPLEOS_SC_SELFTEST=1 (build the window, switch through search/categories, exit 1 on a Python exception).
+Test: SIMPLEOS_SC_SELFTEST=1 (build the window, switch through search/categories, exit 1 on a Python exception),
+SIMPLEOS_SC_SELFTEST=close (install Steam, close the window at once: the program must end by itself afterwards).
 """
 import os
 import shutil
@@ -180,9 +184,9 @@ def main(argv):
 
     import gi
     gi.require_version("Gtk", "3.0")
-    from gi.repository import GLib, Gtk
+    from gi.repository import Gio, GLib, Gtk
 
-    selftest = os.environ.get("SIMPLEOS_SC_SELFTEST") == "1"
+    selftest = os.environ.get("SIMPLEOS_SC_SELFTEST") in ("1", "close")
     errors = []
     if selftest:
         def hook(etype, value, tb):
@@ -198,14 +202,15 @@ def main(argv):
             lab.get_style_context().add_class("dim-label")
         return lab
 
-    class Store(Gtk.Window):
-        def __init__(self):
-            super().__init__(title="Software Center")
+    class Store(Gtk.ApplicationWindow):
+        def __init__(self, app):
+            super().__init__(application=app, title="Software Center")
             self.set_default_size(820, 640)
             self.set_icon_name("system-software-install")
             self.set_position(Gtk.WindowPosition.CENTER)
-            self.connect("destroy", Gtk.main_quit)
+            self.connect("delete-event", self.on_close)
             self.busy = None        # key of the running installation
+            self.busy_text = ""     # "Installing Steam"
             self.category = "All"
             self.states = {}
             self.flatpaks = {}      # App-ID -> "system" | "user"
@@ -249,6 +254,14 @@ def main(argv):
             self.add(outer)
             self.show_all()
             self.reload()
+
+        def on_close(self, *_):
+            if self.busy is None:
+                return False        # close; the program ends with its last window
+            # hide instead: this process reads the installation's output (see the top), done() ends the program
+            self.hide()
+            self.notify(f"{self.busy_text} continues in the background. You'll get a message when it's done.")
+            return True
 
         def spawn(self, cmdline):
             try:
@@ -339,7 +352,7 @@ def main(argv):
             self.do(app, install_cmd(app), "Installing")
 
         def do(self, app, cmdline, verb):
-            self.busy = app[0]
+            self.busy, self.busy_text = app[0], f"{verb} {app[1]}"
             self.fill()
             self.progress.set_text(f"{verb} {app[1]}… (this can take a few minutes)")
             self.progress.show()
@@ -392,14 +405,19 @@ def main(argv):
                 rc, out = res
                 self.busy = None
                 self.progress.hide()
+                hidden = not self.get_visible()     # closed during the installation
                 if rc != 0:
                     print(f"simpleos-software-center: {' '.join(cmdline)} -> {rc}\n{out}", file=sys.stderr)
+                    if hidden:
+                        self.present()  # the error needs the window; closing it then ends the program
                     self.error(f"{app[1]}: {explain(rc, out)}")
                 else:
                     self.notify(f"{app[1]} is {'installed' if verb == 'Installing' else 'removed'}.")
                     # LibreOffice/ONLYOFFICE: entries in the Openbox menu (Apps) follow what is installed
                     if os.access(OFFICE_MENU, os.X_OK):
                         subprocess.Popen([OFFICE_MENU, "--reconfigure"], start_new_session=True)
+                    if hidden:
+                        return self.destroy()
                 self.reload()
             threading.Thread(target=lambda: (lambda r: GLib.idle_add(done, r))(work()), daemon=True).start()
 
@@ -414,23 +432,37 @@ def main(argv):
             d.run()
             d.destroy()
 
-    win = Store()
-    if selftest:
-        steps = [lambda: win.search.set_text("disc"), lambda: win.search.set_text(""),
-                 *[(lambda c=c: win.set_category(c)) for c in CATEGORIES]]
+    class App(Gtk.Application):
+        def __init__(self):
+            super().__init__(application_id="org.simpleos.SoftwareCenter",
+                             flags=Gio.ApplicationFlags.NON_UNIQUE if selftest else Gio.ApplicationFlags(0))
+            self.win = None
 
-        def step():
-            if steps:
-                steps.pop(0)()
-                return True
-            GLib.timeout_add(1500, Gtk.main_quit)
-            return False
-        GLib.timeout_add(500, step)
-    Gtk.main()
+        def do_activate(self):
+            if self.win:
+                return self.win.present()   # started again: the same window (also when hidden during an installation)
+            self.win = win = Store(self)
+            if os.environ.get("SIMPLEOS_SC_SELFTEST") == "close":
+                steam = next(a for a in CATALOG if a[0] == "steam")
+                GLib.timeout_add(500, lambda: (win.install(steam), False)[1])
+                GLib.timeout_add(1000, lambda: (win.close(), False)[1])
+            elif selftest:
+                steps = [lambda: win.search.set_text("disc"), lambda: win.search.set_text(""),
+                         *[(lambda c=c: win.set_category(c)) for c in CATEGORIES]]
+
+                def step():
+                    if steps:
+                        steps.pop(0)()
+                        return True
+                    GLib.timeout_add(1500, win.destroy)
+                    return False
+                GLib.timeout_add(500, step)
+
+    rc = App().run(argv[:1])
     if errors:
         print(f"simpleos-software-center: {len(errors)} error(s) in self-test", file=sys.stderr)
         return 1
-    return 0
+    return rc
 
 
 if __name__ == "__main__":

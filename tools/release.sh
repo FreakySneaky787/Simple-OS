@@ -106,6 +106,15 @@ cmd_version() {
 cmd_sign() {
     [ -s "$REPO/Release" ] || die "$REPO/Release missing – build first (./build_iso.sh)"
     [ -s "$PUBKEY" ] || die "no release key – ./tools/release.sh key"
+    # Never sign as root: the key is in this user's keyring. A build started as root (sudo ./build_iso.sh) left
+    # output/ to root up to 1.0.5 (#71) – gpg then failed with "can't create 'output/repo/InRelease': Permission denied"
+    [ "$(id -u)" -ne 0 ] || [ -n "${SIMPLEOS_GNUPGHOME:-}" ] || die "run sign as your user, not with sudo (the release key is in your keyring)"
+    if [ ! -w "$REPO" ]; then
+        local owner
+        owner=$(stat -c %U "$REPO")
+        [ "$owner" != "$(id -un)" ] || die "$REPO is not writable – chmod u+w $REPO"
+        die "$REPO belongs to $owner – give it back once: sudo chown -R $(id -un): output"
+    fi
     rm -f "$REPO/InRelease" "$REPO/Release.gpg"
     # The passphrase comes from pinentry (no --batch – it would not ask)
     gpg --yes --digest-algo SHA512 --clearsign -o "$REPO/InRelease" "$REPO/Release"
@@ -179,6 +188,9 @@ cmd_publish() {
         grep -qx "$f" <<<"$names" || die "asset $f missing in the draft $tag – NOT published (fix it and run: gh release edit $tag -R $repo --draft=false --latest)"
     done
     gh release edit "$tag" -R "$repo" --draft=false --latest
+    # The tag was made on GitHub: fetch it, or the next build's check_skel_merge compares with the release before (#77)
+    git fetch --quiet --tags origin ||
+        echo "release: warning – could not fetch tag $tag from GitHub; run 'git fetch --tags origin' before the next build" >&2
     # As an installed system sees it: anonymous, through "latest"
     curl -fsSL -o /dev/null "https://github.com/$repo/releases/latest/download/InRelease" ||
         die "published, but https://github.com/$repo/releases/latest/download/InRelease cannot be downloaded – check the release on GitHub"

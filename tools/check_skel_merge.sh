@@ -10,13 +10,34 @@
 #   menu.xml   without the "Install Simple OS" block (simpleos-post-install), with office entries (office-menu)
 #              -> a conflict is an ERROR (every installed system looks like that)
 #   any file   with an own line at the end (people add to autostart …) -> a conflict is a WARNING
+# "The last release" = the newest tag v<version> in this branch's history that is older than the version being built.
+# Release tags are made on GitHub (tools/release.sh publish) and only reach this clone with "git fetch --tags" (#77):
+# a gap in the patch numbers (v1.0.4 found, 1.0.6 built) gives a warning.
 # Without git or tags (source tarball, first release): nothing to compare, exit 0.
 set -uo pipefail
 PROJECT=${1:?project folder}
 INC=${2:?includes.chroot of the build}
 SKEL=etc/skel
 command -v git >/dev/null && command -v diff3 >/dev/null || { echo "check_skel_merge: git/diff3 missing – skipped"; exit 0; }
-prev=$(git -C "$PROJECT" describe --tags --abbrev=0 2>/dev/null) || { echo "check_skel_merge: no release tag – skipped"; exit 0; }
+cur=$(sed -n 's/^VERSION_ID="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' "$INC/usr/lib/os-release" 2>/dev/null)
+prev=
+while IFS= read -r t; do
+    v=${t#v}
+    [[ $v =~ ^[0-9]+(\.[0-9]+)*$ ]] || continue
+    # older than the version being built (without one: the newest tag)
+    if [ -z "$cur" ] || { [ "$v" != "$cur" ] && [ "$(printf '%s\n%s\n' "$v" "$cur" | sort -V | head -n 1)" = "$v" ]; }; then
+        prev=$t
+        break
+    fi
+done < <(git -C "$PROJECT" tag --merged HEAD --list 'v*' --sort=-v:refname 2>/dev/null)
+[ -n "$prev" ] || { echo "check_skel_merge: no release tag – skipped"; exit 0; }
+# X.Y.Z built, X.Y.(Z-2 or older) found: the release in between is most likely only missing here
+IFS=. read -r pa pb pc <<<"${prev#v}"
+IFS=. read -r ca cb cc <<<"$cur"
+if [ "${pa:-0}.${pb:-0}" = "${ca:-0}.${cb:-0}" ] && [ $(( ${cc:-0} - ${pc:-0} )) -gt 1 ]; then
+    echo "check_skel_merge: warning – the newest release tag here is $prev, but $cur is being built: is a release in between" >&2
+    echo "  missing in this clone? Run 'git fetch --tags origin' and build again (the check compares with $prev)." >&2
+fi
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 strip() { sed '/simpleos-installer-begin/,/simpleos-installer-end/d' "$1"; }

@@ -1,0 +1,12 @@
+#!/bin/sh
+# Simple OS 1.0.6 – "What's new" for accounts from before 1.0.5 (runs once per account at sign-in, from
+# "edition --user"; a new account counts it as done and never runs it).
+# simpleos-whats-new --login takes an account without its state file and without ~/.config/simpleos/wizard-done for a
+# brand-new one (the Setup Wizard greets those) and stays silent. An account from before 1.0.5 whose Setup Wizard was
+# closed with the window's X has neither, so it never saw "What's new" (#79). Running here means the account existed
+# before this edition – it is not new: a state file that has seen no version yet lets "What's new" appear once.
+# An account with a state file (it signed in under 1.0.5 already): nothing to do. Never fails (exit 0).
+state=${XDG_CONFIG_HOME:-$HOME/.config}/simpleos/whats-new
+[ -e "$state" ] && exit 0
+mkdir -p "${state%/*}" 2>/dev/null && printf 'seen=\n' > "$state" 2>/dev/null
+exit 0

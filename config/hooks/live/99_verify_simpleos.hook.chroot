@@ -341,6 +341,8 @@ check "helper: --repos missing" "grep -q -- '--repos)' /usr/local/sbin/simpleos-
 check "Calamares: sources-final not before the Simple OS cleanup" "awk '/^  - sources-final\$/{s=NR} /^  - shellprocess@simpleos-cleanup\$/{c=NR} END{exit !(s && c && s < c)}' /etc/calamares/settings.conf"
 check "browser choice still uses sudo in a terminal" "! grep -q 'sudo apt-get' /usr/local/bin/simpleos-browser-select"
 check "browser choice does not use pkexec" "grep -q 'pkexec /usr/local/sbin/simpleos-system-setup' /usr/local/bin/simpleos-browser-select"
+check "browser choice installs in a terminal window again (closing it stops apt/dpkg halfway, #83)" \
+      "! grep -qE '^[^#]*kitty' /usr/local/bin/simpleos-browser-select && grep -q 'simpleos-progress' /usr/local/bin/simpleos-browser-select"
 
 # Window rules (Openbox) and VM resolution
 for home in /etc/skel /home/simple; do
@@ -685,6 +687,31 @@ check "wizard: wrong password without a clear message" "wiz NET=wifi BADPW=1 pyt
 check "wizard: saved network, the new password does not replace the profile (stdin, not the command line)" "wiz NET=wifi-down UPFAIL=1 python3 -c \"$WZ; ok, msg = w.connect_wifi('wlan0', 'Home', 'new', True); assert ok, msg\" && grep -q 'connection delete id Home' $S/calls && grep -q 'nmcli --ask --wait 30 device wifi connect Home ifname wlan0$' $S/calls && ! grep -qw 'new' $S/calls && grep -qx 'new' $S/stdin-pw"
 check "wizard: saved password wrong -> misleading message" "wiz NET=wifi-down UPFAIL=1 BADPW=1 python3 -c \"$WZ; ok, msg = w.connect_wifi('wlan0', 'Home', '', True); assert not ok and 'saved password may be wrong' in msg, msg\""
 check "wizard: crash without nmcli instead of 'not connected'" "$ENV -i HOME=$wt/home PATH=$wt/py:$wt/sys python3 -c \"$WZ; s = w.network_state(); assert s['kind'] is None and s['wifi'] is None, s\" 2>/dev/null"
+
+# Browser Selector installs a missing browser with the progress window (#83: in a kitty terminal, closing it stopped
+# apt/dpkg halfway); a cancelled password is said plainly. pkexec dummy: "installs" Chromium into XDG_DATA_HOME
+bs=$wt/bsel
+rm -rf "$bs"; mkdir -p "$bs/mock" "$bs/data/applications" "$bs/home"
+cat > "$bs/mock/pkexec" <<'MOCK'
+#!/bin/sh
+echo "$*" >> "$WT/pkexec"
+[ -n "$PKEXEC_RC" ] && exit "$PKEXEC_RC"
+echo "STEP: Installing Chromium"
+printf '[Desktop Entry]\nType=Application\nName=Chromium\nExec=chromium %%U\n' > "$XDG_DATA_HOME/applications/chromium.desktop"
+MOCK
+printf '#!/bin/sh\necho "xdg-mime $*" >> "$WT/xdgmime"\n' > "$bs/mock/xdg-mime"
+chmod 0755 "$bs/mock/pkexec" "$bs/mock/xdg-mime"
+bsel() { rm -rf "${S:?}"; mkdir -p "$S"; $ENV -i HOME="$bs/home" WT="$S" XDG_DATA_HOME="$bs/data" XDG_DATA_DIRS="$bs/none" \
+         PATH="$bs/mock:$wt/mock:/usr/bin:/bin" "$@" sh /usr/local/bin/simpleos-browser-select --set chromium.desktop >/dev/null 2>&1; }
+brc=0; bsel PKEXEC_RC=126 || brc=$?
+check "Browser Selector: cancelled password without a plain message or still set as default (#83)" \
+      "[ $brc -eq 1 ] && grep -q 'No password entered – Chromium was not installed' $S/notify && ! grep -q 'xdg-mime default' $S/xdgmime"
+brc=0; bsel || brc=$?
+check "Browser Selector: missing browser not installed through pkexec with the progress window (#83)" \
+      "[ $brc -eq 0 ] && grep -qx '/usr/local/sbin/simpleos-system-setup --browser chromium' $S/pkexec &&
+       grep -q 'stack-tag:simpleos-progress' $S/notify && grep -q 'Chromium is now your default browser' $S/notify &&
+       grep -q 'xdg-mime default chromium.desktop' $S/xdgmime && grep -qx 'x-scheme-handler/https=chromium.desktop' $bs/data/applications/defaults.list"
+rm -rf "$bs"
 
 # ---- Everyday helpers: USB (udiskie), power menu, system update, keyboard shortcut overview
 LIB=/usr/local/lib/simpleos/common.sh
@@ -1194,12 +1221,18 @@ hcase "$VOL" "pactl missing -> notification" "pactl" "" "" 'grep -q "pactl missi
 
 # ---- Display (simpleos-display, Super+P, Settings → Display): resolution, refresh rate,
 #      duplicate/extend; every change with a confirmation, Esc/timeout = revert. xrandr dummy:
-#      XR=dual -> second monitor (HDMI-1), XRANDR_RC = exit code when applying
+#      XR=dual -> second monitor (HDMI-1), XR=panel -> a laptop panel with 60.00/59.97/59.96 Hz (#78),
+#      XRANDR_RC = exit code when applying
 cat > "$wt/mock/xrandr" <<'MOCK'
 #!/bin/sh
 echo "xrandr $*" >> "$WT/xrandr"
 [ "$*" = "--query" ] || exit "${XRANDR_RC:-0}"
 echo "Screen 0: minimum 320 x 200, current 1920 x 1080, maximum 8192 x 8192"
+if [ "$XR" = panel ]; then
+    echo "eDP-1 connected primary 1920x1080+0+0 (normal left inverted right x axis y axis) 344mm x 194mm"
+    printf '   1920x1080     60.00*+  59.97    59.96    48.00  \n   1280x720      60.00  \n'
+    exit 0
+fi
 echo "Virtual-1 connected primary 1920x1080+0+0 (normal left inverted right x axis y axis) 0mm x 0mm"
 printf '   1920x1080     60.00*+  50.00  \n   1280x720      60.00    50.00  \n'
 if [ "$XR" = dual ]; then
@@ -1234,6 +1267,10 @@ hcase "$DISP --restore" "login without a saved setting: silent" "" "" "" '! grep
 hcase "$DISP" "refresh rate 50 Hz" "" "" "1 1 0 -" \
     '[ "$(row 1 1)" = "60 Hz  Current" ] && [ "$(row 1 2)" = "50 Hz" ] &&
      grep -qx "xrandr --output Virtual-1 --mode 1920x1080 --rate 50.00" $S/xrandr'
+hcase "$DISP" "laptop panel: three times '60 Hz' instead of 60 / 59.97 / 59.96 Hz (#78)" "" "XR=panel" "1 1 0 -" \
+    '[ "$(row 0 2)" = "Refresh rate  60 Hz" ] && [ "$(row 1 1)" = "60 Hz  Current" ] && [ "$(row 1 2)" = "59.97 Hz" ] &&
+     [ "$(row 1 3)" = "59.96 Hz" ] && [ "$(row 1 4)" = "48 Hz" ] && [ $(grep -c . $S/rofi.1) -eq 4 ] &&
+     grep -qx "xrandr --output eDP-1 --mode 1920x1080 --rate 59.97" $S/xrandr'
 hcase "$DISP" "mode not supported -> notification, no confirmation" "" "XRANDR_RC=1" "0 1 -" \
     'grep -q "not supported" $S/notify && ! grep -q "Keep these" $S/rofi.args'
 hcase "$DISP" "two screens: menu" "" "XR=dual" "-" \
@@ -1858,7 +1895,10 @@ assert [(x['name'], x['mode'], x['rate'], x['primary'], x['pos']) for x in s] ==
 assert c.snapshot(s[:1]) == '$SNAP'.split(), c.snapshot(s[:1])
 assert c.layout_args(s, 'Virtual-1', 'dup') == '--output Virtual-1 --mode 1280x720 --primary --pos 0x0 --output HDMI-1 --mode 1280x720 --same-as Virtual-1'.split()
 assert c.layout_args(s, 'Virtual-1', 'right') == '--output Virtual-1 --primary --output HDMI-1 --auto --right-of Virtual-1'.split()
-assert [c.pretty(n) for n in ('eDP-1', 'HDMI-A-2', 'DP-1', 'Virtual-1')] == ['Built-in display', 'HDMI 2', 'DisplayPort 1', 'Screen 1']\""
+assert [c.pretty(n) for n in ('eDP-1', 'HDMI-A-2', 'DP-1', 'Virtual-1')] == ['Built-in display', 'HDMI 2', 'DisplayPort 1', 'Screen 1']
+r = c.rate_labels(['60.00', '59.97', '59.96', '48.00', '60.00'])
+assert r == [('60.00', '60 Hz'), ('59.97', '59.97 Hz'), ('59.96', '59.96 Hz'), ('48.00', '48 Hz')], r
+assert c.rate_labels(['143.97', '120.00', '59.95']) == [('143.97', '144 Hz'), ('120.00', '120 Hz'), ('59.95', '60 Hz')]\""
 check "Control Center: a resolution listed on two xrandr lines loses refresh rates" "python3 -c \"$CCL
 q = 'DP-1 connected primary 2560x1440+0+0 (normal) 597mm x 336mm\n   2560x1440     59.95 +\n   2560x1440    143.97*  120.00\n   1920x1080     60.00\n'
 s = c.screens(q)
@@ -1870,6 +1910,30 @@ assert [(x[1], x[2], x[3], x[5]) for x in d] == [('WH-1000XM4', True, 'Headphone
 assert c.bt_subtitle('Headphones', True, 80) == 'Headphones · Connected · Battery 80 %' and c.bt_subtitle('Mouse', False, None) == 'Mouse'
 assert [x[1] for x in c.bt_scan(1)] == ['Xbox Controller']\""
 check "Control Center: wrong without a Bluetooth adapter" "ccpy BT=none python3 -c \"$CCL; assert c.bt_state() == (False, False)\""
+# Control Center → Wi-Fi (#76): its own view – the list online AND offline, Disconnect on the connected network,
+# no Setup Wizard texts ("Next"); the nmcli dummy of simpleos-wifi above
+check "Control Center → Wi-Fi: online via Wi-Fi -> no list / no Disconnect (#76)" "ccpy NET=wifi python3 -c \"$CCL
+w = c.wizard_module(); s = w.network_state(); v = c.wifi_view(s, w.wifi_networks(s['wifi']))
+assert v['status'] == 'Connected to Home' and [r[0] for r in v['rows']] == ['Home', 'Office', 'Cafe'], v
+assert v['rows'][0][1:] == ('Connected', True, True, 'Disconnect') and v['rows'][1][4] == v['rows'][2][4] == 'Connect', v
+assert v['rows'][2][1] == 'Weak signal · open' and 'switch' in v['hint'] and 'Next' not in str(v), v
+assert not any(x in str(v) for x in ('wlan0', 'eth0')), v
+assert c.disconnect_wifi(w.nmcli, s['wifi']) == (True, 'Disconnected.')\" && grep -qx 'nmcli device disconnect wlan0' $S/calls"
+check "Control Center → Wi-Fi: offline -> no list (#76)" "ccpy NET=wifi-down python3 -c \"$CCL
+w = c.wizard_module(); s = w.network_state(); v = c.wifi_view(s, w.wifi_networks(s['wifi']))
+assert v['status'] == 'Not connected' and [r[4] for r in v['rows']] == ['Connect'] * 3 and v['hint'].startswith('Click Connect'), v\""
+check "Control Center → Wi-Fi: online via cable -> no Wi-Fi list (#76)" "ccpy NET=wifi-eth python3 -c \"$CCL
+w = c.wizard_module(); s = w.network_state(); v = c.wifi_view(s, w.wifi_networks(s['wifi']))
+assert 'network cable' in v['status'] and len(v['rows']) == 3, v\""
+check "Control Center → Wi-Fi: Wi-Fi off / no Wi-Fi / nothing found wrong (#76)" "ccpy NET=wifi-off python3 -c \"$CCL
+w = c.wizard_module(); s = w.network_state(); v = c.wifi_view(s, [('Home', 80, True, False)])
+assert not v['rows'] and 'turned off' in v['hint'] and 'switch' in v['hint'], v
+v = c.wifi_view({'wifi': None, 'radio': True, 'kind': 'ethernet', 'name': 'Wired connection 1'}, [])
+assert v['hint'] == 'This computer has no Wi-Fi.' and not v['rows'], v
+v = c.wifi_view({'wifi': 'wlan0', 'radio': True, 'kind': None, 'name': ''}, [])
+assert 'No Wi-Fi networks found' in v['hint'] and 'Refresh' in v['hint'], v\""
+check "Control Center → Wi-Fi: still uses the Setup Wizard's network_view/disconnect_wifi (#76)" \
+      "! grep -qE 'w\.network_view|w\.disconnect_wifi' $CC"
 # ---- Control Center → Apps (1.0.5): default apps (mimeapps.list + defaults.list) and startup apps (XDG autostart)
 ap=$wt/apps
 rm -rf "$ap"; mkdir -p "$ap/share/applications" "$ap/xdg/autostart" "$wt/home/.config/autostart"
@@ -1885,6 +1949,12 @@ desk gthumb.desktop "gThumb" "image/jpeg;image/png;image/webp;"
 desk mousepad.desktop "Mousepad" "text/plain;"
 desk hidden.desktop "Hidden" "text/plain;" "Hidden=true"
 desk tryexec.desktop "Missing" "text/plain;" "TryExec=/nonexistent/simpleos-test"
+# office suites (#75): LibreOffice in three apps, ONLYOFFICE in one (fewer types than LibreOffice)
+OX=application/vnd.openxmlformats-officedocument
+desk libreoffice-writer.desktop "LibreOffice Writer" "application/vnd.oasis.opendocument.text;$OX.wordprocessingml.document;application/msword;application/rtf;text/rtf;"
+desk libreoffice-calc.desktop "LibreOffice Calc" "application/vnd.oasis.opendocument.spreadsheet;$OX.spreadsheetml.sheet;application/vnd.ms-excel;text/csv;"
+desk libreoffice-impress.desktop "LibreOffice Impress" "application/vnd.oasis.opendocument.presentation;$OX.presentationml.presentation;application/vnd.ms-powerpoint;"
+desk org.onlyoffice.desktopeditors.desktop "ONLYOFFICE" "application/vnd.oasis.opendocument.text;$OX.wordprocessingml.document;$OX.spreadsheetml.sheet;$OX.presentationml.presentation;text/csv;"
 # a browser without the https scheme in MimeType still counts (it takes a link: %u); a helper in the same category not
 printf '[Desktop Entry]\nType=Application\nName=NetSurf\nExec=netsurf %%u\nCategories=Network;WebBrowser;\n' > "$ap/share/applications/netsurf.desktop"
 printf '[Desktop Entry]\nType=Application\nName=Tor Browser Launcher Settings\nExec=torbrowser-launcher --settings\nCategories=Network;WebBrowser;\n' > "$ap/share/applications/tor-settings.desktop"
@@ -1913,6 +1983,18 @@ d = open('$wt/home/.local/share/applications/defaults.list').read()
 assert 'x-scheme-handler/https=chromium.desktop' in d and 'text/html=chromium.desktop' in d, d
 assert c.set_default(g['image'], 'viewnior.desktop', apps) and c.current_default('image/png', apps) == 'viewnior.desktop'
 assert c.read_defaults('$wt/home/.config/mimeapps.list')['image/webp'] == 'gthumb.desktop'
+oo, wr = 'org.onlyoffice.desktopeditors.desktop', 'libreoffice-writer.desktop'
+for k, lo in (('documents', wr), ('spreadsheets', 'libreoffice-calc.desktop'), ('presentations', 'libreoffice-impress.desktop')):
+    assert [i for i, _n in c.candidates(g[k], apps)] == [lo, oo], (k, c.candidates(g[k], apps))
+    assert c.current_default(g[k][3], apps) == '', k
+assert c.family(g['documents'], wr, apps) == sorted(['application/msword', 'application/rtf', 'application/vnd.oasis.opendocument.text', '$OX.wordprocessingml.document', 'text/rtf']), c.family(g['documents'], wr, apps)
+assert c.family(g['spreadsheets'], oo, apps) == ['$OX.spreadsheetml.sheet', 'text/csv'], c.family(g['spreadsheets'], oo, apps)
+assert c.set_default(g['documents'], oo, apps) and c.current_default('$OX.wordprocessingml.document', apps) == oo
+assert c.current_default('application/vnd.oasis.opendocument.text', apps) == oo and c.current_default('application/msword', apps) == ''
+assert c.set_default(g['spreadsheets'], oo, apps) and c.set_default(g['documents'], wr, apps)
+assert c.current_default('$OX.wordprocessingml.document', apps) == wr and c.current_default('application/msword', apps) == wr
+assert c.current_default('$OX.spreadsheetml.sheet', apps) == oo and c.current_default('text/csv', apps) == oo
+assert c.current_default('$OX.presentationml.presentation', apps) == ''
 st = {x[0]: x for x in c.startup_apps()}
 assert sorted(st) == ['discord.desktop', 'print-applet.desktop'], sorted(st)
 assert st['discord.desktop'][3] and st['discord.desktop'][4] and st['print-applet.desktop'][3] and not st['print-applet.desktop'][4]
@@ -2020,6 +2102,16 @@ check "whats-new: shown without notes for the version" "wn skip"
 printf '# Simple OS 2.0.2\n- x\n' > "$wt/wn-notes"
 printf 'seen=2.0.1\nshow=no\n' > "$wt/wn/simpleos/whats-new"
 check "whats-new: shown although switched off" "wn skip && grep -qx 'seen=2.0.2' $wt/wn/simpleos/whats-new"
+# #79: an account from before 1.0.5 with the Setup Wizard closed by its X (no wizard-done, no state) – the user
+# migration (runs only for accounts that existed before the edition) makes it show "What's new" once
+MIG7=/usr/share/simpleos/edition/migrations/user/070-whats-new-existing-account
+rm -rf "$wt/wn"
+check "migration 070-whats-new-existing-account: account from before 1.0.5 never gets 'What's new' (#79)" \
+      "[ -x $MIG7 ] && $ENV -i HOME=$wt/home XDG_CONFIG_HOME=$wt/wn PATH=/usr/bin:/bin sh $MIG7 && wn show && wn skip"
+mkdir -p "$wt/wn/simpleos"; printf 'seen=2.0.2\nshow=no\n' > "$wt/wn/simpleos/whats-new"
+check "migration 070-whats-new-existing-account: changes an existing What's new state" \
+      "$ENV -i HOME=$wt/home XDG_CONFIG_HOME=$wt/wn PATH=/usr/bin:/bin sh $MIG7 && grep -qx 'seen=2.0.2' $wt/wn/simpleos/whats-new &&
+       grep -qx 'show=no' $wt/wn/simpleos/whats-new && [ \$(wc -l < $wt/wn/simpleos/whats-new) -eq 2 ]"
 rm -rf "$wt/wn" "$wt/wn-notes" "$wt/wn-osr" "$wt/mock/simpleos-live"
 
 # ---- Background loops after signing out and in again (KillUserProcesses=no keeps the old session's loop alive):
@@ -2112,8 +2204,15 @@ for a in $(python3 -c "import importlib.machinery as m; s = m.SourceFileLoader('
 done
 rm -f "$wt/mock/flatpak" "$wt/mock/dpkg-query"
 if command -v broadwayd >/dev/null && command -v dbus-run-session >/dev/null; then
-    for app in "$CC|SIMPLEOS_CC_SELFTEST" "$SC|SIMPLEOS_SC_SELFTEST" "/usr/local/bin/simpleos-taskmanager|SIMPLEOS_TM_SELFTEST" \
+    # the real one by its path: $wt/mock has a dbus-run-session dummy (Thunar actions above) that comes first in PATH –
+    # up to 1.0.5 it answered every self-test below with exit 0 and no window was ever built (#76 went through that way)
+    DRS=$(command -v dbus-run-session)
+    # NET=…: the Control Center once more with a Wi-Fi device (nmcli dummy), online and offline – the build has no
+    # Wi-Fi, so the plain run never fills the Wi-Fi page's list (#76 slipped through that way)
+    for app in "$CC|SIMPLEOS_CC_SELFTEST" "$CC|SIMPLEOS_CC_SELFTEST|NET=wifi" "$CC|SIMPLEOS_CC_SELFTEST|NET=wifi-down" \
+               "$SC|SIMPLEOS_SC_SELFTEST" "/usr/local/bin/simpleos-taskmanager|SIMPLEOS_TM_SELFTEST" \
                "/usr/local/bin/simpleos-calendar|SIMPLEOS_CALENDAR_SELFTEST" "/usr/local/bin/simpleos-whats-new|SIMPLEOS_WHATS_NEW_SELFTEST"; do
+        prog=${app%%|*}; rest=${app#*|}; var=${rest%%|*}; net=; [ "$rest" = "$var" ] || net=${rest#*|}
         mkdir -p "$wt/bw"; chmod 0700 "$wt/bw"
         # server and program with the same XDG_RUNTIME_DIR (the Broadway socket lives there)
         env XDG_RUNTIME_DIR="$wt/bw" HOME="$wt/home" broadwayd :17 >/dev/null 2>&1 &
@@ -2121,12 +2220,30 @@ if command -v broadwayd >/dev/null && command -v dbus-run-session >/dev/null; th
         sleep 1
         rc=0
         $ENV -i HOME="$wt/home" WT="$S" XDG_RUNTIME_DIR="$wt/bw" PATH="$wt/mock:$wt/py:$wt/sys:/usr/bin:/bin" \
-            GDK_BACKEND=broadway BROADWAY_DISPLAY=:17 DISPLAY=:17 "${app#*|}=1" \
-            timeout 90 dbus-run-session -- python3 "${app%%|*}" >"$S/gui" 2>&1 || rc=$?
+            GDK_BACKEND=broadway BROADWAY_DISPLAY=:17 DISPLAY=:17 "$var=1" ${net:+"$net"} \
+            timeout 90 "$DRS" -- python3 "$prog" >"$S/gui" 2>&1 || rc=$?
         kill "$bwpid" 2>/dev/null || true
         wait "$bwpid" 2>/dev/null || true
-        check "${app%%|*}: GUI self-test (Broadway) exit $rc – $(grep -m1 -E 'Error|error' "$S/gui" 2>/dev/null)" "[ $rc -eq 0 ]"
+        check "$prog${net:+ ($net)}: GUI self-test (Broadway) exit $rc – $(grep -m1 -E 'Error|error' "$S/gui" 2>/dev/null)" "[ $rc -eq 0 ]"
     done
+    # #83: Software Center installs Steam, the window is closed at once -> the installation runs to its end (up to
+    # 1.0.5 the helper died at its next output line: SIGPIPE), a notification, then the program ends by itself
+    rm -rf "${S:?}" "$wt/scmock"; mkdir -p "$S" "$wt/scmock"
+    printf '#!/bin/sh\necho "$*" >> "$WT/pkexec"\necho "STEP: Enabling 32-bit support"\n/bin/sleep 2\necho "STEP: Installing Steam"\ntouch "$WT/sc-finished"\n' > "$wt/scmock/pkexec"
+    chmod 0755 "$wt/scmock/pkexec"
+    env XDG_RUNTIME_DIR="$wt/bw" HOME="$wt/home" broadwayd :17 >/dev/null 2>&1 &
+    bwpid=$!
+    sleep 1
+    rc=0
+    $ENV -i HOME="$wt/home" WT="$S" XDG_RUNTIME_DIR="$wt/bw" PATH="$wt/scmock:$wt/mock:$wt/py:$wt/sys:/usr/bin:/bin" \
+        GDK_BACKEND=broadway BROADWAY_DISPLAY=:17 DISPLAY=:17 SIMPLEOS_SC_SELFTEST=close \
+        timeout 60 "$DRS" -- python3 "$SC" >"$S/gui" 2>&1 || rc=$?
+    kill "$bwpid" 2>/dev/null || true
+    wait "$bwpid" 2>/dev/null || true
+    check "Software Center: closed during an installation -> installation stopped halfway or program never ends (#83, exit $rc)" \
+          "[ $rc -eq 0 ] && [ -e $S/sc-finished ] && grep -q -- '--gaming' $S/pkexec &&
+           grep -q 'Installing Steam continues in the background' $S/notify && grep -q 'Steam is installed' $S/notify"
+    rm -rf "$wt/scmock"
 else
     check "broadwayd/dbus-run-session missing (libgtk-3-bin) – GUI self-test not possible" "false"
 fi
@@ -2750,12 +2867,13 @@ check "Rofi: -normal-window (then the always-on-top guarantee would no longer ho
 SR=/usr/local/bin/simpleos-search
 check "simpleos-search: Python syntax error" "python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' $SR"
 st=$wt/search
-mkdir -p "$st/share/applications" "$st/home/Documents/.secret" "$st/home/Music" "$st/home/Projects/report-site"
+mkdir -p "$st/share/applications" "$st/home/Documents/.secret" "$st/home/Music" "$st/home/Projects/report-site" "$st/home/Pictures"
 printf '[Desktop Entry]\nType=Application\nName=Calculator\nName[de]=Rechner\nKeywords=math;calc;\nIcon=accessories-calculator\nExec=galculator %%F\n' > "$st/share/applications/galculator.desktop"
 printf '[Desktop Entry]\nType=Application\nName=Hidden Tool\nNoDisplay=true\nExec=x\n' > "$st/share/applications/hidden.desktop"
 printf '[Desktop Entry]\nType=Application\nName=KDE Only\nOnlyShowIn=KDE;\nExec=x\n' > "$st/share/applications/kde.desktop"
 printf '[Desktop Entry]\nType=Application\nName=Missing Tool\nTryExec=definitely-not-installed\nExec=x\n' > "$st/share/applications/missing.desktop"
-touch "$st/home/Documents/report-2026.pdf" "$st/home/Documents/.secret/report-hidden.txt" "$st/home/Music/Report.mp3"
+touch "$st/home/Documents/report-2026.pdf" "$st/home/Documents/.secret/report-hidden.txt" "$st/home/Music/Report.mp3" \
+      "$st/home/Pictures/Screenshot_2026-10-20_14-03-11.png"
 printf '#!/bin/sh\necho "gtk-launch $*" > "$WT/opened"\n' > "$wt/mock/gtk-launch"
 chmod 0755 "$wt/mock/gtk-launch"
 srch() { rm -rf "${S:?}"; mkdir -p "$S"; $ENV -i HOME="$st/home" WT="$S" XDG_DATA_HOME="$st/none" XDG_DATA_DIRS="$st/share" \
@@ -2772,10 +2890,13 @@ check "Search: '42 * 12' + Enter does not calculate" "grep -q '^42 \\* 12 = 504|
 for c in '42*12=|42 * 12 = 504' '2^10|2 ^ 10 = 1024' '3,5*2|3,5 * 2 = 7' '(1+2)/3|(1 + 2) / 3 = 1' '10 % 3|10 % 3 = 1' \
          'sqrt(16)|sqrt(16) = 4' '6×7|6 × 7 = 42' '8÷2|8 ÷ 2 = 4' '-3+4|-3 + 4 = 1' \
          '(-8)^(1/3)|(-8)^(1/3) – no result' '2**3|2 ^ 3 = 8' '7//2|7 // 2 = 3' 'round(2.5)|round(2.5) = 3' \
-         'sqrt(-1)|sqrt(-1) – no result' 'ln(0)|ln(0) – no result' 'round(1234,-2)|round(1234, -2) = 1200'; do
+         'sqrt(-1)|sqrt(-1) – no result' 'ln(0)|ln(0) – no result' 'round(1234,-2)|round(1234, -2) = 1200' \
+         '10-2|10 - 2 = 8' '10 - 2 - 3|10 - 2 - 3 = 5' '2026-1|2026 - 1 = 2025'; do
     check "Calculator: '${c%%|*}' does not give '${c#*|}'" "[ \"\$(python3 $SR --calc '${c%%|*}')\" = '${c#*|}' ]"
 done
-for c in "__import__('os').system('true')" 'report' '2**99999' 'open(1)' '9-'; do
+# #82: dates and phone numbers are searched for, not subtracted
+for c in "__import__('os').system('true')" 'report' '2**99999' 'open(1)' '9-' '2026-10-20' '2026-10' '079-123-45-67' \
+         'Screenshot_2026-10-20'; do
     check "Calculator: '$c' evaluated as a calculation" "! python3 $SR --calc \"$c\" >/dev/null 2>&1"
 done
 # "1,000" is one thousand outside decimal-comma languages, "3,5" stays 3.5; German keeps the decimal comma
@@ -2797,6 +2918,9 @@ check "Search: file search wrong (hidden folders, order: folders, then files; co
        sed -n 7p $S/out | grep -q '^Report.mp3   —   ~/Music|' && tail -n 1 $S/out | grep -q '^Back|info~back:'"
 SARG=site srch ROFI_RETV=2
 check "Search: folder not found" "grep -q '^report-site   —   ~/Projects|.*~icon~folder' $S/out"
+SARG=2026-10-20 srch ROFI_RETV=2
+check "Search: a date is calculated instead of finding today's screenshot (#82)" \
+      "grep -q '^Screenshot_2026-10-20_14-03-11.png   —   ~/Pictures|' $S/out && ! grep -q 'calc:' $S/out"
 SARG=zzzqqq srch ROFI_RETV=2
 check "Search: nothing found without a hint" "grep -q 'Nothing found for' $S/out"
 SARG=x srch ROFI_RETV=1 ROFI_INFO=calc:504
@@ -3690,7 +3814,7 @@ hcase "$DSP --restore" "saved monitor unplugged: no highest rate as a replacemen
     'grep -q "GONE-1" $S/xrandr && grep -qx "xrandr --output DP-1 --mode 2560x1440 --rate 143.97" $S/xrandr'
 rm -f "$wt/home/.config/simpleos/display"
 hcase "$DSP --best" "--best without rofi (autostart)" "rofi" "" "" 'grep -q -- "--rate 143.97" $S/xrandr && [ ! -s $S/notify ]'
-check "Control Center: refresh rate selection missing" "grep -q 'rate.append(r, f\"{round(float(r))} Hz\")' /usr/local/bin/simpleos-control-center"
+check "Control Center: refresh rate selection missing" "grep -qF 'for r, text in rate_labels(rates):' /usr/local/bin/simpleos-control-center"
 rm -f "$wt/mock/xrandr"
 
 # ---- Keyboard layout (simpleos-keyboard-setup): right away (setxkbmap), for the account, system-wide (localectl ->

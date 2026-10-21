@@ -71,20 +71,38 @@ if ! installed "$id"; then
         net.mullvad.MullvadBrowser.desktop) cmd="pkexec /usr/local/sbin/simpleos-system-setup --browser mullvad" ;;
         *)                                 exit 1 ;;
     esac
-    if ! command -v kitty >/dev/null; then
-        notify-send -u critical -i dialog-error "Browser Selector" "$name could not be installed (terminal missing)." 2>/dev/null
-        exit 1
+    # The progress window follows a file (#83): up to 1.0.5 the helper ran in a kitty terminal – closing it hung up the
+    # helper in the middle of apt/dpkg. simpleos-progress's Esc/× only hide it, the installation goes on to the end
+    log="${XDG_CACHE_HOME:-$HOME/.cache}/simpleos-browser-select.log"
+    mkdir -p "${log%/*}" 2>/dev/null
+    feed=$(mktemp) || exit 1
+    trap 'rm -f "$list" "$feed"' EXIT
+    PROGRESS=/usr/local/bin/simpleos-progress
+    ppid=
+    if [ -x "$PROGRESS" ]; then
+        "$PROGRESS" --follow "$feed" --title "Installing $name" --done "$name installed" --app "Browser Selector" \
+            --icon-name web-browser --pid $$ 2>>"$log" &
+        ppid=$!
+    else
+        notify-send -i web-browser "Browser Selector" "Installing $name – this can take a few minutes." 2>/dev/null
     fi
-    # kitty only shows the progress and returns only when the window is closed
-    kitty --title "Install $name" sh -c "echo 'Installing $name ...'; echo; $cmd; echo; echo 'Done. Press Enter to close.'; read -r _"
+    $cmd </dev/null >>"$feed" 2>>"$log"
+    rc=$?
+    echo "EXIT: $rc" >> "$feed"
+    [ -n "$ppid" ] && wait "$ppid" 2>/dev/null
     if ! installed "$id"; then
-        notify-send -u critical -i dialog-error "Browser Selector" "$name could not be installed."
+        if [ "$rc" -eq 126 ]; then
+            notify-send -i dialog-information "Browser Selector" "No password entered – $name was not installed." 2>/dev/null
+        else
+            notify-send -u critical -i dialog-error "Browser Selector" \
+                "$name could not be installed. Details: ~/.cache/simpleos-browser-select.log" 2>/dev/null
+        fi
         exit 1
     fi
 fi
 
-# mimeapps.list (GIO apps) + our own defaults.list: without a desktop environment xdg-mime 1.1.3 only reads
-# defaults.list (user before system) and would otherwise keep reporting the system default
+# mimeapps.list (GIO apps; Debian's xdg-mime/xdg-open 1.1.3 read the mimeapps.list files first) + our own defaults.list
+# (read only after all of them – written too, so no tool that reads only that file keeps the old browser)
 xdg-mime default "$id" x-scheme-handler/http x-scheme-handler/https text/html 2>/dev/null ||
     echo "simpleos-browser-select: xdg-mime default $id failed" >&2
 user_defaults="${XDG_DATA_HOME:-$HOME/.local/share}/applications/defaults.list"

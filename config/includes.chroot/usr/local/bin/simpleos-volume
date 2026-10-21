@@ -42,7 +42,7 @@ set_volume() {
     pactl set-sink-mute @DEFAULT_SINK@ 0 >&2 2>&1
     pactl set-sink-volume @DEFAULT_SINK@ "$1" >&2 2>&1 || sos_notify "The volume could not be changed." critical
 }
-# ±10 %, like the Fn keys (simpleos-osd) never above 100 % (distorts otherwise) and never below 0 %
+# ±10 % (the Fn keys step 5 %, simpleos-osd), never above 100 % (distorts otherwise) and never below 0 %
 step_volume() {  # $1 = +10 | -10
     old=$(volume); sos_is_num "$old" || old=0
     v=$((old + $1))
