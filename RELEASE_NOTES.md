@@ -1,4 +1,4 @@
-# Simple OS 1.0.5
+# Simple OS 1.0.6
 
 **SOS – Simple Operating System. Keep it Simple.**
 
@@ -6,49 +6,35 @@ Simple OS is a fast, quiet desktop built on Debian 12 "bookworm". It boots strai
 (Openbox, Catppuccin colors), sets itself up with a short wizard and keeps itself up to date. You don't
 need a terminal.
 
-## What's new in 1.0.5
+## What's new in 1.0.6
 
-A bugfix update with a few small new features and a **new ISO**. If you run Simple OS 1.0 to 1.0.4, you get it
-through **Software Updates** – no need to reinstall. Restart once after the update (Software Updates asks for it on
-computers with Bluetooth). The first time you sign in afterwards, a short **"What's new"** window shows the highlights.
-
-### Easier to find your way
-
-- **Clearer menus.** The right-click menu is sorted into **Apps, Settings, Tools and Help**. Every entry under
-  Settings opens the matching page of the Control Center. Menus you changed yourself keep your changes.
-- **The Control Center has more, smaller pages.** Keyboard, Date & Time, Notifications, Printers & Scanners,
-  Storage & Backups, Password & Security and System & Updates each have their own page now, instead of one long
-  "System" page. Duplicate launchers for the same settings are hidden from the app menu.
+A bugfix update with a **new ISO** (the installer changed). If you run Simple OS 1.0 to 1.0.5, you get it through
+**Software Updates** – no need to reinstall. The first time you sign in afterwards, a short **"What's new"** window
+shows the highlights.
 
 ### New
 
-- **Choose your default apps** (issue #38). Control Center → Apps: which app opens web links, emails, PDFs, pictures,
-  music, videos and text files.
-- **Startup apps** (issue #39). On the same page: switch off apps that start by themselves when you sign in (Steam,
-  Discord …), or add one.
-- **Battery level of Bluetooth headphones** (issue #37) in Control Center → Bluetooth and in the Bluetooth menu of the
-  taskbar, for headphones that report it.
-- **A calendar** (issue #45). Click the clock in the taskbar to see the month; click it again (or press Esc) to close
-  it. "Date & Time settings" opens the Control Center page.
-- **Windows and Simple OS on one computer** (issue #46). Windows keeps the computer's clock in local time, Linux in
-  UTC, so the time was off by an hour or more after using Windows. New installations next to Windows now keep the clock
-  the way Windows does. Already installed? Control Center → Date & Time → "Keep the clock like Windows does". The same
-  page explains what to do when you can't change files on your Windows drive (Windows "fast startup").
-- **"What's new" window** (issue #65) after updates, once per new version. Find it again under Menu → Help → What's New.
+- **Choose the app for office files** (issue #75). Control Center → Apps now also has **Documents**, **Spreadsheets**
+  and **Presentations**: which app opens .docx/.odt, .xlsx/.ods/.csv and .pptx/.odp files – useful when both
+  LibreOffice and ONLYOFFICE are installed. "More browsers" moved right below the web browser.
 
 ### Fixed
 
-- **Signing out and in again.** Afterwards the power button works on the login screen again, and automatic night
-  light, the day/night wallpaper and update messages keep working without a restart.
-- **Search and app menu with a Swiss, German or French keyboard.** Y and Z (or A and Q) were swapped there when you
-  opened them by tapping the Super key.
-- **Updates reach your menu.** On systems where an earlier update had to keep the old right-click menu, the new menu
-  now arrives too.
-- **Wi-Fi country** follows the time zone you set in Control Center → Date & Time (before, only the one from the
-  installation).
-- **Startup apps added by hand** no longer try to open a file named "%U".
-- **No "USB drive is ready" messages during the installation** for the partitions the installer works on – the
-  "Safely remove" button there could have unplugged the disk in the middle of the installation.
+- **Control Center → Wi-Fi lists the networks again** (issue #76, broken since 1.0.4). Connect, switch to another
+  network or disconnect there again – also when you're offline. The network menu in the taskbar was not affected.
+- **Closing the Software Center during an installation** (issue #83) no longer stops Steam, LibreOffice or a Flathub
+  app halfway: the window closes, the installation finishes in the background, and a message tells you when it's
+  done. Opening the Software Center again shows the progress. Installing a browser with "More browsers" shows the usual
+  progress window instead of a terminal, which had the same problem.
+- **Refresh rates** (issue #78). Screens that offer 60, 59.97 and 59.96 Hz showed "60 Hz" three times in Control
+  Center → Display and in the display menu (Super+P). Rates that would look the same now show their decimals.
+- **Search and dates** (issue #82). A date like `2026-10-20` (or a phone number like `079-123-45-67`) in the search now
+  finds your files – today's screenshots, for example – instead of calculating 2026 − 10 − 20.
+- **"What's new" after updates** (issue #79) also appears on accounts from before 1.0.5 whose Setup Wizard was closed
+  with the window's X.
+- **Installing next to Windows without internet** (issue #73). Afterwards the computer's clock was off by your time
+  zone's difference to UTC, in Windows and in Simple OS. The installer now keeps the time Windows set.
+- Small text fixes (issue #80).
 
 ## Download
 
@@ -74,7 +60,7 @@ The live system needs no password – not for the installer either. Only if some
 `simple` and the password is `live`.
 To install, use **Install Simple OS** on the desktop.
 
-The other files attached here (`simpleos_1.0.5_all.deb`, `Packages`, `InRelease` …) are the signed update repository that
+The other files attached here (`simpleos_1.0.6_all.deb`, `Packages`, `InRelease` …) are the signed update repository that
 installed systems use. You don't need to download them yourself.
 
 ## System requirements

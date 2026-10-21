@@ -1,24 +1,13 @@
-# Simple OS 1.0.5
-## Easier to find your way
-- **Clearer menus.** The right-click menu is sorted into Apps, Settings, Tools and Help. Every entry under
-  Settings opens the matching page of the Control Center.
-- **The Control Center has more, smaller pages.** Keyboard, Date & Time, Notifications, Printers, Storage &
-  Backups, Password & Security and System & Updates each have their own page now, so you no longer need to search
-  one long "System" page.
+# Simple OS 1.0.6
 ## New
-- **Choose your default apps.** Control Center → Apps: which app opens web links, emails, PDFs, pictures, music,
-  videos and text files.
-- **Startup apps.** On the same page: switch off apps that start by themselves when you sign in (Steam,
-  Discord …), or add one.
-- **Battery level of Bluetooth headphones** in Control Center → Bluetooth (for headphones that report it; after
-  the restart that Software Updates asks for).
-- **A calendar.** Click the clock in the taskbar to see the month; click it again to close it.
-- **Windows and Simple OS on one computer.** The clock no longer jumps by an hour or more after you used Windows:
-  new installations next to Windows keep the clock the way Windows does. Already installed? Control Center → Date &
-  Time → "Keep the clock like Windows does". There is also help if you can't change files on your Windows drive.
-- **This window.** After an update you see once what changed. Find it again under Menu → Help → What's New.
+- **Choose the app for office files.** Control Center → Apps now also has Documents, Spreadsheets and Presentations:
+  pick which app opens them – handy when both LibreOffice and ONLYOFFICE are installed.
 ## Fixed
-- **Signing out and in again.** Afterwards the power button works on the login screen again, and automatic
-  night light, the day/night wallpaper and update messages keep working without a restart.
-- **Search and app menu with a Swiss, German or French keyboard.** Y and Z (or A and Q) were swapped there when
-  you opened them by tapping the Super key.
+- **Wi-Fi in the Control Center.** Control Center → Wi-Fi lists the networks around you again – connect, switch or
+  disconnect there, also when you're offline.
+- **Closing the Software Center during an installation.** The installation now finishes in the background and you
+  get a message when it's done (before, it could stop halfway). Installing a browser from "More browsers" shows a
+  progress window instead of a terminal.
+- **Refresh rates.** Screens that offer 60, 59.97 and 59.96 Hz no longer show "60 Hz" three times.
+- **Search finds dates.** Type a date like 2026-10-20 to find your files from that day (screenshots, for example)
+  instead of getting a calculation.

@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4, 2026-10-17 for 1.0.5 and 2026-10-20 for 1.0.6. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
+Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4, 2026-10-17 for 1.0.5 and 2026-10-21 for 1.0.6. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -59,17 +59,20 @@ Small, safe, mostly things users hit in the first hour. Published **with a new I
 
 ## 1.0.6 – next bugfix release (planned for Saturday, 2026-10-24)
 
-Milestone "1.0.6" on GitHub. Probably an update without a new ISO (`publish --no-iso`), unless the installer changes.
+Milestone "1.0.6" on GitHub. With a new ISO: the installer changed (#73).
 
 | Item | Status |
 |---|---|
 | Whatever 1.0.5 users report (Pax's Dell test, #64) | waiting |
-| `build_iso.sh`: a docs commit during the build marks it dirty (#72) | open |
-| `release.sh sign`: `output/repo` belongs to root after the build (#71) | open |
-| Control Center → Wi-Fi shows no networks since 1.0.4 (#76) | open |
-| `release.sh publish`: the new tag never reaches the local clone (#77) | open |
-| Identical "60 Hz" refresh rates (#78), "What's new" skipped after closing the wizard with X (#79), text fixes (#80) | open |
-| Search calculates dates (#82), closing the Software Center stops an installation halfway (#83) | open |
+| Control Center → Wi-Fi shows no networks since 1.0.4 (#76) | done – its own view (list online and offline, Disconnect); the build's GUI self-test now really runs (a test dummy had hidden it since 1.0) |
+| Closing the Software Center stops an installation halfway (#83) | done – the window hides, the installation finishes, then a notification; one instance; Browser Selector without a terminal |
+| Default app for documents, spreadsheets, presentations (#75) | done – Control Center → Apps |
+| Identical "60 Hz" refresh rates (#78), search calculates dates (#82) | done |
+| "What's new" skipped after closing the wizard with X (#79) | done – user migration 070 for accounts from before 1.0.5 |
+| Text fixes (#80) | done, except the three lines of the open pull request #84 |
+| Dual-boot install offline: clock off by the UTC offset (#73) | fixed – needs a real offline install next to Windows |
+| `build_iso.sh`: a docs commit during the build marks it dirty (#72); `release.sh sign`: `output/repo` belongs to root (#71) | done |
+| `release.sh publish`: the new tag never reaches the local clone (#77) | done – fetched after publishing; `check_skel_merge` picks the release tag by version and warns about a gap |
 
 ## 1.0.5 – bugfix release (published 2026-10-17)
 

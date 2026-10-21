@@ -289,3 +289,34 @@ Menus, Control Center pages, default/startup apps, headphone battery, "What's ne
       Pax's Dell): `timedatectl` shows "RTC in local TZ: yes"; boot Windows and back → the time is right in both.
       Control Center → Date & Time shows "Windows on this computer" with the switch and the fast-startup hint; without
       Windows in the boot menu that part is not there.
+
+## 11. What changed in 1.0.6
+
+Control Center Wi-Fi, office default apps, Software Center closing, refresh rates, date search, release tools. Test on a
+machine **updated from 1.0.5 through Software Updates** and on a fresh install from the new ISO.
+
+- [ ] **Wi-Fi (issue #76):** laptop with Wi-Fi. Control Center → Wi-Fi lists the networks **online and offline**
+      (Turn Wi-Fi off and on with the switch, or disconnect); the connected one says "Connected" with **Disconnect**,
+      the others **Connect**; switching to another network asks for its password if it is not saved; no "Click Next".
+- [ ] **Office default apps (issue #75):** LibreOffice and ONLYOFFICE installed. Control Center → Apps → Documents =
+      ONLYOFFICE → double-click a .docx and an .odt in Files → ONLYOFFICE; back to LibreOffice Writer → Writer. Same for
+      Spreadsheets (.xlsx/.ods/.csv) and Presentations (.pptx/.odp). Without any office suite: "Get one…".
+- [ ] **Software Center closed while installing (issue #83):** install VLC (or Steam), close the window at once → a
+      notification "Installing … continues in the background", later "… is installed", and the app works (Steam:
+      `dpkg -l steam-installer`). Start the Software Center again during the installation → the same window with its
+      progress, not a second one. Browser: Control Center → Apps → More browsers → Chromium (not installed) → a
+      progress window, no terminal; Esc on it does not stop the installation.
+- [ ] **Refresh rates (issue #78):** a laptop panel with several rates near 60 (`xrandr` shows e.g. 60.00 59.97 59.96):
+      Control Center → Display and Super+P → Refresh rate show "60 Hz", "59.97 Hz", "59.96 Hz", and picking one sets
+      exactly that rate (`xrandr` marks it with `*`).
+- [ ] **Search (issue #82):** take a screenshot (Print), tap Super, type today's date (`2026-10-24`) + Enter → the
+      screenshot is listed. `12-4` + Enter still calculates `8`.
+- [ ] **What's new (issue #79):** account from before 1.0.5 that never finished the Setup Wizard (closed with X) and
+      was not signed in under 1.0.5: after the update to 1.0.6 the window appears once.
+- [ ] **Dual boot, installed offline (issue #73):** install next to Windows **without network** (VM: no NIC; Windows
+      clock = local time): after the first start of Simple OS the time is right, `timedatectl` shows "RTC in local TZ:
+      yes"; boot Windows → its time is right too.
+- [ ] **Release tools (issues #71, #72, #77):** `sudo ./build_iso.sh` (or without sudo) → `output/` and `output/repo`
+      belong to you afterwards and `./tools/release.sh sign` works without a chown; a README/ROADMAP commit during the
+      build keeps `dirty=0` in `output/repo/.build-state`; the build log says "changes since v1.0.5"; after `publish`,
+      `git describe --tags --abbrev=0` shows `v1.0.6`.
