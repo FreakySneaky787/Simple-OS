@@ -678,6 +678,7 @@ DEFAULT_APPS = [("browser", "Web browser", "Links and web pages", "x-scheme-hand
                 ("presentations", "Presentations", "PowerPoint and Impress files (.pptx, .odp …)",
                  OOXML + "presentationml.presentation", PRESENTATIONS)]
 SYSTEM_MIMEAPPS = os.environ.get("SIMPLEOS_SYSTEM_MIMEAPPS", "/etc/xdg/mimeapps.list")
+CHOOSE = "simpleos-choose"   # combo id of "Choose an app…" (desktop ids end in .desktop)
 
 
 def read_defaults(path):
@@ -1553,7 +1554,10 @@ def main(argv):
                         combo.set_active_id(cur)
                     elif not cur and len(cands) == 1:
                         combo.set_active(0)   # nothing chosen, but the only app that can open it is the one used
-                    combo.connect("changed", lambda c, g=group: c.get_active_id() and self.choose(g, c.get_active_id(), apps))
+                    elif not cur:             # several and nothing chosen (two office suites): not an empty field
+                        combo.prepend(CHOOSE, "Choose an app…")
+                        combo.set_active(0)
+                    combo.connect("changed", lambda c, g=group: self.picked(c, g, apps))
                     rows.append((title, sub, combo))
                 if key == "browser":
                     rows.append(("More browsers", "Install Chromium or Mullvad Browser",
@@ -1579,7 +1583,12 @@ def main(argv):
             self.note("Changes count from the next sign-in.")
             self.show_all_now()
 
-        def choose(self, group, app_id, apps):
+        def picked(self, combo, group, apps):
+            app_id = combo.get_active_id()
+            if not app_id or app_id == CHOOSE:
+                return
+            if combo.get_model()[0][1] == CHOOSE:   # chosen now: the placeholder goes (picking it again would do nothing)
+                combo.remove(0)
             if not set_default(group, app_id, apps):
                 self.win.error("The default app could not be changed.")
 

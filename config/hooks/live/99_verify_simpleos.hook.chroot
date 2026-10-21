@@ -2017,6 +2017,9 @@ keys = [k for k, _t, _i in c.PAGES]
 assert len(set(keys)) == len(keys) and all(v in keys for v in c.ALIASES.values()) and c.GROUP_STARTS <= set(keys)
 \""
 rm -rf "$ap"
+# #75: two apps for a type and nothing chosen (LibreOffice + ONLYOFFICE) -> "Choose an app…" instead of an empty field
+check "Control Center → Apps: empty choice field with two office suites (#75)" \
+      "grep -qF 'combo.prepend(CHOOSE, \"Choose an app…\")' $CC && grep -qF 'if not app_id or app_id == CHOOSE:' $CC"
 printf 'VERSION_ID="9.9.9"\n' > "$wt/osr"
 check "Control Center: Simple OS version not read" "ccpy SIMPLEOS_OS_RELEASE=$wt/osr python3 -c \"$CCL; assert c.os_version() == '9.9.9'\""
 # Callers that open a page by name: every name must be a page or an alias (otherwise the window opens on Wi-Fi)
