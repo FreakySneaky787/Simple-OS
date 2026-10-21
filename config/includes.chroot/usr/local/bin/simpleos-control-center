@@ -214,7 +214,7 @@ def rate_labels(rates):
     the same – "60 Hz", "59.97 Hz", "59.96 Hz" instead of three times "60 Hz" (#78). xrandr's own text, so it is
     exactly the rate that is set. The same rate twice (several mode lines): once."""
     uniq = list(dict.fromkeys(rates))
-    whole = [round(float(r)) for r in uniq]
+    whole = [int(float(r) + 0.5) for r in uniq]   # half up like simpleos-display (round() would make 60.5 -> 60)
     out = []
     for r, w in zip(uniq, whole):
         text = (r.rstrip("0").rstrip(".") if "." in r else r) if whole.count(w) > 1 else str(w)
