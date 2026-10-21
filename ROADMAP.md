@@ -97,6 +97,13 @@ Moved from 1.0.4 to keep it small, plus what came up since:
   (issue #19: faster live session and install, ISO +18 %).
 - **Hardware tests still missing:** NVIDIA desktop with the driver, AMD laptop, dual boot with Windows, Secure Boot on (#49).
 
+## 1.2 – feature release after 1.1
+
+- **Windows programs** (#85): double-click on a `.exe`/`.msi` offers to run it with Bottles (installed from the Software
+  Store if missing), a plain help page on what works (older programs, many games through Steam/Proton) and what doesn't
+  (Microsoft 365, current Adobe apps, kernel anti-cheat) with alternatives, and a hint to Steam's own "Steam Play for
+  all titles" switch. Not planned: automatic Windows VMs, CrossOver, our own configs for Windows apps.
+
 ## 2.0 – Debian 13 "trixie"
 
 Simple OS is built on Debian 12 "bookworm", which moved from the regular security team to Debian LTS in June 2026
