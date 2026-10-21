@@ -67,6 +67,12 @@ Thank you for testing! Every report helps, especially from real hardware.
 
 Not sure if it's a bug, or a question like "does it run on my PC?" – ask in [Discussions](https://github.com/FreakySneaky787/Simple-OS/discussions).
 
+## Thanks
+
+Thanks to all Testers & Users <3
+
+Every test on real hardware, every bug report and every idea makes Simple OS better.
+
 ## For developers
 
 A minimal desktop based on Debian 12 "Bookworm" with Openbox, built with live-build.

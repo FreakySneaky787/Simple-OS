@@ -101,6 +101,13 @@ Moved from 1.0.4 to keep it small, plus what came up since:
   (issue #19: faster live session and install, ISO +18 %).
 - **Hardware tests still missing:** NVIDIA desktop with the driver, AMD laptop, dual boot with Windows, Secure Boot on (#49).
 
+## 1.2 – feature release after 1.1
+
+- **Windows programs** (#85): double-click on a `.exe`/`.msi` offers to run it with Bottles (installed from the Software
+  Store if missing), a plain help page on what works (older programs, many games through Steam/Proton) and what doesn't
+  (Microsoft 365, current Adobe apps, kernel anti-cheat) with alternatives, and a hint to Steam's own "Steam Play for
+  all titles" switch. Not planned: automatic Windows VMs, CrossOver, our own configs for Windows apps.
+
 ## 2.0 – Debian 13 "trixie"
 
 Simple OS is built on Debian 12 "bookworm", which moved from the regular security team to Debian LTS in June 2026
@@ -118,8 +125,17 @@ Moving to it is the one big job of the next year, and it has to be planned, not 
 - **Timeline sketch:** branch + first trixie ISO as a preview in Q1 2027, public beta in Q2, 2.0 when the upgrade
   tool has been run on several real machines.
 
+## 2.x – Wayland (not in 2.0.x)
+
+- **Wayland session with labwc** (#87): first an extra login session "Simple OS (Wayland, preview)" next to the X11
+  default, the tools moved over one by one (taskbar, idle/lock, displays, clipboard, screenshots, night light, menus).
+  Not in any 2.0.x release – never change the base and the desktop in the same release. **Later in 2.x** (e.g. 2.2 or
+  2.3): Wayland becomes the default once everything works; X11 stays as a fallback for a while.
+
 ## Ideas, not scheduled
 
+- Own **Simple OS Software Store** (#86): the whole Flathub catalogue in the Simple OS style, replacing Bazaar/GNOME
+  Software – grown step by step from today's Software Center, no extra multi-GB runtime.
 - Automatic security updates as an option (today: a notification, you click Install) (#54).
 - Fingerprint reader support (`fprintd`) and a setup page (#55).
 - Accessibility: screen reader, large cursor, high-contrast theme in Appearance (#56).
@@ -138,6 +154,7 @@ Moving to it is the one big job of the next year, and it has to be planned, not 
 ## Decisions we have made (so we don't argue them again)
 
 - Debian stable base + backports only for kernel/firmware/microcode; no own repository for apps (Flatpak/Flathub instead).
-- Openbox on X11, no Wayland for now – everything (night light, screenshot, clipboard, snapping) is built for X11.
+- Openbox on X11 for all 1.x and 2.0.x releases – everything (night light, screenshot, clipboard, snapping) is built for
+  X11. Wayland comes after 2.0.x via labwc: first as a preview session, then the default later in 2.x (#87).
 - English interface; translations come later and must not bloat the image.
 - Updates through APT from the signed GitHub release repository; the release key backup lives outside the repo.
