@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Simple OS – drivers & hardware assistant (Control Center → System → Hardware & Drivers).
+"""Simple OS – drivers & hardware assistant (Control Center → System & Updates → Hardware & Drivers).
 
     simpleos-drivers                 open the Control Center on the System page
     simpleos-drivers --json          report as JSON (the Control Center reads it)
