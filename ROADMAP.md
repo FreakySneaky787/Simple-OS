@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4 and 2026-10-17 for 1.0.5 and 1.0.6. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
+Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4 and 2026-10-17 for 1.0.5 and 2026-10-22 for the 1.0.6 date. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -57,9 +57,10 @@ Small, safe, mostly things users hit in the first hour. Published **with a new I
 | Other systems stay in the GRUB menu after GRUB updates | done |
 | Bluetooth pairing with a keyboard/phone (#10), monitor hotplug (#28) | confirmed on the ThinkBook |
 
-## 1.0.6 – next bugfix release (planned for Saturday, 2026-11-07)
+## 1.0.6 – next bugfix release (planned for Saturday, 2026-10-24)
 
-Milestone "1.0.6" on GitHub. Probably an update without a new ISO (`publish --no-iso`), unless the installer changes.
+Milestone "1.0.6" on GitHub. Published **with a new ISO** (`./tools/release.sh publish`): the installer changed (#73,
+hardware clock after a dual-boot install without internet).
 
 | Item | Status |
 |---|---|
