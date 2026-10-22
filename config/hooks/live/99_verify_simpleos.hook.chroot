@@ -1661,8 +1661,19 @@ pwr pc SIMPLEOS_LIVE=0 -- --lock on
 # the xss-lock dummy runs in the background (setsid … &) and pkill already created $S/xss: wait for its own line,
 # otherwise it lands late in the next test's $S (the live-session check below then failed now and then)
 for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do grep -q "^xss-lock" "$S/xss" 2>/dev/null && break; sleep 0.1; done
-check "simpleos-power --lock on: saved, xss-lock follows the screensaver and locks with dm-tool" \
-      'grep -qx "lock=on" $wt/home/.config/simpleos/power && grep -qx "xss-lock -- dm-tool lock" $S/xss'
+check "simpleos-power --lock on: saved, xss-lock follows the screensaver and locks through --lock-now" \
+      'grep -qx "lock=on" $wt/home/.config/simpleos/power && grep -qx "xss-lock -- simpleos-power --lock-now" $S/xss'
+# #88: xss-lock fires again while the login screen is in front (LightDM's own logind Lock signal, every screensaver
+# cycle of the hidden session) – each extra dm-tool lock restarted the greeter until unlocking failed (black screen)
+echo tty7 > "$wt/tty-active"
+pwr pc XDG_VTNR=7 SIMPLEOS_TTY_ACTIVE=$wt/tty-active -- --lock-now
+check "simpleos-power --lock-now: session in front -> dm-tool lock" 'grep -qx "dm-tool lock" $S/power'
+echo tty8 > "$wt/tty-active"
+pwr pc XDG_VTNR=7 SIMPLEOS_TTY_ACTIVE=$wt/tty-active -- --lock-now
+check "simpleos-power --lock-now: login screen already in front (#88) -> no second lock" '[ ! -e $S/power ]'
+pwr pc SIMPLEOS_TTY_ACTIVE=$wt/tty-active -- --lock-now
+check "simpleos-power --lock-now: VT unknown -> locks as before" 'grep -qx "dm-tool lock" $S/power'
+rm -f "$wt/tty-active"
 pwr pc SIMPLEOS_LIVE=1 -- --lock on
 sleep 0.5   # an xss-lock started by mistake writes in the background – give it time to show up
 check "simpleos-power --lock on: no xss-lock in the live session (password unknown)" '! grep -q "^xss-lock" $S/xss'

@@ -71,6 +71,7 @@ Milestone "1.0.6" on GitHub. With a new ISO: the installer changed (#73).
 | "What's new" skipped after closing the wizard with X (#79) | done – user migration 070 for accounts from before 1.0.5 |
 | Text fixes (#80) | done – all old menu/Control Center paths, shortcut list in line (with PR #84's lines) |
 | Dual-boot install offline: clock off by the UTC offset (#73) | done – offline UEFI install next to a (fake) Windows in a VM with the RTC in local time: right time; the 1.0.5 script in the same setup: 2 h off |
+| After the automatic screen lock, unlocking gives a black screen (#88) | done – xss-lock no longer locks again while the lock screen is in front (`simpleos-power --lock-now`); reproduced and fixed in a VM |
 | `build_iso.sh`: a docs commit during the build marks it dirty (#72); `release.sh sign`: `output/repo` belongs to root (#71) | done |
 | `release.sh publish`: the new tag never reaches the local clone (#77) | done – fetched after publishing; `check_skel_merge` picks the release tag by version and warns about a gap |
 

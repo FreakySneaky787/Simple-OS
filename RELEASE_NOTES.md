@@ -20,6 +20,9 @@ shows the highlights.
 
 ### Fixed
 
+- **Signing in again after the screen locked itself** (issue #88). If you were away for a while, the login screen
+  took your password but the screen stayed black and the desktop never came back. The lock screen now stays put until
+  you unlock it. Takes effect the first time you sign in after the update.
 - **Control Center → Wi-Fi lists the networks again** (issue #76, broken since 1.0.4). Connect, switch to another
   network or disconnect there again – also when you're offline. The network menu in the taskbar was not affected.
 - **Closing the Software Center during an installation** (issue #83) no longer stops Steam, LibreOffice or a Flathub

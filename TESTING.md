@@ -317,6 +317,11 @@ machine **updated from 1.0.5 through Software Updates** and on a fresh install f
       clock = local time): after the first start of Simple OS the time is right, `timedatectl` shows "RTC in local TZ:
       yes"; boot Windows → its time is right too. (VM-tested 2026-10-21: QEMU `-rtc base=localtime`, network
       restricted, fake Windows ESP + NTFS, install alongside – right time; with the 1.0.5 script 2 h off.)
+- [ ] **Lock screen after idle (issue #88):** sign in (after the update: sign out and in once), touch nothing until
+      the screen locks itself (default 10 minutes), then wait **another 10+ minutes** at the lock screen. Type the
+      password → the desktop comes back with its windows. `grep -c "Seat seat0: Locking" /var/log/lightdm/lightdm.log`
+      (sudo) counts one per lock, not two or more. (VM-tested 2026-10-22 with `xset s 20 20`: 1.0.6 without the fix =
+      black screen, with it = desktop.)
 - [ ] **Release tools (issues #71, #72, #77):** `sudo ./build_iso.sh` (or without sudo) → `output/` and `output/repo`
       belong to you afterwards and `./tools/release.sh sign` works without a chown; a README/ROADMAP commit during the
       build keeps `dirty=0` in `output/repo/.build-state`; the build log says "changes since v1.0.5"; after `publish`,

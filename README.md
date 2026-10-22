@@ -392,7 +392,8 @@ the lb default files, the generated graphics and the fastfetch package.
   every plug/unplug and keeps the screen on while a browser plays a video; source `xfpm-power.c`/`xfpm-dpms.c`), so the
   setting is written to its xfconf channel; without a battery `xset` is used and `simpleos-screensaver` (D-Bus-activated,
   `org.freedesktop.ScreenSaver`, quits 30 s after the last video) answers the browsers' inhibit request. `xss-lock`
-  locks with `dm-tool lock` when the screensaver starts (not in the live session); LightDM's `display-setup-script`
+  locks with `dm-tool lock` (`simpleos-power --lock-now`) when the screensaver starts – not in the live session and not
+  while the lock screen is already in front (#88); LightDM's `display-setup-script`
   (`greeter-screen`) darkens the lock screen after 2 minutes. Brightness: `simpleos-osd brightness get|set PCT`
   (Control Center → Display). Wi-Fi regulatory country from the time zone: `simpleos-regdom` (service, path unit on
   `/etc/localtime`, udev rule on `ieee80211`).
