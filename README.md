@@ -1,5 +1,12 @@
 # Simple OS
 
+> [!NOTE]
+> **You are on the branch `trixie`: work on Simple OS 2.0 "Rigi", based on Debian 13 "trixie".** Nothing here is
+> released or tested yet, and so far it is the same as 1.0.6. For the current version, download the
+> [latest release](https://github.com/FreakySneaky787/Simple-OS/releases/latest) or read the README on
+> [`main`](https://github.com/FreakySneaky787/Simple-OS/tree/main). Plan and timeline: [ROADMAP.md](ROADMAP.md#20-rigi--debian-13-trixie),
+> issues #50–#53. (Remove this note when 2.0 is released.)
+
 <p align="center"><img src="docs/sos-banner.png" alt="SOS – Simple Operating System. Keep it Simple." width="100%"></p>
 
 **A fast, calm Linux desktop based on Debian 12. It sets itself up, updates itself, and you never need a terminal.**
