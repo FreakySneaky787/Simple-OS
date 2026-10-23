@@ -131,6 +131,7 @@ Moving to it is the one big job of the next year, and it has to be planned, not 
   checks, (b) a fresh install with a documented migration of the home folder. Probably (a) after a long beta.
 - **Timeline sketch:** branch + first trixie ISO as a preview in Q1 2027, public beta in Q2, 2.0 when the upgrade
   tool has been run on several real machines.
+- **Codename:** not decided yet – one per big release, Swiss mountains; ideas in [docs/CODENAMES.md](docs/CODENAMES.md).
 
 ## 2.x – Wayland (not in 2.0.x)
 
