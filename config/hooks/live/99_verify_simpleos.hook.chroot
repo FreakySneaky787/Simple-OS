@@ -1275,10 +1275,9 @@ hcase "$DISP --restore" "login without a saved setting: silent" "" "" "" '! grep
 hcase "$DISP" "refresh rate 50 Hz" "" "" "1 1 0 -" \
     '[ "$(row 1 1)" = "60 Hz  Current" ] && [ "$(row 1 2)" = "50 Hz" ] &&
      grep -qx "xrandr --output Virtual-1 --mode 1920x1080 --rate 50.00" $S/xrandr'
-hcase "$DISP" "laptop panel: three times '60 Hz' instead of 60 / 59.97 / 59.96 Hz (#78)" "" "XR=panel" "1 1 0 -" \
-    '[ "$(row 0 2)" = "Refresh rate  60 Hz" ] && [ "$(row 1 1)" = "60 Hz  Current" ] && [ "$(row 1 2)" = "59.97 Hz" ] &&
-     [ "$(row 1 3)" = "59.96 Hz" ] && [ "$(row 1 4)" = "48 Hz" ] && [ $(grep -c . $S/rofi.1) -eq 4 ] &&
-     grep -qx "xrandr --output eDP-1 --mode 1920x1080 --rate 59.97" $S/xrandr'
+hcase "$DISP" "laptop panel: 60 / 59.97 / 59.96 Hz not shown as one '60 Hz' (#78)" "" "XR=panel" "1 1 0 -" \
+    '[ "$(row 0 2)" = "Refresh rate  60 Hz" ] && [ "$(row 1 1)" = "60 Hz  Current" ] && [ "$(row 1 2)" = "48 Hz" ] &&
+     [ $(grep -c . $S/rofi.1) -eq 2 ] && grep -qx "xrandr --output eDP-1 --mode 1920x1080 --rate 48.00" $S/xrandr'
 hcase "$DISP" "mode not supported -> notification, no confirmation" "" "XRANDR_RC=1" "0 1 -" \
     'grep -q "not supported" $S/notify && ! grep -q "Keep these" $S/rofi.args'
 hcase "$DISP" "two screens: menu" "" "XR=dual" "-" \
@@ -1915,8 +1914,10 @@ assert c.snapshot(s[:1]) == '$SNAP'.split(), c.snapshot(s[:1])
 assert c.layout_args(s, 'Virtual-1', 'dup') == '--output Virtual-1 --mode 1280x720 --primary --pos 0x0 --output HDMI-1 --mode 1280x720 --same-as Virtual-1'.split()
 assert c.layout_args(s, 'Virtual-1', 'right') == '--output Virtual-1 --primary --output HDMI-1 --auto --right-of Virtual-1'.split()
 assert [c.pretty(n) for n in ('eDP-1', 'HDMI-A-2', 'DP-1', 'Virtual-1')] == ['Built-in display', 'HDMI 2', 'DisplayPort 1', 'Screen 1']
-r = c.rate_labels(['60.00', '59.97', '59.96', '48.00', '60.00'])
-assert r == [('60.00', '60 Hz'), ('59.97', '59.97 Hz'), ('59.96', '59.96 Hz'), ('48.00', '48 Hz')], r
+r = c.rate_labels(['60.00', '59.97', '59.96', '48.00', '60.00'], '60.00')
+assert r == [('60.00', '60 Hz'), ('48.00', '48 Hz')], r
+r = c.rate_labels(['60.00', '59.95', '48.00'], '59.95')
+assert r == [('59.95', '60 Hz'), ('48.00', '48 Hz')], r
 assert c.rate_labels(['143.97', '120.00', '59.95']) == [('143.97', '144 Hz'), ('120.00', '120 Hz'), ('59.95', '60 Hz')]\""
 check "Control Center: a resolution listed on two xrandr lines loses refresh rates" "python3 -c \"$CCL
 q = 'DP-1 connected primary 2560x1440+0+0 (normal) 597mm x 336mm\n   2560x1440     59.95 +\n   2560x1440    143.97*  120.00\n   1920x1080     60.00\n'

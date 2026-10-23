@@ -209,17 +209,16 @@ def screens(query=None):
     return result
 
 
-def rate_labels(rates):
-    """[(rate, text)] for the rates of one resolution: whole Hz ("60 Hz"); decimals only where two rates would look
-    the same – "60 Hz", "59.97 Hz", "59.96 Hz" instead of three times "60 Hz" (#78). xrandr's own text, so it is
-    exactly the rate that is set. The same rate twice (several mode lines): once."""
-    uniq = list(dict.fromkeys(rates))
-    whole = [int(float(r) + 0.5) for r in uniq]   # half up like simpleos-display (round() would make 60.5 -> 60)
-    out = []
-    for r, w in zip(uniq, whole):
-        text = (r.rstrip("0").rstrip(".") if "." in r else r) if whole.count(w) > 1 else str(w)
-        out.append((r, f"{text} Hz"))
-    return out
+def rate_labels(rates, cur=""):
+    """[(rate, text)] for the rates of one resolution, one per whole Hz: panels offer 60.00 next to 59.95/59.97 – for
+    the user the same "60 Hz" (#78, ThinkPad E16). The current rate stands for its group, otherwise the first one
+    xrandr lists (the preferred one comes first). xrandr's own text, so it is exactly the rate that is set."""
+    pick = {}
+    for r in rates:
+        w = int(float(r) + 0.5)   # half up like simpleos-display (round() would make 60.5 -> 60)
+        if w not in pick or r == cur:
+            pick[w] = r
+    return [(r, f"{w} Hz") for w, r in pick.items()]
 
 
 def pretty(name):
@@ -1040,9 +1039,10 @@ def main(argv):
                 def fill_rates(_c=None, s=s, res=res, rate=rate):
                     rate.remove_all()
                     rates = dict(s["modes"]).get(res.get_active_id() or "", [])
-                    for r, text in rate_labels(rates):
+                    labels = rate_labels(rates, s["rate"])
+                    for r, text in labels:
                         rate.append(r, text)
-                    rate.set_active_id(s["rate"] if s["rate"] in rates else (rates[0] if rates else None))
+                    rate.set_active_id(s["rate"] if s["rate"] in rates else (labels[0][0] if labels else None))
                 fill_rates()
                 res.connect("changed", fill_rates)
 
