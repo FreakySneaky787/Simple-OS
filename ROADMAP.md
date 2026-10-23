@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4, 2026-10-17 for 1.0.5 and 2026-10-21/22 for 1.0.6. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
+Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4, 2026-10-17 for 1.0.5 and 2026-10-24 for 1.0.6. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -57,14 +57,14 @@ Small, safe, mostly things users hit in the first hour. Published **with a new I
 | Other systems stay in the GRUB menu after GRUB updates | done |
 | Bluetooth pairing with a keyboard/phone (#10), monitor hotplug (#28) | confirmed on the ThinkBook |
 
-## 1.0.6 – next bugfix release (planned for Saturday, 2026-10-24)
+## 1.0.6 – bugfix release (published 2026-10-24)
 
 Milestone "1.0.6" on GitHub. Published **with a new ISO** (`./tools/release.sh publish`): the installer changed (#73,
 hardware clock after a dual-boot install without internet).
 
 | Item | Status |
 |---|---|
-| Whatever 1.0.5 users report (Pax's Dell test, #64) | waiting |
+| Whatever 1.0.5 users report (Pax's Dell test, #64) | nothing came before the release; #88 came from our own test on the E16 |
 | Control Center → Wi-Fi shows no networks since 1.0.4 (#76) | done – its own view (list online and offline, Disconnect); the build's GUI self-test now really runs (a test dummy had hidden it since 1.0) |
 | Closing the Software Center stops an installation halfway (#83) | done – the window hides, the installation finishes, then a notification; one instance; Browser Selector without a terminal |
 | Default app for documents, spreadsheets, presentations (#75) | done – Control Center → Apps |
@@ -93,6 +93,8 @@ Moved from 1.0.4 to keep it small, plus what came up since:
 | y/z swapped in search/app menu with Swiss/German keyboards (ThinkPad test) | done – XTEST keyboard gets the real layout |
 
 ## 1.1 – next feature release (2–3 months after 1.0)
+
+Bugfix releases (1.0.7 …) come in between when users report something – no milestone yet.
 
 - **HiDPI / display scaling** (#41) – the biggest gap: nothing scales today (no Xft/DPI, no GDK scale, tint2/Openbox use
   pixels). On a 2.8K/4K laptop everything is tiny. Plan: a "Scale" setting in Control Center → Display (100/125/150/200 %)

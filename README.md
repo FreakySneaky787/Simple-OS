@@ -44,14 +44,16 @@ Already running Simple OS? New versions arrive through **Software Updates** – 
 
 Thank you for testing! Every report helps, especially from real hardware.
 
-**Wanted right now** (1.0.5 is out):
+**Wanted right now** (1.0.6 is out):
 
-- **Installing next to Windows** (dual boot): does the clock stay right after you used Windows? Does Control Center →
-  Date & Time explain Windows "fast startup" when you can't change files on the Windows drive?
+- **The screen lock:** leave the computer alone until the screen locks itself (or close the lid), then sign in again.
+  Does your desktop come back every time?
+- **Installing next to Windows** (dual boot), also **without internet**: is the clock right afterwards, in Windows and
+  in Simple OS?
 - **Installing on real hardware**, in **legacy BIOS / MBR** mode as well as **UEFI**. Do your other systems stay in the
   boot menu after the first GRUB update?
-- **Updating from 1.0.4** through Software Updates: does the "What's new" window show up after the restart?
-- **Bluetooth headphones:** is their battery level shown in Control Center → Bluetooth?
+- **Updating from 1.0.5** through Software Updates: does the "What's new" window show up after the restart? Does
+  Control Center → Wi-Fi list your networks?
 - **Installing in your language** (not English), and the search with a non-US keyboard (Super key, then type).
 
 **How to report:**
