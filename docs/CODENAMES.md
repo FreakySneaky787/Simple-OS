@@ -1,16 +1,17 @@
 # Simple OS – codename ideas
 
-Nothing here is decided yet. A name goes into [ROADMAP.md](../ROADMAP.md) and the milestone only once it is chosen.
+**2.0 is "Rigi"** (decided 2026-10-24). Everything else here is still an idea. A name goes into
+[ROADMAP.md](../ROADMAP.md) and the milestone only once it is chosen.
 
 - **One codename per big release** (2.0, 3.0 …), not for every 2.x.
 - **Theme: Swiss mountains** – calm, solid, clear, like Simple OS.
 - **No ä, ö, ü** – easy to type everywhere (URLs, package names, announcements).
 
-## Favourites
+## Chosen and favourites
 
 | Version | Codename | Say it (English) | Why |
 |---|---|---|---|
-| 2.0 | **Rigi** | "REE-gee" | short, friendly, the "Queen of the Mountains" |
+| 2.0 | **Rigi** ✔ chosen | "REE-gee" | short, friendly, the "Queen of the Mountains" |
 | 3.0 | **Pilatus** | "pi-LAH-tus" | striking, next to Lucerne |
 | 4.0 | **Eiger** | "EYE-ger" | known all over the world |
 

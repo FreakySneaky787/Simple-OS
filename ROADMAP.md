@@ -115,7 +115,7 @@ Bugfix releases (1.0.7 …) come in between when users report something – no m
   (Microsoft 365, current Adobe apps, kernel anti-cheat) with alternatives, and a hint to Steam's own "Steam Play for
   all titles" switch. Not planned: automatic Windows VMs, CrossOver, our own configs for Windows apps.
 
-## 2.0 – Debian 13 "trixie"
+## 2.0 "Rigi" – Debian 13 "trixie"
 
 Simple OS is built on Debian 12 "bookworm", which moved from the regular security team to Debian LTS in June 2026
 (supported until June 2028 – please re-check the dates). Debian 13 has been the stable release since August 2025.
@@ -125,13 +125,15 @@ Moving to it is the one big job of the next year, and it has to be planned, not 
   versions that bookworm will not get, no more `bookworm-backports` pinning for the kernel, fewer special cases.
 - **What breaks:** every package list entry, the `simpleos-drivers` NVIDIA logic (driver versions), picom/dunst/rofi
   options, GTK/WebKit versions used by our Python tools, `gammastep`/`nmcli` behaviours (as the night light showed),
-  the Calamares settings, Secure Boot packages, `live-build` itself. Plan a branch `trixie` built next to `main`.
+  the Calamares settings, Secure Boot packages, `live-build` itself. The work happens on the branch `trixie` (since
+  2026-10-24), next to `main`.
 - **For installed systems:** an in-place `dist-upgrade` from Software Updates is possible but risky (third-party sources,
   Flatpak, NVIDIA DKMS, backups). Options to decide: (a) a guided "Upgrade to Simple OS 2.0" tool with a restore point and
   checks, (b) a fresh install with a documented migration of the home folder. Probably (a) after a long beta.
 - **Timeline sketch:** branch + first trixie ISO as a preview in Q1 2027, public beta in Q2, 2.0 when the upgrade
   tool has been run on several real machines.
-- **Codename:** not decided yet – one per big release, Swiss mountains; ideas in [docs/CODENAMES.md](docs/CODENAMES.md).
+- **Codename: Rigi** ("REE-gee", the "Queen of the Mountains") – one per big release, Swiss mountains.
+  Ideas for 3.0 and later in [docs/CODENAMES.md](docs/CODENAMES.md).
 
 ## 2.x – Wayland (not in 2.0.x)
 
