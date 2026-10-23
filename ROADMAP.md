@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4, 2026-10-17 for 1.0.5 and 2026-10-24 for 1.0.6. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
+Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4, 2026-10-17 for 1.0.5 and 2026-10-24 for 1.0.6 (this copy on the branch `trixie` follows the work on 2.0 "Rigi"). What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -117,7 +117,10 @@ Bugfix releases (1.0.7 …) come in between when users report something – no m
 
 ## 2.0 "Rigi" – Debian 13 "trixie"
 
-Simple OS is built on Debian 12 "bookworm", which moved from the regular security team to Debian LTS in June 2026
+**Status (2026-10-24):** branch `trixie` created, the texts (README, RELEASE_NOTES, TESTING) describe 2.0 already; the
+code is still the one of 1.0.6 – the port has not started yet (#50).
+
+Simple OS 1.x is built on Debian 12 "bookworm", which moved from the regular security team to Debian LTS in June 2026
 (supported until June 2028 – please re-check the dates). Debian 13 has been the stable release since August 2025.
 Moving to it is the one big job of the next year, and it has to be planned, not rushed (issues #50–#53):
 
@@ -127,6 +130,9 @@ Moving to it is the one big job of the next year, and it has to be planned, not 
   options, GTK/WebKit versions used by our Python tools, `gammastep`/`nmcli` behaviours (as the night light showed),
   the Calamares settings, Secure Boot packages, `live-build` itself. The work happens on the branch `trixie` (since
   2026-10-24), next to `main`.
+- **Update channel:** 1.x systems follow `releases/latest`. If 2.0 simply became "latest", every Debian 12 system would
+  be offered the Debian 13 package. Before 2.0 is published: one channel per Debian base (e.g. the 1.x source pinned
+  to the newest 1.x release), shipped to 1.x in a last 1.x update; 2.0 reaches 1.x only through the upgrade tool.
 - **For installed systems:** an in-place `dist-upgrade` from Software Updates is possible but risky (third-party sources,
   Flatpak, NVIDIA DKMS, backups). Options to decide: (a) a guided "Upgrade to Simple OS 2.0" tool with a restore point and
   checks, (b) a fresh install with a documented migration of the home folder. Probably (a) after a long beta.
@@ -163,7 +169,7 @@ Moving to it is the one big job of the next year, and it has to be planned, not 
 
 ## Decisions we have made (so we don't argue them again)
 
-- Debian stable base + backports only for kernel/firmware/microcode; no own repository for apps (Flatpak/Flathub instead).
+- Debian stable base + backports only for kernel/firmware/microcode (with Debian 13 none are planned); no own repository for apps (Flatpak/Flathub instead).
 - Openbox on X11 for all 1.x and 2.0.x releases – everything (night light, screenshot, clipboard, snapping) is built for
   X11. Wayland comes after 2.0.x via labwc: first as a preview session, then the default later in 2.x (#87).
 - English interface; translations come later and must not bloat the image.

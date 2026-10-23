@@ -30,7 +30,7 @@ Problem** – that tests the tool at the same time.
 | UEFI + Secure Boot | `./test_vm.sh --secureboot` | as above, **and** after the installation in a terminal: `mokutil --sb-state` → `SecureBoot enabled` |
 | UEFI + encryption | `./test_vm.sh --uefi` | tick "Encrypt system" in the installer. After the restart the system asks for the password and then starts normally |
 
-- [ ] The installer's welcome page and slideshow show the new version ("Simple OS 1.0.3").
+- [ ] The installer's welcome page and slideshow show the new version ("Simple OS 2.0").
 
 Last results: 1.0 is installed and in daily use on the ThinkBook (UEFI).
 
@@ -326,3 +326,24 @@ machine **updated from 1.0.5 through Software Updates** and on a fresh install f
       belong to you afterwards and `./tools/release.sh sign` works without a chown; a README/ROADMAP commit during the
       build keeps `dirty=0` in `output/repo/.build-state`; the build log says "changes since v1.0.5"; after `publish`,
       `git describe --tags --abbrev=0` shows `v1.0.6`.
+
+## 12. What changes in 2.0 "Rigi" (Debian 13)
+
+Draft, grows with the port on the branch `trixie` (issues #50–#53). Everything in sections 0–3 again, on the new base,
+plus:
+
+- [ ] **Build:** `./build_iso.sh` on Debian 13 (`Containerfile` from `debian:trixie`); the verify hook reports
+      `Simple OS verify: OK`; no package from `bookworm` or `bookworm-backports` in `Simple-OS.packages.txt`.
+- [ ] **Boot and install** in all three modes (BIOS, UEFI, UEFI + Secure Boot) and next to Windows; GRUB shows both
+      systems; `mokutil --sb-state` → `SecureBoot enabled`.
+- [ ] **Desktop and tools:** taskbar, menus, Control Center (every page), Setup Wizard, night light, screenshots,
+      clipboard, snapping, lock screen (#88 test from 1.0.6) – all Python/GTK tools start without warnings in
+      `~/.xsession-errors`.
+- [ ] **Hardware:** NVIDIA with Debian 13's driver (Hardware & Drivers suggests it, `glxinfo -B` shows NVIDIA), AMD
+      and Intel graphics, Wi-Fi (also Broadcom), Bluetooth incl. headphone battery, sound over HDMI/USB, sleep.
+- [ ] **Software Updates and Store:** updates from Debian 13 and the Simple OS 2.x channel; Flatpak apps install and
+      update.
+- [ ] **Update channel:** a 1.x system with the newest 1.x update is **not** offered 2.0 as a normal update.
+- [ ] **Upgrade 1.x → 2.0** (issue #52): on a 1.0.6 VM and one real machine – restore point first, then the
+      upgrade; afterwards `/etc/os-release` says 2.0, no `bookworm` sources left, no backports pin file, files,
+      Flatpak apps, Steam and settings are kept; `dpkg --audit` clean, no failed units.

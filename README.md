@@ -1,15 +1,16 @@
 # Simple OS
 
 > [!NOTE]
-> **You are on the branch `trixie`: work on Simple OS 2.0 "Rigi", based on Debian 13 "trixie".** Nothing here is
-> released or tested yet, and so far it is the same as 1.0.6. For the current version, download the
+> **You are on the branch `trixie`: work on Simple OS 2.0 "Rigi", based on Debian 13 "trixie".** The texts here
+> already describe 2.0 as planned; the code is still being moved over from Debian 12, and there is no 2.0 ISO yet
+> (first preview planned for Q1 2027). The current release is **1.0.6** (Debian 12): download the
 > [latest release](https://github.com/FreakySneaky787/Simple-OS/releases/latest) or read the README on
 > [`main`](https://github.com/FreakySneaky787/Simple-OS/tree/main). Plan and timeline: [ROADMAP.md](ROADMAP.md#20-rigi--debian-13-trixie),
 > issues #50–#53. (Remove this note when 2.0 is released.)
 
 <p align="center"><img src="docs/sos-banner.png" alt="SOS – Simple Operating System. Keep it Simple." width="100%"></p>
 
-**A fast, calm Linux desktop based on Debian 12. It sets itself up, updates itself, and you never need a terminal.**
+**A fast, calm Linux desktop based on Debian 13. It sets itself up, updates itself, and you never need a terminal.**
 
 <p align="center">
   <a href="https://github.com/FreakySneaky787/Simple-OS/releases/latest"><b>⬇ Download Simple OS (latest release, about 1.5 GB)</b></a>
@@ -45,23 +46,25 @@
    session needs no password. If something unexpected asks: user `simple`, password `live`.
 5. **Install** with **Install Simple OS** on the desktop.
 
-Already running Simple OS? New versions arrive through **Software Updates** – no need to reinstall.
+Already running Simple OS? New versions arrive through **Software Updates** – no need to reinstall. From 1.x
+(Debian 12) to 2.0 (Debian 13) a guided upgrade with a restore point is planned (issue #52).
 
 ## Testing Simple OS
 
 Thank you for testing! Every report helps, especially from real hardware.
 
-**Wanted right now** (1.0.6 is out):
+**Wanted for 2.0 "Rigi"** (once the first preview ISO is out – planned for Q1 2027, announced in
+[Discussions](https://github.com/FreakySneaky787/Simple-OS/discussions)):
 
-- **The screen lock:** leave the computer alone until the screen locks itself (or close the lid), then sign in again.
-  Does your desktop come back every time?
-- **Installing next to Windows** (dual boot), also **without internet**: is the clock right afterwards, in Windows and
-  in Simple OS?
-- **Installing on real hardware**, in **legacy BIOS / MBR** mode as well as **UEFI**. Do your other systems stay in the
-  boot menu after the first GRUB update?
-- **Updating from 1.0.5** through Software Updates: does the "What's new" window show up after the restart? Does
-  Control Center → Wi-Fi list your networks?
-- **Installing in your language** (not English), and the search with a non-US keyboard (Super key, then type).
+- **Installing the preview on real hardware**, in **legacy BIOS / MBR** mode as well as **UEFI**, with **Secure Boot**
+  on, and next to Windows: does everything that worked with 1.x still work on Debian 13?
+- **Graphics, Wi-Fi, sound, sleep** on your computer – especially **NVIDIA** (new driver version) and very new or
+  very old laptops.
+- **Upgrading a 1.x system to 2.0** (only on a computer where nothing can be lost, with a backup): do your files,
+  apps and settings come along?
+- **Your apps from the Software Store** (Flatpak) and Steam games after the upgrade.
+
+Until then, the current release is 1.0.6 – reports about it are just as welcome.
 
 **How to report:**
 
@@ -84,7 +87,8 @@ Every test on real hardware, every bug report and every idea makes Simple OS bet
 
 ## For developers
 
-A minimal desktop based on Debian 12 "Bookworm" with Openbox, built with live-build.
+A minimal desktop based on Debian 13 "trixie" with Openbox, built with live-build. (1.x: Debian 12 "bookworm", branch
+`main`.)
 
 Brand: **SOS** – Simple Operating System. The "O" is a lifebuoy (red and white – a rescue from Big Tech), the
 slogan is **"Keep it Simple"**. The name stays "Simple OS" (IDs, packages and paths use `simpleos`); SOS is the
@@ -171,7 +175,10 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
   `publish` refuses a build from uncommitted files and any change in `config/`/`tools/` after the build (the ISO and the
   update package would not contain what the tag's source code does). Back up the signing key
   (`~/.local/share/simpleos-release/gnupg`): installed systems only trust that key.
-- A new Debian base (Debian 13) is a bigger step than an edition update and is not covered by this.
+- A new Debian base (1.x on Debian 12 → 2.0 on Debian 13) is a bigger step than an edition update and is not covered
+  by this. Planned: a guided "Upgrade to Simple OS 2.0" with a restore point (issue #52). **Before 2.0 is published**,
+  1.x systems must stop following `releases/latest` (otherwise they would be offered the Debian 13 package): an own
+  update channel per Debian base, shipped to 1.x in a last 1.0.x/1.x update.
 
 ### How we work
 
@@ -182,6 +189,8 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
 - **Issues and the project board follow the work, not the push:** when something is done and tested without hardware, its issue
   is closed (comment: "done, ships in X.Y.Z") and its board item set to Done – even before the release. What still needs a
   real computer stays open as a "Verify …" issue.
+- **Two branches:** `main` = 1.x on Debian 12 (bugfix and feature releases), `trixie` = 2.0 "Rigi" on Debian 13.
+  Fixes made on `main` are merged into `trixie` regularly, so 2.0 does not lose them.
 - Plan and cadence: `ROADMAP.md`; what to test before a release: `TESTING.md`.
 
 ### Structure
@@ -190,7 +199,7 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
 simple-os/
 ├── build_iso.sh, test_vm.sh, test_installed_vm.sh   entry points
 ├── LICENSE, RELEASE_NOTES.md, TESTING.md            GPL-3.0, download text, release checklist
-├── Containerfile                                   build environment (Debian bookworm + live-build)
+├── Containerfile                                   build environment (Debian trixie + live-build)
 ├── docs/sos-banner.png   README banner (tools/gen_branding.py --readme docs)
 ├── tools/
 │   ├── lb_config.sh      lb config + build-time parts (branding, fastfetch download, edition package)
@@ -329,12 +338,13 @@ the lb default files, the generated graphics and the fastfetch package.
   history).
 - Audio: newly connected devices (Bluetooth, HDMI, USB) are used automatically (`module-switch-on-connect`,
   `/etc/pipewire/pipewire-pulse.conf.d/`), `rtkit` for real-time priority; advanced settings: pavucontrol.
-- Kernel, firmware and microcode from `bookworm-backports` (pinning: `config/archives/backports.pref.chroot`, in the
-  system `/etc/apt/preferences.d/simpleos-backports.pref`): kernel 6.12 knows newer graphics (e.g. Intel Raptor
-  Lake 0xA7AA in the Core 5 210H – with 6.1 the screen stayed at 800x600), firmware 2025 (Intel graphics in
-  `firmware-intel-graphics`, MediaTek, SOF audio …). NVIDIA 535 stays with Bookworm (newer via bookworm-security).
+- Kernel, firmware and microcode come straight from Debian 13: its kernel 6.12 LTS knows newer graphics (e.g. Intel
+  Raptor Lake 0xA7AA in the Core 5 210H – with 6.1 the screen stayed at 800x600), firmware 2025 (Intel graphics in
+  `firmware-intel-graphics`, MediaTek, SOF audio …). No backports pinning any more – 1.x needed `bookworm-backports`
+  (`config/archives/backports.pref.chroot`, in the system `/etc/apt/preferences.d/simpleos-backports.pref`); for
+  updated 1.x systems the pin file has to go with the upgrade. NVIDIA: Debian 13's driver (550) instead of 535.
   A fixed firmware list instead of live-build's automatic selection (`--firmware-chroot false`).
-  `broadcom-sta-dkms` builds with 6.12 via `/etc/dkms/broadcom-sta.conf`.
+  `broadcom-sta-dkms`: check whether the 1.x workaround `/etc/dkms/broadcom-sta.conf` is still needed.
 - Secure Boot: the live ISO boots via shim; the installed system gets shim + signed GRUB
   (`simpleos-grub-install`, called by Calamares with `--uefi-secure-boot`).
 - Performance (built into the image): `gamemode` (`gamemoderun %command%` in Steam),
