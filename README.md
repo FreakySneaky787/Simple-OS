@@ -191,7 +191,8 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
   real computer stays open as a "Verify …" issue.
 - **Two branches:** `main` = 1.x on Debian 12 (bugfix and feature releases), `trixie` = 2.0 "Rigi" on Debian 13.
   Fixes made on `main` are merged into `trixie` regularly, so 2.0 does not lose them.
-- Plan and cadence: `ROADMAP.md`; what to test before a release: `TESTING.md`.
+- Plan and cadence: `ROADMAP.md`; what to test before a release: `TESTING.md`; the whole release and maintenance work
+  (signing key, issues, website) in one place: [`docs/MAINTAINING.md`](docs/MAINTAINING.md).
 
 ### Structure
 
