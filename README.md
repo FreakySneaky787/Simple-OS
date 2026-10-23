@@ -175,7 +175,8 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
 - **Issues and the project board follow the work, not the push:** when something is done and tested without hardware, its issue
   is closed (comment: "done, ships in X.Y.Z") and its board item set to Done – even before the release. What still needs a
   real computer stays open as a "Verify …" issue.
-- Plan and cadence: `ROADMAP.md`; what to test before a release: `TESTING.md`.
+- Plan and cadence: `ROADMAP.md`; what to test before a release: `TESTING.md`; the whole release and maintenance work
+  (signing key, issues, website) in one place: [`docs/MAINTAINING.md`](docs/MAINTAINING.md).
 
 ### Structure
 
