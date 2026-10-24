@@ -3837,7 +3837,8 @@ hcase "$DSP --restore" "saved monitor unplugged: no highest rate as a replacemen
     'grep -q "GONE-1" $S/xrandr && grep -qx "xrandr --output DP-1 --mode 2560x1440 --rate 143.97" $S/xrandr'
 rm -f "$wt/home/.config/simpleos/display"
 hcase "$DSP --best" "--best without rofi (autostart)" "rofi" "" "" 'grep -q -- "--rate 143.97" $S/xrandr && [ ! -s $S/notify ]'
-check "Control Center: refresh rate selection missing" "grep -qF 'for r, text in rate_labels(rates):' /usr/local/bin/simpleos-control-center"
+check "Control Center: refresh rate selection missing" "grep -qF 'labels = rate_labels(rates, ' /usr/local/bin/simpleos-control-center &&
+      grep -qF 'for r, text in labels:' /usr/local/bin/simpleos-control-center"
 rm -f "$wt/mock/xrandr"
 
 # ---- Keyboard layout (simpleos-keyboard-setup): right away (setxkbmap), for the account, system-wide (localectl ->
