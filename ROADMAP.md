@@ -115,7 +115,8 @@ rest moved to 1.2.
 
 - **HiDPI / display scaling** (#41) – the biggest gap: nothing scales today (no Xft/DPI, no GDK scale, tint2/Openbox use
   pixels). On a 2.8K/4K laptop everything is tiny. Plan: a "Scale" setting in Control Center → Display (100/125/150/200 %)
-  that sets Xft.dpi, XSETTINGS (also cursor size), GDK scale for 200 %, Rofi/dunst/kitty sizes and the tint2 panel height;
+  that sets Xft.dpi, XSETTINGS (also cursor size), GDK scale for 200 %, Rofi/dunst/kitty sizes and the tint2 panel height
+  and clock font (also a "Large" taskbar size – asked for on Bluesky, the clock is too small for older eyes);
   automatic default from the screen's real DPI. Needs a HiDPI test screen first (open question: the resolution of the
   development laptop).
 - **Language & Region page** (system language, formats) (#42).
