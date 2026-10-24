@@ -66,7 +66,11 @@ Milestone "1.0.7" on GitHub. Probably without a new ISO (`./tools/release.sh pub
 | Refresh rates: one "60 Hz" instead of "60 Hz" and "59.95 Hz" (#78, ThinkPad E16) | done (d8c6eaa), needs a test on the E16 |
 | Dates in the language's own order: calendar header, clock tooltip, taskbar clock (#81) | open |
 | Software Updates: check free disk space before installing (#91) | open |
-| Ninth bug hunt on 1.0.6 | open |
+| Ninth bug hunt on 1.0.6 | done 2026-10-24: #96–#99 below; verify hook fixed for #78 (c561446) |
+| Sleep locks the screen two or three times, each extra lock restarts the login screen (#96, #88 follow-up) | open |
+| Power button on the lock screen shuts down at once (#97) | open |
+| A keyboard connected later gets the system layout, not the account's (#98) | open |
+| Python bytecode from the build tests in the image (#99) | open |
 | Whatever 1.0.6 users report | open |
 
 ## 1.0.6 – bugfix release (published 2026-10-24)
