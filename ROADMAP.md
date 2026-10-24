@@ -106,23 +106,26 @@ Moved from 1.0.4 to keep it small, plus what came up since:
 
 ## 1.1 – next feature release (planned around 2026-11-07)
 
-Bugfix releases (1.0.x) come in between when users report something. The scope below is more than two weeks of work –
-what does not make it moves to 1.2.
+Bugfix releases (1.0.x) come in between when users report something. Kept to what fits in about two weeks; the
+rest moved to 1.2.
 
 - **HiDPI / display scaling** (#41) – the biggest gap: nothing scales today (no Xft/DPI, no GDK scale, tint2/Openbox use
   pixels). On a 2.8K/4K laptop everything is tiny. Plan: a "Scale" setting in Control Center → Display (100/125/150/200 %)
   that sets Xft.dpi, XSETTINGS (also cursor size), GDK scale for 200 %, Rofi/dunst/kitty sizes and the tint2 panel height;
   automatic default from the screen's real DPI. Needs a HiDPI test screen first (open question: the resolution of the
   development laptop).
-- **Language & Region page** (system language, formats) (#42) and German/other translations of Simple OS's own tools (all English today) (#43).
+- **Language & Region page** (system language, formats) (#42).
+- **Boot time & size:** initramfs `MODULES=dep` (113 MB → much smaller, faster boot) (#47), zstd squashfs
+  (#19: faster live session and install, ISO +18 %).
 - **Webcam / camera test** app (the camera works, but there is nothing to try it with) (#44).
-- **Users & accounts page** in Control Center: create, delete and switch users, change passwords and pictures, administrator or standard user, automatic login (#68).
-- **Boot time & size:** initramfs `MODULES=dep` (113 MB → much smaller, faster boot) (#47), AppArmor profiles (#48), zstd squashfs
-  (issue #19: faster live session and install, ISO +18 %).
-- **Hardware tests still missing:** NVIDIA desktop with the driver, AMD laptop, dual boot with Windows, Secure Boot on (#49).
+- On the side, as far as hardware is at hand: **hardware tests** (NVIDIA desktop with the driver, AMD laptop, dual boot
+  with Windows, Secure Boot on) (#49) and a public hardware compatibility page (#92).
 
 ## 1.2 – feature release after 1.1
 
+- **Translations** of Simple OS's own tools (all English today) (#43).
+- **Users & accounts page** in Control Center: create, delete and switch users, change passwords and pictures, administrator or standard user, automatic login (#68).
+- **AppArmor** profiles (#48).
 - **Windows programs** (#85): double-click on a `.exe`/`.msi` offers to run it with Bottles (installed from the Software
   Store if missing), a plain help page on what works (older programs, many games through Steam/Proton) and what doesn't
   (Microsoft 365, current Adobe apps, kernel anti-cheat) with alternatives, and a hint to Steam's own "Steam Play for
