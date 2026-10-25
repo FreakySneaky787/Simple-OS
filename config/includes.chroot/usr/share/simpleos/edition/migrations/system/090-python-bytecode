@@ -1,0 +1,12 @@
+#!/bin/sh
+# Simple OS 1.0.7 – remove the Python bytecode that images up to 1.0.6 carried (runs once, as root, from the postinst of
+# the package simpleos via "edition --system").
+# The build's self-test (hook 99) imported the Python tools and so left /usr/local/bin/__pycache__ (~450 KB) in every
+# image and installation (#99). No package owns it, so no update ever removed it; Python never uses it to run the
+# tools. Never fails (exit 0). Tests: SIMPLEOS_LOCAL replaces /usr/local.
+L=${SIMPLEOS_LOCAL:-/usr/local}
+for d in "$L/bin/__pycache__" "$L/lib/simpleos/__pycache__"; do
+    [ -d "$d" ] || continue
+    rm -rf "$d" && echo "090-python-bytecode: removed $d"
+done
+exit 0

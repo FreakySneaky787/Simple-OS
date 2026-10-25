@@ -4683,5 +4683,18 @@ check "simpleos-regdom: a stale /etc/timezone beats the time zone set in Date & 
            SIMPLEOS_LOCALTIME="$rz/localtime" SIMPLEOS_IW="$rz/iw" "$rz/sys/sh" $RD; cat "$rz/iw.out" 2>/dev/null)" = "reg set DE" ]'
 rm -rf "${rz:?}"
 
+# #99: the tests above import Python tools with SourceFileLoader, which leaves bytecode next to them
+# (/usr/local/bin/__pycache__, ~450 KB) – no package owns it, updates never remove it, running the tools never uses it
+find /usr/local/bin /usr/local/lib/simpleos -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null || true
+check "Python bytecode of the tests left in the image (#99)" \
+      "[ -z \"\$(find /usr/local/bin /usr/local/lib/simpleos -name '*.pyc' 2>/dev/null | head -n 1)\" ]"
+pb=$(mktemp -d); mkdir -p "$pb/bin/__pycache__" "$pb/lib/simpleos/__pycache__"
+touch "$pb/bin/simpleos-calendar" "$pb/bin/__pycache__/simpleos-calendar.cpython-311.pyc" "$pb/lib/simpleos/__pycache__/x.pyc"
+env -i SIMPLEOS_LOCAL="$pb" sh /usr/share/simpleos/edition/migrations/system/090-python-bytecode >/dev/null 2>&1 || true
+check "Update to 1.0.7 keeps the bytecode of older images, or removes more (migration 090)" \
+      "[ -x /usr/share/simpleos/edition/migrations/system/090-python-bytecode ] && [ ! -e $pb/bin/__pycache__ ] &&
+       [ ! -e $pb/lib/simpleos/__pycache__ ] && [ -e $pb/bin/simpleos-calendar ]"
+rm -rf "${pb:?}"
+
 [ "$fail" -eq 0 ]
 echo "Simple OS verify: OK"

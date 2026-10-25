@@ -146,6 +146,8 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
     generated), `050-os-prober` (rebuild the GRUB menu once with other systems in it). 1.0.5: `060-bluetooth-restart`
     (ask for a restart so headphone battery levels show). 1.0.6: `user/070-whats-new-existing-account` (an account from
     before 1.0.5 whose Setup Wizard was closed with the window's X is not taken for a new one – "What's new" shows).
+    1.0.7: `080-power-key` (start the power button service right away instead of after the next restart),
+    `090-python-bytecode` (remove the build test's Python bytecode from `/usr/local/bin`).
   - **Files the system changes itself:** tools never write into package files under `/etc/skel` (or other conffiles)
     for everyday settings – a changed conffile is kept by dpkg and the edition tool forever. Per-account changes go
     into the home copies (merged by the edition tool), see `office-menu` below.
