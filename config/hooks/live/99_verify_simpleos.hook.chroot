@@ -763,11 +763,20 @@ check "helper: the update could remove packages (upgrade --with-new-pkgs, full-u
 # Choice of the apt command, held-back updates, restart marker and driver success: functions of the helper
 # with an apt-get dummy (APTSIM: simulation with removal = "remove"; APTRC = exit code of the installation)
 uw=$(mktemp -d)
-sed -n '/^REBOOT_PKGS=/p;/^mark_reboot() {/,/^}/p;/^sim_pkgs() /p;/^step() /p;/^upgrade_mode() {/,/^}/p;/^report_held() {/,/^}/p;/^upgrade_sim() {/,/^}/p;/^install_drivers() {/,/^}/p' \
+sed -n '/^REBOOT_PKGS=/p;/^mark_reboot() {/,/^}/p;/^sim_pkgs() /p;/^step() /p;/^upgrade_mode() {/,/^}/p;/^report_held() {/,/^}/p;/^upgrade_sim() {/,/^}/p;/^install_drivers() {/,/^}/p;/^SPACE_[A-Z_]*=/p;/^apt_need_mb() {/,/^}/p;/^free_mb() /p;/^is_mb() /p;/^space_ok() {/,/^}/p;/^space_still_ok() {/,/^}/p' \
     /usr/local/sbin/simpleos-system-setup > "$uw/fn.sh"
 cat > "$uw/apt-get" <<'MOCK'
 #!/bin/sh
 case "$*" in -s*) [ "$APTSIM" = none ] && exit 0 ;; esac
+# apt's summary before installing (APTSUM: freed = the new versions take less space, none = apt prints no summary)
+case "$*" in *--assume-no*)
+    [ "$APTSUM" = none ] && { echo "E: Could not get lock /var/lib/dpkg/lock-frontend"; exit 100; }
+    echo "2 upgraded, 1 newly installed, 0 to remove and 0 not upgraded."
+    echo "Need to get 0 B/51.2 MB of archives."
+    if [ "$APTSUM" = freed ]; then echo "After this operation, 3072 kB disk space will be freed."
+    else echo "After this operation, 1,120 MB of additional disk space will be used."; fi
+    echo "Abort."; exit 1 ;;
+esac
 case "$*" in
     "-s full-upgrade")
         echo "Inst linux-image-amd64 [6.12.48] (6.12.57 Debian Backports [amd64])"
@@ -780,7 +789,7 @@ esac
 exit 0
 MOCK
 chmod 0755 "$uw/apt-get"
-urun() { env APTSIM="$1" APTRC="${2:-0}" UPD="${3:-0}" sh -c ". $uw/fn.sh; REBOOT_FLAG=$uw/reboot APT_GET=$uw/apt-get dry=0
+urun() { env APTSIM="$1" APTRC="${2:-0}" UPD="${3:-0}" ${URUN_ENV:-} sh -c ". $uw/fn.sh; REBOOT_FLAG=$uw/reboot APT_GET=$uw/apt-get dry=0
     apt_wait() { :; }; apt_get_update() { [ \"\$UPD\" = 0 ]; }; installed() { return 0; }; $4" > "$uw/out" 2>&1; }
 check "helper: updates with new dependencies were left behind (full-upgrade if nothing is removed)" \
       "urun '' 0 0 upgrade_mode && [ \"\$(cat $uw/out)\" = full ]"
@@ -795,6 +804,31 @@ check "drivers: a failed apt-get reports success (linux-image-amd64 is always in
 check "drivers: package lists not downloaded, success anyway" "! urun '' 0 1 'install_drivers linux-image-amd64' && ! grep -q 'STEP: Done' $uw/out"
 check "drivers: success not detected or without a restart marker" \
       "rm -f $uw/reboot*; urun '' 0 0 'install_drivers linux-image-amd64' && grep -qx 'STEP: Done' $uw/out && [ -e $uw/reboot ]"
+# #91: free space checked before the update (download 0 B: already in the cache; +1120 MB installed, +300 MB reserve)
+URUN_ENV="SIMPLEOS_SETUP_FREE_ROOT_MB=1500"
+check "helper: enough space for the update taken for too little (#91)" \
+      "urun '' 0 0 'space_ok full linux-image-amd64 && echo ok' && grep -qx ok $uw/out && ! grep -q NOSPACE $uw/out"
+URUN_ENV="SIMPLEOS_SETUP_FREE_ROOT_MB=1400"
+check "helper: too little space for the update not noticed before installing (#91)" \
+      "! urun '' 0 0 'space_ok full tzdata' && grep -qx 'NOSPACE: / 1420 1400' $uw/out"
+URUN_ENV="SIMPLEOS_SETUP_FREE_ROOT_MB=310 APTSUM=freed"
+check "helper: updates that free space counted as needing it" "urun '' 0 0 'space_ok safe tzdata' && ! grep -q NOSPACE $uw/out"
+URUN_ENV="SIMPLEOS_SETUP_FREE_ROOT_MB=10 APTSUM=none"
+check "helper: no summary from apt (lock, error) stops the update instead of leaving it to apt" "urun '' 0 0 'space_ok full tzdata' && ! grep -q NOSPACE $uw/out"
+URUN_ENV="SIMPLEOS_SETUP_FREE_ROOT_MB=5000 SIMPLEOS_SETUP_BOOT=1 SIMPLEOS_SETUP_FREE_BOOT_MB=100"
+check "helper: a new kernel with a full /boot partition not noticed" \
+      "! urun '' 0 0 'space_ok full \"tzdata
+linux-image-6.12.57+deb12-amd64\"' && grep -qx 'NOSPACE: /boot 150 100' $uw/out &&
+       urun '' 0 0 'space_ok full tzdata' && ! grep -q NOSPACE $uw/out"
+URUN_ENV="SIMPLEOS_SETUP_FREE_ROOT_MB=1400"
+check "helper: space after the restore point not checked again" \
+      "! urun '' 0 0 'SPACE_NEED=1420; space_still_ok' && grep -qx 'NOSPACE: / 1420 1400' $uw/out"
+URUN_ENV=
+so=/usr/local/sbin/simpleos-system-setup
+la=$(grep -n '^ *if ! space_ok ' $so | head -n 1 | cut -d: -f1); lb=$(grep -n 'backup-helper --before-update ||' $so | head -n 1 | cut -d: -f1)
+lc=$(grep -n '^ *if ! space_still_ok' $so | head -n 1 | cut -d: -f1); ld=$(grep -n 'aptget --no-remove full-upgrade' $so | head -n 1 | cut -d: -f1)
+check "helper: the space check is not before the restore point and the installation" \
+      '[ -n "$la" ] && [ -n "$lb" ] && [ -n "$lc" ] && [ -n "$ld" ] && [ "$la" -lt "$lb" ] && [ "$lb" -lt "$lc" ] && [ "$lc" -lt "$ld" ]'
 RR=/etc/polkit-1/rules.d/50-simpleos-update-refresh.rules
 # Wi-Fi: power saving off (drops to a few kB/s) – NetworkManager must really take over the file, and every
 # driver option must exist in the image's kernel (otherwise the kernel silently ignores it)
@@ -999,6 +1033,12 @@ hcase "$U" "lists just downloaded -> do not check again" "" "UPDATES=1 SIMPLEOS_
 rm -f "$wt/apt-stamp"
 hcase "$U" "checking fails, updates known -> window with a hint" "" "UPDATES=1 PKEXEC_RC=1" "1" \
     'grep -q "could not check online" $S/rofi.args && [ "$(row 0 1)" = "Install now" ]'
+printf '#!/bin/sh\necho "simpleos-cleaner $*" > "$WT/opened"\n' > "$wt/mock/simpleos-cleaner"; chmod 0755 "$wt/mock/simpleos-cleaner"
+hcase "$U" "not enough space (#91): a clear message before anything changed, Storage Cleaner offered" "" \
+    "UPDATES=1 PKEXEC_RC=1 PKEXEC_OUT=NOSPACE:_/_1420_800 NOTIFY_ACTION=yes" "0" \
+    'grep -q "about 1420 MB are needed, 800 MB are free. Nothing was changed" $S/notify &&
+     for _ in 1 2 3 4 5 6 7 8 9 10; do [ -e $S/opened ] && break; sleep 0.2; done; grep -qx "simpleos-cleaner " $S/opened'
+rm -f "$wt/mock/simpleos-cleaner"
 hcase "$U" "checking fails, nothing known -> notification instead of 'up to date'" "" "UPDATES=0 PKEXEC_RC=1" "" \
     'grep -q "could not be checked right now" $S/notify && ! grep -qs "up to date" $S/notify'
 hcase "$U" "an update that would only work by removing does not count" "" "UPDATES=2 NEEDREMOVE=1" "-" \

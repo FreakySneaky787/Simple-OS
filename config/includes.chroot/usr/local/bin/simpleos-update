@@ -229,6 +229,14 @@ install_updates() {
         126|127) sos_notify "No password entered – nothing was changed." ;;
         *)  # the cause instead of always "internet": space, network, otherwise the log
             case "$log" in
+                *"NOSPACE: "*)   # checked before installing (#91): "NOSPACE: <path> <needed MB> <free MB>"
+                    # shellcheck disable=SC2046
+                    set -- $(printf '%s\n' "$log" | sed -n 's/^NOSPACE: //p' | head -n 1)
+                    where=
+                    [ "${1:-}" = /boot ] && where=" on the boot partition"
+                    if sos_ask "$SOS_TITLE" "Not enough free disk space for the updates$where: about ${2:-?} MB are needed, ${3:-?} MB are free. Nothing was changed. Free up space with the Storage Cleaner, then try again." "Open Storage Cleaner"; then
+                        command -v simpleos-cleaner >/dev/null && simpleos-cleaner >/dev/null 2>&1 &
+                    fi ;;
                 *"No space left"*|*"not enough free space"*|*"min-free-space"*|*"You don't have enough free space"*)
                     sos_notify "Some updates could not be installed: not enough free disk space. Free up space with the Storage Cleaner and try again." critical ;;
                 *"Temporary failure resolving"*|*"Could not resolve"*|*"Failed to fetch"*|*"Could not connect"*|*"Network is unreachable"*)
