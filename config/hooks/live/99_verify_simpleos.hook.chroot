@@ -1373,6 +1373,13 @@ check "simpleos-input: a value with a semicolon was accepted" \
 check "simpleos-input: invalid values were saved" "! grep -qE 'foo|abc|maybe|reboot|tspeed=2' $INC"
 hcase "$IN --status" "no xinput -> no device, no error" "xinput" "" "" '[ "$(cat $S/out)" = "touchpad=no
 mouse=no" ]'
+# #98: a keyboard plugged in later typed with the system layout (/etc/default/keyboard), not the account's
+printf '#!/bin/sh\necho "UDEV  [12.3] remove   /devices/usb1/input/input19 (input)"\necho "UDEV  [12.4] add      /devices/usb1/input/input20 (input)"\n' > "$wt/mock/udevadm"
+printf '#!/bin/sh\necho "simpleos-keyboard-setup $*" >> "$WT/kbd"\n' > "$wt/mock/simpleos-keyboard-setup"
+chmod 0755 "$wt/mock/udevadm" "$wt/mock/simpleos-keyboard-setup"
+hcase "$IN --watch" "a device plugged in later: settings and the account's keyboard layout again (#98)" "" "" "" \
+    '[ "$(cat $S/kbd)" = "simpleos-keyboard-setup --apply" ] && [ "$(grep -c "set-prop 11 libinput Tapping Enabled" $S/xinput)" = 2 ]'
+rm -f "$wt/mock/udevadm" "$wt/mock/simpleos-keyboard-setup"
 rm -f "$INC" "$wt/mock/xinput"
 for home in /etc/skel /home/simple; do
     check "autostart: simpleos-input --watch is missing in $home" "grep -qx 'simpleos-input --watch &' '$home/.config/openbox/autostart'"
