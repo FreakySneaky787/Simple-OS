@@ -402,7 +402,8 @@ the lb default files, the generated graphics and the fastfetch package.
   locks with `dm-tool lock` (`simpleos-power --lock-now`) when the screensaver starts – not in the live session and not
   while the lock screen is already in front (#88) or a lock was started in the last 4 s (#96: the time is in
   `$XDG_RUNTIME_DIR/simpleos-lock`; power menu, Control Center and search lock through it too); LightDM's `display-setup-script`
-  (`greeter-screen`) darkens the lock screen after 2 minutes. Brightness: `simpleos-osd brightness get|set PCT`
+  (`greeter-screen`) darkens the lock screen after 2 minutes and writes the greeter's clock format in the order of the
+  system language (`/etc/xdg/lightdm/lightdm-gtk-greeter.conf.d/50-simpleos-clock.conf`, #81). Brightness: `simpleos-osd brightness get|set PCT`
   (Control Center → Display). Wi-Fi regulatory country from the time zone: `simpleos-regdom` (service, path unit on
   `/etc/localtime`, udev rule on `ieee80211`).
 - Live mode (`simpleos-live`, detected by `boot=live` or `/run/live/medium`): desktop icon "Install Simple OS",

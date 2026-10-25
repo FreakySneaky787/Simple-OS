@@ -2,7 +2,30 @@
 # Simple OS – LightDM display-setup-script (runs as root when the login screen starts; lightdm.conf.d/10_simpleos.conf).
 # After "lock when the screen turns off" the lock screen is a second X server (LightDM greeter) whose screen is not
 # controlled by the session's settings: Xorg's default would keep it lit for 10 more minutes. So turn it off after
-# 2 minutes without input (any key or mouse movement wakes it). Never an error: a failing script must not stop the login.
+# 2 minutes without input (any key or mouse movement wakes it).
+# The greeter's clock in the order of the system language (#81: "So, 25. Okt" instead of "So, Okt 25"): lightdm-gtk-greeter
+# reads /etc/lightdm/lightdm-gtk-greeter.conf last, so clock-format is not in it but in a file of its conf.d, written here
+# from the system's LC_TIME (/etc/default/locale, the language the installer or Language & Region set) through
+# /usr/local/lib/simpleos/date-formats – only when it changed. No package owns that file.
+# Never an error: a failing script must not stop the login.
+# Tests: SIMPLEOS_DEFAULT_LOCALE (instead of /etc/default/locale), SIMPLEOS_GREETER_CONFD (the conf.d folder),
+# SIMPLEOS_DATE_FORMATS (the helper).
 PATH=/usr/bin:/bin
 command -v xset >/dev/null && xset s 120 120 +dpms dpms 120 120 120 2>/dev/null
+
+LOCALE_FILE=${SIMPLEOS_DEFAULT_LOCALE:-/etc/default/locale}
+CONFD=${SIMPLEOS_GREETER_CONFD:-/etc/xdg/lightdm/lightdm-gtk-greeter.conf.d}
+DATE_FORMATS=${SIMPLEOS_DATE_FORMATS:-/usr/local/lib/simpleos/date-formats}
+locale_var() { sed -n "s/^$1=\"\{0,1\}\([^\"]*\)\"\{0,1\}\$/\1/p" "$LOCALE_FILE" 2>/dev/null | tail -n 1; }
+clock() {
+    lang=$(locale_var LANG) lc_time=$(locale_var LC_TIME)
+    short=$(env -i PATH="$PATH" LANG="${lang:-C}" LC_TIME="${lc_time:-${lang:-C}}" "$DATE_FORMATS" 2>/dev/null |
+        sed -n 's/^short=//p')
+    [ -n "$short" ] || short="%a, %b %-d"
+    new=$(printf '# Simple OS – written by /usr/local/lib/simpleos/greeter-screen from the system language, do not edit\n[greeter]\nclock-format=%s   %%H:%%M' "$short")
+    f=$CONFD/50-simpleos-clock.conf
+    [ "$(cat "$f" 2>/dev/null)" = "$new" ] && return 0
+    mkdir -p "$CONFD" && printf '%s\n' "$new" > "$f"
+}
+clock 2>/dev/null
 exit 0

@@ -4724,7 +4724,26 @@ for k, v in want.items():
 GS=/usr/local/lib/simpleos/greeter-screen
 check "LightDM: the lock screen is not turned off (display-setup-script missing)" \
       "grep -qx 'display-setup-script=$GS' /etc/lightdm/lightdm.conf.d/10_simpleos.conf && sh -n $GS && grep -q 'xset s 120' $GS"
-check "greeter-screen: error exit stops the login" "env -i PATH=/nonexistent /bin/sh $GS"
+gk=$(mktemp -d)
+check "greeter-screen: error exit stops the login" "env -i PATH=/nonexistent SIMPLEOS_GREETER_CONFD=$gk/confd /bin/sh $GS"
+# #81: the login/lock screen's clock in the order of the system language. The greeter reads its main file last – a
+# clock-format there would win over the generated one
+printf '#!/bin/sh\ncase "$LC_TIME" in de_CH*) echo "short=%%a, %%-d. %%b" ;; *) echo "short=%%a, %%b %%-d" ;; esac\n' > "$gk/df"
+chmod 0755 "$gk/df"
+printf 'LANG=en_US.UTF-8\nLC_TIME="de_CH.UTF-8"\n' > "$gk/locale"
+gsrun() { rm -rf "$gk/confd"; env -i SIMPLEOS_GREETER_CONFD="$gk/confd" SIMPLEOS_DEFAULT_LOCALE="$1" SIMPLEOS_DATE_FORMATS="${2:-$gk/df}" /bin/sh $GS; }
+check "greeter-screen: the login screen's clock not in the order of the system language (LC_TIME de_CH)" \
+      "gsrun $gk/locale && grep -qx 'clock-format=%a, %-d. %b   %H:%M' $gk/confd/50-simpleos-clock.conf && grep -qx '\[greeter\]' $gk/confd/50-simpleos-clock.conf"
+check "greeter-screen: without a system language / without the helper no clock (US form of before)" \
+      "gsrun $gk/missing && grep -qx 'clock-format=%a, %b %-d   %H:%M' $gk/confd/50-simpleos-clock.conf &&
+       gsrun $gk/locale $gk/missing && grep -qx 'clock-format=%a, %b %-d   %H:%M' $gk/confd/50-simpleos-clock.conf"
+check "greeter-screen: the clock file is rewritten at every start although nothing changed" \
+      "gsrun $gk/locale && touch -d '2020-01-01' $gk/confd/50-simpleos-clock.conf &&
+       env -i SIMPLEOS_GREETER_CONFD=$gk/confd SIMPLEOS_DEFAULT_LOCALE=$gk/locale SIMPLEOS_DATE_FORMATS=$gk/df /bin/sh $GS &&
+       [ \$(stat -c %Y $gk/confd/50-simpleos-clock.conf) -lt 1600000000 ]"
+check "LightDM: clock-format in lightdm-gtk-greeter.conf (read last, it beats the language order of greeter-screen)" \
+      "! grep -q '^clock-format' /etc/lightdm/lightdm-gtk-greeter.conf && [ ! -e /etc/xdg/lightdm/lightdm-gtk-greeter.conf.d/50-simpleos-clock.conf ]"
+rm -rf "${gk:?}"
 check "Control Center: lock switch missing" "grep -q '\"--lock\"' /usr/local/bin/simpleos-control-center"
 for pkg in git xss-lock; do
     check "package $pkg missing (package list)" "dpkg -s $pkg >/dev/null 2>&1"

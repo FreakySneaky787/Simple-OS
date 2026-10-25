@@ -64,7 +64,7 @@ Milestone "1.0.7" on GitHub. Probably without a new ISO (`./tools/release.sh pub
 | Item | Status |
 |---|---|
 | Refresh rates: one "60 Hz" instead of "60 Hz" and "59.95 Hz" (#78, ThinkPad E16) | done (d8c6eaa), needs a test on the E16 |
-| Dates in the language's own order: calendar header, clock tooltip, taskbar clock (#81) | done – order from glibc's date_fmt (`date-formats`), VM de_CH "So, 25. Okt"; the login screen's clock is still US order |
+| Dates in the language's own order: calendar header, clock tooltip, taskbar clock (#81) | done – order from glibc's date_fmt (`date-formats`), VM de_CH "So, 25. Okt", also the clock of the login/lock screen (`greeter-screen`) |
 | Software Updates: check free disk space before installing (#91) | done – apt's own summary + 300 MB reserve, nothing changed when too little, Storage Cleaner offered |
 | Ninth bug hunt on 1.0.6 | done 2026-10-24: #96–#99 below; verify hook fixed for #78 (c561446) |
 | Sleep locks the screen two or three times, each extra lock restarts the login screen (#96, #88 follow-up) | done – VM: one lock per sleep (power menu, lid, lid while locked); real sleep on the E16 still to check |
