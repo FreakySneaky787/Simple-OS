@@ -1672,7 +1672,19 @@ pwr pc XDG_VTNR=7 SIMPLEOS_TTY_ACTIVE=$wt/tty-active -- --lock-now
 check "simpleos-power --lock-now: login screen already in front (#88) -> no second lock" '[ ! -e $S/power ]'
 pwr pc SIMPLEOS_TTY_ACTIVE=$wt/tty-active -- --lock-now
 check "simpleos-power --lock-now: VT unknown -> locks as before" 'grep -qx "dm-tool lock" $S/power'
-rm -f "$wt/tty-active"
+# #96: a lock that was just started counts – LightDM switches about a second later, in between the next request (power
+# menu "Sleep" -> sleep signal -> xss-lock, LightDM's own Lock signal) still saw the desktop and locked a second time
+mkdir -p "$wt/rt"; rm -f "$wt/rt/simpleos-lock"
+echo tty7 > "$wt/tty-active"
+pwr pc XDG_VTNR=7 SIMPLEOS_TTY_ACTIVE=$wt/tty-active XDG_RUNTIME_DIR=$wt/rt -- --lock-now
+check "simpleos-power --lock-now: the lock is not noted for the next request (#96)" \
+      'grep -qx "dm-tool lock" $S/power && t=$(cat $wt/rt/simpleos-lock) && [ $(($(date +%s) - t)) -le 2 ]'
+pwr pc XDG_VTNR=7 SIMPLEOS_TTY_ACTIVE=$wt/tty-active XDG_RUNTIME_DIR=$wt/rt -- --lock-now
+check "simpleos-power --lock-now: locks again right after a lock, before LightDM switched (#96)" '[ ! -e $S/power ]'
+echo $(($(date +%s) - 10)) > "$wt/rt/simpleos-lock"
+pwr pc XDG_VTNR=7 SIMPLEOS_TTY_ACTIVE=$wt/tty-active XDG_RUNTIME_DIR=$wt/rt -- --lock-now
+check "simpleos-power --lock-now: an old lock (unlocked since) blocks a new one" 'grep -qx "dm-tool lock" $S/power'
+rm -rf "$wt/tty-active" "${wt:?}/rt"
 pwr pc SIMPLEOS_LIVE=1 -- --lock on
 sleep 0.5   # an xss-lock started by mistake writes in the background – give it time to show up
 check "simpleos-power --lock on: no xss-lock in the live session (password unknown)" '! grep -q "^xss-lock" $S/xss'
@@ -3209,7 +3221,9 @@ check "xfce4-power-manager does not leave the lid to logind" \
       "python3 -c 'import sys, xml.etree.ElementTree as E; r = E.parse(sys.argv[1]).getroot(); p = r.find(\"./property[@name=\x27xfce4-power-manager\x27]/property[@name=\x27logind-handle-lid-switch\x27]\"); assert p is not None and p.get(\"value\") == \"true\"' $XFPM &&
        grep -qa 'logind-handle-lid-switch' /usr/bin/xfce4-power-manager"
 # Lock before sleeping (lid, power menu, systemctl suspend): the systemd-sleep hook locks every LightDM session
-# via D-Bus (Session.Lock = dm-tool lock) and waits until the lock screen is in front (active VT), at most 3 s
+# via D-Bus (Session.Lock = dm-tool lock) and waits until the lock screen is in front (active VT), at most 3 s.
+# #96: not a second time – not when the lock screen is in front already, a lock was just started (power menu "Sleep",
+# marker of simpleos-power --lock-now) or xss-lock locks it; then it only waits and locks only if the lock screen never comes
 SL=/usr/lib/systemd/system-sleep/simpleos-lock
 check "Lock before sleep: hook missing/not executable/syntax error" "[ -x $SL ] && sh -n $SL"
 check "Lock before sleep: LightDM does not allow Session.Lock over D-Bus / busctl missing" \
@@ -3234,26 +3248,59 @@ case "$*" in
 esac
 exit 0
 MOCK
-chmod 0755 "$lk/busctl" "$lk/loginctl"
-# lockrun "variables" argument -> output in $lk/out, calls in $lk/calls, duration in tenths of a second in $lk/t
+# XSS=1: xss-lock runs for the user (and locks: the login screen comes 0.3 s later, like after the sleep signal)
+cat > "$lk/pgrep" <<'MOCK'
+#!/bin/sh
+[ -n "$XSS" ] || exit 1
+(/bin/sleep 0.3; echo tty8 > "$LK/active") &
+exit 0
+MOCK
+chmod 0755 "$lk/busctl" "$lk/loginctl" "$lk/pgrep"
+# lockrun "variables" argument [active VT at the start] -> output in $lk/out, calls in $lk/calls, number of
+# Session.Lock calls in $lk/locks, duration in tenths of a second in $lk/t; the marker of user 1000 in $lk/run/1000
 lockrun() {
-    echo tty7 > "$lk/active"; : > "$lk/calls"
+    echo "${3:-tty7}" > "$lk/active"; : > "$lk/calls"; mkdir -p "$lk/run/1000"
     t0=$(date +%s%N)
     # shellcheck disable=SC2086
-    $ENV -i LK="$lk" SIMPLEOS_BUSCTL="$lk/busctl" SIMPLEOS_LOGINCTL="$lk/loginctl" SIMPLEOS_TTY_ACTIVE="$lk/active" \
-        SIMPLEOS_LOCK_WAIT=10 $1 sh $SL $2 suspend > "$lk/out" 2>&1
+    $ENV -i LK="$lk" SIMPLEOS_BUSCTL="$lk/busctl" SIMPLEOS_LOGINCTL="$lk/loginctl" SIMPLEOS_PGREP="$lk/pgrep" \
+        SIMPLEOS_TTY_ACTIVE="$lk/active" SIMPLEOS_RUN_USER="$lk/run" SIMPLEOS_LOCK_WAIT=10 $1 sh $SL $2 suspend > "$lk/out" 2>&1
     echo "$? $(( ($(date +%s%N) - t0) / 100000000 ))" > "$lk/t"
+    grep -c 'org.freedesktop.DisplayManager.Session Lock' "$lk/calls" > "$lk/locks"
 }
 lockrun "SIMPLEOS_LIVE=0 SWITCH=1" pre
 check "Lock before sleep: session not locked or no wait for the lock screen" \
-      "grep -q 'org.freedesktop.DisplayManager.Session Lock' $lk/calls && grep -q 'lock screen active (tty8)' $lk/out &&
+      "[ \$(cat $lk/locks) -eq 1 ] && grep -q 'lock screen active (tty8)' $lk/out &&
        set -- \$(cat $lk/t) && [ \$1 -eq 0 ] && [ \$2 -ge 2 ] && [ \$2 -le 9 ]"
+check "Lock before sleep: the lock is not noted (xss-lock's reaction to LightDM's Lock signal locks again, #96)" \
+      "t=\$(cat $lk/run/1000/simpleos-lock) && [ \$((\$(date +%s) - t)) -le 2 ]"
+rm -f "$lk/run/1000/simpleos-lock"
 lockrun "SIMPLEOS_LIVE=0" pre
-check "Lock before sleep: LightDM never switches -> sleep blocked or error exit" \
-      "grep -q 'still not visible' $lk/out && set -- \$(cat $lk/t) && [ \$1 -eq 0 ] && [ \$2 -le 25 ]"
+check "Lock before sleep: LightDM never switches -> sleep blocked, error exit or locked again" \
+      "grep -q 'still not visible' $lk/out && [ \$(cat $lk/locks) -eq 1 ] && set -- \$(cat $lk/t) && [ \$1 -eq 0 ] && [ \$2 -le 25 ]"
 echo tty8 > "$lk/active"
 check "Lock before sleep: already locked (power menu) -> waited anyway" \
-      "$ENV -i LK=$lk SIMPLEOS_LIVE=0 SIMPLEOS_BUSCTL=$lk/busctl SIMPLEOS_LOGINCTL=$lk/loginctl SIMPLEOS_TTY_ACTIVE=$lk/active SIMPLEOS_LOCK_WAIT=30 timeout 1 sh $SL pre suspend >/dev/null 2>&1"
+      "$ENV -i LK=$lk SIMPLEOS_LIVE=0 SIMPLEOS_BUSCTL=$lk/busctl SIMPLEOS_LOGINCTL=$lk/loginctl SIMPLEOS_PGREP=$lk/pgrep SIMPLEOS_TTY_ACTIVE=$lk/active SIMPLEOS_RUN_USER=$lk/run SIMPLEOS_LOCK_WAIT=30 timeout 1 sh $SL pre suspend >/dev/null 2>&1"
+lockrun "SIMPLEOS_LIVE=0 SWITCH=1" pre tty8
+check "Lock before sleep: lock screen already in front -> locked again (#96: LightDM starts a new login screen)" \
+      "[ \$(cat $lk/locks) -eq 0 ] && grep -q 'already locked' $lk/out"
+# power menu "Sleep": simpleos-power --lock-now locked a moment ago, LightDM switches 0.3 s later
+date +%s > "$lk/run/1000/simpleos-lock"
+(sleep 0.3; echo tty8 > "$lk/active") &
+lockrun "SIMPLEOS_LIVE=0 SWITCH=1" pre
+check "Lock before sleep: a lock started just now (power menu Sleep) is locked a second time (#96)" \
+      "[ \$(cat $lk/locks) -eq 0 ] && grep -q 'being locked already' $lk/out && grep -q 'lock screen active (tty8)' $lk/out"
+date +%s > "$lk/run/1000/simpleos-lock"
+lockrun "SIMPLEOS_LIVE=0" pre
+check "Lock before sleep: a lock was just started but the lock screen never comes -> not locked after all" \
+      "[ \$(cat $lk/locks) -eq 1 ] && grep -q 'did not come' $lk/out && set -- \$(cat $lk/t) && [ \$1 -eq 0 ]"
+echo $(($(date +%s) - 10)) > "$lk/run/1000/simpleos-lock"
+lockrun "SIMPLEOS_LIVE=0 SWITCH=1" pre
+check "Lock before sleep: an old lock (unlocked since) keeps the hook from locking" \
+      "[ \$(cat $lk/locks) -eq 1 ] && ! grep -q 'did not come' $lk/out"
+rm -f "$lk/run/1000/simpleos-lock"   # the lock above left a fresh one
+lockrun "SIMPLEOS_LIVE=0 SWITCH=1 XSS=1" pre
+check "Lock before sleep: locked a second time although xss-lock locks on the sleep signal (lid, #96)" \
+      "[ \$(cat $lk/locks) -eq 0 ] && grep -q 'locked by xss-lock' $lk/out && grep -q 'lock screen active (tty8)' $lk/out"
 lockrun "SIMPLEOS_LIVE=0 SWITCH=1" post
 check "Lock before sleep: also called after waking up ('post')" "[ ! -s $lk/calls ]"
 lockrun "SIMPLEOS_LIVE=1 SWITCH=1" pre

@@ -4,16 +4,23 @@
 # hybrid-sleep|suspend-then-hibernate" – so on every sleep: closing the laptop lid (logind,
 # /etc/systemd/logind.conf.d/10-simpleos-lid.conf), power menu "Sleep", systemctl suspend, empty battery.
 # Steps on "pre":
-#   1. lock every LightDM user session: D-Bus org.freedesktop.DisplayManager.Session.Lock (the same as
-#      "dm-tool lock" – LightDM switches to the login screen, password needed)
-#   2. wait until the lock screen is really visible: the active VT (/sys/class/tty/tty0/active) is no longer
-#      the VT of a locked session (loginctl VTNr) – at most 3 s. Otherwise the computer would sleep before
-#      LightDM has switched, and when opening the lid the desktop would be visible briefly. If it is already
-#      locked (the power menu "Sleep" locks itself first), it continues without waiting.
+#   1. lock every LightDM user session whose desktop is still in front: D-Bus org.freedesktop.DisplayManager.Session.Lock
+#      (the same as "dm-tool lock" – LightDM switches to the login screen, password needed). Not again (#96: every extra
+#      lock makes LightDM throw away the login screen and start a new one, the pattern that broke unlocking in #88):
+#      - a session whose lock screen is already in front (active VT, /sys/class/tty/tty0/active, is not its VT),
+#      - a session whose lock was started in the last few seconds (power menu "Sleep", Super+L: simpleos-power
+#        --lock-now leaves the time in $XDG_RUNTIME_DIR/simpleos-lock; this hook writes it too),
+#      - a session with xss-lock ("lock when the screen turns off"): it got the sleep signal before this hook runs and
+#        locks through simpleos-power --lock-now itself.
+#      For the last two it only waits; if their lock screen does not come, it locks them itself after all.
+#   2. wait until the lock screen is really visible: the active VT is no longer the VT of a session (loginctl VTNr) –
+#      at most 3 s (twice if it still had to lock after waiting). Otherwise the computer would sleep before LightDM has
+#      switched, and when opening the lid the desktop would be visible briefly.
 # Not in the live session (the live user has no known password). Never an error exit: sleeping
 # must not fail because of locking. Messages go to the journal (journalctl -u systemd-suspend).
-# Tests: SIMPLEOS_BUSCTL / SIMPLEOS_LOGINCTL replace busctl/loginctl, SIMPLEOS_TTY_ACTIVE the file of the active
-# VT, SIMPLEOS_LOCK_WAIT the waiting time in tenths of a second (systemd calls the hook with an empty environment).
+# Tests: SIMPLEOS_BUSCTL / SIMPLEOS_LOGINCTL / SIMPLEOS_PGREP replace busctl/loginctl/pgrep, SIMPLEOS_TTY_ACTIVE the file
+# of the active VT, SIMPLEOS_RUN_USER /run/user, SIMPLEOS_LOCK_WAIT the waiting time in tenths of a second (systemd calls
+# the hook with an empty environment).
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 [ "${1:-}" = pre ] || exit 0
 
@@ -23,8 +30,11 @@ if [ -x /usr/local/bin/simpleos-live ] && /usr/local/bin/simpleos-live --check; 
 fi
 BUSCTL=${SIMPLEOS_BUSCTL:-busctl}
 LOGINCTL=${SIMPLEOS_LOGINCTL:-loginctl}
+PGREP=${SIMPLEOS_PGREP:-pgrep}
 ACTIVE=${SIMPLEOS_TTY_ACTIVE:-/sys/class/tty/tty0/active}
+RUN=${SIMPLEOS_RUN_USER:-/run/user}
 WAIT=${SIMPLEOS_LOCK_WAIT:-30}
+GRACE=4   # seconds, like simpleos-power: a lock started this recently is still on its way
 DM=org.freedesktop.DisplayManager
 
 # LightDM user sessions: 'ao 1 "/org/freedesktop/DisplayManager/Session0"'
@@ -36,32 +46,91 @@ if [ -z "$sessions" ]; then
     exit 0
 fi
 
-vts=
-for s in $sessions; do
-    user=$($BUSCTL --system get-property $DM "$s" $DM.Session UserName 2>/dev/null | sed -n 's/^s "\(.*\)"$/\1/p')
-    if $BUSCTL --system call $DM "$s" $DM.Session Lock >/dev/null 2>&1; then
-        echo "simpleos-lock: $s (${user:-?}) locked"
-    else
-        echo "simpleos-lock: $s could not be locked"
+# Is one of the VTs in $1 (" tty7 tty9") in front, i.e. the lock screen not (yet)? Unknown active VT: yes
+in_front() {
+    a=$(cat "$ACTIVE" 2>/dev/null)
+    [ -n "$a" ] || return 0
+    case " $1 " in *" $a "*) return 0 ;; esac
+    return 1
+}
+# A lock of user $1 (uid) started in the last GRACE seconds
+just_locked() {
+    m=$RUN/$1/simpleos-lock
+    [ -n "$1" ] && [ -r "$m" ] && read -r t < "$m" || return 1
+    case "$t" in ''|*[!0-9]*) return 1 ;; esac
+    d=$(($(date +%s) - t))
+    [ "$d" -ge 0 ] && [ "$d" -lt "$GRACE" ]
+}
+# Lock session $1 (user $2, uid $3) and leave the marker, so xss-lock's reaction to LightDM's Lock signal does not
+# lock it again before LightDM has switched
+lock() {
+    if [ -n "$3" ] && [ -d "$RUN/$3" ]; then
+        date +%s > "$RUN/$3/simpleos-lock" 2>/dev/null && chown "$3" "$RUN/$3/simpleos-lock" 2>/dev/null
     fi
-    [ -n "$user" ] || continue
-    # VTs of this user's graphical sessions
-    for id in $($LOGINCTL list-sessions --no-legend 2>/dev/null | awk -v u="$user" '$3 == u { print $1 }'); do
-        vt=$($LOGINCTL show-session "$id" -p VTNr --value 2>/dev/null)
-        case "$vt" in ''|0|*[!0-9]*) ;; *) vts="$vts tty$vt" ;; esac
+    if $BUSCTL --system call $DM "$1" $DM.Session Lock >/dev/null 2>&1; then
+        echo "simpleos-lock: $1 (${2:-?}) locked"
+    else
+        echo "simpleos-lock: $1 could not be locked"
+    fi
+}
+# One pass over $1 (session paths). $2 = first: leave a session alone whose lock is on its way (only remember it in
+# $waiting); last: lock it now. Afterwards $vts = the VTs of all these sessions.
+pass() {
+    vts=
+    for s in $1; do
+        user=$($BUSCTL --system get-property $DM "$s" $DM.Session UserName 2>/dev/null | sed -n 's/^s "\(.*\)"$/\1/p')
+        uid= svts=
+        if [ -n "$user" ]; then
+            list=$($LOGINCTL list-sessions --no-legend 2>/dev/null | awk -v u="$user" '$3 == u { print $1, $2 }')
+            # VTs of this user's graphical sessions
+            for id in $(printf '%s\n' "$list" | awk '{ print $1 }'); do
+                vt=$($LOGINCTL show-session "$id" -p VTNr --value 2>/dev/null)
+                case "$vt" in ''|0|*[!0-9]*) ;; *) svts="$svts tty$vt" ;; esac
+            done
+            uid=$(printf '%s\n' "$list" | awk 'NF { print $2; exit }')
+        fi
+        vts="$vts$svts"
+        if [ -z "$svts" ]; then
+            lock "$s" "$user" "$uid"                  # VT unknown: lock as before, nothing to check
+        elif ! in_front "$svts"; then
+            echo "simpleos-lock: $s ($user) already locked"
+        elif [ "$2" = last ]; then
+            lock "$s" "$user" "$uid"
+        elif just_locked "$uid"; then
+            echo "simpleos-lock: $s ($user) is being locked already – waiting for it"
+            waiting="$waiting $s"
+        elif $PGREP -u "$user" -x xss-lock >/dev/null 2>&1; then
+            echo "simpleos-lock: $s ($user) is locked by xss-lock – waiting for it"
+            waiting="$waiting $s"
+        else
+            lock "$s" "$user" "$uid"
+        fi
     done
-done
+}
+# Wait until no VT of $vts is in front any more
+wait_lock() {
+    i=0
+    while [ "$i" -lt "$WAIT" ]; do
+        if ! in_front "$vts"; then
+            echo "simpleos-lock: lock screen active ($(cat "$ACTIVE" 2>/dev/null))"
+            return 0
+        fi
+        sleep 0.1
+        i=$((i + 1))
+    done
+    return 1
+}
 
-# Wait until the lock screen is in front
-i=0
-while [ "$i" -lt "$WAIT" ]; do
-    now=$(cat "$ACTIVE" 2>/dev/null)
-    case " $vts " in
-        *" $now "*) ;;                       # the user session is still visible
-        *) echo "simpleos-lock: lock screen active (${now:-?})"; exit 0 ;;
-    esac
-    sleep 0.1
-    i=$((i + 1))
-done
+waiting=
+pass "$sessions" first
+all=$vts
+[ -n "$all" ] || exit 0
+wait_lock && exit 0
+if [ -n "$waiting" ]; then
+    echo "simpleos-lock: the lock screen did not come – locking now"
+    pass "$waiting" last
+    vts=$all
+    wait_lock && exit 0
+fi
 echo "simpleos-lock: lock screen still not visible after $((WAIT / 10)) s – sleeping anyway"
 exit 0

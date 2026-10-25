@@ -396,7 +396,8 @@ the lb default files, the generated graphics and the fastfetch package.
   setting is written to its xfconf channel; without a battery `xset` is used and `simpleos-screensaver` (D-Bus-activated,
   `org.freedesktop.ScreenSaver`, quits 30 s after the last video) answers the browsers' inhibit request. `xss-lock`
   locks with `dm-tool lock` (`simpleos-power --lock-now`) when the screensaver starts – not in the live session and not
-  while the lock screen is already in front (#88); LightDM's `display-setup-script`
+  while the lock screen is already in front (#88) or a lock was started in the last 4 s (#96: the time is in
+  `$XDG_RUNTIME_DIR/simpleos-lock`; power menu, Control Center and search lock through it too); LightDM's `display-setup-script`
   (`greeter-screen`) darkens the lock screen after 2 minutes. Brightness: `simpleos-osd brightness get|set PCT`
   (Control Center → Display). Wi-Fi regulatory country from the time zone: `simpleos-regdom` (service, path unit on
   `/etc/localtime`, udev rule on `ieee80211`).
@@ -421,7 +422,9 @@ the lb default files, the generated graphics and the fastfetch package.
 - Laptop: tap to click and natural scrolling for the touchpad (mouse unchanged), closing the lid = sleep (logind,
   also on AC power; not when docked), battery display only with a real battery. Before every sleep (lid, power
   menu, `systemctl suspend`) `/usr/lib/systemd/system-sleep/simpleos-lock` locks the session (LightDM via D-Bus)
-  and waits until the lock screen is in front – after opening the lid the session is locked.
+  and waits until the lock screen is in front – after opening the lid the session is locked. It does not lock a second
+  time (#96: each extra lock restarts LightDM's login screen): not when the lock screen is in front already, a lock was
+  just started, or xss-lock locks on the sleep signal – then it only waits, and locks only if the lock screen never comes.
 - Do Not Disturb (`simpleos-dnd`, Control Center → Notifications, Menu → Settings, click on the icon in the taskbar):
   notifications paused (`dunstctl set-paused`), optionally without window effects (`--no-effects on`: picom off);
   a bell icon in the taskbar while it is on.

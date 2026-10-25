@@ -362,7 +362,8 @@ def run_system(key):
             if shutil.which(c[0]) and subprocess.run(c, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
                 return True
         return False
-    lock = (["dm-tool", "lock"], ["loginctl", "lock-session"])
+    # simpleos-power --lock-now = dm-tool lock, noted so that the sleep hook does not lock a second time (#96)
+    lock = (["/usr/local/bin/simpleos-power", "--lock-now"], ["loginctl", "lock-session"])
     # lock before sleeping – not in the live session (password unknown, like system-sleep/simpleos-lock)
     live = os.access(LIVE, os.X_OK) and subprocess.run([LIVE, "--check"], stdout=subprocess.DEVNULL,
                                                         stderr=subprocess.DEVNULL).returncode == 0

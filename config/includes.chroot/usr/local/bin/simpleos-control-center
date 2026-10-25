@@ -578,11 +578,15 @@ def live_session():
     return cmd("/usr/local/bin/simpleos-live", "--check").returncode == 0
 
 
+# simpleos-power --lock-now = dm-tool lock, noted so that xss-lock and the sleep hook do not lock a second time (#96)
+LOCK_NOW = ("/usr/local/bin/simpleos-power", "--lock-now")
+
+
 def power_action(what):
     if what == "lock":
-        return cmd("dm-tool", "lock").returncode == 0 or cmd("loginctl", "lock-session").returncode == 0
+        return cmd(*LOCK_NOW).returncode == 0 or cmd("loginctl", "lock-session").returncode == 0
     if what == "sleep" and not live_session():   # live session: password unknown -> do not lock
-        cmd("dm-tool", "lock")
+        cmd(*LOCK_NOW)
     verb = {"sleep": "suspend", "restart": "reboot", "shutdown": "poweroff"}[what]
     return cmd("systemctl", verb).returncode == 0 or cmd("loginctl", verb).returncode == 0
 
