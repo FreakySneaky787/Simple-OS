@@ -456,13 +456,19 @@ tb=$(mktemp -d)
 mkdir -p "$tb/.config/tint2"
 cp /etc/skel/.config/tint2/tint2rc "$tb/.config/tint2/"
 # a fixed, empty battery folder: the build machine (laptop) must not influence the result
-TB="env -u DISPLAY HOME=$tb SIMPLEOS_POWER_SUPPLY=$tb/no-power-supply /usr/local/bin/simpleos-taskbar-select"
+# SIMPLEOS_DATE_FMT empty = the US date order of /etc/skel's tint2rc, whatever language the build runs in (#81)
+TB="env -u DISPLAY HOME=$tb SIMPLEOS_POWER_SUPPLY=$tb/no-power-supply SIMPLEOS_DATE_FMT= /usr/local/bin/simpleos-taskbar-select"
 check "designer: --set fails" "$TB --set position=top --set size=compact --set tasks=icons --set clock=off --set network=off >/dev/null 2>&1"
 check "designer: position top not set" "grep -qx 'panel_position = top center horizontal' '$tb/.config/tint2/tint2rc'"
 check "designer: clock/network not hidden" "grep -qx 'panel_items = PTESP' '$tb/.config/tint2/tint2rc'"
 check "designer: icons only not set" "grep -qx 'task_text = 0' '$tb/.config/tint2/tint2rc'"
 check "designer: invalid value not rejected" "! $TB --set style=evil >/dev/null 2>&1"
 check "designer: reset does not restore the default" "$TB --set position=bottom --set size=full --set tasks=text --set style=dark --set network=on --set clock=on >/dev/null 2>&1 && cmp -s /etc/skel/.config/tint2/tint2rc '$tb/.config/tint2/tint2rc'"
+check "designer: German clock date still in US order ('Di, Okt 20', #81)" \
+      "env -u DISPLAY HOME=$tb SIMPLEOS_POWER_SUPPLY=$tb/no-power-supply LANG=de_DE.UTF-8 SIMPLEOS_DATE_FMT='%a %-d. %b %H:%M:%S %Z %Y' SIMPLEOS_D_FMT=%d.%m.%Y \
+           /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 &&
+       grep -qx 'time2_format = %a, %-d. %b' '$tb/.config/tint2/tint2rc' && grep -qx 'clock_tooltip = %A, %-d. %B %Y' '$tb/.config/tint2/tint2rc' &&
+       grep -qx 'time1_format = %H:%M' '$tb/.config/tint2/tint2rc'"
 rm -rf "${tb:?}"
 
 # Network: nm-applet in the tray (left click = Wi-Fi list), Rofi menu (status, Wi-Fi networks, details), password via Rofi,
@@ -2115,6 +2121,37 @@ assert k.place(1900, 1060, 300, 320, (0, 0, 1920, 1030)) == (1612, 702), k.place
 assert k.place(1900, 10, 300, 320, (0, 40, 1920, 1040)) == (1612, 48)
 assert k.place(5, 1060, 300, 320, (0, 0, 1366, 728)) == (8, 400)
 assert k.place(2500, 1060, 300, 320, (1920, 0, 1280, 1000))[0] == 2350\""
+# #81: dates in the order of the language (calendar header, clock tooltip, second line of the clock) – before, every
+# language got the US order with translated names ("Oktober 20, 2026")
+DF=/usr/local/lib/simpleos/date-formats
+check "date formats: missing/syntax error" "[ -x $DF ] && sh -n $DF"
+dfm() {   # LANG date_fmt d_fmt -> "short=…|long=…|full=…|"
+    env -i LANG="$1" SIMPLEOS_DATE_FMT="$2" SIMPLEOS_D_FMT="$3" PATH=/usr/bin:/bin sh $DF | tr '\n' '|'
+}
+check "date formats: US English changed" \
+      '[ "$(dfm en_US.UTF-8 "%a %b %e %r %Z %Y" "%m/%d/%Y")" = "short=%a, %b %-d|long=%B %-d, %Y|full=%A, %B %-d, %Y|" ]'
+check "date formats: C/unknown language not the US forms of before" '[ "$(dfm "" "" "")" = "short=%a, %b %-d|long=%B %-d, %Y|full=%A, %B %-d, %Y|" ]'
+check "date formats: German not '20. Oktober 2026'" \
+      '[ "$(dfm de_DE.UTF-8 "%a %-d. %b %H:%M:%S %Z %Y" "%d.%m.%Y")" = "short=%a, %-d. %b|long=%-d. %B %Y|full=%A, %-d. %B %Y|" ]'
+check "date formats: Swiss German without the dot after the day (glibc's de_CH date_fmt lacks it)" \
+      '[ "$(dfm de_CH.UTF-8 "%a %d %b %Y %T %Z" "%d.%m.%Y")" = "short=%a, %-d. %b|long=%-d. %B %Y|full=%A, %-d. %B %Y|" ]'
+check "date formats: British/French not day first" \
+      '[ "$(dfm en_GB.UTF-8 "%a %e %b %H:%M:%S %Z %Y" "%d/%m/%y")" = "short=%a, %-d %b|long=%-d %B %Y|full=%A, %-d %B %Y|" ] &&
+       [ "$(dfm fr_FR.UTF-8 "%a %d %b %Y %T %Z" "%d/%m/%Y")" = "short=%a, %-d %b|long=%-d %B %Y|full=%A, %-d %B %Y|" ]'
+check "date formats: Japanese without 年月日" \
+      '[ "$(dfm ja_JP.UTF-8 "%Y年 %b %e日 %A %H:%M:%S %Z" "%Y年%m月%d日")" = "short=%-m月%-d日 (%a)|long=%Y年%-m月%-d日|full=%Y年%-m月%-d日 %A|" ]'
+check "date formats: Hungarian not year first" \
+      '[ "$(dfm hu_HU.UTF-8 "%Y. %b. %-e., %A, %H:%M:%S %Z" "%Y-%m-%d")" = "short=%a, %b %-d.|long=%Y. %B %-d.|full=%Y. %B %-d., %A|" ]'
+printf '#!/bin/sh\necho short=x\necho "long=%%-d. %%B %%Y"\n' > "$wt/date-formats"; chmod 0755 "$wt/date-formats"
+check "calendar: header not in the order of the language (#81)" \
+      "SIMPLEOS_DATE_FORMATS=$wt/date-formats python3 -c \"
+import importlib.machinery as m; k = m.SourceFileLoader('k', '$CAL').load_module()
+assert k.long_date_format() == '%-d. %B %Y', k.long_date_format()\""
+check "calendar: without the helper no US fallback" \
+      "SIMPLEOS_DATE_FORMATS=$wt/missing python3 -c \"
+import importlib.machinery as m; k = m.SourceFileLoader('k', '$CAL').load_module()
+assert k.long_date_format() == '%B %-d, %Y', k.long_date_format()\""
+rm -f "$wt/date-formats"
 for home in /etc/skel /home/simple; do
     check "tint2: a click on the clock does not open the calendar in $home" \
           "grep -qx 'clock_lclick_command = /usr/local/bin/simpleos-calendar' '$home/.config/tint2/tint2rc'"
@@ -2392,7 +2429,7 @@ printf 'Mains\n' > "$tb/ps/laptop/AC/type"
 mkbat "$tb/ps/ups/ups0" 1 Discharging; printf 'UPS\n' > "$tb/ps/ups/ups0/type"
 printf '#!/bin/sh\necho "$*" >> "%s/notify"\n' "$tb" > "$tb/bin/notify-send"
 chmod 0755 "$tb/bin/notify-send"
-BAT="env -u DISPLAY HOME=$tb PATH=$tb/bin:/usr/local/bin:/usr/bin:/bin SIMPLEOS_VIRT=none"
+BAT="env -u DISPLAY HOME=$tb PATH=$tb/bin:/usr/local/bin:/usr/bin:/bin SIMPLEOS_VIRT=none SIMPLEOS_DATE_FMT="
 for ps in vm dummy mouse ups; do
     rm -f "$tb/notify"
     check "battery: dummy '$ps' counts as a battery (icon in a VM/PC without a battery)" "! $BAT SIMPLEOS_POWER_SUPPLY=$tb/ps/$ps /usr/local/bin/simpleos-battery --present"
@@ -2676,7 +2713,7 @@ check "launcher: Debian's 'Install Debian' not hidden" \
 # Taskbar: badge only live, between network and tray; power stays on the far right; without live exactly the default again
 mkdir -p "$lt/tb/.config/tint2"
 cp /etc/skel/.config/tint2/tint2rc "$lt/tb/.config/tint2/"
-TL="env -u DISPLAY HOME=$lt/tb SIMPLEOS_POWER_SUPPLY=$lt/no-power-supply /usr/local/bin/simpleos-taskbar-select --apply"
+TL="env -u DISPLAY HOME=$lt/tb SIMPLEOS_POWER_SUPPLY=$lt/no-power-supply SIMPLEOS_DATE_FMT= /usr/local/bin/simpleos-taskbar-select --apply"
 TRC=$lt/tb/.config/tint2/tint2rc
 check "taskbar (live): badge missing" \
       "SIMPLEOS_LIVE=1 $TL >/dev/null 2>&1 && grep -qx 'panel_items = PTEEPSCP' $TRC && [ \$(grep -cx 'button = new' $TRC) -eq 3 ] &&

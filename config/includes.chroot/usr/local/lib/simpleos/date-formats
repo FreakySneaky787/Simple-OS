@@ -1,0 +1,46 @@
+#!/bin/sh
+# Simple OS – date formats in the order of the language (LC_TIME), for strftime/tint2 (#81). Prints three lines:
+#   short=…   second line of the taskbar clock   en_US "Tue, Oct 20"        de "Di, 20. Okt"     ja "10月20日 (火)"
+#   long=…    calendar header (under the weekday)  "October 20, 2026"       "20. Oktober 2026"   "2026年10月20日"
+#   full=…    tooltip of the taskbar clock          "Tuesday, October 20, 2026"  "Dienstag, 20. Oktober 2026"
+# Before, every language got the US order with translated names ("Oktober 20, 2026"). glibc has no long date format,
+# but every locale has date_fmt (what "date" prints, e.g. de "%a %-d. %b %H:%M:%S %Z %Y"): the order of day, month
+# and year and a dot after the day ("20.", de/cs/nb/fi …) come from there; languages whose d_fmt has its own
+# characters between the numbers (ja/zh "%Y年%m月%d日", ko) use those. Unknown/C/POSIX: the US forms as before.
+# Some locales lack the dot in date_fmt although the language writes it (de_CH, de_AT, da_DK: "20. Oktober") – the
+# languages with that dot get it from the language code of LC_ALL/LC_TIME/LANG.
+# Callers: simpleos-taskbar-select (tint2rc at every sign-in), simpleos-calendar. Never an error (exit 0).
+# Tests: SIMPLEOS_DATE_FMT / SIMPLEOS_D_FMT replace "locale date_fmt" / "locale d_fmt".
+if [ -n "${SIMPLEOS_DATE_FMT+x}" ]; then
+    df=$SIMPLEOS_DATE_FMT d=${SIMPLEOS_D_FMT:-}
+else
+    df=$(locale date_fmt 2>/dev/null) d=$(locale d_fmt 2>/dev/null)
+fi
+loc=${LC_ALL:-${LC_TIME:-${LANG:-}}}
+case "${loc%%[_.@]*}" in de|da|nb|nn|no|cs|sk|fi|sl|hr|sr|bs|et|is|fo) lang_dot=. ;; *) lang_dot= ;; esac
+printf '%s\n%s\n' "$df" "$d" | LC_ALL=C awk -v lang_dot="$lang_dot" '
+NR == 1 { df = $0; next }
+NR == 2 { d = $0 }
+END {
+    dpos = match(df, /%[-_0^#]?[de]/); dlen = RLENGTH
+    mpos = match(df, /%[-_0^#]?[bBhm]/)
+    ypos = match(df, /%[-_0^#]?[EO]?[Yy]/); ylen = RLENGTH
+    dot = (lang_dot != "" || (dpos && substr(df, dpos + dlen, 1) == ".")) ? "." : ""
+    ydot = (ypos && substr(df, ypos + ylen, 1) == ".") ? "." : ""
+    if (d ~ /[\200-\377]/ && match(d, /%[-_0^#]?Y/)) {
+        # ja/zh/ko: the characters after year, month and day number in d_fmt ("年", "月", "日" / "년 ", "월 ", "일")
+        rest = substr(d, RSTART + RLENGTH)
+        match(rest, /%[-_0^#]?m/); ym = substr(rest, 1, RSTART - 1); rest = substr(rest, RSTART + RLENGTH)
+        match(rest, /%[-_0^#]?[de]/); mm = substr(rest, 1, RSTART - 1); dm = substr(rest, RSTART + RLENGTH)
+        long = "%Y" ym "%-m" mm "%-d" dm
+        short = "%-m" mm "%-d" dm " (%a)"; full = long " %A"
+    } else if (!dpos || !mpos || (mpos < dpos && (!ypos || dpos < ypos))) {
+        short = "%a, %b %-d"; long = "%B %-d, %Y"; full = "%A, %B %-d, %Y"            # month first (US)
+    } else if (ypos && ypos < mpos) {
+        short = "%a, %b %-d" dot; long = "%Y" ydot " %B %-d" dot; full = long ", %A"     # year first (hu, lt …)
+    } else {
+        short = "%a, %-d" dot " %b"; long = "%-d" dot " %B %Y"; full = "%A, %-d" dot " %B %Y"    # day first
+    }
+    print "short=" short; print "long=" long; print "full=" full
+}'
+exit 0

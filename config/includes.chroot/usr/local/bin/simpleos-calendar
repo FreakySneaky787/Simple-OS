@@ -22,6 +22,7 @@ from pathlib import Path
 RUN = Path(os.environ.get("XDG_RUNTIME_DIR") or Path.home() / ".cache")
 PIDFILE = RUN / "simpleos-calendar.pid"
 MARGIN = 8
+DATE_FORMATS = os.environ.get("SIMPLEOS_DATE_FORMATS", "/usr/local/lib/simpleos/date-formats")
 
 
 def running():
@@ -34,6 +35,19 @@ def running():
     except (OSError, ValueError, IndexError):
         pass
     return None
+
+
+def long_date_format():
+    """strftime format of the date under the weekday in the order of the language: "20. Oktober 2026" in German instead
+    of "Oktober 20, 2026" (#81, /usr/local/lib/simpleos/date-formats)"""
+    try:
+        out = subprocess.run([DATE_FORMATS], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        out = ""
+    for line in out.splitlines():
+        if line.startswith("long=") and len(line) > 5:
+            return line[5:]
+    return "%B %-d, %Y"
 
 
 def place(px, py, w, h, area):
@@ -100,7 +114,7 @@ def main(argv):
     today = datetime.date.today()
     head = Gtk.Label(xalign=0)
     head.set_markup(f"<span size='large' weight='bold'>{today.strftime('%A')}</span>\n"
-                    f"<span alpha='70%'>{today.strftime('%B %-d, %Y')}</span>")
+                    f"<span alpha='70%'>{today.strftime(long_date_format())}</span>")
     box.pack_start(head, False, False, 0)
     cal = Gtk.Calendar(show_week_numbers=True, show_heading=True, show_day_names=True)
     cal.select_month(today.month - 1, today.year)

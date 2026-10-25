@@ -92,6 +92,11 @@ apply() {
     kv="$kv;task_maximum_size|$task_w $task_h;systray_icon_size|$tray"
     kv="$kv;task_font_color|$fg;task_active_font_color|$fg;task_urgent_font_color|$fg"
     kv="$kv;task_iconified_font_color|$dim;clock_font_color|$fg;execp_font_color|$fg;battery_font_color|$fg"
+    # Date of the clock in the order of the language (#81): "Di, 20. Okt" instead of "Di, Okt 20"
+    dates=$(/usr/local/lib/simpleos/date-formats 2>/dev/null) || true
+    d_short=$(printf '%s\n' "$dates" | sed -n 's/^short=//p') d_full=$(printf '%s\n' "$dates" | sed -n 's/^full=//p')
+    [ -n "$d_short" ] && kv="$kv;time2_format|$d_short"
+    [ -n "$d_full" ] && kv="$kv;clock_tooltip|$d_full"
 
     tmp=$(mktemp "$TINT2RC.XXXXXX")
     awk -v bg="$bg" -v kv="$kv" -v live="$live" '
