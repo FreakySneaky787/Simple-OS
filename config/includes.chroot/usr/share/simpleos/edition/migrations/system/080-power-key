@@ -1,0 +1,17 @@
+#!/bin/sh
+# Simple OS 1.0.7 – start the power button service right after the update (runs once, as root, from the postinst of the
+# package simpleos via "edition --system").
+# 1.0.7 puts the computer to sleep when the power button is pressed on the lock screen, instead of shutting it down at
+# once (#97: /usr/local/sbin/simpleos-power-key, started by udev through /etc/udev/rules.d/62-simpleos-power-key.rules).
+# udev reads a new rule only for devices that appear later, and the power button is there from the start – without
+# this the protection would only begin after the next restart. A "change" event (not "add": logind and Xorg would take
+# the button for a new one) tags the device for systemd, which then starts simpleos-power-key@eventN.service.
+# Never fails (exit 0): at worst it takes effect after the next restart.
+[ -d /run/systemd/system ] || exit 0
+udevadm control --reload 2>/dev/null
+for d in /sys/class/input/event*; do
+    [ "$(cat "$d/device/name" 2>/dev/null)" = "Power Button" ] || continue
+    udevadm trigger --action=change "$d" 2>/dev/null &&
+        echo "080-power-key: ${d##*/} (Power Button) handed to simpleos-power-key"
+done
+exit 0

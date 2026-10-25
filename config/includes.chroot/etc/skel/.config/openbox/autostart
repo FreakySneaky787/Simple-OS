@@ -18,8 +18,8 @@ done > ~/.config/gtk-3.0/bookmarks
 # for computers without a battery) need to know the screen; the session bus does not get it by itself
 dbus-update-activation-environment --systemd DISPLAY XAUTHORITY 2>/dev/null
 # The power button opens the power menu instead of shutting down at once: while this runs, logind leaves the key
-# alone (inhibitor "handle-power-key") and Openbox gets XF86PowerOff (rc.xml). Sign-in screen and a session that
-# is not running yet keep logind's own behavior. If it cannot start, the button simply shuts down as before.
+# alone (inhibitor "handle-power-key") and Openbox gets XF86PowerOff (rc.xml). On the lock screen and the login screen
+# simpleos-power-key decides (#97: sleep while somebody is signed in, otherwise shut down).
 # The inhibitor must end with this session: Debian keeps a signed-out user's processes (KillUserProcesses=no), so
 # a plain endless sleep kept blocking the button at the login screen after signing out (and one more with every sign-in).
 # xprop -spy waits on the X connection and exits when the session's X server goes away.

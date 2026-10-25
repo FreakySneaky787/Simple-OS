@@ -3309,6 +3309,66 @@ lockrun "SIMPLEOS_LIVE=0 NOSESS=1" pre
 check "Lock before sleep: without a LightDM session no fallback to loginctl lock-sessions" \
       "grep -qx 'loginctl lock-sessions' $lk/calls && set -- \$(cat $lk/t) && [ \$1 -eq 0 ]"
 rm -rf "${lk:?}"
+# #97: power button on the lock screen = sleep (before: logind shut down at once – the session's inhibitor only counts
+# while it is the active one), at the login screen with nobody signed in = shut down, on the desktop = the power menu
+PK=/usr/local/sbin/simpleos-power-key
+PKU=/etc/systemd/system/simpleos-power-key@.service
+PKR=/etc/udev/rules.d/62-simpleos-power-key.rules
+check "Power button: simpleos-power-key missing/not executable/syntax error" "[ -x $PK ] && sh -n $PK"
+# dd's iflag=nonblock stays on the shared descriptor: the next blocking read failed and the service ended after the
+# first sleep (found in the VM – a file as the device cannot show it)
+check "Power button: simpleos-power-key ends after the first sleep (dd iflag=nonblock on the device)" "! grep -q 'iflag=nonblock' $PK"
+check "Power button: the service does not hold logind's handle-power-key inhibitor around simpleos-power-key" \
+      "grep -q '^ExecStart=/usr/bin/systemd-inhibit --what=handle-power-key .*--mode=block /usr/local/sbin/simpleos-power-key /dev/input/%I\$' $PKU &&
+       grep -qx 'BindsTo=dev-input-%i.device' $PKU && [ -x /usr/bin/systemd-inhibit ]"
+check "Power button: udev does not start the service for the ACPI power button" \
+      "grep -q 'ATTRS{name}==\"Power Button\".*TAG+=\"systemd\".*ENV{SYSTEMD_WANTS}+=\"simpleos-power-key@%k.service\"' $PKR"
+check "Power button: update to 1.0.7 starts the service only after a restart (migration 080)" \
+      "[ -x /usr/share/simpleos/edition/migrations/system/080-power-key ] && grep -q 'udevadm trigger --action=change' /usr/share/simpleos/edition/migrations/system/080-power-key"
+pk=$wt/pk; mkdir -p "$pk"
+# PKMODE: desktop = the user's X session in front; locked = the greeter in front, the user online; nobody = greeter
+# in front, the user's session only "closing" (signed out, processes kept)
+cat > "$pk/loginctl" <<'MOCK'
+#!/bin/sh
+case "$*" in
+    "show-seat seat0 -p ActiveSession --value") [ "$PKMODE" = desktop ] && echo 3 || echo c2 ;;
+    "list-sessions --no-legend") echo "  3 1000 simple seat0 tty7"; echo " c2  110 lightdm seat0 tty8" ;;
+    "show-session 3 -p Class --value") echo user ;;
+    "show-session 3 -p Type --value") echo x11 ;;
+    "show-session 3 -p State --value") case "$PKMODE" in desktop) echo active ;; locked) echo online ;; *) echo closing ;; esac ;;
+    "show-session c2 -p Class --value") echo greeter ;;
+    "show-session c2 -p Type --value") echo x11 ;;
+    "show-session c2 -p State --value") [ "$PKMODE" = desktop ] && echo online || echo active ;;
+esac
+MOCK
+printf '#!/bin/sh\necho "systemctl $*" >> "$PKOUT"\n' > "$pk/systemctl"
+chmod 0755 "$pk/loginctl" "$pk/systemctl"
+# one struct input_event (64 bit): 16 bytes time, type, code, value
+pkev() { printf '\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0'; printf "\\$(printf %03o "$1")\\000\\$(printf %03o "$2")\\000\\$(printf %03o "$3")\\000\\000\\000"; }
+# power button pressed + released (with SYN), then the press that wakes the computer
+{ pkev 1 116 1; pkev 0 0 0; pkev 1 116 0; pkev 0 0 0; pkev 1 116 1; pkev 0 0 0; } > "$pk/press"
+# other keys, a held key (value 2), a release only
+{ pkev 1 115 1; pkev 1 116 2; pkev 1 116 0; pkev 4 4 116; } > "$pk/other"
+pkrun() {   # mode events
+    : > "$pk/out"
+    $ENV -i PKMODE="$1" PKOUT="$pk/out" SIMPLEOS_LOGINCTL="$pk/loginctl" SIMPLEOS_SYSTEMCTL="$pk/systemctl" \
+        SIMPLEOS_POWER_KEY_PAUSE=0 timeout 10 sh $PK "$pk/$2" > "$pk/log" 2>&1
+    echo $? > "$pk/rc"
+}
+pkrun locked press
+check "Power button on the lock screen: not sleep (#97), or the wake-up press slept again" \
+      "[ \"\$(cat $pk/out)\" = 'systemctl suspend' ] && [ \$(cat $pk/rc) -eq 0 ]"
+pkrun nobody press
+check "Power button at the login screen with nobody signed in (a signed-out session closing): not shut down" \
+      "grep -qx 'systemctl poweroff' $pk/out && ! grep -q suspend $pk/out"
+pkrun desktop press
+check "Power button on the desktop: simpleos-power-key acts itself instead of leaving it to the power menu" \
+      "[ ! -s $pk/out ] && grep -q 'desktop in front' $pk/log"
+pkrun locked other
+check "Power button: another key, a held or released power button acts" "[ ! -s $pk/out ]"
+rc=0; $ENV -i timeout 5 sh $PK "$pk/missing" >/dev/null 2>&1 || rc=$?
+check "Power button: a missing device is not an error (systemd restarts it forever silently)" "[ $rc -eq 1 ]"
+rm -rf "${pk:?}"
 # Compositor launcher (autostart and Do Not Disturb)
 printf '#!/bin/sh\necho "picom $*" >> "$WT/picomcalls"\n[ -n "$PICOM_FAIL" ] && [ ! -e "$WT/failed" ] && { touch "$WT/failed"; exit 1; }\nexit 0\n' > "$wt/mock/picom"
 printf '#!/bin/sh\nexit ${PGREP_RC:-1}\n' > "$wt/mock/pgrep"
