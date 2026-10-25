@@ -3349,7 +3349,8 @@ lockrun() {
     $ENV -i LK="$lk" SIMPLEOS_BUSCTL="$lk/busctl" SIMPLEOS_LOGINCTL="$lk/loginctl" SIMPLEOS_PGREP="$lk/pgrep" \
         SIMPLEOS_TTY_ACTIVE="$lk/active" SIMPLEOS_RUN_USER="$lk/run" SIMPLEOS_LOCK_WAIT=10 $1 sh $SL $2 suspend > "$lk/out" 2>&1
     echo "$? $(( ($(date +%s%N) - t0) / 100000000 ))" > "$lk/t"
-    grep -c 'org.freedesktop.DisplayManager.Session Lock' "$lk/calls" > "$lk/locks"
+    # 0 locks: grep -c exits 1, which would end this hook (set -e) without a word
+    grep -c 'org.freedesktop.DisplayManager.Session Lock' "$lk/calls" > "$lk/locks" || true
 }
 lockrun "SIMPLEOS_LIVE=0 SWITCH=1" pre
 check "Lock before sleep: session not locked or no wait for the lock screen" \
