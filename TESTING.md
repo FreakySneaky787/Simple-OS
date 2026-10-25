@@ -326,3 +326,28 @@ machine **updated from 1.0.5 through Software Updates** and on a fresh install f
       belong to you afterwards and `./tools/release.sh sign` works without a chown; a README/ROADMAP commit during the
       build keeps `dirty=0` in `output/repo/.build-state`; the build log says "changes since v1.0.5"; after `publish`,
       `git describe --tags --abbrev=0` shows `v1.0.6`.
+
+## 12. What changed in 1.0.7
+
+Power button, sleep locking, date order, hotplugged keyboards, disk space before updates. Test on a machine **updated
+from 1.0.6 through Software Updates** (VM-tested 2026-10-25 with the files copied in, fake suspend) and on real hardware.
+
+- [ ] **Power button (issue #97):** lock the screen (Super+L), press the power button briefly → the laptop goes to sleep
+      (not off); wake it → lock screen, unlock → windows still there. Twice in a row works too. On the desktop the
+      button opens the power menu. Sign out, press it at the login screen → it shuts down. Right after the update,
+      without a restart: `systemctl status 'simpleos-power-key@*'` shows it running.
+- [ ] **Sleep locks once (issue #96):** power menu → Sleep, closing the lid, and closing the lid while already locked:
+      after each wake-up `sudo grep -c "Seat seat0: Locking" /var/log/lightdm/lightdm.log` grew by 1 (by 0 when it was
+      already locked), and unlocking always works. (VM, fake suspend: 1/1, 1/1, 0 – before 3/4, 2/3, 1.)
+- [ ] **Refresh rates (issue #78, ThinkPad E16):** Control Center → Display and Super+P show one "60 Hz", not "60 Hz"
+      and "59.95 Hz".
+- [ ] **Date order (issue #81):** with a German/Swiss system language: taskbar "So, 25. Okt", its tooltip "Sonntag,
+      25. Oktober 2026", the calendar (click on the clock) "25. Oktober 2026", the login and lock screen "So, 25. Okt".
+      English (US) unchanged: "Sun, Oct 25".
+- [ ] **Keyboard plugged in later (issue #98):** account layout differs from the system's (Control Center → Keyboard,
+      password dialog cancelled): plug in a USB keyboard after signing in → it types with the account's layout (y/z).
+- [ ] **Disk space before updates (issue #91):** fill the disk until less than ~500 MB are free
+      (`fallocate -l …G ~/big`), open Software Updates with updates pending → message "Not enough free disk space …
+      Nothing was changed", the button opens the Storage Cleaner; `apt` shows nothing half installed. Delete the file →
+      the update installs.
+- [ ] **Leftovers (issue #99):** `ls /usr/local/bin/__pycache__` → does not exist (fresh install and after the update).

@@ -1,4 +1,4 @@
-# Simple OS 1.0.6
+# Simple OS 1.0.7
 
 **SOS – Simple Operating System. Keep it Simple.**
 
@@ -6,38 +6,31 @@ Simple OS is a fast, quiet desktop built on Debian 12 "bookworm". It boots strai
 (Openbox, Catppuccin colors), sets itself up with a short wizard and keeps itself up to date. You don't
 need a terminal.
 
-## What's new in 1.0.6
+## What's new in 1.0.7
 
-A bugfix update with a **new ISO** (the installer changed). If you run Simple OS 1.0 to 1.0.5, you get it through
-**Software Updates** – no need to reinstall. The first time you sign in afterwards, a short **"What's new"** window
-shows the highlights.
-
-### New
-
-- **Choose the app for office files** (issue #75). Control Center → Apps now also has **Documents**, **Spreadsheets**
-  and **Presentations**: which app opens .docx/.odt, .xlsx/.ods/.csv and .pptx/.odp files – useful when both
-  LibreOffice and ONLYOFFICE are installed. "More browsers" moved right below the web browser.
+A bugfix update. If you run Simple OS 1.0 to 1.0.6, you get it through **Software Updates** – no need to reinstall.
+The first time you sign in afterwards, a short **"What's new"** window shows the highlights.
 
 ### Fixed
 
-- **Signing in again after the screen locked itself** (issue #88). If you were away for a while, the login screen
-  took your password but the screen stayed black and the desktop never came back. The lock screen now stays put until
-  you unlock it. Takes effect the first time you sign in after the update.
-- **Control Center → Wi-Fi lists the networks again** (issue #76, broken since 1.0.4). Connect, switch to another
-  network or disconnect there again – also when you're offline. The network menu in the taskbar was not affected.
-- **Closing the Software Center during an installation** (issue #83) no longer stops Steam, LibreOffice or a Flathub
-  app halfway: the window closes, the installation finishes in the background, and a message tells you when it's
-  done. Opening the Software Center again shows the progress. Installing a browser with "More browsers" shows the usual
-  progress window instead of a terminal, which had the same problem.
-- **Refresh rates** (issue #78). Screens that offer 60, 59.97 and 59.96 Hz showed "60 Hz" three times in Control
-  Center → Display and in the display menu (Super+P). Rates that would look the same now show their decimals.
-- **Search and dates** (issue #82). A date like `2026-10-20` (or a phone number like `079-123-45-67`) in the search now
-  finds your files – today's screenshots, for example – instead of calculating 2026 − 10 − 20.
-- **"What's new" after updates** (issue #79) also appears on accounts from before 1.0.5 whose Setup Wizard was closed
-  with the window's X.
-- **Installing next to Windows without internet** (issue #73). Afterwards the computer's clock was off by your time
-  zone's difference to UTC, in Windows and in Simple OS. The installer now keeps the time Windows set.
-- Small text fixes (issue #80).
+- **Power button on the lock screen** (issue #97). Pressing it while the screen was locked switched the computer off
+  at once, and open windows and unsaved work were lost – on laptops with the button next to the keys one accidental
+  press was enough. Now it puts the computer to sleep. On the desktop it still opens the power menu, and at the login
+  screen with nobody signed in it shuts down as before. Works right after the update, without a restart.
+- **Sleep locks the screen once** (issue #96). Closing the lid or choosing Sleep locked the screen two or three times,
+  and every extra lock restarted the login screen – the same pattern that made unlocking fail in 1.0.5 (#88).
+- **Dates in your language's order** (issue #81). The taskbar clock, its tooltip, the calendar and the clock of the
+  login and lock screen used the US order with translated names ("Oktober 20, 2026"). They now follow the language:
+  "Di, 20. Okt" and "20. Oktober 2026" in German, "20 October 2026" in British English, 2026年10月20日 in Japanese. US
+  English stays as it was.
+- **Keyboards plugged in later** (issue #98) – a USB keyboard, or a Bluetooth keyboard reconnecting after sleep – typed
+  with the system's layout instead of the one chosen for your account (for example y and z swapped on a Swiss or
+  German keyboard).
+- **Software Updates checks the free disk space before installing** (issue #91). Before, "not enough free disk space"
+  only came after the installation had failed halfway. Now nothing is changed when there isn't enough, the message says
+  how much is needed, and a button opens the Storage Cleaner.
+- **Refresh rates** (issue #78). Screens that offer 60 Hz and 59.95 Hz showed both; they show a single "60 Hz" now.
+- About 450 KB of leftover build files are removed from the system (issue #99).
 
 ## Download
 
@@ -63,7 +56,7 @@ The live system needs no password – not for the installer either. Only if some
 `simple` and the password is `live`.
 To install, use **Install Simple OS** on the desktop.
 
-The other files attached here (`simpleos_1.0.6_all.deb`, `Packages`, `InRelease` …) are the signed update repository that
+The other files attached here (`simpleos_1.0.7_all.deb`, `Packages`, `InRelease` …) are the signed update repository that
 installed systems use. You don't need to download them yourself.
 
 ## System requirements
