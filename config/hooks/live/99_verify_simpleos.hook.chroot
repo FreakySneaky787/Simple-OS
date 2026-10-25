@@ -3401,7 +3401,7 @@ PKR=/etc/udev/rules.d/62-simpleos-power-key.rules
 check "Power button: simpleos-power-key missing/not executable/syntax error" "[ -x $PK ] && sh -n $PK"
 # dd's iflag=nonblock stays on the shared descriptor: the next blocking read failed and the service ended after the
 # first sleep (found in the VM – a file as the device cannot show it)
-check "Power button: simpleos-power-key ends after the first sleep (dd iflag=nonblock on the device)" "! grep -q 'iflag=nonblock' $PK"
+check "Power button: simpleos-power-key ends after the first sleep (dd iflag=nonblock on the device)" "! grep -v '^ *#' $PK | grep -q 'iflag=nonblock'"
 check "Power button: the service does not hold logind's handle-power-key inhibitor around simpleos-power-key" \
       "grep -q '^ExecStart=/usr/bin/systemd-inhibit --what=handle-power-key .*--mode=block /usr/local/sbin/simpleos-power-key /dev/input/%I\$' $PKU &&
        grep -qx 'BindsTo=dev-input-%i.device' $PKU && [ -x /usr/bin/systemd-inhibit ]"
