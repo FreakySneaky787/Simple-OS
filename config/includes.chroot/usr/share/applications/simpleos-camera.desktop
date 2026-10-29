@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Camera
+Comment=See your webcam and take photos – saved to Pictures/Camera
+Exec=/usr/local/bin/simpleos-camera
+Icon=accessories-camera
+Categories=AudioVideo;Video;
+Keywords=camera;webcam;photo;selfie;picture;video call;
+StartupNotify=true

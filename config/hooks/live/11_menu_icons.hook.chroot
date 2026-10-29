@@ -30,6 +30,7 @@ editor       apps/accessories-text-editor-symbolic.svg          #bac2de
 calculator   apps/accessories-calculator-symbolic.svg           #bac2de
 media        apps/multimedia-video-player-symbolic.svg          #bac2de
 image        mimetypes/image-x-generic-symbolic.svg             #bac2de
+camera       devices/camera-web-symbolic.svg                    #bac2de
 taskmanager  apps/utilities-system-monitor-symbolic.svg         #bac2de
 settings     emblems/emblem-system-symbolic.svg                 #bac2de
 display      devices/video-display-symbolic.svg                 #bac2de

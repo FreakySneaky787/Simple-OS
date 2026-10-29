@@ -20,7 +20,7 @@ for f in /usr/local/bin/simpleos-powermenu /usr/local/bin/simpleos-screenshot /u
          /usr/local/bin/simpleos-wallpaper-schedule /usr/local/bin/simpleos-progress /usr/local/bin/simpleos-taskmanager \
          /usr/local/sbin/simpleos-backup-helper /usr/local/sbin/simpleos-cleaner-helper /usr/local/sbin/simpleos-taskmanager-helper \
          /usr/local/bin/simpleos-drivers /usr/local/bin/simpleos-osd /usr/local/sbin/simpleos-live-tune /usr/local/bin/simpleos-keyboard-setup \
-         /usr/local/bin/simpleos-setup \
+         /usr/local/bin/simpleos-setup /usr/local/bin/simpleos-camera /usr/local/lib/simpleos/locale-enable \
          /usr/local/sbin/simpleos-post-install /usr/local/sbin/simpleos-efi-refresh \
          /usr/local/sbin/simpleos-system-setup; do
     chmod 0755 "$f" 2>/dev/null || true
@@ -421,7 +421,8 @@ for home in /etc/skel /home/simple; do
                '/usr/local/bin/simpleos-control-center wifi' '/usr/local/bin/simpleos-control-center appearance' \
                '/usr/local/bin/simpleos-control-center printers' '/usr/local/bin/simpleos-control-center apps' \
                simpleos-netinfo simpleos-welcome-wizard /usr/local/bin/simpleos-whats-new \
-               /usr/local/bin/simpleos-powermenu /usr/local/bin/simpleos-help /usr/local/bin/simpleos-update; do
+               /usr/local/bin/simpleos-powermenu /usr/local/bin/simpleos-help /usr/local/bin/simpleos-update \
+               /usr/local/bin/simpleos-camera; do
         check "menu.xml: '$cmd' missing in $home" "grep -qF '<command>$cmd</command>' '$menu'"
     done
     for cmd in obconf lxappearance arandr gnome-software nm-connection-editor; do
@@ -2109,6 +2110,42 @@ e = c.format_example('en_US.UTF-8')
 assert e.endswith('1,234.56 · \\\$1,234.50') and ', 20' in e, e
 assert c.format_example('xx_XX.UTF-8') == ''\""
 rm -f "$LRF"
+# Camera (#44): the size/frame rate it asks for, names, photo file names, errors in plain language; packages + launcher
+CAM=/usr/local/bin/simpleos-camera
+check "Camera: GStreamer for Python or the GTK picture widget missing (gir1.2-gstreamer-1.0 …)" \
+      "python3 -c \"import gi; gi.require_version('Gst', '1.0'); gi.require_version('GstVideo', '1.0'); from gi.repository import Gst, GstVideo; Gst.init(None)
+assert all(Gst.ElementFactory.find(e) for e in ('gtksink', 'v4l2src', 'decodebin', 'videoflip', 'jpegenc', 'appsink', 'jpegdec'))\""
+check "Camera: launcher missing or wrong" "grep -qx 'Exec=/usr/local/bin/simpleos-camera' /usr/share/applications/simpleos-camera.desktop &&
+       grep -qx 'Name=Camera' /usr/share/applications/simpleos-camera.desktop"
+check "Camera: picture size, names or messages wrong" "python3 -c \"import importlib.machinery as m; c = m.SourceFileLoader('c', '$CAM').load_module()
+raw = 'video/x-raw, format=(string)YUY2, width=(int)%d, height=(int)%d, pixel-aspect-ratio=(fraction)1/1, framerate=(fraction)%s'
+jpg = 'image/jpeg, width=(int)%d, height=(int)%d, framerate=(fraction)%s'
+# full size raw only at 5 fps, MJPEG 30 fps: the smooth MJPEG; raw 640x480 at 30 fps loses to MJPEG 1280x720
+s = [raw % (1280, 720, '{ 10/1, 5/1 }'), raw % (640, 480, '{ 30/1, 15/1 }'), jpg % (1280, 720, '{ 30/1, 15/1 }'), jpg % (1920, 1080, '30/1')]
+assert c.best_caps(s) == 'image/jpeg,width=1920,height=1080,framerate=30/1', c.best_caps(s)
+assert c.best_caps(s[:3]) == 'image/jpeg,width=1280,height=720,framerate=30/1', c.best_caps(s[:3])
+assert c.best_caps([raw % (1920, 1080, '5/1'), jpg % (1280, 720, '30/1')]) == 'image/jpeg,width=1280,height=720,framerate=30/1'
+assert c.best_caps([raw % (3840, 2160, '30/1'), raw % (1280, 720, '30/1')]) == 'video/x-raw,format=YUY2,width=1280,height=720,framerate=30/1'
+assert c.best_caps([raw % (1280, 720, '[ 1/1, 60/1 ]')]).endswith('framerate=30/1')
+assert c.best_caps([raw % (640, 480, '{ 60/1, 30/1 }')]).endswith('framerate=30/1')
+assert c.best_caps([]) is None and c.best_caps(['video/x-bayer, width=(int)640']) is None
+assert c.camera_label('Integrated Camera: Integrated C') == 'Integrated Camera' and c.camera_label('vivid') == 'vivid'
+assert c.camera_label('Logitech BRIO') == 'Logitech BRIO' and c.camera_label('') == 'Camera'
+assert c.numbered(['vivid', 'vivid', 'BRIO', 'vivid']) == ['vivid', 'vivid 2', 'BRIO', 'vivid 3']
+import datetime, pathlib, tempfile
+d = pathlib.Path(tempfile.mkdtemp()); t = datetime.datetime(2026, 10, 29, 20, 31, 5)
+assert c.photo_path(d, t).name == 'Photo 2026-10-29 20-31-05.jpg'
+c.photo_path(d, t).touch(); assert c.photo_path(d, t).name == 'Photo 2026-10-29 20-31-05 (2).jpg'
+assert 'in use' in c.explain('Gerät /dev/video0 ist belegt', '', 'busy')[0] and c.explain('x', '', 'gone') == c.NO_CAMERA
+assert 'in use' in c.explain('Device /dev/video0 is busy')[0] and c.explain('Could not open device: No such file')[0] == c.NO_CAMERA[0]
+assert 'F8' in c.NO_CAMERA[1]\""
+check "Camera: the preview is not mirrored (videoflip)" "python3 -c \"import importlib.machinery as m, tempfile; c = m.SourceFileLoader('c', '$CAM').load_module()
+import gi; gi.require_version('Gst', '1.0'); gi.require_version('GdkPixbuf', '2.0'); from gi.repository import Gst, GdkPixbuf; Gst.init(None)
+f = tempfile.mktemp(suffix='.png')
+p = Gst.parse_launch('videotestsrc num-buffers=1 pattern=smpte ! ' + c.MIRROR + ' ! videoconvert ! pngenc ! filesink location=' + f)
+p.set_state(Gst.State.PLAYING); p.get_bus().timed_pop_filtered(10 * Gst.SECOND, Gst.MessageType.EOS | Gst.MessageType.ERROR); p.set_state(Gst.State.NULL)
+px = GdkPixbuf.Pixbuf.new_from_file(f).get_pixels()
+assert px[2] > 150 and px[0] < 60, px[:3]\""
 # Control Center → Wi-Fi (#76): its own view – the list online AND offline, Disconnect on the connected network,
 # no Setup Wizard texts ("Next"); the nmcli dummy of simpleos-wifi above
 check "Control Center → Wi-Fi: online via Wi-Fi -> no list / no Disconnect (#76)" "ccpy NET=wifi python3 -c \"$CCL
@@ -2444,7 +2481,9 @@ if command -v broadwayd >/dev/null && command -v dbus-run-session >/dev/null; th
     # Wi-Fi, so the plain run never fills the Wi-Fi page's list (#76 slipped through that way)
     for app in "$CC|SIMPLEOS_CC_SELFTEST" "$CC|SIMPLEOS_CC_SELFTEST|NET=wifi" "$CC|SIMPLEOS_CC_SELFTEST|NET=wifi-down" \
                "$SC|SIMPLEOS_SC_SELFTEST" "/usr/local/bin/simpleos-taskmanager|SIMPLEOS_TM_SELFTEST" \
-               "/usr/local/bin/simpleos-calendar|SIMPLEOS_CALENDAR_SELFTEST" "/usr/local/bin/simpleos-whats-new|SIMPLEOS_WHATS_NEW_SELFTEST"; do
+               "/usr/local/bin/simpleos-calendar|SIMPLEOS_CALENDAR_SELFTEST" "/usr/local/bin/simpleos-whats-new|SIMPLEOS_WHATS_NEW_SELFTEST" \
+               "/usr/local/bin/simpleos-camera|SIMPLEOS_CAMERA_SELFTEST" \
+               "/usr/local/bin/simpleos-camera|SIMPLEOS_CAMERA_SELFTEST|SIMPLEOS_CAMERA_TEST_SOURCE=videotestsrc is-live=true"; do
         prog=${app%%|*}; rest=${app#*|}; var=${rest%%|*}; net=; [ "$rest" = "$var" ] || net=${rest#*|}
         mkdir -p "$wt/bw"; chmod 0700 "$wt/bw"
         # server and program with the same XDG_RUNTIME_DIR (the Broadway socket lives there)

@@ -356,7 +356,7 @@ from 1.0.6 through Software Updates** (VM-tested 2026-10-25 with the files copie
 
 ## 13. What changed in 1.1 (work in progress)
 
-Faster start and installation, Language & Region, USB notifications, package versions of test builds.
+Faster start and installation, Language & Region, Camera, USB notifications, package versions of test builds.
 
 - [ ] **Small initramfs (issue #47):** fresh installation (BIOS and UEFI, once with LUKS):
       `cat /etc/initramfs-tools/conf.d/simpleos-modules.conf` ends with `MODULES=dep`, `ls -la /boot/initrd.img-*` is
@@ -385,3 +385,11 @@ Faster start and installation, Language & Region, USB notifications, package ver
       Formats → another region (e.g. English language, formats Germany): the example line on the page shows
       "Donnerstag, 29. Oktober 2026 · 1.234,56 · 1.234,50 €" after the change, apps stay English. Cancel the password
       dialog: nothing changes. Without internet: the language changes, the packs come with the next Software Update.
+- [ ] **Camera (issue #44):** Menu → Apps → Camera on the E16/ThinkBook: the webcam picture appears within a few
+      seconds, moves smoothly (not 5 frames a second), mirrored like a mirror (raise your right hand – it is on the
+      right). Take Photo (or Space): white flash, "Saved to Pictures/Camera: Photo …"; the photo opens in the image
+      viewer, is sharp and NOT mirrored (text readable). Open Folder shows Pictures/Camera. Camera switch/F-key off or
+      lens covered by the privacy slider: what does it show? (No camera found / black picture.) Open the camera in
+      Firefox (e.g. a video call test page) and then the Camera app: "The camera is in use", close the tab, Try Again
+      → picture. A USB webcam plugged in while the window is open appears in the title bar choice. VM 2026-10-29
+      with the virtual test camera (vivid): all of this except the hardware switch and unplugging.

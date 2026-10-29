@@ -127,7 +127,9 @@ rest moved to 1.2.
 - **Boot time & size:** initramfs `MODULES=dep` (#47, **done**: ~160 MB → ~17 MB, kernel phase 2.1 → 1.1 s in a VM,
   tried in a copy first, extra disk/keyboard drivers so a moved disk still boots), zstd squashfs (#19, **done, needs
   the next ISO build**: level 19 = +6 % ISO size, unpacks twice as fast).
-- **Webcam / camera test** app (the camera works, but there is nothing to try it with) (#44).
+- **Webcam / camera test** app (the camera works, but there is nothing to try it with) (#44, **done, needs a test
+  on a real webcam**: Menu → Apps → Camera, mirrored picture, photos to Pictures/Camera, several cameras, "in use"
+  with Try Again; VM with the virtual test camera).
 - **Done on the side:** USB notifications never offer "Safely remove" for an internal disk (#100); test builds no
   longer block the published package (#102: package version `X.Y.Z+<build time>`).
 - On the side, as far as hardware is at hand: **hardware tests** (NVIDIA desktop with the driver, AMD laptop, dual boot
