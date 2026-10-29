@@ -1,0 +1,44 @@
+#!/bin/sh
+# Simple OS – Rofi at the display scale (HiDPI, #41). Comes before /usr/bin/rofi in PATH, so every menu, flyout and the
+# search (common.sh, rofi-retry, simpleos-search …) goes through it; at 100 % it only hands over (exec).
+# Rofi draws its fonts at 96 dpi unless told otherwise and "px" as screen pixels – on a 4K laptop the start menu was a
+# postage stamp. At another scale (simpleos-scale, percent p in ~/.cache/simpleos/scale):
+#   -dpi 96·p                 the fonts
+#   every "<n>px" ×p          in the -theme-str arguments and in a copy of ~/.config/rofi/config.rasi (-config; the copy
+#                             is made again when the original is newer – simpleos-theme recolors it)
+# Rofi missing: an error with "error" in it, like Rofi's own (sos_rofi then shows its notification).
+# Tests: SIMPLEOS_ROFI (the real Rofi), SIMPLEOS_SCALE_CACHE (the cache file).
+REAL=${SIMPLEOS_ROFI:-/usr/bin/rofi}
+CACHE=${SIMPLEOS_SCALE_CACHE:-${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}/simpleos/scale}
+[ -x "$REAL" ] || { echo "rofi: error: $REAL is not installed" >&2; exit 127; }
+p=$(sed -n 's/^percent=\([0-9][0-9]*\)$/\1/p' "$CACHE" 2>/dev/null | head -n 1)
+case "$p" in 125|150|200) ;; *) exec "$REAL" "$@" ;; esac
+
+px() {
+    LC_ALL=C awk -v p="$p" '{
+        out = ""; s = $0
+        while (match(s, /[0-9]+(\.[0-9]+)?px/)) {
+            out = out substr(s, 1, RSTART - 1) int(substr(s, RSTART, RLENGTH - 2) * p / 100 + 0.5) "px"
+            s = substr(s, RSTART + RLENGTH)
+        }
+        print out s
+    }'
+}
+
+src=${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/rofi/config.rasi
+dst=${CACHE%/*}/rofi-$p.rasi
+if [ -r "$src" ]; then
+    if [ ! -s "$dst" ] || [ "$src" -nt "$dst" ]; then
+        mkdir -p "${dst%/*}" 2>/dev/null
+        px < "$src" > "$dst.$$" && mv -f "$dst.$$" "$dst"
+    fi
+    [ -s "$dst" ] && set -- -config "$dst" "$@"
+fi
+prev=
+for a do
+    shift
+    [ "$prev" = -theme-str ] && a=$(printf '%s\n' "$a" | px)
+    set -- "$@" "$a"
+    prev=$a
+done
+exec "$REAL" -dpi $((96 * p / 100)) "$@"

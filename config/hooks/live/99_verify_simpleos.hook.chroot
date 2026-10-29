@@ -21,6 +21,7 @@ for f in /usr/local/bin/simpleos-powermenu /usr/local/bin/simpleos-screenshot /u
          /usr/local/sbin/simpleos-backup-helper /usr/local/sbin/simpleos-cleaner-helper /usr/local/sbin/simpleos-taskmanager-helper \
          /usr/local/bin/simpleos-drivers /usr/local/bin/simpleos-osd /usr/local/sbin/simpleos-live-tune /usr/local/bin/simpleos-keyboard-setup \
          /usr/local/bin/simpleos-setup /usr/local/bin/simpleos-camera /usr/local/lib/simpleos/locale-enable \
+         /usr/local/bin/simpleos-scale /usr/local/bin/rofi /usr/local/lib/simpleos/greeter-wrapper \
          /usr/local/sbin/simpleos-post-install /usr/local/sbin/simpleos-efi-refresh \
          /usr/local/sbin/simpleos-system-setup; do
     chmod 0755 "$f" 2>/dev/null || true
@@ -2062,6 +2063,14 @@ for f in $CC $SC; do
 done
 CCL="import importlib.machinery as m; c = m.SourceFileLoader('c', '$CC').load_module()"
 ccpy() { rm -rf "${S:?}"; mkdir -p "$S"; $ENV -i HOME="$wt/home" WT="$S" PATH="$wt/mock:$wt/py:$wt/sys" "$@" 2>"$S/err"; }
+# Control Center → Display → Scale (#41) reads simpleos-scale --status (dummy: also builds the card in the self-test below)
+printf '#!/bin/sh\n[ "$1" = --status ] && printf "setting=auto\\nscale=200\\nrecommended=200\\n"\nexit 0\n' > "$wt/mock/simpleos-scale"
+chmod 0755 "$wt/mock/simpleos-scale"
+check "Control Center → Display: scale not read or choices wrong" "ccpy python3 -c \"$CCL
+assert c.scale_status() == {'setting': 'auto', 'scale': '200', 'recommended': '200'}, c.scale_status()
+assert [k for k, _t in c.SCALES] == ['100', '125', '150', '200']\""
+check "Control Center: a resolution change does not keep the taskbar at the display scale" \
+      "grep -q 'cmd(\"simpleos-scale\", \"--refresh\"' $CC && grep -q 'self.set_scale(' $CC"
 check "Control Center: sound outputs read incorrectly" "ccpy PHONES=1 python3 -c \"$CCL
 o = c.outputs()
 assert o == [('alsa_output.pci.analog-stereo', 'analog-output-speaker', 'Built-in Audio – Speakers', True),
@@ -2146,6 +2155,119 @@ p = Gst.parse_launch('videotestsrc num-buffers=1 pattern=smpte ! ' + c.MIRROR + 
 p.set_state(Gst.State.PLAYING); p.get_bus().timed_pop_filtered(10 * Gst.SECOND, Gst.MessageType.EOS | Gst.MessageType.ERROR); p.set_state(Gst.State.NULL)
 px = GdkPixbuf.Pixbuf.new_from_file(f).get_pixels()
 assert px[2] > 150 and px[0] < 60, px[:3]\""
+# Display scale (HiDPI, #41): the automatic percent from xrandr's pixels + millimetres (2.8K/4K laptops bigger, Full HD
+# laptops unchanged, TVs that report 160x90 mm, turned screens), what --session/--set write, the xsettingsd lines, tint2's
+# reference dpi, Rofi's px/font dpi, the taskbar line, the login screen, the Openbox theme
+SCALE_TOOL=/usr/local/bin/simpleos-scale
+HS=$(mktemp -d)
+mkdir -p "$HS/home/.cache/simpleos" "$HS/bin"
+cat > "$HS/bin/xrandr" <<'XRANDR'
+#!/bin/sh
+case "$XR" in
+e16)  echo 'eDP-1 connected primary 1920x1200+0+0 (normal left inverted right x axis y axis) 344mm x 215mm' ;;
+k28)  echo 'eDP-1 connected primary 2880x1800+0+0 (normal left inverted right x axis y axis) 302mm x 189mm' ;;
+k25)  echo 'eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 345mm x 215mm' ;;
+m27)  echo 'DP-1 connected primary 3840x2160+0+0 (normal left inverted right x axis y axis) 597mm x 336mm' ;;
+rot)  echo 'eDP-1 connected primary 1800x2880+0+0 left (normal left inverted right x axis y axis) 302mm x 189mm' ;;
+tv)   echo 'HDMI-1 connected primary 1920x1080+0+0 (normal left inverted right x axis y axis) 160mm x 90mm' ;;
+nomm) echo 'Virtual-1 connected primary 2880x1800+0+0 (normal left inverted right x axis y axis) 0mm x 0mm' ;;
+dual) echo 'eDP-1 connected 1920x1200+0+0 (normal left inverted right x axis y axis) 344mm x 215mm'
+      echo 'DP-1 connected primary 3840x2160+1920+0 (normal left inverted right x axis y axis) 527mm x 296mm' ;;
+off)  echo 'DP-2 connected (normal left inverted right x axis y axis)'
+      echo 'eDP-1 connected 2880x1800+0+0 (normal left inverted right x axis y axis) 302mm x 189mm' ;;
+esac
+XRANDR
+printf '#!/bin/sh\ncat > "$HS_OUT/xrdb"\n' > "$HS/bin/xrdb"
+printf '#!/bin/sh\nfor a do printf "[%%s]\\n" "$a"; done\n' > "$HS/bin/realrofi"
+chmod 0755 "$HS/bin/"*
+hsx() { env -u DISPLAY HOME="$HS/home" HS_OUT="$HS" SIMPLEOS_XRANDR="$HS/bin/xrandr" SIMPLEOS_XRDB="$HS/bin/xrdb" "$@"; }
+HSC=$HS/home/.cache/simpleos/scale
+for t in e16:100 k28:200 k25:150 m27:100 rot:200 tv:100 nomm:100 dual:150 off:200 none:100; do
+    check "simpleos-scale: automatic scale for the screen '${t%%:*}' is not ${t#*:} %" "[ \"\$(XR=${t%%:*} hsx $SCALE_TOOL --recommended)\" = ${t#*:} ]"
+done
+check "simpleos-scale --session: Xft.dpi, cursor size or the session cache wrong (automatic on a 16\" 2560x1600 screen)" \
+      "XR=k25 hsx $SCALE_TOOL --session && grep -qx 'Xft.dpi: 144' $HS/xrdb && grep -qx 'Xcursor.size: 36' $HS/xrdb &&
+       grep -qx 'percent=150' $HSC && grep -qx 'tint2_ref=126.00' $HSC && [ \"\$(hsx $SCALE_TOOL --tint2-ref)\" = 126.00 ]"
+check "simpleos-scale --set: an invalid value accepted" \
+      "! hsx $SCALE_TOOL --set 175 >/dev/null 2>&1 && ! hsx $SCALE_TOOL --set 'auto;x' >/dev/null 2>&1 && ! hsx $SCALE_TOOL --bogus >/dev/null 2>&1"
+check "simpleos-scale --set 200: setting, cache or X resources wrong" \
+      "XR=nomm hsx $SCALE_TOOL --set 200 >/dev/null && grep -qx 'scale=200' $HS/home/.config/simpleos/scale && grep -qx 'percent=200' $HSC &&
+       grep -qx 'tint2_ref=48.00' $HSC && grep -qx 'Xft.dpi: 192' $HS/xrdb && [ \"\$(hsx $SCALE_TOOL --percent)\" = 200 ] &&
+       hsx $SCALE_TOOL --status | grep -qx 'setting=200'"
+check "simpleos-scale --xsettings: GTK not twice as big at 200 % (window scale 2, the text must not double twice)" \
+      "hsx $SCALE_TOOL --xsettings > $HS/xs && grep -qx 'Gdk/WindowScalingFactor 2' $HS/xs && grep -qx 'Xft/DPI 196608' $HS/xs &&
+       grep -qx 'Gdk/UnscaledDPI 98304' $HS/xs && grep -qx 'Gtk/CursorThemeSize 48' $HS/xs"
+check "simpleos-scale --set auto on a Full HD laptop: not exactly as before (Xft.dpi 96, GTK 1x, taskbar option off)" \
+      "XR=e16 hsx $SCALE_TOOL --set auto >/dev/null && grep -qx 'scale=auto' $HS/home/.config/simpleos/scale && grep -qx 'percent=100' $HSC &&
+       grep -qx 'tint2_ref=0' $HSC && grep -qx 'Xft.dpi: 96' $HS/xrdb && grep -qx 'Xcursor.size: 24' $HS/xrdb &&
+       hsx $SCALE_TOOL --xsettings | grep -qx 'Gdk/WindowScalingFactor 1' && hsx $SCALE_TOOL --xsettings | grep -qx 'Xft/DPI 98304'"
+check "simpleos-scale --tint2-ref: not tint2's own dpi (per axis int(pixels / mm * 25.4), the larger one) / scale" \
+      "printf 'percent=200\n' > $HSC && [ \"\$(XR=k28 hsx $SCALE_TOOL --tint2-ref)\" = 121.00 ] && [ \"\$(XR=rot hsx $SCALE_TOOL --tint2-ref)\" = 193.50 ] &&
+       printf 'percent=150\n' > $HSC && [ \"\$(XR=nomm hsx $SCALE_TOOL --tint2-ref)\" = 64.00 ]"
+check "simpleos-scale --refresh: does something at 100 %" "printf 'percent=100\ntint2_ref=0\n' > $HSC && XR=k28 hsx $SCALE_TOOL --refresh && grep -qx 'tint2_ref=0' $HSC"
+# Rofi: the wrapper in /usr/local/bin comes first; at 100 % it hands everything over unchanged
+RW=/usr/local/bin/rofi
+mkdir -p "$HS/home/.config/rofi" && cp /etc/skel/.config/rofi/config.rasi "$HS/home/.config/rofi/"
+check "rofi wrapper: not the Rofi that the menus start (PATH)" "[ \"\$(PATH=/usr/local/bin:/usr/bin:/bin command -v rofi)\" = $RW ]"
+check "rofi wrapper: changes something at 100 %" \
+      "printf 'percent=100\n' > $HSC && [ \"\$(HOME=$HS/home SIMPLEOS_ROFI=$HS/bin/realrofi $RW -dmenu -theme-str 'window { width: 440px; }')\" = '[-dmenu]
+[-theme-str]
+[window { width: 440px; }]' ]"
+check "rofi wrapper: font dpi or px sizes not scaled at 150 % (or text outside the theme changed)" \
+      "printf 'percent=150\n' > $HSC && HOME=$HS/home SIMPLEOS_ROFI=$HS/bin/realrofi $RW -p 'A 10px label' -theme-str 'window { width: 440px; x-offset: -12px; }' > $HS/rofi.out &&
+       grep -qxF '[144]' $HS/rofi.out && grep -qxF '[window { width: 660px; x-offset: -18px; }]' $HS/rofi.out && grep -qxF '[A 10px label]' $HS/rofi.out &&
+       grep -qxF '[$HS/home/.cache/simpleos/rofi-150.rasi]' $HS/rofi.out && grep -q 'width: *900px;' $HS/home/.cache/simpleos/rofi-150.rasi"
+check "rofi wrapper: Rofi missing without an error (sos_rofi shows its notification only on 'error')" \
+      "out=\$(HOME=$HS/home SIMPLEOS_ROFI=/nonexistent $RW -dmenu 2>&1); [ \$? -eq 127 ] && printf '%s' \"\$out\" | grep -q error"
+# Taskbar: tint2 scales by monitor dpi / scale_relative_to_dpi; an older tint2rc gets the line in its Panel section
+check "taskbar: scale_relative_to_dpi missing in the shipped tint2rc (0 = off)" "grep -qx 'scale_relative_to_dpi = 0' /etc/skel/.config/tint2/tint2rc"
+mkdir -p "$HS/tb/.config/tint2" "$HS/tbin"
+printf '#!/bin/sh\necho 121.00\n' > "$HS/tbin/simpleos-scale"; chmod 0755 "$HS/tbin/simpleos-scale"
+grep -v '^scale_relative_to_dpi' /etc/skel/.config/tint2/tint2rc > "$HS/tb/.config/tint2/tint2rc"
+check "taskbar: the display scale does not reach tint2 (older tint2rc without the line)" \
+      "env -u DISPLAY HOME=$HS/tb PATH=$HS/tbin:/usr/local/bin:/usr/bin:/bin SIMPLEOS_DATE_FMT= /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 &&
+       [ \"\$(grep -c '^scale_relative_to_dpi = 121.00\$' $HS/tb/.config/tint2/tint2rc)\" -eq 1 ] &&
+       awk '/^#---- Panel/ { p = 1 } /^#---- Taskbar/ { exit } p && /^scale_relative_to_dpi/ { f = 1 } END { exit !f }' $HS/tb/.config/tint2/tint2rc"
+# "Large" taskbar (asked for on Bluesky: the clock too small for older eyes): higher bar, bigger clock/texts, the flyouts
+# above it; back to "Full" = the shipped file again
+cp /etc/skel/.config/tint2/tint2rc "$HS/tb/.config/tint2/tint2rc"
+check "taskbar: size Large not higher with a bigger clock, or not exactly back with Full" \
+      "env -u DISPLAY HOME=$HS/tb PATH=$HS/tbin:/usr/local/bin:/usr/bin:/bin SIMPLEOS_DATE_FMT= /usr/local/bin/simpleos-taskbar-select --set size=large >/dev/null 2>&1 &&
+       grep -qx 'panel_size = 100% 48' $HS/tb/.config/tint2/tint2rc && grep -qx 'time1_font = Inter Semibold 12' $HS/tb/.config/tint2/tint2rc &&
+       grep -qx 'time2_font = Inter 10' $HS/tb/.config/tint2/tint2rc && grep -qx 'systray_icon_size = 22' $HS/tb/.config/tint2/tint2rc &&
+       HOME=$HS/tb sh -c '. /usr/local/lib/simpleos/common.sh; SOS_CORNER=1 sos_position' | grep -q 'y-offset: -68px' &&
+       env -u DISPLAY HOME=$HS/tb PATH=/usr/bin:/bin SIMPLEOS_DATE_FMT= /usr/local/bin/simpleos-taskbar-select --set size=full >/dev/null 2>&1 &&
+       cmp -s /etc/skel/.config/tint2/tint2rc $HS/tb/.config/tint2/tint2rc &&
+       HOME=$HS/tb sh -c '. /usr/local/lib/simpleos/common.sh; SOS_CORNER=1 sos_position' | grep -q 'y-offset: -60px'"
+# Login/lock screen: the automatic value (greeter-screen), at 200 % GTK twice as big (greeter-wrapper)
+printf '#!/bin/sh\necho "$HS_P"\n' > "$HS/bin/rec"; chmod 0755 "$HS/bin/rec"
+gsx() { HS_P=$1 SIMPLEOS_SCALE=$HS/bin/rec SIMPLEOS_GREETER_CONFD=$HS/gconf SIMPLEOS_DEFAULT_LOCALE=/nonexistent \
+       SIMPLEOS_DATE_FORMATS=/bin/true /usr/local/lib/simpleos/greeter-screen; }
+check "login screen: text not bigger at 200 % or the file left at 100 % (greeter-screen)" \
+      "gsx 200 && grep -qx 'xft-dpi=192' $HS/gconf/50-simpleos-scale.conf && grep -qx 'cursor-theme-size=48' $HS/gconf/50-simpleos-scale.conf &&
+       gsx 100 && [ ! -e $HS/gconf/50-simpleos-scale.conf ] && [ -e $HS/gconf/50-simpleos-clock.conf ]"
+GW=/usr/local/lib/simpleos/greeter-wrapper
+check "login screen: greeter-wrapper not used, does not start the greeter, or GTK not twice as big at 200 %" \
+      "grep -qx 'greeter-wrapper=$GW' /etc/lightdm/lightdm.conf.d/10_simpleos.conf &&
+       [ \"\$(SIMPLEOS_GREETER_SCALE_CONF=$HS/nonexistent $GW sh -c 'echo \${GDK_SCALE:-none}')\" = none ] &&
+       printf '[greeter]\nxft-dpi=192\n' > $HS/gw.conf && [ \"\$(SIMPLEOS_GREETER_SCALE_CONF=$HS/gw.conf $GW sh -c 'echo \$GDK_SCALE \$GDK_DPI_SCALE')\" = '2 0.5' ] &&
+       printf '[greeter]\nxft-dpi=144\n' > $HS/gw.conf && [ \"\$(SIMPLEOS_GREETER_SCALE_CONF=$HS/gw.conf $GW sh -c 'echo \${GDK_SCALE:-none}')\" = none ]"
+# GTK (xsettingsd) and Openbox (theme copy: borders and paddings) follow the scale
+mkdir -p "$HS/th/.cache/simpleos"
+thx() { printf 'percent=%s\n' "$1" > "$HS/th/.cache/simpleos/scale"; shift; env -u DISPLAY HOME="$HS/th" /usr/local/bin/simpleos-theme "$@" >/dev/null 2>&1; }
+check "simpleos-theme: XSETTINGS without the display scale (GTK would stay small at 200 %)" \
+      "thx 200 --xsettings && grep -qx 'Gdk/WindowScalingFactor 2' $HS/th/.config/xsettingsd/xsettingsd.conf &&
+       grep -qx 'Net/ThemeName \"Arc-Dark\"' $HS/th/.config/xsettingsd/xsettingsd.conf"
+check "simpleos-theme: Openbox paddings not scaled at 150 % or a theme copy left at 100 % with the default accent" \
+      "thx 150 --openbox-theme && grep -qx 'menu.border.width: 9' $HS/th/.themes/SimpleOS/openbox-3/themerc &&
+       grep -qx 'padding.width: 12' $HS/th/.themes/SimpleOS/openbox-3/themerc && grep -qi '#89b4fa' $HS/th/.themes/SimpleOS/openbox-3/themerc &&
+       thx 100 --openbox-theme && [ ! -e $HS/th/.themes/SimpleOS ]"
+check "Xsession: display scale not set before the desktop starts (82simpleos-scale)" \
+      "sh -n /etc/X11/Xsession.d/82simpleos-scale && grep -q 'simpleos-scale --session' /etc/X11/Xsession.d/82simpleos-scale &&
+       grep -q 'simpleos-display --restore' /etc/X11/Xsession.d/82simpleos-scale"
+check "simpleos-display: a resolution change does not keep the taskbar at the display scale (simpleos-scale --refresh)" \
+      "[ \"\$(grep -c 'scale_refresh' /usr/local/bin/simpleos-display)\" -ge 6 ]"
+rm -rf "${HS:?}"
 # Control Center → Wi-Fi (#76): its own view – the list online AND offline, Disconnect on the connected network,
 # no Setup Wizard texts ("Next"); the nmcli dummy of simpleos-wifi above
 check "Control Center → Wi-Fi: online via Wi-Fi -> no list / no Disconnect (#76)" "ccpy NET=wifi python3 -c \"$CCL

@@ -3,7 +3,8 @@
 
 One window for all settings, the sections on the left, the page on the right:
   Sound        volume, mute, output (speakers/headphones/HDMI), microphone, -> pavucontrol
-  Display      resolution, refresh rate, several screens, night light (simpleos-nightlight)
+  Display      scale (simpleos-scale: Automatic/100/125/150/200 %, #41), resolution, refresh rate, several screens,
+               night light (simpleos-nightlight)
   Wi-Fi        networks, connect with a password, disconnect, Wi-Fi on/off (functions of the Setup Wizard),
                band of the connected network (Automatic / 5 GHz / 2.4 GHz)
   Bluetooth    on/off, connect/disconnect/remove paired devices, search for and pair devices
@@ -285,6 +286,16 @@ def save_display(args):
         return True
     except OSError:
         return False
+
+
+SCALES = [("100", "100 %"), ("125", "125 %"), ("150", "150 %"), ("200", "200 %")]
+
+
+def scale_status():
+    """{setting: auto|100|125|150|200, scale: percent in use, recommended: percent} from simpleos-scale --status;
+    {} without the tool"""
+    out = cmd("simpleos-scale", "--status").stdout
+    return dict(l.split("=", 1) for l in out.splitlines() if "=" in l)
 
 
 def nightlight_status():
@@ -1144,6 +1155,16 @@ def main(argv):
 
         def refresh(self):
             self.clear()
+            # Scale (#41): bigger text, taskbar, menus and pointer on screens with many pixels
+            st = scale_status()
+            if st.get("setting"):
+                sc = Gtk.ComboBoxText()
+                sc.append("auto", f"Automatic ({st.get('recommended', '100')} %)")
+                for key, text in SCALES:
+                    sc.append(key, text)
+                sc.set_active_id(st["setting"])
+                sc.connect("changed", lambda c: self.set_scale(c.get_active_id(), st["setting"]))
+                self.put(card([("Scale", "Size of text, taskbar, menus and the mouse pointer", sc)]))
             scr = screens()
             if not scr:
                 self.note("No display found (xrandr missing or not running in a desktop session).")
@@ -1261,7 +1282,26 @@ def main(argv):
                 save_display(snapshot(screens()))
             else:
                 cmd("xrandr", *before)
+            cmd("simpleos-scale", "--refresh", timeout=30)   # the taskbar keeps the display scale (#41)
             self.refresh()
+
+        def set_scale(self, value, current):
+            if not value or value == current:
+                return
+
+            def done(res):
+                self.refresh()
+                if getattr(res, "returncode", 1) != 0:
+                    return self.win.error("The scale could not be changed.")
+                d = Gtk.MessageDialog(transient_for=self.win, modal=True, message_type=Gtk.MessageType.INFO,
+                                      text="The scale has changed")
+                d.format_secondary_text("Apps that are open, like Firefox or the Terminal, use the new size after you "
+                                        "close and open them again. Signing out applies it everywhere.")
+                d.add_buttons("OK", Gtk.ResponseType.CANCEL, "Sign out", Gtk.ResponseType.OK)
+                if d.run() == Gtk.ResponseType.OK:
+                    spawn("openbox", "--exit")
+                d.destroy()
+            bg(lambda: cmd("simpleos-scale", "--set", value, timeout=60), done)
 
     class WifiPage(Page):
         title = "Wi-Fi"
@@ -2074,10 +2114,29 @@ def main(argv):
                 hw.pack_start(label(n, dim=True), False, False, 0)
             hw.show_all()
 
+    def text_scale():
+        """How much bigger the text is than GTK's pixel sizes: 1.5 at the display scale 150 % (#41: Xft/DPI 144, window
+        scale 1 – only the text grows); at 200 % GTK scales everything itself (window scale 2, gtk-xft-dpi stays 96)"""
+        try:
+            dpi = Gtk.Settings.get_default().props.gtk_xft_dpi / 1024
+        except Exception:  # no settings (tests): as before
+            return 1.0
+        return max(1.0, dpi / 96) if dpi > 0 else 1.0
+
     class Window(Gtk.ApplicationWindow):
         def __init__(self, app):
             super().__init__(application=app, title="Control Center")
-            self.set_default_size(900, 680)
+            ts = text_scale()
+            w, h = int(900 * ts), int(680 * ts)
+            try:   # never bigger than the screen (125 % on a 1366x768 laptop)
+                import gi
+                gi.require_version("Gdk", "3.0")
+                from gi.repository import Gdk
+                wa = Gdk.Display.get_default().get_primary_monitor().get_workarea()
+                w, h = min(w, int(wa.width * 0.95)), min(h, int(wa.height * 0.9))
+            except Exception:
+                pass
+            self.set_default_size(w, h)
             self.set_icon_name("preferences-system")
             self.set_position(Gtk.WindowPosition.CENTER)
             hb = Gtk.HeaderBar(show_close_button=True, title="Control Center")
@@ -2089,7 +2148,7 @@ def main(argv):
             self.side.set_header_func(lambda row, before: row.set_header(
                 Gtk.Separator() if before and row.key in GROUP_STARTS else None))
             side_scroll = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER)
-            side_scroll.set_size_request(220, -1)
+            side_scroll.set_size_request(int(220 * ts), -1)
             side_scroll.add(self.side)
             self.stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE)
             self.pages = {}

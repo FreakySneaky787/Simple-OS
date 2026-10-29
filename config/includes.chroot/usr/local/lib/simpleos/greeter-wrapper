@@ -1,0 +1,13 @@
+#!/bin/sh
+# Simple OS – LightDM greeter-wrapper (lightdm.conf.d/10_simpleos.conf): starts the login/lock screen. At 200 % (#41,
+# greeter-screen wrote xft-dpi=192 from the screen size) GTK also draws the boxes, icons and the password field twice as
+# big (GDK_SCALE=2; GDK_DPI_SCALE=0.5 keeps the text from doubling a second time) – with only xft-dpi the text was big
+# and the password field tiny. Other scales only make the text bigger. Always starts the greeter: without it nobody
+# can sign in.
+# Tests: SIMPLEOS_GREETER_SCALE_CONF (instead of greeter-screen's file).
+CONF=${SIMPLEOS_GREETER_SCALE_CONF:-/etc/xdg/lightdm/lightdm-gtk-greeter.conf.d/50-simpleos-scale.conf}
+if grep -qx 'xft-dpi=192' "$CONF" 2>/dev/null; then
+    GDK_SCALE=2 GDK_DPI_SCALE=0.5
+    export GDK_SCALE GDK_DPI_SCALE
+fi
+exec "$@"

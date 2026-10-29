@@ -356,7 +356,8 @@ from 1.0.6 through Software Updates** (VM-tested 2026-10-25 with the files copie
 
 ## 13. What changed in 1.1 (work in progress)
 
-Faster start and installation, Language & Region, Camera, USB notifications, package versions of test builds.
+Faster start and installation, Language & Region, Camera, display scaling, USB notifications, package versions of test
+builds.
 
 - [ ] **Small initramfs (issue #47):** fresh installation (BIOS and UEFI, once with LUKS):
       `cat /etc/initramfs-tools/conf.d/simpleos-modules.conf` ends with `MODULES=dep`, `ls -la /boot/initrd.img-*` is
@@ -393,3 +394,16 @@ Faster start and installation, Language & Region, Camera, USB notifications, pac
       Firefox (e.g. a video call test page) and then the Camera app: "The camera is in use", close the tab, Try Again
       → picture. A USB webcam plugged in while the window is open appears in the title bar choice. VM 2026-10-29
       with the virtual test camera (vivid): all of this except the hardware switch and unplugging.
+- [ ] **Display scaling (issue #41):** on the ThinkPad E16 (16" 1920x1200, ~141 dpi) Control Center → Display → Scale
+      says "Automatic (100 %)" and everything looks exactly as in 1.0.7. Choose 150 %: at once the taskbar, the start
+      menu (Super), flyouts (Wi-Fi, Sound, Power – still right above the taskbar), notifications, window titles, the
+      right-click menu, the mouse pointer and the Control Center itself are bigger; Firefox and the Terminal after
+      reopening them. Sign out and in: still 150 %. Back to 100 %: like before. 200 %: GTK windows (Control Center,
+      Thunar, Firefox) twice as big and sharp, not blurry. With a 2.8K/4K laptop or a 4K monitor as the main screen:
+      "Automatic" shows 150/200 % and is used from the first sign-in, the login and lock screen are bigger too.
+      Lowered resolution on such a screen: Automatic follows the resolution in use. Live ISO on a HiDPI laptop: the
+      installer is readable. VM 2026-10-29 (2880x1800): 200/150/100 % live and after signing in again, login/lock screen
+      at 200 % (password field, icons) with a faked automatic value; the automatic value itself with mocked xrandr
+      (2.8K 200 %, 16" 2560x1600 150 %, Full HD 100 %, 27" 4K 100 %, TV 160x90 mm 100 %, turned screen).
+      Taskbar size "Large" (Control Center → Appearance → Taskbar → Layout): higher bar, bigger clock and texts, the
+      Wi-Fi/Sound/Power flyouts still just above it; "Full" again looks as before.

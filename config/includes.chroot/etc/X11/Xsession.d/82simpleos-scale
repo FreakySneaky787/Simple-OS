@@ -1,0 +1,7 @@
+# Simple OS: display scale (HiDPI, #41) before the desktop starts – Openbox, kitty, dunst … read Xft.dpi and the cursor
+# size when they start (/usr/local/bin/simpleos-scale --session). The saved display setting first: a lowered resolution
+# (an old way around tiny text on a 4K laptop) changes the automatic scale. Sourced by Xsession: never exits, never fails.
+if [ -x /usr/local/bin/simpleos-scale ]; then
+    timeout 10 /usr/local/bin/simpleos-display --restore >/dev/null 2>&1 || true
+    timeout 10 /usr/local/bin/simpleos-scale --session >/dev/null 2>&1 || true
+fi

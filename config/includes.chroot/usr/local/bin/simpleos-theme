@@ -3,6 +3,7 @@
 #   simpleos-theme [--mode dark|light] [--accent blue|mauve|pink|green|peach|teal] [--show]
 #   simpleos-theme --pick    selection via Rofi (launcher "Appearance")
 #   simpleos-theme --xsettings   Openbox autostart: start the XSETTINGS service (xsettingsd) with the current design
+#   simpleos-theme --openbox-theme   only write the Openbox theme copy again (simpleos-scale after a change of the scale)
 #   simpleos-theme … --no-wallpaper   do not touch the wallpaper (simpleos-wallpaper-schedule sets it itself)
 # --mode   light (Catppuccin Latte) / dark (Mocha) – immediately in the running session:
 #            a) GTK: settings.ini (gtk-theme-name, gtk-application-prefer-dark-theme), GTK2, gsettings
@@ -25,15 +26,20 @@ accent=blue
 [ -r "$STATE" ] && . "$STATE"
 old_accent=$accent
 set_wallpaper=1
+openbox_only=0
 DAY_WP=/usr/share/backgrounds/simpleos/wallpaper-day.png
 NIGHT_WP=/usr/share/backgrounds/simpleos/wallpaper.png
 XSD_CONF="$HOME/.config/xsettingsd/xsettingsd.conf"
 
-# XSETTINGS file for xsettingsd: theme, icons, font (from gtk-3.0/settings.ini)
+# XSETTINGS file for xsettingsd: theme, icons, font (from gtk-3.0/settings.ini), the display scale (simpleos-scale, #41:
+# text DPI, GTK window scale, cursor size)
 write_xsettings() {  # $1 GTK theme, $2 icons
     font=$(sed -n 's/^gtk-font-name=//p' "$HOME/.config/gtk-3.0/settings.ini" 2>/dev/null | head -n 1)
     mkdir -p "$(dirname "$XSD_CONF")"
-    printf 'Net/ThemeName "%s"\nNet/IconThemeName "%s"\nGtk/FontName "%s"\n' "$1" "$2" "${font:-Inter 10}" > "$XSD_CONF"
+    {
+        printf 'Net/ThemeName "%s"\nNet/IconThemeName "%s"\nGtk/FontName "%s"\n' "$1" "$2" "${font:-Inter 10}"
+        if [ -x /usr/local/bin/simpleos-scale ]; then /usr/local/bin/simpleos-scale --xsettings 2>/dev/null || true; fi
+    } > "$XSD_CONF"
 }
 # Reload a running xsettingsd (SIGHUP) or start it
 reload_xsettings() {
@@ -53,6 +59,7 @@ while [ $# -gt 0 ]; do
             case "$mode" in light) write_xsettings Arc Papirus-Light ;; *) write_xsettings Arc-Dark Papirus-Dark ;; esac
             reload_xsettings
             exit 0 ;;
+        --openbox-theme) openbox_only=1; shift ;;
         --pick)
             # rofi-retry: grab error -> new attempt, rofi missing/does not start -> notification instead of a silent end
             rofi=/usr/local/lib/simpleos/rofi-retry
@@ -93,6 +100,28 @@ latte_of() {
 }
 hex=$(hex_of "$accent") || { echo "Unknown accent: $accent" >&2; exit 2; }
 old_hex=$(hex_of "$old_accent" 2>/dev/null || echo "$BASE_ACCENT")
+
+# Openbox: own copy of the SimpleOS theme (~/.themes takes precedence over /usr/share/themes) with the accent color and
+# the pixel sizes – borders, paddings, the menu's padding – at the display scale (simpleos-scale, #41: the fonts grow with
+# Xft.dpi, the paddings would stay and the right-click menu got cramped). Neither: no copy.
+write_openbox_theme() {
+    ob_dir="$HOME/.themes/SimpleOS/openbox-3"
+    pct=100
+    if [ -x /usr/local/bin/simpleos-scale ]; then pct=$(/usr/local/bin/simpleos-scale --percent 2>/dev/null || echo 100); fi
+    case "$pct" in 125|150|200) ;; *) pct=100 ;; esac
+    if [ "$hex" = "$BASE_ACCENT" ] && [ "$pct" = 100 ]; then
+        rm -rf "$HOME/.themes/SimpleOS"
+        return 0
+    fi
+    mkdir -p "$ob_dir"
+    sed "s/$BASE_ACCENT/$hex/gI" /usr/share/themes/SimpleOS/openbox-3/themerc | awk -v p="$pct" '
+        /^[a-z.]+:[ \t]*[0-9]+[ \t]*$/ { split($0, kv, ":"); print kv[1] ": " int(kv[2] * p / 100 + 0.5); next }
+        { print }' > "$ob_dir/themerc"
+}
+if [ "$openbox_only" = 1 ]; then
+    write_openbox_theme
+    exit 0
+fi
 
 # gtk-application-prefer-dark-theme stays 0 in BOTH modes: GTK reads it only at program start (there is no
 # XSETTING for it), and all Arc variants have a dark variant (gtk-dark.css) – a window started with 1
@@ -159,14 +188,7 @@ if [ -f "$tint2rc" ] && [ "$old_hex" != "$hex" ]; then
     rm -f "$tmp"
 fi
 
-# Openbox: own copy of the SimpleOS theme (~/.themes takes precedence over /usr/share/themes)
-ob_dir="$HOME/.themes/SimpleOS/openbox-3"
-if [ "$hex" = "$BASE_ACCENT" ]; then
-    rm -rf "$HOME/.themes/SimpleOS"
-else
-    mkdir -p "$ob_dir"
-    sed "s/$BASE_ACCENT/$hex/gI" /usr/share/themes/SimpleOS/openbox-3/themerc > "$ob_dir/themerc"
-fi
+write_openbox_theme
 
 mkdir -p "$(dirname "$STATE")"
 printf 'mode=%s\naccent=%s\n' "$mode" "$accent" > "$STATE"

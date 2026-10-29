@@ -115,12 +115,10 @@ Moved from 1.0.4 to keep it small, plus what came up since:
 Bugfix releases (1.0.x) come in between when users report something. Kept to what fits in about two weeks; the
 rest moved to 1.2.
 
-- **HiDPI / display scaling** (#41) – the biggest gap: nothing scales today (no Xft/DPI, no GDK scale, tint2/Openbox use
-  pixels). On a 2.8K/4K laptop everything is tiny. Plan: a "Scale" setting in Control Center → Display (100/125/150/200 %)
-  that sets Xft.dpi, XSETTINGS (also cursor size), GDK scale for 200 %, Rofi/dunst/kitty sizes and the tint2 panel height
-  and clock font (also a "Large" taskbar size – asked for on Bluesky, the clock is too small for older eyes);
-  automatic default from the screen's real DPI. Needs a HiDPI test screen first (open question: the resolution of the
-  development laptop).
+- **HiDPI / display scaling** (#41, **done, needs a real HiDPI screen**: Control Center → Display → Scale – Automatic
+  from the screen's real size (2.8K/4K laptops 200 %, 16" 2560x1600 150 %, Full HD stays 100 %), 100/125/150/200 %;
+  text (Xft.dpi), GTK (XSETTINGS, window scale 2 at 200 %), taskbar (tint2's own scaling), Rofi, notifications,
+  Openbox titles and menus, pointer, login/lock screen; applies at once, VM 2880x1800).
 - **Language & Region page** (system language, formats) (#42, **done**: Control Center page, languages from iso-codes,
   generates the locale, writes all format lines, installs the language packs; VM: English → German (Switzerland) with
   formats Germany, applies after signing out without a restart, cancel and offline OK).
