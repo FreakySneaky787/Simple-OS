@@ -17,6 +17,12 @@
 #                                    firmware metadata, install nothing. Without a password for active
 #                                    administrators (polkit rule 50-simpleos-update-refresh.rules, hook 14)
 #   pkexec simpleos-system-setup --firewall on|off   switch the firewall (ufw) on/off (Control Center → Password & Security)
+#   pkexec simpleos-system-setup --locale LOCALE [--formats LOCALE]   system language (Control Center → Language &
+#                                    Region, #42): generate the locales (locale-gen only if missing), write
+#                                    /etc/default/locale (LANG + the formats – dates, numbers, currency … – as LC_*
+#                                    lines, the language itself without --formats), then the language packs (no
+#                                    internet: later, not an error).
+#                                    Only UTF-8 locales of /usr/share/i18n/SUPPORTED. Applies after signing out.
 #   pkexec simpleos-system-setup --drivers PACKAGE…   install drivers/firmware/microcode (simpleos-drivers
 #                                    --install); only packages from the fixed list DRIVER_PACKAGES, the sources get
 #                                    contrib/non-free added (nvidia-driver, broadcom-sta-dkms). Live lines
@@ -32,7 +38,7 @@ set -u
 export DEBIAN_FRONTEND=noninteractive
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-usage() { echo "Usage: $0 [--browser firefox|chromium|mullvad] [--purge-firefox] [--office libreoffice|onlyoffice|none] [--gaming] | --repos | --upgrade | --refresh | --language | --firewall on|off | --drivers PACKAGE…" >&2; exit 2; }
+usage() { echo "Usage: $0 [--browser firefox|chromium|mullvad] [--purge-firefox] [--office libreoffice|onlyoffice|none] [--gaming] | --repos | --upgrade | --refresh | --language | --locale LOCALE [--formats LOCALE] | --firewall on|off | --drivers PACKAGE…" >&2; exit 2; }
 # The only packages --drivers may install (the same list as ALLOWED in simpleos-drivers)
 # Kernel/headers/firmware come from bookworm-backports via pinning (/etc/apt/preferences.d/simpleos-backports.pref)
 DRIVER_PACKAGES="firmware-linux-nonfree firmware-misc-nonfree firmware-intel-graphics firmware-amd-graphics
@@ -42,6 +48,7 @@ nvidia-tesla-470-driver linux-image-amd64 linux-headers-amd64 intel-microcode am
 [ "$(id -u)" -eq 0 ] || [ "${SIMPLEOS_SETUP_DRYRUN:-}" = 1 ] || { echo "simpleos-system-setup: must run as root (pkexec)" >&2; exit 1; }
 
 browser= purge_firefox=0 office=none gaming=0 repos_only=0 upgrade=0 refresh=0 language=0 drivers=0 firewall=
+locale= formats=
 while [ $# -gt 0 ]; do
     case "$1" in
         --drivers)       [ $# -ge 2 ] || usage; drivers=1; shift; break ;;   # rest = package names
@@ -54,6 +61,8 @@ while [ $# -gt 0 ]; do
         --refresh)       refresh=1 ;;
         --language)      language=1 ;;
         --firewall)      [ $# -ge 2 ] || usage; firewall=$2; shift ;;
+        --locale)        [ $# -ge 2 ] || usage; locale=$2; shift ;;
+        --formats)       [ $# -ge 2 ] || usage; formats=$2; shift ;;
         *)               usage ;;
     esac
     shift
@@ -61,13 +70,23 @@ done
 case "$browser" in ""|firefox|chromium|mullvad) ;; *) usage ;; esac
 case "$office" in libreoffice|onlyoffice|none) ;; *) usage ;; esac
 case "$firewall" in ""|on|off) ;; *) usage ;; esac
+# A locale only as Debian lists it with UTF-8 ("de_CH.UTF-8 UTF-8", "sr_RS@latin UTF-8") – never free text
+LOCALE_FILE=${SIMPLEOS_LOCALE_FILE:-/etc/default/locale}
+utf8_locale() {
+    case "$1" in ""|*[!A-Za-z0-9_.@-]*) return 1 ;; esac
+    awk -v l="$1" '$1 == l && $2 == "UTF-8" { f = 1; exit } END { exit !f }' "${SIMPLEOS_SUPPORTED:-/usr/share/i18n/SUPPORTED}" 2>/dev/null
+}
+[ -z "$formats" ] || [ -n "$locale" ] || usage
+[ -z "$locale" ] || utf8_locale "$locale" || usage
+[ -z "$formats" ] || utf8_locale "$formats" || usage
 # Allowed combinations in ONE place: at most one action (--repos, --upgrade, --refresh, --firewall,
-# --drivers), and never together with wizard options (--browser, --purge-firefox, --office, --gaming).
+# --drivers, --locale), and never together with wizard options (--browser, --purge-firefox, --office, --gaming).
 # Before, every section checked itself via a string ("$browser$gaming…" = "000") – after adding
 # --refresh a count of zeros no longer matched, and every --upgrade ended as an "invalid call" (exit 2).
 actions=0
 for a in "$repos_only" "$upgrade" "$refresh" "$language" "$drivers"; do [ "$a" = 1 ] && actions=$((actions + 1)); done
 [ -n "$firewall" ] && actions=$((actions + 1))
+[ -n "$locale" ] && actions=$((actions + 1))
 wizard=0
 if [ -n "$browser" ] || [ "$purge_firefox" = 1 ] || [ "$office" != none ] || [ "$gaming" = 1 ]; then wizard=1; fi
 [ "$actions" -le 1 ] || usage
@@ -477,6 +496,36 @@ if [ "$language" -eq 1 ]; then
             { echo "language packs: download not finished – later via Software Updates" >&2; exit 0; }
     fi
     language_install
+    exit 0
+fi
+
+# System language (Control Center → Language & Region): locales first – a LANG that is not generated would leave every
+# program in English with locale warnings (like the installer up to 1.0.3, migration 040). The formats (LC_* lines)
+# are the same set the installer writes – always, also when they equal the language: systemd and LightDM keep the LC_*
+# values of the boot in their environment, and a signed-in session only gets what pam_env reads from this file (a
+# file with only LANG left the old formats in the session until a restart; VM 2026-10-29). Old LANGUAGE/LC_ALL lines go.
+if [ -n "$locale" ]; then
+    step "Setting the language"
+    echo "STAGE: Preparing the language"
+    ${SIMPLEOS_LOCALE_ENABLE:-/usr/local/lib/simpleos/locale-enable} $locale $formats ||
+        { echo "ERROR: the language could not be prepared (locale-gen)" >&2; exit 1; }
+    _new=$(mktemp "$LOCALE_FILE.XXXXXX") || exit 1
+    {
+        echo "LANG=$locale"
+        for _v in LC_NUMERIC LC_TIME LC_MONETARY LC_PAPER LC_NAME LC_ADDRESS LC_TELEPHONE LC_MEASUREMENT \
+                  LC_IDENTIFICATION; do
+            echo "$_v=${formats:-$locale}"
+        done
+    } > "$_new" && chmod 0644 "$_new" && mv -f "$_new" "$LOCALE_FILE" ||
+        { rm -f "$_new"; echo "ERROR: $LOCALE_FILE could not be written" >&2; exit 1; }
+    # Language packs of the new language: never a reason to fail (SIMPLEOS_SETUP_DRYRUN=1: only named)
+    if [ "${SIMPLEOS_SETUP_DRYRUN:-}" = 1 ]; then
+        echo "dry run: language packs for $locale"
+    elif apt_get_update; then
+        language_install
+    else
+        echo "language packs: package lists could not be downloaded – later via Software Updates" >&2
+    fi
     exit 0
 fi
 

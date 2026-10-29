@@ -1,0 +1,33 @@
+#!/bin/sh
+# Simple OS – switch locales on and generate them (root): locale-enable LOCALE…
+# Every LOCALE that Debian knows (/usr/share/i18n/SUPPORTED) is switched on in /etc/locale.gen; locale-gen runs once if
+# one of them is not generated yet (locale -a). Unknown names and C/POSIX are skipped with a line on stdout.
+# Callers: migration 040-locale-gen (the languages of /etc/default/locale), simpleos-system-setup --locale (Control
+# Center → Language & Region). Exit 1 if /etc/locale.gen cannot be written or locale-gen fails, otherwise 0.
+# Tests: SIMPLEOS_LOCALE_GEN, SIMPLEOS_SUPPORTED, SIMPLEOS_LOCALE_GEN_CMD, SIMPLEOS_LOCALE_A_CMD
+GEN=${SIMPLEOS_LOCALE_GEN:-/etc/locale.gen}
+SUPPORTED=${SIMPLEOS_SUPPORTED:-/usr/share/i18n/SUPPORTED}
+GEN_CMD=${SIMPLEOS_LOCALE_GEN_CMD:-locale-gen}
+LIST_CMD=${SIMPLEOS_LOCALE_A_CMD:-locale -a}
+[ -f "$SUPPORTED" ] || { echo "locale-enable: $SUPPORTED missing" >&2; exit 1; }
+# "de_DE.UTF-8" -> "de_DE.utf8" (how locale -a writes it)
+norm() {
+    printf '%s\n' "$1" | awk '{ i = index($0, "."); if (!i) { print; exit }
+        cs = substr($0, i + 1); mod = ""; j = index(cs, "@"); if (j) { mod = substr(cs, j); cs = substr(cs, 1, j - 1) }
+        cs = tolower(cs); gsub(/[^a-z0-9]/, "", cs); print substr($0, 1, i) cs mod }'
+}
+have=$($LIST_CMD 2>/dev/null)
+missing=0
+for loc in "$@"; do
+    case "$loc" in ""|C|C.*|POSIX) continue ;; esac
+    line=$(awk -v l="$loc" '$1 == l { print; exit }' "$SUPPORTED")
+    [ -n "$line" ] || { echo "locale-enable: $loc unknown – skipped"; continue; }
+    if ! grep -qxF "$line" "$GEN" 2>/dev/null; then
+        echo "$line" >> "$GEN" || exit 1
+        echo "locale-enable: $loc switched on"
+    fi
+    printf '%s\n' "$have" | grep -qxF "$(norm "$loc")" || missing=1
+done
+[ "$missing" -eq 1 ] || exit 0
+$GEN_CMD || exit 1
+exit 0

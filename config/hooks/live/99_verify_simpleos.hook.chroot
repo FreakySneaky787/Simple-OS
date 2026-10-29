@@ -176,6 +176,15 @@ check "migration 040-locale-gen: missing system language (de_DE, de_CH) not swit
 printf 'de_CH.utf8\nde_DE.utf8\n' >> "$lg/have"; cp "$lg/gen" "$lg/gen.before"
 check "migration 040-locale-gen: runs locale-gen or changes /etc/locale.gen when nothing is missing" \
       "mig4 && cmp -s $lg/gen $lg/gen.before && [ \"\$(grep -c . $lg/gen.log)\" -eq 1 ]"
+# The same logic for Control Center → Language & Region (#42): /usr/local/lib/simpleos/locale-enable LOCALE…
+LE=/usr/local/lib/simpleos/locale-enable
+printf 'fr_FR.UTF-8 UTF-8\nsr_RS@latin UTF-8\n' >> "$lg/supported"
+lenable() { SIMPLEOS_LOCALE_GEN=$lg/gen SIMPLEOS_SUPPORTED=$lg/supported SIMPLEOS_LOCALE_GEN_CMD=${LE_GEN:-$lg/locale-gen} \
+            SIMPLEOS_LOCALE_A_CMD="cat $lg/have" "$LE" "$@" >/dev/null 2>&1; }
+check "locale-enable: new language (fr_FR, sr_RS@latin) not switched on, or locale-gen not run once" \
+      "[ -x $LE ] && lenable fr_FR.UTF-8 sr_RS@latin xx_XX.UTF-8 C.UTF-8 && grep -qx 'fr_FR.UTF-8 UTF-8' $lg/gen &&
+       grep -qx 'sr_RS@latin UTF-8' $lg/gen && ! grep -q 'xx_XX\|^C' $lg/gen && [ \"\$(grep -c . $lg/gen.log)\" -eq 2 ]"
+check "locale-enable: a failing locale-gen counts as success" "! LE_GEN=false lenable fr_FR.UTF-8"
 rm -rf "${lg:?}"
 # Login keyring (#32): pam_gnome_keyring must start the daemon itself – with the systemd socket the login keyring created
 # at the first login was not usable in that session (hook 17)
@@ -970,14 +979,39 @@ check "helper: --upgrade can be mixed with other actions" "! /usr/local/sbin/sim
 # wizard/Software Center, browser selection, Control Center firewall, drivers, simpleos-post-install --repos) – a
 # wrong combination check once rejected EVERY update as an invalid call (exit 2)
 for a in "--upgrade" "--refresh" "--repos" "--firewall on" "--firewall off" "--drivers intel-microcode nvidia-driver" \
-         "--browser chromium --purge-firefox" "--browser mullvad --office onlyoffice --gaming" "--office libreoffice" "--gaming"; do
+         "--browser chromium --purge-firefox" "--browser mullvad --office onlyoffice --gaming" "--office libreoffice" "--gaming" \
+         "--locale de_CH.UTF-8" "--locale en_US.UTF-8 --formats de_DE.UTF-8" "--locale sr_RS@latin"; do
     check "helper: valid call '$a' rejected" \
           "SIMPLEOS_SETUP_ARGCHECK=1 /usr/local/sbin/simpleos-system-setup $a 2>/dev/null | grep -qx 'ARGS: ok'"
 done
-for a in "--upgrade --refresh" "--repos --upgrade" "--refresh --browser mullvad" "--upgrade --office libreoffice" "--drivers"; do
+for a in "--upgrade --refresh" "--repos --upgrade" "--refresh --browser mullvad" "--upgrade --office libreoffice" "--drivers" \
+         "--locale" "--locale de_DE" "--locale xx_XX.UTF-8" "--locale ../de_DE.UTF-8" "--formats de_DE.UTF-8" \
+         "--locale de_CH.UTF-8 --upgrade" "--locale de_CH.UTF-8 --formats de_DE" "--locale de_CH.UTF-8 --gaming"; do
     check "helper: invalid call '$a' accepted" "! SIMPLEOS_SETUP_ARGCHECK=1 /usr/local/sbin/simpleos-system-setup $a >/dev/null 2>&1"
 done
 check "simpleos-update does not call the helper with --upgrade" "grep -q 'pkexec \"\$HELPER\" --upgrade' /usr/local/bin/simpleos-update"
+# Control Center → Language & Region (#42): --locale switches the locales on (locale-enable dummy), writes /etc/default/locale
+# without the old LANGUAGE/LC_ALL lines, ALWAYS with the LC_* lines (= the formats, or the language): LightDM's environment
+# keeps the boot's LC_* values, a file with only LANG left the old formats in the session; locale-enable failing -> nothing written
+LR=$(mktemp -d)
+printf 'de_CH.UTF-8 UTF-8\nde_DE ISO-8859-1\nde_DE.UTF-8 UTF-8\nen_US.UTF-8 UTF-8\n' > "$LR/supported"
+printf '#!/bin/sh\necho "$*" >> "%s/enabled"\n[ "$LR_FAIL" != 1 ]\n' "$LR" > "$LR/enable"; chmod 0755 "$LR/enable"
+lrun() { printf 'LANG=en_US.UTF-8\nLANGUAGE=en_US:en\nLC_ALL=C\nLC_TIME=en_GB.UTF-8\n' > "$LR/locale"; rm -f "$LR/enabled"
+         SIMPLEOS_SETUP_DRYRUN=1 SIMPLEOS_SUPPORTED=$LR/supported SIMPLEOS_LOCALE_FILE=$LR/locale SIMPLEOS_LOCALE_ENABLE=$LR/enable \
+             /usr/local/sbin/simpleos-system-setup "$@" > "$LR/out" 2>&1; }
+check "helper --locale: language not set, old LANGUAGE/LC_ALL/LC_TIME lines kept, formats missing or locale not switched on" \
+      "lrun --locale de_CH.UTF-8 && [ \"\$(head -n 1 $LR/locale)\" = 'LANG=de_CH.UTF-8' ] && grep -qx 'de_CH.UTF-8' $LR/enabled &&
+       [ \"\$(grep -c '^LC_[A-Z]*=de_CH.UTF-8\$' $LR/locale)\" -eq 9 ] && [ \"\$(wc -l < $LR/locale)\" -eq 10 ] &&
+       grep -qx 'STEP: Setting the language' $LR/out && [ \"\$(stat -c %a $LR/locale)\" = 644 ]"
+check "helper --locale --formats: the formats are not written as LC_* lines (the installer's set)" \
+      "lrun --locale de_CH.UTF-8 --formats de_DE.UTF-8 && grep -qx 'de_CH.UTF-8 de_DE.UTF-8' $LR/enabled &&
+       [ \"\$(head -n 1 $LR/locale)\" = 'LANG=de_CH.UTF-8' ] && [ \"\$(grep -c '^LC_[A-Z]*=de_DE.UTF-8\$' $LR/locale)\" -eq 9 ] &&
+       grep -qx 'LC_TIME=de_DE.UTF-8' $LR/locale && ! grep -q 'LC_ALL\|LANGUAGE\|LC_MESSAGES' $LR/locale"
+check "helper --locale --formats: formats equal to the language written wrong" \
+      "lrun --locale de_CH.UTF-8 --formats de_CH.UTF-8 && [ \"\$(grep -c '=de_CH.UTF-8\$' $LR/locale)\" -eq 10 ]"
+check "helper --locale: /etc/default/locale changed although the locales could not be generated" \
+      "! LR_FAIL=1 lrun --locale de_CH.UTF-8 && grep -qx 'LANGUAGE=en_US:en' $LR/locale && ! ls $LR/locale.?* >/dev/null 2>&1"
+rm -rf "${LR:?}"
 check "old power menu /usr/bin/simpleos-powermenu still present" "[ ! -e /usr/bin/simpleos-powermenu ]"
 
 # Click paths with the same dummies as above (+ power, apt, pkexec, file manager); every case: exit 0.
@@ -2058,6 +2092,23 @@ assert [(x[1], x[2], x[3], x[5]) for x in d] == [('WH-1000XM4', True, 'Headphone
 assert c.bt_subtitle('Headphones', True, 80) == 'Headphones · Connected · Battery 80 %' and c.bt_subtitle('Mouse', False, None) == 'Mouse'
 assert [x[1] for x in c.bt_scan(1)] == ['Xbox Controller']\""
 check "Control Center: wrong without a Bluetooth adapter" "ccpy BT=none python3 -c \"$CCL; assert c.bt_state() == (False, False)\""
+# Control Center → Language & Region (#42): names from iso-codes + glibc, the system's language and formats, the example
+LRF=$(mktemp)
+printf '#  File generated by update-locale\nLANG="de_CH.UTF-8"\nLC_TIME=de_DE.UTF-8\n' > "$LRF"
+check "Control Center → Language & Region: languages, the system setting or the format example wrong" "python3 -c \"$CCL
+assert 'language' in [p[0] for p in c.PAGES] and c.ALIASES['region'] == 'language'
+n = c.locales()
+assert n['de_CH.UTF-8'] == ('German – Deutsch', 'Switzerland') and n['en_US.UTF-8'] == ('English', 'United States'), n.get('de_CH.UTF-8')
+assert n['sr_RS@latin'][1] == 'Serbia (Latin)' and n['el_GR.UTF-8'][0].startswith('Greek') and len(n) > 250, len(n)
+assert len({v[0] for v in n.values() if v[0].startswith('German')}) == 1 and 'de_DE' not in n
+c.LOCALE_FILE = c.Path('$LRF'); assert c.system_locale() == ('de_CH.UTF-8', 'de_DE.UTF-8'), c.system_locale()
+c.LOCALE_FILE = c.Path('/nonexistent'); assert c.system_locale() == ('en_US.UTF-8', 'en_US.UTF-8')
+assert c.locale_key('de_DE.utf8') == c.locale_key('de_DE.UTF-8') != c.locale_key('de_CH.UTF-8')
+assert c.locale_source('ca_ES.UTF-8@valencia') == 'ca_ES@valencia' and c.locale_source('sr_RS@latin') == 'sr_RS@latin'
+e = c.format_example('en_US.UTF-8')
+assert e.endswith('1,234.56 · \\\$1,234.50') and ', 20' in e, e
+assert c.format_example('xx_XX.UTF-8') == ''\""
+rm -f "$LRF"
 # Control Center → Wi-Fi (#76): its own view – the list online AND offline, Disconnect on the connected network,
 # no Setup Wizard texts ("Next"); the nmcli dummy of simpleos-wifi above
 check "Control Center → Wi-Fi: online via Wi-Fi -> no list / no Disconnect (#76)" "ccpy NET=wifi python3 -c \"$CCL

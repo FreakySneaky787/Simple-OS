@@ -19,6 +19,8 @@ One window for all settings, the sections on the left, the page on the right:
                presentations: ~/.config/mimeapps.list and ~/.local/share/applications/defaults.list), startup apps
                (XDG autostart: switch on/off, add, remove)
   Date & Time  time zone, automatic time via timedatectl
+  Language & Region  system language and formats (dates, numbers, currency): simpleos-system-setup --locale via pkexec
+               (locale-gen, /etc/default/locale, language packs), applies after signing out (#42)
   Storage & Backups  free space, simpleos-cleaner, disks (gnome-disks), restore points (simpleos-backup)
   Password & Security  password, firewall (ufw via the root helper)
   System & Updates  Simple OS version, What's new (simpleos-whats-new), Software Updates, Hardware & Drivers
@@ -55,13 +57,15 @@ PAGES = [("wifi", "Wi-Fi", "network-wireless"), ("bluetooth", "Bluetooth", "blue
          ("printers", "Printers & Scanners", "printer"), ("power", "Power", "battery"),
          ("apps", "Apps", "preferences-desktop-default-applications"),
          ("datetime", "Date & Time", "preferences-system-time"),
+         ("language", "Language & Region", "preferences-desktop-locale"),
          ("storage", "Storage & Backups", "drive-harddisk"), ("security", "Password & Security", "security-high"),
          ("system", "System & Updates", "computer")]
 GROUP_STARTS = {"sound", "input", "apps"}
 # Older names and what they open now (simpleos-control-center PAGE from scripts, taskbar clicks …)
 ALIASES = {"dnd": "notifications", "time": "datetime", "date": "datetime", "printer": "printers", "backup": "storage",
            "backups": "storage", "firewall": "security", "password": "security", "default-apps": "apps",
-           "startup": "apps", "network": "wifi", "about": "system", "updates": "system"}
+           "startup": "apps", "network": "wifi", "about": "system", "updates": "system",
+           "region": "language", "locale": "language", "formats": "language"}
 WIZARD = "/usr/local/bin/simpleos-welcome-wizard"
 HELPER = "/usr/local/sbin/simpleos-system-setup"
 UFW_CONF = Path(os.environ.get("SIMPLEOS_UFW_CONF", "/etc/ufw/ufw.conf"))
@@ -525,6 +529,116 @@ def timedatectl_cancelled(res):
 
 def timezones():
     return [z.strip() for z in _c("timedatectl", "list-timezones").stdout.splitlines() if z.strip()]
+
+
+# ------------------------------------------------------------------ Language & Region (#42)
+LOCALE_FILE = Path(os.environ.get("SIMPLEOS_LOCALE_FILE", "/etc/default/locale"))
+SUPPORTED = Path(os.environ.get("SIMPLEOS_SUPPORTED", "/usr/share/i18n/SUPPORTED"))
+I18N_LOCALES = Path(os.environ.get("SIMPLEOS_I18N_LOCALES", "/usr/share/i18n/locales"))
+
+
+def locale_source(loc):
+    """de_CH.UTF-8 -> de_CH, ca_ES.UTF-8@valencia -> ca_ES@valencia (the name of glibc's locale source file)"""
+    base, _, mod = loc.partition("@")
+    return base.partition(".")[0] + (f"@{mod}" if mod else "")
+
+
+def locale_key(loc):
+    """Spellings of one locale compared: de_DE.UTF-8 = de_DE.utf8 (locale -a, older /etc/default/locale files)"""
+    base, _, mod = loc.partition("@")
+    name, _, cs = base.partition(".")
+    return name + "." + re.sub(r"[^a-z0-9]", "", cs.lower()) + (f"@{mod}" if mod else "")
+
+
+ISO_CODES = Path(os.environ.get("SIMPLEOS_ISO_CODES", "/usr/share/iso-codes/json"))
+
+
+def iso_names(file, key, codes):
+    """{code: English name} from an iso-codes table, without the "(macrolanguage)"-like additions"""
+    import json
+    try:
+        entries = json.loads((ISO_CODES / file).read_text())[key]
+    except (OSError, ValueError, KeyError):
+        return {}
+    names = {}
+    for e in entries:
+        for c in codes:
+            if c in e:
+                names.setdefault(e[c], re.sub(r"\s*\(.*\)$", "", e.get("common_name") or e.get("name", "")))
+    return names
+
+
+def locales():
+    """{locale: (language, region)} – every UTF-8 locale Debian knows (SUPPORTED). English names from iso-codes ("German",
+    "Switzerland"), the language's own name from glibc's locale source (lang_name "Deutsch") after it: "German – Deutsch".
+    All locales of one language code share the same language name (one entry in the list, the countries below)."""
+    try:
+        lines = SUPPORTED.read_text(errors="replace").splitlines()
+    except OSError:
+        return {}
+    langs = iso_names("iso_639-3.json", "639-3", ("alpha_2", "alpha_3"))
+    langs.update({"el": "Greek"})
+    countries = iso_names("iso_3166-1.json", "3166-1", ("alpha_2",))
+    found, native = [], {}
+    for line in lines:
+        parts = line.split()
+        if len(parts) != 2 or parts[1] != "UTF-8" or "_" not in parts[0]:
+            continue
+        src = locale_source(parts[0])
+        info = {}
+        try:
+            with open(I18N_LOCALES / src, errors="replace") as fh:
+                for l in fh:
+                    m = re.match(r'\s*(language|territory|lang_name)\s+"([^"]*)"', l)
+                    if m:
+                        info.setdefault(m.group(1), re.sub(r"<U([0-9A-Fa-f]{4,8})>",
+                                                           lambda u: chr(int(u.group(1), 16)), m.group(2)))
+        except OSError:
+            pass
+        code, _, mod = src.partition("@")
+        lang, _, cc = code.partition("_")
+        if info.get("lang_name"):
+            native.setdefault(lang, info["lang_name"])
+        region = countries.get(cc) or info.get("territory") or cc
+        found.append((parts[0], lang, info.get("language"), f"{region} ({mod.capitalize()})" if mod else region))
+    result = {}
+    for loc, lang, glibc_name, region in found:
+        name = langs.get(lang) or glibc_name or lang
+        own = native.get(lang, "")
+        result[loc] = (f"{name} – {own}" if own and own.lower() != name.lower() else name, region)
+    return result
+
+
+def system_locale():
+    """(language, formats) of the system (/etc/default/locale): LANG and LC_TIME (the installer and the helper write
+    all format variables alike); nothing set -> en_US.UTF-8 like the image"""
+    vals = {}
+    try:
+        for line in LOCALE_FILE.read_text(errors="replace").splitlines():
+            k, sep, v = line.partition("=")
+            if sep and re.fullmatch(r"[A-Z_]+", k.strip()):
+                vals[k.strip()] = v.strip().strip("\"'")
+    except OSError:
+        pass
+    lang = vals.get("LANG") or "en_US.UTF-8"
+    return lang, vals.get("LC_TIME") or lang
+
+
+def format_example(loc):
+    """"Thursday, 29 October 2026 · 1,234.56 · €12.50" in the formats of loc; "" if it is not generated (locale -a)"""
+    if locale_key(loc) not in {locale_key(l.strip()) for l in cmd("locale", "-a").stdout.splitlines()}:
+        return ""
+    env = dict(os.environ, LC_ALL=loc)
+    full = re.search(r"^full=(.*)$", cmd("/usr/local/lib/simpleos/date-formats", env=env).stdout, re.M)
+    date = cmd("date", "+" + (full.group(1) if full else "%x"), env=env).stdout.strip()
+    k = dict(re.findall(r'^(\w+)="?(.*?)"?$', cmd("locale", "-k", "LC_NUMERIC", "LC_MONETARY", env=env).stdout, re.M))
+    number = f"1{k.get('thousands_sep', '')}234{k.get('decimal_point', '.')}56"
+    digits = int(k.get("frac_digits", "2")) if k.get("frac_digits", "2").isdigit() else 2
+    amount = f"1{k.get('mon_thousands_sep', '')}234" + (f"{k.get('mon_decimal_point', '.')}{'50'[:digits]:0<{digits}}"
+                                                        if 0 < digits < 9 else "")
+    sym, space = k.get("currency_symbol", ""), " " if k.get("p_sep_by_space") == "1" else ""
+    money = f"{sym}{space}{amount}" if k.get("p_cs_precedes", "1") == "1" else f"{amount}{space}{sym}"
+    return " · ".join(x for x in (date, number, money if sym else "") if x)
 
 
 def dnd_on():
@@ -1715,6 +1829,145 @@ def main(argv):
                 self.refresh()
             bg(lambda: cmd("timedatectl", "set-timezone", zone, timeout=120), done)
 
+    class LanguagePage(Page):
+        title = "Language & Region"
+        names = {}
+
+        def refresh(self):
+            self.clear()
+            self.put(Gtk.Spinner(active=True))
+            self.show_all_now()
+            bg(lambda: (locales(), system_locale(), format_example(system_locale()[1]), live_session()), self.show)
+
+        def name(self, loc):
+            lang, region = self.names.get(loc) or next((v for k, v in self.names.items()
+                                                        if locale_key(k) == locale_key(loc)), (loc, ""))
+            return f"{lang} ({region})" if region else lang
+
+        def show(self, res):
+            self.clear()
+            if isinstance(res, Exception):
+                self.note(f"The languages could not be read: {res}")
+                return self.show_all_now()
+            self.names, (lang, fmt), example, live = res
+            same = locale_key(fmt) == locale_key(lang)
+            rows = [("Language", f"{self.name(lang)} · menus and messages of the apps",
+                     button("Change…", lambda: self.choose(False, lang, fmt))),
+                    ("Formats", "Dates, numbers and currency · " + ("same as the language" if same else self.name(fmt)),
+                     button("Change…", lambda: self.choose(True, lang, fmt)))]
+            if example:
+                rows.append(("Example", example, None))
+            self.put(card(rows))
+            self.note("Applies after you sign out and back in. When the computer is online, spell checking and the "
+                      "languages for Firefox and LibreOffice are installed with it.")
+            self.note("Simple OS's own windows, like this one, are still in English – translations are planned for "
+                      "Simple OS 1.2.")
+            if live:
+                self.note("Live Mode: the change lasts until the computer shuts down.")
+            self.put(card([("Keyboard layout", "Set separately, on the Keyboard page",
+                            button("Open", lambda: self.win.open("keyboard")))]))
+            self.show_all_now()
+
+        def choose(self, formats, lang, fmt):
+            if not self.names:
+                return self.win.error("The list of languages is not available.")
+            by = {}
+            for loc, (lg, region) in sorted(self.names.items(), key=lambda kv: (kv[1][0], kv[1][1])):
+                by.setdefault(lg, []).append((loc, region))
+            current = fmt if formats else lang
+            cur = next((k for k in self.names if locale_key(k) == locale_key(current)), current)
+            d = Gtk.Dialog(title="Formats" if formats else "Language", transient_for=self.win, modal=True)
+            d.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Change", Gtk.ResponseType.OK)
+            d.set_default_response(Gtk.ResponseType.OK)
+            d.set_default_size(360, -1)
+            language, region = Gtk.ComboBoxText(), Gtk.ComboBoxText()
+            for lg in by:
+                language.append(lg, lg)
+
+            def fill(_c=None):
+                region.remove_all()
+                for loc, rg in by.get(language.get_active_id() or "", []):
+                    region.append(loc, rg or loc)
+                region.set_active(0)
+            language.connect("changed", fill)
+            language.set_active_id(self.names.get(cur, (next(iter(by)),))[0])
+            fill()
+            region.set_active_id(cur)
+            box = d.get_content_area()
+            box.set_spacing(8)
+            box.set_border_width(12)
+            same = Gtk.CheckButton(label="Same as the language", active=locale_key(fmt) == locale_key(lang))
+            if formats:
+                box.add(label("Show dates, numbers and currency like in …"))
+                box.add(same)
+                same.connect("toggled", lambda b: (language.set_sensitive(not b.get_active()),
+                                                   region.set_sensitive(not b.get_active())))
+                same.toggled()
+            else:
+                box.add(label("Which language should the apps use?"))
+            box.add(language)
+            box.add(region)
+            d.show_all()
+            ok = d.run() == Gtk.ResponseType.OK
+            chosen, keep = region.get_active_id(), same.get_active()
+            d.destroy()
+            if not ok or not chosen:
+                return
+            if formats:
+                new_lang, new_fmt = lang, lang if keep else chosen
+            else:
+                new_lang = chosen
+                new_fmt = chosen if locale_key(fmt) == locale_key(lang) else fmt
+            if (locale_key(new_lang), locale_key(new_fmt)) != (locale_key(lang), locale_key(fmt)):
+                self.apply(new_lang, new_fmt, "formats" if formats else "language")
+
+        def apply(self, lang, fmt, what):
+            self.clear()
+            box = Gtk.Box(spacing=10)
+            box.pack_start(Gtk.Spinner(active=True), False, False, 0)
+            box.pack_start(label("Changing the language…"), False, False, 0)
+            self.put(box)
+            self.show_all_now()
+            args = ["--locale", lang] + (["--formats", fmt] if locale_key(fmt) != locale_key(lang) else [])
+
+            def work():
+                import tempfile
+                log = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "simpleos-language.log"
+                log.parent.mkdir(parents=True, exist_ok=True)
+                with tempfile.NamedTemporaryFile("w", prefix="simpleos-language.", delete=False) as out:
+                    feed = out.name
+                prog = None
+                if os.access("/usr/local/bin/simpleos-progress", os.X_OK):
+                    prog = subprocess.Popen(["/usr/local/bin/simpleos-progress", "--follow", feed, "--title",
+                                             "Changing the language", "--done", "Language changed",
+                                             "--hint", "Sign out to use it", "--app", "Control Center",
+                                             "--icon-name", "preferences-desktop-locale", "--pid", str(os.getpid())],
+                                            stderr=subprocess.DEVNULL)
+                try:
+                    with open(feed, "a") as fo, open(log, "a") as fl:
+                        rc = subprocess.call(["pkexec", HELPER, *args], stdout=fo, stderr=fl)
+                        fo.write(f"EXIT: {rc}\n")
+                finally:
+                    if prog:
+                        prog.wait()
+                    os.unlink(feed)
+                return rc
+
+            def done(rc):
+                self.refresh()
+                if rc in (126, 127):          # password dialog cancelled: nothing changed
+                    return
+                if rc != 0:
+                    return self.win.error("The language could not be changed. Details: ~/.cache/simpleos-language.log")
+                d = Gtk.MessageDialog(transient_for=self.win, modal=True, message_type=Gtk.MessageType.QUESTION,
+                                      text=f"Sign out now to use the new {what}?")
+                d.format_secondary_text("Save your work first – open apps will close.")
+                d.add_buttons("Later", Gtk.ResponseType.CANCEL, "Sign out", Gtk.ResponseType.OK)
+                if d.run() == Gtk.ResponseType.OK:
+                    spawn("openbox", "--exit")
+                d.destroy()
+            bg(work, done)
+
     class StoragePage(Page):
         title = "Storage & Backups"
 
@@ -1842,7 +2095,7 @@ def main(argv):
             self.pages = {}
             classes = {"system": SystemPage, "notifications": NotificationsPage, "keyboard": KeyboardPage,
                        "printers": PrintersPage, "apps": AppsPage, "datetime": DateTimePage, "storage": StoragePage,
-                       "security": SecurityPage,
+                       "security": SecurityPage, "language": LanguagePage,
                        "sound": SoundPage, "display": DisplayPage, "wifi": WifiPage, "bluetooth": BluetoothPage,
                        "appearance": AppearancePage, "input": InputPage, "power": PowerPage}
             for key, title, icon in PAGES:

@@ -121,7 +121,9 @@ rest moved to 1.2.
   and clock font (also a "Large" taskbar size – asked for on Bluesky, the clock is too small for older eyes);
   automatic default from the screen's real DPI. Needs a HiDPI test screen first (open question: the resolution of the
   development laptop).
-- **Language & Region page** (system language, formats) (#42).
+- **Language & Region page** (system language, formats) (#42, **done**: Control Center page, languages from iso-codes,
+  generates the locale, writes all format lines, installs the language packs; VM: English → German (Switzerland) with
+  formats Germany, applies after signing out without a restart, cancel and offline OK).
 - **Boot time & size:** initramfs `MODULES=dep` (#47, **done**: ~160 MB → ~17 MB, kernel phase 2.1 → 1.1 s in a VM,
   tried in a copy first, extra disk/keyboard drivers so a moved disk still boots), zstd squashfs (#19, **done, needs
   the next ISO build**: level 19 = +6 % ISO size, unpacks twice as fast).

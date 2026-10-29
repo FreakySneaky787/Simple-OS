@@ -356,7 +356,7 @@ from 1.0.6 through Software Updates** (VM-tested 2026-10-25 with the files copie
 
 ## 13. What changed in 1.1 (work in progress)
 
-Faster start and installation, USB notifications, package versions of test builds.
+Faster start and installation, Language & Region, USB notifications, package versions of test builds.
 
 - [ ] **Small initramfs (issue #47):** fresh installation (BIOS and UEFI, once with LUKS):
       `cat /etc/initramfs-tools/conf.d/simpleos-modules.conf` ends with `MODULES=dep`, `ls -la /boot/initrd.img-*` is
@@ -377,3 +377,11 @@ Faster start and installation, USB notifications, package versions of test build
 - [ ] **Test builds (issue #102):** `dpkg-query -W simpleos` shows `1.1+<build time>`; Software Updates shows
       "Simple OS 1.1" (no number after it). A machine installed from an earlier test build is offered the published
       build.
+- [ ] **Language & Region (issue #42):** Control Center → Language & Region shows the language the installer set.
+      Change it to another language (e.g. German → Switzerland): password dialog, progress window "Changing the
+      language", then "Sign out now?". After signing out and back in: Firefox, Thunar and the menus are in the new
+      language, the taskbar clock and the login screen clock use its date order, `locale` shows `LANG=de_CH.UTF-8`, and
+      online the spell checking/Firefox language packs are installed (`dpkg -l 'hunspell-*' 'firefox-esr-l10n-*'`).
+      Formats → another region (e.g. English language, formats Germany): the example line on the page shows
+      "Donnerstag, 29. Oktober 2026 · 1.234,56 · 1.234,50 €" after the change, apps stay English. Cancel the password
+      dialog: nothing changes. Without internet: the language changes, the packs come with the next Software Update.
