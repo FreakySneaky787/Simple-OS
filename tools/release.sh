@@ -135,6 +135,12 @@ cmd_publish() {
     [ -n "$repo" ] || die "no GitHub URL in $SOURCES"
     tag="v$v"
     check_repo
+    # The release text is RELEASE_NOTES.md, so it must be about this version. And a feature release comes from the branch
+    # next: its notice at the top of the README ("still being tested") must be gone first (docs/MAINTAINING.md, section 7)
+    [ "$(head -n1 RELEASE_NOTES.md 2>/dev/null)" = "# Simple OS $v" ] ||
+        die "RELEASE_NOTES.md is not about $v (first line must be '# Simple OS $v') – write the release text first"
+    ! grep -q 'simpleos-next-branch' README.md ||
+        die "README.md still has the notice of the branch next at the top – remove it, commit, push, then publish"
     # The next edition recognizes unchanged files by their versions in git – an edition from uncommitted files
     # would not be in it (its files would count as "changed by the user" forever)
     [ -z "$(git status --porcelain -- config tools)" ] || die "uncommitted changes in config/ or tools/ – commit, rebuild, then publish"

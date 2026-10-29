@@ -121,6 +121,12 @@ every release – and only after `publish`, because the links point to the new r
   - Feature release: when `next` is tested (TESTING.md), `git switch main && git merge next` (a fast-forward if `main`
     got no fixes in the meantime), then release from `main` as in section 2.
   - Docs that are already true for the published edition (website links, issue forms) may go to `main` directly.
+  - `next` says what it is: it carries the version of the coming feature release (`./tools/release.sh version 1.1`,
+    with its "What's new" notes – test ISOs from `next` show "Simple OS 1.1"), and a notice at the top of `README.md`
+    (marker `simpleos-next-branch`). Before the feature release: write `RELEASE_NOTES.md` for it and remove the notice –
+    `./tools/release.sh publish` refuses otherwise. When `next` starts the following feature release, both come back.
+  - Merging a bugfix release (`main`, e.g. 1.0.8) into `next` conflicts in `usr/lib/os-release`, the installer branding
+    and `whats-new`: keep `next`'s version, and add the bugfix's notes to its "What's new" if they matter.
 - `trixie` – Simple OS 2.0 "Rigi" on Debian 13 (ROADMAP "2.0"). Merge `main` into it regularly so fixes are not lost.
   Before 2.0 is published, 1.x systems need their own update channel (ROADMAP, issue #52).
 

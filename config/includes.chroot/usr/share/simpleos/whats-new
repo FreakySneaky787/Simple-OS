@@ -1,12 +1,13 @@
-# Simple OS 1.0.7
+# Simple OS 1.1
+## New
+- **Scale for screens with many pixels.** Control Center → Display → Scale makes text, the taskbar, menus,
+  notifications and the mouse pointer bigger. "Automatic" picks it from your screen's size (2.8K and 4K laptops), or
+  choose 125, 150 or 200 % yourself.
+- **Language & Region.** Change the language of your apps and the format of dates, numbers and currency in Control
+  Center → Language & Region. Spell checking and the Firefox and LibreOffice languages come with it.
+- **Camera.** Menu → Apps → Camera shows your webcam and takes photos – they are saved in Pictures/Camera.
+- **A larger taskbar.** Control Center → Appearance → Taskbar → Layout → Large: a higher bar with a bigger clock.
+- **Starting up is quicker.** The files the computer loads at startup are now much smaller.
 ## Fixed
-- **The power button on the lock screen.** It puts the computer to sleep now instead of shutting it down at once –
-  your open windows and unsaved work stay. On the desktop it still opens the power menu.
-- **Sleep and the lock screen.** Closing the lid or choosing Sleep locks the screen once. Before, the lock screen
-  could restart two or three times, which sometimes made unlocking fail.
-- **Dates in your language's order.** The taskbar clock, its tooltip, the calendar and the login screen now show
-  "20. Oktober 2026" in German or "20 October 2026" in British English instead of the US order.
-- **Keyboards plugged in later** (USB, or Bluetooth after sleep) type with your account's layout.
-- **Software Updates checks the free disk space first.** If there isn't enough, nothing is changed, and you can
-  open the Storage Cleaner right from the message.
-- **Refresh rates.** Screens that offer 60 Hz and 59.95 Hz show a single "60 Hz".
+- **"Safely remove" only for USB drives.** A second internal disk (with Windows or another Linux on it) no longer
+  shows up as a USB drive.
