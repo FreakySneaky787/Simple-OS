@@ -1141,26 +1141,46 @@ echo $$ > "$wt/home/.cache/simpleos-update-watch.pid"
 hcase "$U --watch" "watch: a second one runs next to the first" "" "UPDATES=1 SIMPLEOS_UPDATE_FIRST=0 SIMPLEOS_UPDATE_ROUNDS=1" "" '[ ! -s $S/notify ]'
 rm -f "$wt/home/.cache/simpleos-update-watch.pid" "$wt/mock/flatpak"
 USB=/usr/local/bin/simpleos-usb-notify
-hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "stick plugged in, Open clicked" "" "NOTIFY_ACTION=yes" "" \
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "stick plugged in, Open clicked" "" "NOTIFY_ACTION=yes USER=simple" "" \
     'grep -q "\"STICK\" is ready" $S/notify && grep -q "yes=Open" $S/notify && grep -qx "thunar /media/simple/STICK" $S/opened'
-hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "click on the notification itself" "" "NOTIFY_ACTION=default" "" \
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "click on the notification itself" "" "NOTIFY_ACTION=default USER=simple" "" \
     'grep -qx "thunar /media/simple/STICK" $S/opened'
-hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "notification dismissed" "" "" "" '[ ! -e $S/opened ]'
-hcase "$USB device_mounted /media/simple/X None None" "without a name" "" "" "" 'grep -q "\"USB drive\" is ready" $S/notify'
-hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "without thunar -> xdg-open" "thunar" "NOTIFY_ACTION=yes" "" \
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "notification dismissed" "" "USER=simple" "" '[ ! -e $S/opened ]'
+hcase "$USB device_mounted /media/simple/X None None" "without a name" "" "USER=simple" "" 'grep -q "\"USB drive\" is ready" $S/notify'
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "without thunar -> xdg-open" "thunar" "NOTIFY_ACTION=yes USER=simple" "" \
     'grep -qx "xdg-open /media/simple/STICK" $S/opened'
-hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "without a file manager -> notification" "thunar xdg-open" "NOTIFY_ACTION=yes" "" \
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "without a file manager -> notification" "thunar xdg-open" "NOTIFY_ACTION=yes USER=simple" "" \
     'grep -q "Your files are in /media/simple/STICK" $S/notify'
 hcase "$USB device_unmounted None STICK Kingston" "safely remove" "" "" "" 'grep -q "\"STICK\" can now be removed safely" $S/notify'
 hcase "$USB job_failed None STICK Kingston" "error" "" "" "" 'grep -q "could not be opened" $S/notify'
 hcase "$USB device_added None STICK Kingston" "other events silent" "" "" "" '[ ! -s $S/notify ]'
 # The installer's own mounts (Calamares: /tmp/calamares-root-…) are no USB drive – no "ready"/"Safely remove" during the
 # installation, and its unmounting no "can be removed safely"
-hcase "$USB device_mounted /tmp/calamares-root-x1/boot/efi SYSTEM None" "installer mount announced as a drive" "" "NOTIFY_ACTION=eject" "" \
+hcase "$USB device_mounted /tmp/calamares-root-x1/boot/efi SYSTEM None" "installer mount announced as a drive" "" "NOTIFY_ACTION=eject USER=simple" "" \
     '[ ! -s $S/notify ] && [ ! -s $S/umount ]'
 hcase "$USB device_unmounted None SYSTEM None" "unmounting of a drive never announced" "" "" "" '[ ! -s $S/notify ]'
 hcase "$USB" "without arguments" "" "" "" '[ ! -s $S/notify ]'
-hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "notify-send missing" "notify-send" "" "" '[ ! -e $S/opened ]'
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "notify-send missing" "notify-send" "USER=simple" "" '[ ! -e $S/opened ]'
+# #100: fwupd (root) mounts the EFI partition of a second internal disk at /media/root/… – no "ready" with "Safely remove"
+# (powers off the internal disk); likewise a partition of an internal disk the user opened (HOTPLUG 0)
+hcase "$USB device_mounted /media/root/A391-8FED None None" "root's mount (fwupd) announced as a drive" "" "USER=simple NOTIFY_ACTION=eject" "" \
+    '[ ! -s $S/notify ] && [ ! -s $S/umount ]'
+hcase "$USB device_mounted /media/other/STICK STICK Kingston" "another user's mount announced" "" "USER=simple" "" '[ ! -s $S/notify ]'
+hcase "$USB device_mounted /run/media/simple/STICK STICK Kingston" "stick below /run/media/<user>" "" "USER=simple" "" \
+    'grep -q "\"STICK\" is ready" $S/notify'
+printf '#!/bin/sh
+case "$*" in *" /media/simple/Data") echo /dev/sda5 ;; *" /media/simple/STICK") echo /dev/sdb1 ;; esac
+' > "$wt/mock/findmnt"
+printf '#!/bin/sh
+for a; do dev=$a; done
+case "$dev" in /dev/sdb*) echo "      1" ;; *) echo "      0" ;; esac
+' > "$wt/mock/lsblk"
+chmod 0755 "$wt/mock/findmnt" "$wt/mock/lsblk"
+hcase "$USB device_mounted /media/simple/Data Data None" "partition of an internal disk announced as a drive" "" "USER=simple NOTIFY_ACTION=eject" "" \
+    '[ ! -s $S/notify ] && [ ! -s $S/umount ]'
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "USB stick (HOTPLUG 1)" "" "USER=simple NOTIFY_ACTION=yes" "" \
+    'grep -q "\"STICK\" is ready" $S/notify && grep -qx "thunar /media/simple/STICK" $S/opened'
+rm -f "$wt/mock/findmnt" "$wt/mock/lsblk"
 
 # Rofi errors and missing tools: never end silently. Grab error -> new attempt, rofi missing/does not start
 # -> notification (network info: the info itself as a notification). rofi-retry for the set -e scripts.
@@ -1950,9 +1970,9 @@ done
 # ---- USB popup: "Open" / "Safely remove" (udiskie-umount --detach)
 printf '#!/bin/sh\necho "udiskie-umount $*" >> "$WT/umount"\nexit ${UMOUNT_RC:-0}\n' > "$wt/mock/udiskie-umount"
 chmod 0755 "$wt/mock/udiskie-umount"
-hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "Safely remove" "" "NOTIFY_ACTION=eject" "" \
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "Safely remove" "" "NOTIFY_ACTION=eject USER=simple" "" \
     'grep -q "eject=Safely remove" $S/notify && grep -qx "udiskie-umount --detach /media/simple/STICK" $S/umount && [ ! -e $S/opened ]'
-hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "Safely remove: still in use" "" "NOTIFY_ACTION=eject UMOUNT_RC=1" "" \
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "Safely remove: still in use" "" "NOTIFY_ACTION=eject UMOUNT_RC=1 USER=simple" "" \
     'grep -q "still in use" $S/notify'
 
 # ---- Control Center + Software Center (Python/GTK3): logic with the dummies, then real windows via
