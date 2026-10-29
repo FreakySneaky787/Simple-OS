@@ -51,8 +51,9 @@ follows the window and copy & paste works between the virtual machine and your c
   offer it. The picture works with the free driver, without 3D acceleration.
 - **Broadcom Wi-Fi** (many older laptops and Macs) needs an extra driver from Hardware & Drivers – that needs an
   internet connection by cable or through a phone (USB tethering) first.
-- **One display scale for all screens.** Simple OS uses X11, which has no separate scale per monitor: with a 4K
-  laptop screen and a normal external monitor, the main screen decides.
+- **Screens with very many pixels** (2.8K/4K laptops): Simple OS 1.1 brings a Scale setting (Control Center →
+  Display); in 1.0.x text and menus stay small there. There is one scale for all screens (X11 has none per monitor):
+  with a 4K laptop screen and a normal external monitor, the main screen decides.
 - **Lenovo laptops** may show "Self-Healing BIOS ESP" once on the first start after installing. That's harmless and
   doesn't come back.
 

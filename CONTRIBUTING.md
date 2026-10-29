@@ -32,6 +32,7 @@ Always make a backup (e.g. a Rescuezilla image) before installing on a disk with
 - **Open an issue first** and describe what you want to change, so we can agree on it before you spend time on it.
   Small fixes (typos, docs) can go straight to a pull request.
 - Keep pull requests **small** and about one thing.
+- **Which branch:** new features go to `next` (the next feature release), fixes for the current edition to `main`.
 - Build and test as described in [For developers](README.md#for-developers): `./build_iso.sh`, then
   `./test_vm.sh` (BIOS) and `./test_vm.sh --uefi`.
 - Simple OS is for normal users: keep things simple, with no terminal needed for everyday tasks.
@@ -39,7 +40,7 @@ Always make a backup (e.g. a Rescuezilla image) before installing on a disk with
 
 ## 5. Translations
 
-Translations of Simple OS's own tools are planned for 1.1 (see the [roadmap](ROADMAP.md)).
+Translations of Simple OS's own tools are planned for 1.2 (see the [roadmap](ROADMAP.md)).
 If you would like to help with a language, say so in the [Discussions](https://github.com/FreakySneaky787/Simple-OS/discussions).
 
 ## Code of conduct

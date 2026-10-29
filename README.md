@@ -173,9 +173,13 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
 
 ### How we work
 
-- **Work is committed locally, pushed with a release.** Normally nothing goes to GitHub between releases, so `main` matches
-  the newest published edition; an earlier push happens only when asked for. The release tags (`v1.0.3` …) always match
-  exactly what was published. Release day: `git push`, then build, test, `sign`, `publish`.
+- **`main` is the published edition, pushed with a release.** Between releases it only gets bugfixes for the next
+  1.0.x, and nothing new goes to `main` on GitHub before the release – so it always matches what installed systems run.
+  The release tags (`v1.0.3` …) always match exactly what was published. Release day: `git push`, then build, test,
+  `sign`, `publish`.
+- **`next` is the branch for new features** – everything for the next feature release (1.1, 1.2 …). It is pushed as the
+  work goes on. After a bugfix release `main` is merged into `next`; when the feature release is tested, `next` is merged
+  into `main` and released from there. Details: [`docs/MAINTAINING.md`](docs/MAINTAINING.md#7-branches).
 - **Website** (freakysneaky787.github.io, its own repository): updated after every release – version, download, roadmap.
 - **Issues and the project board follow the work, not the push:** when something is done and tested without hardware, its issue
   is closed (comment: "done, ships in X.Y.Z") and its board item set to Done – even before the release. What still needs a
