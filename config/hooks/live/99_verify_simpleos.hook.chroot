@@ -922,6 +922,49 @@ check "grub-pc-devices not run by simpleos-post-install, --upgrade or a migratio
       "grep -q '^/usr/local/lib/simpleos/grub-pc-devices ||' /usr/local/sbin/simpleos-post-install &&
        grep -q '^    /usr/local/lib/simpleos/grub-pc-devices ||' /usr/local/sbin/simpleos-system-setup &&
        [ -x /usr/share/simpleos/edition/migrations/system/030-grub-pc-devices ] && [ -x $GPH ]"
+# Small initramfs for installed systems (MODULES=dep, #47): tried in a copy of /etc/initramfs-tools first, only then
+# conf.d/simpleos-modules.conf; the live system keeps MODULES=most. Model: mkinitramfs writes the image when the copy has
+# MODULES=dep (MKFAIL=1: fails, MKEMPTY=1: empty image), update-initramfs logs to $id/upd (UPDFAIL=1: fails)
+id=$(mktemp -d)
+mkdir -p "$id/bin" "$id/etc/conf.d" "$id/etc/hooks" "$id/boot"
+printf '#!/bin/sh\nwhile [ $# -gt 1 ]; do case "$1" in -d) d=$2; shift ;; -o) o=$2; shift ;; esac; shift; done\necho "mkinitramfs $1" >> "$ID/mk"\n[ "$MKFAIL" = 1 ] && { echo "mkinitramfs: failed to determine device for /" >&2; exit 1; }\ngrep -qx MODULES=dep "$d/conf.d/simpleos-modules.conf" || exit 1\n[ "$MKEMPTY" = 1 ] && : > "$o" || echo initrd > "$o"\n' > "$id/bin/mkinitramfs"
+printf '#!/bin/sh\necho "update-initramfs $*" >> "$ID/upd"\n[ "$UPDFAIL" != 1 ]\n' > "$id/bin/update-initramfs"
+printf '#!/bin/sh\n[ "$CHROOT" = 1 ]\n' > "$id/bin/systemd-detect-virt"
+chmod 0755 "$id/bin/"*
+IDH=/usr/local/lib/simpleos/initramfs-dep
+idrun() {   # --try|--apply, then variables
+    rm -f "$id/mk" "$id/upd" "$id/etc/conf.d/simpleos-modules.conf"
+    touch "$id/boot/vmlinuz-6.1.0-9-amd64" "$id/boot/vmlinuz-6.12.9+bpo-amd64"
+    m=$1; shift
+    env -i ID="$id" PATH="$id/bin:/usr/bin:/bin" SIMPLEOS_INITRAMFS_DIR="$id/etc" SIMPLEOS_BOOT_DIR="$id/boot" "$@" sh $IDH "$m" 2>/dev/null
+}
+IDC=$id/etc/conf.d/simpleos-modules.conf
+check "initramfs-dep --try: test build works -> MODULES=dep not set, or set without a test of the newest kernel" \
+      "idrun --try && grep -qx MODULES=dep $IDC && grep -qx 'mkinitramfs 6.12.9+bpo-amd64' $id/mk && [ ! -e $id/upd ]"
+check "initramfs-dep --try: MODULES=dep set although the test build failed" "idrun --try MKFAIL=1 && [ ! -e $IDC ]"
+check "initramfs-dep --try: MODULES=dep set although the test build was empty" "idrun --try MKEMPTY=1 && [ ! -e $IDC ]"
+check "initramfs-dep --apply: not set, or the initramfs not rebuilt" \
+      "idrun --apply && grep -qx MODULES=dep $IDC && grep -qx 'update-initramfs -u -k all' $id/upd"
+check "initramfs-dep --apply: update-initramfs failed, MODULES=dep stays (the next kernel update would use it)" \
+      "idrun --apply UPDFAIL=1 && [ ! -e $IDC ]"
+check "initramfs-dep --apply: changes the image build (chroot)" "idrun --apply CHROOT=1 && [ ! -e $IDC ] && [ ! -e $id/mk ]"
+check "initramfs-dep --try: runs in the installer's chroot (the new system) – must not skip it" "idrun --try CHROOT=1 && [ -e $IDC ]"
+check "initramfs-dep: changes something when MODULES=dep is set already" \
+      "idrun --try && rm -f $id/mk && env -i ID=$id PATH=$id/bin:/usr/bin:/bin SIMPLEOS_INITRAMFS_DIR=$id/etc SIMPLEOS_BOOT_DIR=$id/boot sh $IDH --apply 2>/dev/null && [ ! -e $id/mk ] && [ ! -e $id/upd ]"
+rm -f "$id/boot/"* "$id/mk" "$IDC"
+check "initramfs-dep: changes something without a kernel in /boot" \
+      "env -i ID=$id PATH=$id/bin:/usr/bin:/bin SIMPLEOS_INITRAMFS_DIR=$id/etc SIMPLEOS_BOOT_DIR=$id/boot sh $IDH --try 2>/dev/null && [ ! -e $IDC ] && [ ! -e $id/mk ]"
+check "initramfs-dep: wrong usage accepted" "! sh $IDH 2>/dev/null"
+rm -rf "${id:?}"
+check "initramfs: the live system (image) does not keep MODULES=most, or carries the MODULES=dep setting" \
+      "grep -qx 'MODULES=most' /etc/initramfs-tools/initramfs.conf && [ ! -e /etc/initramfs-tools/conf.d/simpleos-modules.conf ]"
+check "initramfs: MODULES=dep not tried at the installation, by a migration, or the extra drivers hook missing" \
+      "grep -q '^in_target /usr/local/lib/simpleos/initramfs-dep --try || true' /usr/sbin/bootloader-config &&
+       [ -x /usr/share/simpleos/edition/migrations/system/100-initramfs-dep ] && [ -x $IDH ] && sh -n $IDH &&
+       [ -x /etc/initramfs-tools/hooks/simpleos-modules ] && sh -n /etc/initramfs-tools/hooks/simpleos-modules &&
+       grep -q 'manual_add_modules ahci .* nvme vmd' /etc/initramfs-tools/hooks/simpleos-modules"
+check "initramfs: zstd missing (COMPRESS=zstd falls back to gzip)" \
+      "command -v zstd >/dev/null && grep -qx 'COMPRESS=zstd' /etc/initramfs-tools/initramfs.conf"
 check "helper: --upgrade can be mixed with other actions" "! /usr/local/sbin/simpleos-system-setup --upgrade --gaming >/dev/null 2>&1"
 # Every call a tool really makes must be accepted (simpleos-update --upgrade/--refresh,
 # wizard/Software Center, browser selection, Control Center firewall, drivers, simpleos-post-install --repos) – a

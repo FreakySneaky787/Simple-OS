@@ -1,0 +1,6 @@
+#!/bin/sh
+# Simple OS 1.1 – a small initramfs (MODULES=dep, #47) for systems installed before 1.1 (runs once, as root, from the
+# postinst of the package simpleos via "edition --system"); new installations get it from bootloader-config. Tried in
+# a copy first, MODULES=most stays if that fails. Details: /usr/local/lib/simpleos/initramfs-dep. Never fails.
+/usr/local/lib/simpleos/initramfs-dep --apply
+exit 0

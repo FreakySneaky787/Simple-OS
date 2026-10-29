@@ -1,0 +1,51 @@
+#!/bin/sh
+# Simple OS – a small initramfs for installed systems (#47). Debian's MODULES=most puts nearly every driver and all GPU
+# firmware into it (~160 MB); MODULES=dep only takes what this computer needs (15–40 MB): GRUB loads it sooner, the
+# kernel unpacks it faster (about 1 s less in a VM, more on slow disks), kernel updates finish sooner.
+# /etc/initramfs-tools/hooks/simpleos-modules adds the usual disk controller and keyboard drivers.
+#   initramfs-dep --try     test build with MODULES=dep; if it works -> /etc/initramfs-tools/conf.d/simpleos-modules.conf
+#                           (bootloader-config: in the new system, before Calamares builds its initramfs)
+#   initramfs-dep --apply   the same, then update-initramfs -u -k all (migration 100: systems installed before 1.1)
+# MODULES=dep stops mkinitramfs with an error when it cannot work out the system disk – so it is tried in a copy of the
+# configuration first; if that fails nothing changes and MODULES=most stays. --apply never runs in the live system or
+# an image build (the live initramfs must keep every driver). Always exit 0 (2 = wrong usage).
+# Tests: SIMPLEOS_INITRAMFS_DIR replaces /etc/initramfs-tools, SIMPLEOS_BOOT_DIR replaces /boot.
+DIR=${SIMPLEOS_INITRAMFS_DIR:-/etc/initramfs-tools}
+BOOT=${SIMPLEOS_BOOT_DIR:-/boot}
+CONF=$DIR/conf.d/simpleos-modules.conf
+log() { echo "initramfs-dep: $*" >&2; }
+
+mode=${1:-}
+case "$mode" in --try|--apply) ;; *) echo "usage: ${0##*/} --try|--apply" >&2; exit 2 ;; esac
+[ -e "$CONF" ] && { log "MODULES=dep is set already"; exit 0; }
+if [ "$mode" = --apply ]; then
+    [ -d /run/live ] && { log "live system – unchanged"; exit 0; }
+    systemd-detect-virt -q --chroot 2>/dev/null && { log "image build (chroot) – unchanged"; exit 0; }
+fi
+# The newest installed kernel
+kver=$(ls "$BOOT" 2>/dev/null | sed -n 's/^vmlinuz-//p' | sort -V | tail -n 1)
+[ -n "$kver" ] || { log "no kernel in $BOOT – unchanged"; exit 0; }
+tmp=$(mktemp -d) || exit 0
+trap 'rm -rf "$tmp"' EXIT
+cp -a "$DIR" "$tmp/conf" && echo "MODULES=dep" > "$tmp/conf/conf.d/simpleos-modules.conf" || { log "could not copy $DIR"; exit 0; }
+if ! mkinitramfs -d "$tmp/conf" -o "$tmp/initrd" "$kver" > "$tmp/log" 2>&1 || [ ! -s "$tmp/initrd" ]; then
+    log "test build with MODULES=dep failed – MODULES=most stays:"
+    tail -n 5 "$tmp/log" >&2
+    exit 0
+fi
+log "test build with MODULES=dep: $(du -m "$tmp/initrd" | cut -f1) MB (kernel $kver)"
+cat > "$CONF" <<'EOF'
+# Simple OS: only the drivers this computer needs in the initramfs (#47) – starts faster. Written at the installation
+# after a test build worked; /etc/initramfs-tools/hooks/simpleos-modules adds the usual disk and keyboard drivers.
+# Delete this file and run "sudo update-initramfs -u" to get Debian's MODULES=most back (every driver, ~160 MB).
+MODULES=dep
+EOF
+[ "$mode" = --apply ] || exit 0
+if update-initramfs -u -k all >&2; then
+    log "initramfs rebuilt with MODULES=dep"
+else
+    # update-initramfs keeps the previous image when it fails – undo the setting so the next kernel update uses most
+    rm -f "$CONF"
+    log "update-initramfs failed – MODULES=most stays"
+fi
+exit 0

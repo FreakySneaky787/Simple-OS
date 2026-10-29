@@ -353,3 +353,27 @@ from 1.0.6 through Software Updates** (VM-tested 2026-10-25 with the files copie
       Nothing was changed", the button opens the Storage Cleaner; `apt` shows nothing half installed. Delete the file →
       the update installs.
 - [ ] **Leftovers (issue #99):** `ls /usr/local/bin/__pycache__` → does not exist (fresh install and after the update).
+
+## 13. What changed in 1.1 (work in progress)
+
+Faster start and installation, USB notifications, package versions of test builds.
+
+- [ ] **Small initramfs (issue #47):** fresh installation (BIOS and UEFI, once with LUKS):
+      `cat /etc/initramfs-tools/conf.d/simpleos-modules.conf` ends with `MODULES=dep`, `ls -la /boot/initrd.img-*` is
+      about 17–40 MB (was ~160 MB), `systemd-analyze` kernel time lower than before; with LUKS the password can be typed
+      on the laptop keyboard and on a USB keyboard. In the live session before restarting,
+      `sudo cat /root/.cache/calamares/session.log` (Calamares runs as root) has "initramfs-dep: test build with MODULES=dep: … MB". The live ISO still boots on other hardware (its initramfs
+      keeps MODULES=most). Update from 1.0.7: migration 100 rebuilds it the same way (`sudo cat
+      /var/log/simpleos-edition.log`). VM 2026-10-29: 160 → 17 MB, kernel phase 2.1 → 1.1 s; the disk moved from AHCI to
+      NVMe still boots (with plain `dep` it stopped at the initramfs shell); Calamares-like chroot from the live ISO: test
+      build OK, the initramfs job took 5 s.
+- [ ] **zstd squashfs (issue #19):** `build/build.log` says `zstd compressed`; the ISO stays below 2 GiB (`publish`
+      refuses otherwise; expected ~1.71 GB); the live session starts and installs (time it against 1.0.7 on the same
+      machine). Measured on the 1.0.7 squashfs: xz 1432 MB / 5.6 s to unpack, zstd-19 1514 MB / 2.8 s.
+- [ ] **zstd in the image:** `update-initramfs -u` no longer prints "No zstd … using gzip".
+- [ ] **USB notifications (issue #100):** a computer with a second internal disk that has its own EFI partition
+      (Windows/another Linux): opening Software Updates or the Software Center shows no "USB drive is ready". A USB
+      stick still shows it, and "Safely remove" still works.
+- [ ] **Test builds (issue #102):** `dpkg-query -W simpleos` shows `1.1+<build time>`; Software Updates shows
+      "Simple OS 1.1" (no number after it). A machine installed from an earlier test build is offered the published
+      build.

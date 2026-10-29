@@ -45,6 +45,10 @@ if [ "$(findmnt -n -o SOURCE "$CHROOT" | cut -c -16)" = "/dev/mapper/luks" ]; th
     install_deb cryptsetup-initramfs
 fi
 
+# Small initramfs (#47): MODULES=dep if a test build works in the new system – Calamares' initramfs job comes later and
+# then builds it in seconds instead of a minute. Never stops the installation (MODULES=most stays otherwise).
+in_target /usr/local/lib/simpleos/initramfs-dep --try || true
+
 echo "Running bootloader-config..."
 if [ -d /sys/firmware/efi/efivars ]; then
     echo " * UEFI detected"
