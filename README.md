@@ -393,7 +393,7 @@ the lb default files, the generated graphics and the fastfetch package.
   The power button opens it too (`XF86PowerOff` in `rc.xml`; the Openbox autostart holds a logind inhibitor
   `handle-power-key` for the session). On the lock screen and the login screen `simpleos-power-key` (root, one
   `simpleos-power-key@eventN.service` per ACPI "Power Button", started by udev rule 62) decides: somebody signed in →
-  sleep, nobody → shut down (#97; before, logind shut a locked laptop down at once). Some laptops (ThinkBook E16) only
+  sleep, nobody → shut down (#97; before, logind shut a locked laptop down at once). Some laptops (ThinkPad E16 Gen 3) only
   report the button when it is held for about a second – the firmware drops a quick tap.
 - Keyring: hook 17 masks `gnome-keyring-daemon.socket` (globally) so `pam_gnome_keyring` starts the daemon at login –
   with the systemd socket the login keyring created at the first login was unusable for that whole session.

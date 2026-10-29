@@ -20,12 +20,12 @@ on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook
 
 ## Done: 1.0.3 verified on real hardware (fed 1.0.4)
 
-These could only be tested without hardware at first; all checked on the ThinkPad E16 / ThinkBook or in a VM.
+These could only be tested without hardware at first; all checked on the ThinkPad E16 or in a VM.
 
 - [x] Night light turns the screen warm (before: nothing happened on real hardware).
 - [x] Microphone appears in Sound (alsa-ucm-conf; before only "stereo-fallback" with no input).
 - [x] Plugging in an HDMI/USB-C monitor lights it up on its own; unplugging leaves the laptop screen; standby of a DisplayPort
-      monitor does not re-arrange the desktop (#28, ThinkBook 2026-10-14).
+      monitor does not re-arrange the desktop (#28, ThinkPad E16 2026-10-14).
 - [x] Mouse & Touchpad page: natural scrolling, tap, speed apply and survive a restart (Synaptics touchpad of the E16).
 - [x] Date & Time: time zone dialog and automatic time ask for the password and apply (#30, VM 2026-10-14; Cancel no
       longer shows an error – fixed in 1.0.4).
@@ -45,7 +45,7 @@ Small, safe, mostly things users hit in the first hour. Published **with a new I
 |---|---|
 | Fixes from the checklist above (#30, #31, #32: language, language packs, first-login keyring, Date & Time) | done |
 | Idle screen lock + blank, video inhibit (#25) | done |
-| Power button opens the power menu (#35) | done – ThinkBook: hold ~1 s, the firmware ignores a quick tap |
+| Power button opens the power menu (#35) | done – ThinkPad E16: hold ~1 s, the firmware ignores a quick tap |
 | Brightness slider in Control Center → Display (#34) | done |
 | Wi-Fi: regulatory country from the time zone (#40) | done |
 | `git` in the image (#36) | done |
@@ -55,7 +55,7 @@ Small, safe, mostly things users hit in the first hour. Published **with a new I
 | Setup Wizard: internet step skipped when online, simpler Wi-Fi page (#63) | done |
 | Older PCs (BIOS/MBR): "Install alongside" inside an extended partition, active partition kept | done, VM shaped like a Dell OptiPlex 9020 |
 | Other systems stay in the GRUB menu after GRUB updates | done |
-| Bluetooth pairing with a keyboard/phone (#10), monitor hotplug (#28) | confirmed on the ThinkBook |
+| Bluetooth pairing with a keyboard/phone (#10), monitor hotplug (#28) | confirmed on the ThinkPad E16 |
 
 ## 1.0.7 – bugfix release (planned Saturday 2026-10-31)
 

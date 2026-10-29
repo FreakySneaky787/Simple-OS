@@ -34,11 +34,11 @@ Problem** – that tests the tool at the same time.
 
 - [ ] The installer's welcome page and slideshow show the new version ("Simple OS 1.0.3").
 
-Last results: 1.0 is installed and in daily use on the ThinkBook (UEFI).
+Last results: 1.0 is installed and in daily use on the ThinkPad E16 (UEFI).
 
 ## 2. On real hardware
 
-- [ ] **ThinkBook (UEFI):** install, then:
+- [ ] **ThinkPad E16 (UEFI):** install, then:
   - The firewall in Control Center → Password & Security is on.
   - Power mode offers three profiles.
   - Software Updates shows a BIOS update, if there is one.
@@ -125,7 +125,7 @@ installed once by Software Updates ("Installing new Simple OS components").
 - [ ] **Keyring:** fresh install, start Chromium (Setup Wizard) → no "new keyring" window; `secret-tool` is not needed:
       `busctl --user list | grep org.freedesktop.secrets` shows the service.
 - [ ] **Thumbnails:** a folder with pictures in Thunar shows previews.
-- [ ] **EFI partition (UEFI VM and ThinkBook):** after the installation `ls /boot/efi/EFI/BOOT` shows `BOOTX64.EFI`,
+- [ ] **EFI partition (UEFI VM and ThinkPad E16):** after the installation `ls /boot/efi/EFI/BOOT` shows `BOOTX64.EFI`,
       `fbx64.efi`, `mmx64.efi`, `grubx64.efi`. In the VM: `sudo apt install --reinstall shim-signed` or a newer shim/GRUB
       updates the files in `EFI/Simple_OS` (`/var/log/simpleos-edition.log` is not involved, watch the apt output); with
       Secure Boot on the system still starts. Delete the boot entry in the firmware (or `efibootmgr -B`) → the
@@ -155,7 +155,7 @@ Beginner traps (what a first-time user hits in the first hour). Test on a VM ins
 through Software Updates, or `sudo apt install ./simpleos_1.0.3_all.deb`) and on a fresh installation.
 
 - [ ] **Tools:** `curl --version`, `wget --version`, `unzip -v`, `zip -v`, `ssh -V` work in a terminal.
-- [ ] **Audio:** `alsamixer` opens; `ls /usr/share/alsa/ucm2` is not empty; on the ThinkBook speakers *and* the microphone
+- [ ] **Audio:** `alsamixer` opens; `ls /usr/share/alsa/ucm2` is not empty; on the ThinkPad E16 speakers *and* the microphone
       still work (Sound page lists them).
 - [ ] **Fonts:** open a page in Arabic/Thai/Hindi/Chinese (e.g. the Wikipedia main page in that language) → letters, no boxes.
 - [ ] **Language:** install in German (or any other language) with internet → after the first login Firefox is German,
@@ -180,7 +180,7 @@ through Software Updates, or `sudo apt install ./simpleos_1.0.3_all.deb`) and on
 
 ## 9. What changed in 1.0.4
 
-Screen blanking, power button, Wi-Fi country, brightness, git. Test on the ThinkPad/ThinkBook **updated from 1.0.3
+Screen blanking, power button, Wi-Fi country, brightness, git. Test on the ThinkPad E16 **updated from 1.0.3
 through Software Updates** (or `sudo apt install ./simpleos_1.0.4_all.deb`, then sign out and in – the new autostart
 lines only run at the next login) and on a PC without a battery (or a VM: there the PC path is used).
 
@@ -197,7 +197,7 @@ lines only run at the next login) and on a PC without a battery (or a VM: there 
 - [x] **Power button (issue #35):** a press opens the power menu (Lock, Sleep, Restart, Shut down, Sign out); nothing
       shuts down by itself. `systemd-inhibit --list` shows "Simple OS … handle-power-key". At the login screen a press still
       shuts down as before. **If a press does nothing at all, X does not see the key – then tell me, do not publish.**
-      ThinkBook E16 (2026-10-14): works when held ~1 s; a quick tap reaches neither logind nor X (`xinput test-xi2 --root`
+      ThinkPad E16 (2026-10-14): works when held ~1 s; a quick tap reaches neither logind nor X (`xinput test-xi2 --root`
       shows nothing, also with `intel_hid enable_5_button_array=1`) – firmware, not fixable in software.
 - [ ] **Brightness slider (issue #34):** Control Center → Display → Brightness follows the slider at once and the Fn keys
       (the slider shows the new value after reopening); on a desktop PC the row is not there.
@@ -386,7 +386,7 @@ builds.
       Formats → another region (e.g. English language, formats Germany): the example line on the page shows
       "Donnerstag, 29. Oktober 2026 · 1.234,56 · 1.234,50 €" after the change, apps stay English. Cancel the password
       dialog: nothing changes. Without internet: the language changes, the packs come with the next Software Update.
-- [ ] **Camera (issue #44):** Menu → Apps → Camera on the E16/ThinkBook: the webcam picture appears within a few
+- [ ] **Camera (issue #44):** Menu → Apps → Camera on the ThinkPad E16: the webcam picture appears within a few
       seconds, moves smoothly (not 5 frames a second), mirrored like a mirror (raise your right hand – it is on the
       right). Take Photo (or Space): white flash, "Saved to Pictures/Camera: Photo …"; the photo opens in the image
       viewer, is sharp and NOT mirrored (text readable). Open Folder shows Pictures/Camera. Camera switch/F-key off or

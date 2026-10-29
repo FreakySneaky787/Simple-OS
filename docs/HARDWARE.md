@@ -13,16 +13,13 @@ Last updated: 29 October 2026 (Simple OS 1.0.7).
 
 | Computer | Firmware | Version | Install | Wi-Fi | Sound | Graphics | Brightness | Suspend | External monitor |
 |---|---|---|---|---|---|---|---|---|---|
-| Lenovo ThinkPad E16 Gen 3 (21TF) – Intel Core 5 210H, Intel graphics, Intel Wi-Fi | UEFI, Secure Boot off | 1.0.7 | ✅ | ⚠️ | ✅ | ✅ | – | ✅ | – |
-| Lenovo ThinkBook | UEFI, Secure Boot off | 1.0.4 | ✅ | ✅ | – | – | ✅ | – | ✅ |
+| Lenovo ThinkPad E16 Gen 3 (21TF) – Intel Core 5 210H, Intel graphics, Intel Wi-Fi | UEFI, Secure Boot off | 1.0.7 | ✅ | ⚠️ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Dell OptiPlex 9020 – desktop | legacy BIOS, MBR, next to another system | 1.0.3 | ❌ | – | – | – | – | – | – |
 
-**ThinkPad E16 Gen 3:** in daily use. Wi-Fi: with one router the 5 GHz connection (a wide 160 MHz channel) was slow;
-setting the network to 2.4 GHz in Control Center → Wi-Fi fixed it. Sound includes Bluetooth headphones. Suspend and
-waking up were checked with 1.0.7.
-
-**Lenovo ThinkBook:** runs Simple OS since 1.0. Bluetooth keyboards and phones pair, a monitor plugged in later turns
-on by itself. The power button has to be held for about a second – the firmware ignores a quick tap.
+**ThinkPad E16 Gen 3:** in daily use since Simple OS 1.0. Wi-Fi: with one router the 5 GHz connection (a wide 160 MHz
+channel) was slow; setting the network to 2.4 GHz in Control Center → Wi-Fi fixed it. Bluetooth headphones, keyboards
+and phones pair. A monitor plugged in later turns on by itself. Suspend and waking up were checked with 1.0.7. The power
+button has to be held for about a second – the firmware ignores a quick tap.
 
 **Dell OptiPlex 9020:** with 1.0.3 the installer could leave the disk unable to start (issues
 [#62](https://github.com/FreakySneaky787/Simple-OS/issues/62) and
