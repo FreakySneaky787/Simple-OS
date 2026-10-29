@@ -162,6 +162,8 @@ cmd_publish() {
     for f in "$REPO"/*; do assets+=("$f"); done
     if [ "$with_iso" = 1 ]; then
         [ -f "$ISO" ] || die "$ISO missing (or --no-iso for an update without a new ISO)"
+        # GitHub takes release files up to 2 GiB (the zstd squashfs since 1.1, #19, made the ISO ~6 % bigger)
+        [ "$(stat -c %s "$ISO")" -lt 2147483648 ] || die "$ISO is 2 GiB or bigger – GitHub does not accept it as a release file"
         # Same build: the ISO must contain this repository's simpleos package (a later --config-only rebuilds output/repo
         # without the marker build_iso.sh writes; file times do not help – live-build dates the ISO to the build start)
         (cd "$REPO" && sha256sum --quiet -c .in-iso >/dev/null 2>&1) ||
