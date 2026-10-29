@@ -122,9 +122,12 @@ rest moved to 1.2.
   automatic default from the screen's real DPI. Needs a HiDPI test screen first (open question: the resolution of the
   development laptop).
 - **Language & Region page** (system language, formats) (#42).
-- **Boot time & size:** initramfs `MODULES=dep` (113 MB → much smaller, faster boot) (#47), zstd squashfs
-  (#19: faster live session and install, ISO +18 %).
+- **Boot time & size:** initramfs `MODULES=dep` (#47, **done**: ~160 MB → ~17 MB, kernel phase 2.1 → 1.1 s in a VM,
+  tried in a copy first, extra disk/keyboard drivers so a moved disk still boots), zstd squashfs (#19, **done, needs
+  the next ISO build**: level 19 = +6 % ISO size, unpacks twice as fast).
 - **Webcam / camera test** app (the camera works, but there is nothing to try it with) (#44).
+- **Done on the side:** USB notifications never offer "Safely remove" for an internal disk (#100); test builds no
+  longer block the published package (#102: package version `X.Y.Z+<build time>`).
 - On the side, as far as hardware is at hand: **hardware tests** (NVIDIA desktop with the driver, AMD laptop, dual boot
   with Windows, Secure Boot on) (#49) and a public hardware compatibility page (#92).
 
