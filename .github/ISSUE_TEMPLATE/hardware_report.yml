@@ -1,0 +1,107 @@
+name: Hardware report
+description: Tell us how Simple OS runs on your computer – it goes on the hardware compatibility page
+labels: [verify]
+title: "Hardware: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! Every report helps the next person decide whether Simple OS fits their computer. It ends up on the
+        [hardware compatibility page](https://github.com/FreakySneaky787/Simple-OS/blob/main/docs/HARDWARE.md).
+        Something that doesn't work is fine to report here too – we open an issue for it.
+  - type: input
+    id: computer
+    attributes:
+      label: Computer
+      description: Make and model (on a sticker, or Menu → Help → Report a Problem lists it).
+      placeholder: e.g. Lenovo ThinkPad E16 Gen 3, Dell OptiPlex 9020
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Simple OS version
+      description: Control Center → System & Updates, or `cat /etc/os-release`.
+      placeholder: e.g. 1.0.7
+    validations:
+      required: true
+  - type: dropdown
+    id: firmware
+    attributes:
+      label: Firmware
+      options:
+        - UEFI, Secure Boot off
+        - UEFI, Secure Boot on
+        - Legacy BIOS
+        - Don't know
+    validations:
+      required: true
+  - type: dropdown
+    id: how
+    attributes:
+      label: How did you use it?
+      options:
+        - Installed (the whole disk)
+        - Installed next to Windows or another system
+        - Live session from the USB stick only
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Installation
+      options: [Works, Works with a problem (see below), Doesn't work, Not tried]
+    validations:
+      required: true
+  - type: dropdown
+    id: wifi
+    attributes:
+      label: Wi-Fi
+      options: [Works, Works with a problem (see below), Doesn't work, Not tried]
+    validations:
+      required: true
+  - type: dropdown
+    id: sound
+    attributes:
+      label: Sound (speakers, headphones, microphone)
+      options: [Works, Works with a problem (see below), Doesn't work, Not tried]
+    validations:
+      required: true
+  - type: dropdown
+    id: graphics
+    attributes:
+      label: Graphics (smooth picture, videos, games)
+      options: [Works, Works with a problem (see below), Doesn't work, Not tried]
+    validations:
+      required: true
+  - type: dropdown
+    id: brightness
+    attributes:
+      label: Screen brightness (laptops)
+      options: [Works, Works with a problem (see below), Doesn't work, Not tried, Not a laptop]
+    validations:
+      required: true
+  - type: dropdown
+    id: suspend
+    attributes:
+      label: Sleep and waking up
+      options: [Works, Works with a problem (see below), Doesn't work, Not tried]
+    validations:
+      required: true
+  - type: dropdown
+    id: monitor
+    attributes:
+      label: External monitor or projector
+      options: [Works, Works with a problem (see below), Doesn't work, Not tried]
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else?
+      description: What didn't work, or what you had to do to make it work. Other hardware too (Bluetooth, webcam, fingerprint reader …).
+  - type: textarea
+    id: report
+    attributes:
+      label: Hardware details (optional)
+      description: Menu → Help → Report a Problem creates a text file on your desktop – drag it here, or paste its "Computer", "Graphics", "Network & Bluetooth" and "Sound" parts.

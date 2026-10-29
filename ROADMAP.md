@@ -131,7 +131,8 @@ rest moved to 1.2.
 - **Done on the side:** USB notifications never offer "Safely remove" for an internal disk (#100); test builds no
   longer block the published package (#102: package version `X.Y.Z+<build time>`).
 - On the side, as far as hardware is at hand: **hardware tests** (NVIDIA desktop with the driver, AMD laptop, dual boot
-  with Windows, Secure Boot on) (#49) and a public hardware compatibility page (#92).
+  with Windows, Secure Boot on) (#49) and a public hardware compatibility page (#92, **done**: `docs/HARDWARE.md`,
+  website page, GitHub "Hardware report" form – filled with what was really tested, the rest marked "not tested yet").
 
 ## 1.2 – feature release after 1.1
 
