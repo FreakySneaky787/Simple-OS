@@ -30,7 +30,10 @@ The details are in [TESTING.md](../TESTING.md) (checklist) and the README sectio
    the ROADMAP table, a TESTING section.
 4. **Release day:** `git fetch origin` (merge if something was changed on GitHub), `git push`.
 5. **Build:** `sudo ./build_iso.sh` (Podman container from `Containerfile`, log in `build/build.log`; the verify hook
-   must end with `Simple OS verify: OK`). Then `cd output && sha256sum -c Simple-OS.iso.sha256`.
+   must end with `Simple OS verify: OK`). Then `cd output && sha256sum -c Simple-OS.iso.sha256`. Build as often as
+   needed: the package version carries the build time (`X.Y.Z+YYYYMMDDHHMMSS`), so machines installed from an earlier
+   test build still get the published build. Careful: `./build_iso.sh --config-only` also rebuilds `output/repo` –
+   never run it between the final build and `publish`.
 6. **Test:** TESTING.md – at least a fresh VM install (BIOS and UEFI) and an **update from the previous release**
    through Software Updates (a VM installed from the old ISO).
 7. **Publish:** `./tools/release.sh sign && ./tools/release.sh publish` (asks for the key's passphrase). Use

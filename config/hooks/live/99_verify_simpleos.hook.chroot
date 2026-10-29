@@ -969,7 +969,7 @@ for p in firefox-esr libc6 openssl tzdata linux-image-amd64 curl; do
     i=$((i + 1))
 done
 [ "${UPDATES:-0}" -gt 0 ] && echo "Inst linux-image-6.12.57+deb12-amd64 (6.12.57 Debian Backports [amd64])"
-[ "$NEWEDITION" = 1 ] && echo "Inst simpleos [1.0] (1.1 Simple OS:./ [all])"
+[ "$NEWEDITION" = 1 ] && echo "Inst simpleos [1.0.7] (1.1+20261107120000 Simple OS:./ [all])"
 if [ "$*" = "-s full-upgrade" ] && [ "$NEEDREMOVE" = 1 ]; then
     echo "Inst firmware-misc-nonfree [1] (2 Debian Backports [all])"; echo "Remv firmware-old [1]"
 fi
@@ -4626,8 +4626,9 @@ check "simpleos-post-install does not remove the installer link handler" \
 OSV=$(sed -n 's/^VERSION_ID="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' /usr/lib/os-release)
 ED=/usr/share/simpleos/edition
 SOSSRC=/etc/apt/sources.list.d/simpleos.sources
-check "edition: package simpleos not installed as version $OSV (os-release VERSION_ID)" \
-      "[ \"\$(dpkg-query -W -f='\${Status} \${Version}' simpleos 2>/dev/null)\" = 'install ok installed $OSV' ]"
+# Package version = VERSION_ID + build time (#102): a test build's system is offered the published build of the same version
+check "edition: package simpleos not installed as version $OSV+<build time> (os-release VERSION_ID)" \
+      "dpkg-query -W -f='\${Status} \${Version}\n' simpleos 2>/dev/null | grep -qxE 'install ok installed $OSV\\+[0-9]{14}'"
 # The version everywhere it is shown (./tools/release.sh version X.Y.Z): os-release and the installer (Calamares)
 check "version: os-release (VERSION/PRETTY_NAME) or the installer's branding shows another version than $OSV" \
       "grep -qx 'VERSION=\"$OSV\"' /usr/lib/os-release && grep -qx 'PRETTY_NAME=\"Simple OS v$OSV\"' /usr/lib/os-release &&

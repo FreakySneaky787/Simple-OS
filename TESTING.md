@@ -12,7 +12,9 @@ Problem** – that tests the tool at the same time.
 - [ ] `./build_iso.sh` runs without errors. At the end the verify hook reports `Simple OS verify: OK` (in `build/build.log`).
 - [ ] `output/` contains `Simple-OS.iso`, `Simple-OS.iso.sha256`, `Simple-OS.packages.txt` and `repo/`
       (`simpleos_<version>_all.deb`, `Packages`, `Release`). The version is the one in `usr/lib/os-release`
-      (the build stops if os-release and the installer's branding name different versions).
+      (the build stops if os-release and the installer's branding name different versions); inside the package it
+      carries the build time, `X.Y.Z+YYYYMMDDHHMMSS` (since 1.1, #102), so a system installed from an earlier test build
+      of the same version is offered the published build.
 - [ ] `cd output && sha256sum -c Simple-OS.iso.sha256` reports `Simple-OS.iso: OK`.
 
 ## 1. In the VM (no extra hardware)
