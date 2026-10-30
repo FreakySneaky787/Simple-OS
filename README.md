@@ -23,6 +23,9 @@
 - 20 GB disk space (the installer accepts 10 GB)
 - Internet for the setup wizard (browser, office suite, games) and for updates
 
+Which computers Simple OS is known to work on, what didn't work, and how to add yours:
+[hardware compatibility](docs/HARDWARE.md).
+
 ## Install
 
 1. **Download** `Simple-OS.iso` and `Simple-OS.iso.sha256` from the [latest release](https://github.com/FreakySneaky787/Simple-OS/releases/latest).
