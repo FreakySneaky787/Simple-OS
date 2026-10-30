@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4, 2026-10-17 for 1.0.5 and 2026-10-24 for 1.0.6 (this copy on the branch `trixie` follows the work on 2.0 "Rigi"). What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
+Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4, 2026-10-17 for 1.0.5, 2026-10-24 for 1.0.6 and 2026-10-25 for 1.0.7 (this copy on the branch `trixie` follows the work on 2.0 "Rigi"). What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -57,6 +57,24 @@ Small, safe, mostly things users hit in the first hour. Published **with a new I
 | Other systems stay in the GRUB menu after GRUB updates | done |
 | Bluetooth pairing with a keyboard/phone (#10), monitor hotplug (#28) | confirmed on the ThinkBook |
 
+## 1.0.7 – bugfix release (published 2026-10-30)
+
+Milestone "1.0.7" on GitHub (all 7 issues closed). Published **with a new ISO** (`./tools/release.sh publish`): built
+2026-10-25 from 01b79b4 (SHA-256 7fa408ff…), tested on the ThinkPad E16 (TESTING.md section 12) and in a VM (update
+from 1.0.6, update with an almost full disk).
+
+| Item | Status |
+|---|---|
+| Refresh rates: one "60 Hz" instead of "60 Hz" and "59.95 Hz" (#78, ThinkPad E16) | done (d8c6eaa), confirmed on the E16 |
+| Dates in the language's own order: calendar header, clock tooltip, taskbar clock (#81) | done – order from glibc's date_fmt (`date-formats`), VM de_CH "So, 25. Okt", also the clock of the login/lock screen (`greeter-screen`) |
+| Software Updates: check free disk space before installing (#91) | done – apt's own summary + 300 MB reserve, nothing changed when too little, Storage Cleaner offered; VM with a really full disk: "NOSPACE", nothing changed |
+| Ninth bug hunt on 1.0.6 | done 2026-10-24: #96–#99 below; verify hook fixed for #78 (c561446) |
+| Sleep locks the screen two or three times, each extra lock restarts the login screen (#96, #88 follow-up) | done – VM: one lock per sleep (power menu, lid, lid while locked); real sleep confirmed on the E16 |
+| Power button on the lock screen shuts down at once (#97) | done – `simpleos-power-key` service: lock screen → sleep, nobody signed in → shut down; VM and E16 checked |
+| A keyboard connected later gets the system layout, not the account's (#98) | done – VM: hotplugged USB keyboard gets the account layout |
+| Python bytecode from the build tests in the image (#99) | done – hook 99 cleans up, migration 090 for installed systems |
+| Whatever 1.0.6 users report | nothing reported |
+
 ## 1.0.6 – bugfix release (published 2026-10-24)
 
 Milestone "1.0.6" on GitHub. Published **with a new ISO** (`./tools/release.sh publish`): the installer changed (#73,
@@ -92,24 +110,29 @@ Moved from 1.0.4 to keep it small, plus what came up since:
 | Whatever 1.0.4 users report (Pax's Dell test, #64) | nothing came before the release – moved to 1.0.6 |
 | y/z swapped in search/app menu with Swiss/German keyboards (ThinkPad test) | done – XTEST keyboard gets the real layout |
 
-## 1.1 – next feature release (2–3 months after 1.0)
+## 1.1 – next feature release (planned around 2026-11-07)
 
-Bugfix releases (1.0.7 …) come in between when users report something – no milestone yet.
+Bugfix releases (1.0.x) come in between when users report something. Kept to what fits in about two weeks; the
+rest moved to 1.2.
 
 - **HiDPI / display scaling** (#41) – the biggest gap: nothing scales today (no Xft/DPI, no GDK scale, tint2/Openbox use
   pixels). On a 2.8K/4K laptop everything is tiny. Plan: a "Scale" setting in Control Center → Display (100/125/150/200 %)
-  that sets Xft.dpi, XSETTINGS (also cursor size), GDK scale for 200 %, Rofi/dunst/kitty sizes and the tint2 panel height;
+  that sets Xft.dpi, XSETTINGS (also cursor size), GDK scale for 200 %, Rofi/dunst/kitty sizes and the tint2 panel height
+  and clock font (also a "Large" taskbar size – asked for on Bluesky, the clock is too small for older eyes);
   automatic default from the screen's real DPI. Needs a HiDPI test screen first (open question: the resolution of the
   development laptop).
-- **Language & Region page** (system language, formats) (#42) and German/other translations of Simple OS's own tools (all English today) (#43).
+- **Language & Region page** (system language, formats) (#42).
+- **Boot time & size:** initramfs `MODULES=dep` (113 MB → much smaller, faster boot) (#47), zstd squashfs
+  (#19: faster live session and install, ISO +18 %).
 - **Webcam / camera test** app (the camera works, but there is nothing to try it with) (#44).
-- **Users & accounts page** in Control Center: create, delete and switch users, change passwords and pictures, administrator or standard user, automatic login (#68).
-- **Boot time & size:** initramfs `MODULES=dep` (113 MB → much smaller, faster boot) (#47), AppArmor profiles (#48), zstd squashfs
-  (issue #19: faster live session and install, ISO +18 %).
-- **Hardware tests still missing:** NVIDIA desktop with the driver, AMD laptop, dual boot with Windows, Secure Boot on (#49).
+- On the side, as far as hardware is at hand: **hardware tests** (NVIDIA desktop with the driver, AMD laptop, dual boot
+  with Windows, Secure Boot on) (#49) and a public hardware compatibility page (#92).
 
 ## 1.2 – feature release after 1.1
 
+- **Translations** of Simple OS's own tools (all English today) (#43).
+- **Users & accounts page** in Control Center: create, delete and switch users, change passwords and pictures, administrator or standard user, automatic login (#68).
+- **AppArmor** profiles (#48).
 - **Windows programs** (#85): double-click on a `.exe`/`.msi` offers to run it with Bottles (installed from the Software
   Store if missing), a plain help page on what works (older programs, many games through Steam/Proton) and what doesn't
   (Microsoft 365, current Adobe apps, kernel anti-cheat) with alternatives, and a hint to Steam's own "Steam Play for

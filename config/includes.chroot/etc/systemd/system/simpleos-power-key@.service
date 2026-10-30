@@ -1,0 +1,12 @@
+# Simple OS – power button on the lock screen = sleep, at the login screen = shut down (#97, /usr/local/sbin/simpleos-power-key).
+# One instance per ACPI "Power Button", started by udev (/etc/udev/rules.d/62-simpleos-power-key.rules). While it runs,
+# logind leaves the key alone (inhibitor "handle-power-key"); if it stops, logind shuts down on the key as before.
+[Unit]
+Description=Simple OS power button (%I)
+BindsTo=dev-input-%i.device
+After=dev-input-%i.device systemd-logind.service
+
+[Service]
+ExecStart=/usr/bin/systemd-inhibit --what=handle-power-key --who="Simple OS" --why="Power button: sleep on the lock screen" --mode=block /usr/local/sbin/simpleos-power-key /dev/input/%I
+Restart=on-failure
+RestartSec=2

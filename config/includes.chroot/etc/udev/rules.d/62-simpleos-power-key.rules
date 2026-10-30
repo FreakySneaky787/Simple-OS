@@ -1,0 +1,3 @@
+# Simple OS: the ACPI power button -> simpleos-power-key@eventN.service (/usr/local/sbin/simpleos-power-key, #97):
+# on the lock screen it puts the computer to sleep instead of shutting it down at once.
+ACTION!="remove", SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="Power Button", TAG+="systemd", ENV{SYSTEMD_WANTS}+="simpleos-power-key@%k.service"

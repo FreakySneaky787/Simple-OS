@@ -8,7 +8,8 @@
 #                                    if switched on in simpleos-backup. Firmware result as the line
 #                                    "FIRMWARE: installed|needs-power|failed" – a firmware error does not make the
 #                                    system update invalid (the exit code stays 0). Updates that would only work by
-#                                    removing other packages are left alone: line "HELD: <count>".
+#                                    removing other packages are left alone: line "HELD: <count>". Not enough free
+#                                    space for them: line "NOSPACE: <path> <needed MB> <free MB>", nothing changed, exit 1.
 #                                    kernel, microcode, firmware, libc, systemd updated -> /run/reboot-required
 #                                    A new Simple OS edition (package "simpleos") comes with the other updates; the
 #                                    packages it adds to Simple OS are installed once afterwards (edition --todo-packages)
@@ -342,6 +343,60 @@ upgrade_sim() {  # $1 full|safe -> simulation on stdout
     if [ "$1" = full ]; then LC_ALL=C ${APT_GET:-apt-get} -s full-upgrade 2>/dev/null
     else LC_ALL=C ${APT_GET:-apt-get} -s upgrade --with-new-pkgs 2>/dev/null; fi
 }
+# #91: enough free space before an update? Before, "not enough space" only came when the installation failed halfway
+# (dpkg: "No space left on device") – packages could be left half installed. Needed on "/": the download (into
+# /var/cache/apt/archives) + what the new versions take more once installed (both from apt's own summary, "--assume-no"
+# changes nothing) + SPACE_RESERVE_MB (dpkg's temporary copies, the initramfs of a new kernel, language packs, logs);
+# with a separate /boot partition and a new kernel also SPACE_BOOT_MB there. Not measurable (apt prints no summary, df
+# fails): no check – apt and dpkg decide as before.
+# Test: SIMPLEOS_SETUP_FREE_ROOT_MB / SIMPLEOS_SETUP_FREE_BOOT_MB replace the free space df measures, SIMPLEOS_SETUP_BOOT=1
+# counts /boot as its own partition.
+SPACE_RESERVE_MB=300
+SPACE_BOOT_MB=150
+apt_need_mb() {  # $1 full|safe -> MB the update needs on "/" (empty = unknown)
+    if [ "$1" = full ]; then _args="--no-remove full-upgrade"; else _args="upgrade --with-new-pkgs"; fi
+    # "Need to get 51.2 MB of archives." / "Need to get 0 B/51.2 MB of archives." (the rest is downloaded already)
+    # "After this operation, 120 MB of additional disk space will be used." / "… 3072 kB disk space will be freed."
+    # shellcheck disable=SC2086
+    LC_ALL=C ${APT_GET:-apt-get} --assume-no -o DPkg::Lock::Timeout=60 $_args 2>/dev/null | LC_ALL=C awk '
+        function mb(v, u) {
+            gsub(",", "", v); u = substr(u, 1, 1)
+            return u == "G" ? v * 1000 : u == "M" ? v : u == "k" ? v / 1000 : v / 1000000
+        }
+        / upgraded, .* newly installed, / { seen = 1 }
+        /^Need to get / { need += mb($4, $5) }
+        /^After this operation, / && / will be used/ { need += mb($4, $5) }
+        END { if (seen) printf "%d\n", need + 0.999 }'
+}
+free_mb() { df -Pm "$1" 2>/dev/null | awk 'NR == 2 { print $4 }'; }
+is_mb() { case "$1" in ''|*[!0-9]*) return 1 ;; esac; return 0; }
+# $1 = mode, $2 = planned packages. Too little: "NOSPACE: <path> <needed MB> <free MB>" (simpleos-update offers the
+# Storage Cleaner), exit code 1. Sets SPACE_NEED for space_still_ok.
+SPACE_NEED=
+space_ok() {
+    SPACE_NEED=$(apt_need_mb "$1")
+    is_mb "$SPACE_NEED" || { SPACE_NEED=; return 0; }
+    SPACE_NEED=$((SPACE_NEED + SPACE_RESERVE_MB))
+    space_still_ok || return 1
+    printf '%s\n' "$2" | grep -q '^linux-image-' || return 0
+    if [ "${SIMPLEOS_SETUP_BOOT:-}" = 1 ] || [ "$(df -P /boot 2>/dev/null | awk 'NR == 2 { print $6 }')" = /boot ]; then
+        _bfree=${SIMPLEOS_SETUP_FREE_BOOT_MB:-$(free_mb /boot)}
+        if is_mb "$_bfree" && [ "$_bfree" -lt "$SPACE_BOOT_MB" ]; then
+            echo "NOSPACE: /boot $SPACE_BOOT_MB $_bfree"
+            return 1
+        fi
+    fi
+    return 0
+}
+# The same need against the space now (after the restore point, which takes space on "/" too)
+space_still_ok() {
+    is_mb "$SPACE_NEED" || return 0
+    _free=${SIMPLEOS_SETUP_FREE_ROOT_MB:-$(free_mb /)}
+    is_mb "$_free" || return 0
+    [ "$_free" -ge "$SPACE_NEED" ] && return 0
+    echo "NOSPACE: / $SPACE_NEED $_free"
+    return 1
+}
 # Packages a new Simple OS edition added to its package lists (e.g. a new tool's dependency): installed once after
 # the edition package itself, then marked as handled – what you remove yourself later stays removed
 EDITION=/usr/local/lib/simpleos/edition
@@ -455,11 +510,23 @@ if [ "$upgrade" -eq 1 ]; then
         exit 0
     fi
     if [ "$apt_pending" -eq 1 ]; then
+        # Enough free space? Otherwise stop before anything changes (#91) – also no app or firmware updates: the
+        # message says to free up space and try again
+        if ! space_ok "$mode" "$planned"; then
+            step "Not enough free disk space"
+            fail "not enough free disk space for the updates – nothing was changed"
+            exit 1
+        fi
         # Restore point (simpleos-backup → "Restore point before updates: On"), only if system updates are
         # really pending; if it fails, the update still runs (hint in the log)
         if [ -x /usr/local/sbin/simpleos-backup-helper ]; then
             /usr/local/sbin/simpleos-backup-helper --before-update ||
                 echo "restore point before the update failed – the update runs anyway" >&2
+        fi
+        if ! space_still_ok; then
+            step "Not enough free disk space"
+            fail "not enough free disk space for the updates after the restore point – the updates were not installed"
+            exit 1
         fi
         urc=0
         if [ -n "$planned" ]; then

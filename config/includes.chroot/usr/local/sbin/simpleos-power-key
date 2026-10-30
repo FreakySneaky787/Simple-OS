@@ -1,0 +1,65 @@
+#!/bin/sh
+# Simple OS – the power button while no desktop is in front (#97). Runs as root for one ACPI "Power Button":
+#   simpleos-power-key /dev/input/eventN
+# Started by udev for every "Power Button" (/etc/udev/rules.d/62-simpleos-power-key.rules ->
+# simpleos-power-key@eventN.service), which keeps logind from handling the key itself (inhibitor "handle-power-key").
+# On a press:
+#   - a desktop is in front: nothing – Openbox opens the power menu (XF86PowerOff, rc.xml; #35)
+#   - the lock screen (LightDM's greeter) or a text console is in front and somebody is signed in: sleep. Before, logind
+#     switched off at once: the session's own inhibitor (Openbox autostart) only counts while that session is the
+#     active one, so one accidental press on a locked laptop lost all open windows and unsaved work
+#   - nobody is signed in (login screen): shut down, as before
+# If this service does not run, logind's default (shut down) applies again; holding the button for about 4 s still
+# switches off in the hardware. Between presses it only waits in a read() on the device.
+# Messages go to the journal (journalctl -u 'simpleos-power-key@*'). Never exits because of a failed action.
+# Tests: SIMPLEOS_LOGINCTL / SIMPLEOS_SYSTEMCTL replace loginctl/systemctl, SIMPLEOS_POWER_KEY_PAUSE the pause after
+# sleeping (seconds, default 5); the device may be a file with recorded events.
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+DEV=${1:-}
+LOGINCTL=${SIMPLEOS_LOGINCTL:-loginctl}
+SYSTEMCTL=${SIMPLEOS_SYSTEMCTL:-systemctl}
+PAUSE=${SIMPLEOS_POWER_KEY_PAUSE:-5}
+[ -r "$DEV" ] || { echo "simpleos-power-key: cannot read '$DEV'" >&2; exit 1; }
+
+# A graphical user session is the active one on seat0 (not the greeter, not a text console)
+desktop_in_front() {
+    s=$($LOGINCTL show-seat seat0 -p ActiveSession --value 2>/dev/null)
+    [ -n "$s" ] && [ "$($LOGINCTL show-session "$s" -p Class --value 2>/dev/null)" = user ] || return 1
+    case "$($LOGINCTL show-session "$s" -p Type --value 2>/dev/null)" in x11|wayland) return 0 ;; esac
+    return 1
+}
+# Somebody is signed in: a user session that is not closing (Debian keeps a signed-out user's processes, so their
+# session stays around as "closing")
+signed_in() {
+    for s in $($LOGINCTL list-sessions --no-legend 2>/dev/null | awk '{ print $1 }'); do
+        [ "$($LOGINCTL show-session "$s" -p Class --value 2>/dev/null)" = user ] || continue
+        case "$($LOGINCTL show-session "$s" -p State --value 2>/dev/null)" in active|online) return 0 ;; esac
+    done
+    return 1
+}
+
+exec 3< "$DEV"
+# struct input_event (64 bit): time (16 bytes), type, code (2 bytes each), value (4) -> 12 numbers of 2 bytes
+while ev=$(dd bs=24 count=1 <&3 2>/dev/null | od -An -v -tu2 -w24) && [ -n "$ev" ]; do
+    # shellcheck disable=SC2086
+    set -- $ev
+    [ "$9" = 1 ] && [ "${10}" = 116 ] && [ "${11}" = 1 ] || continue     # EV_KEY, KEY_POWER, pressed
+    if desktop_in_front; then
+        echo "simpleos-power-key: desktop in front – the power menu opens"
+    elif signed_in; then
+        echo "simpleos-power-key: lock screen in front, somebody is signed in – sleep instead of shutting down"
+        $SYSTEMCTL suspend || echo "simpleos-power-key: sleep failed"
+        # The press that wakes the computer (and presses right after) must not put it to sleep again: wait (the time
+        # also runs on after waking up), then throw away what came in meanwhile. Not with dd's iflag=nonblock: that
+        # flag stays on the shared descriptor, the next read failed at once and the service ended after the first sleep
+        sleep "$PAUSE"
+        while [ "$(timeout 0.3 dd bs=4096 count=1 <&3 2>/dev/null | wc -c)" -gt 0 ]; do :; done
+    else
+        echo "simpleos-power-key: nobody is signed in – shutting down"
+        $SYSTEMCTL poweroff || echo "simpleos-power-key: shutting down failed"
+    fi
+done
+# A device never ends by itself: a read error -> exit 1, systemd starts the service again (Restart=on-failure). Unplugged:
+# BindsTo= stops it anyway
+[ -c "$DEV" ] && exit 1
+exit 0

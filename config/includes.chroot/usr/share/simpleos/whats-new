@@ -1,13 +1,12 @@
-# Simple OS 1.0.6
-## New
-- **Choose the app for office files.** Control Center → Apps now also has Documents, Spreadsheets and Presentations:
-  pick which app opens them – handy when both LibreOffice and ONLYOFFICE are installed.
+# Simple OS 1.0.7
 ## Fixed
-- **Wi-Fi in the Control Center.** Control Center → Wi-Fi lists the networks around you again – connect, switch or
-  disconnect there, also when you're offline.
-- **Closing the Software Center during an installation.** The installation now finishes in the background and you
-  get a message when it's done (before, it could stop halfway). Installing a browser from "More browsers" shows a
-  progress window instead of a terminal.
-- **Refresh rates.** Screens that offer 60, 59.97 and 59.96 Hz no longer show "60 Hz" three times.
-- **Search finds dates.** Type a date like 2026-10-20 to find your files from that day (screenshots, for example)
-  instead of getting a calculation.
+- **The power button on the lock screen.** It puts the computer to sleep now instead of shutting it down at once –
+  your open windows and unsaved work stay. On the desktop it still opens the power menu.
+- **Sleep and the lock screen.** Closing the lid or choosing Sleep locks the screen once. Before, the lock screen
+  could restart two or three times, which sometimes made unlocking fail.
+- **Dates in your language's order.** The taskbar clock, its tooltip, the calendar and the login screen now show
+  "20. Oktober 2026" in German or "20 October 2026" in British English instead of the US order.
+- **Keyboards plugged in later** (USB, or Bluetooth after sleep) type with your account's layout.
+- **Software Updates checks the free disk space first.** If there isn't enough, nothing is changed, and you can
+  open the Storage Cleaner right from the message.
+- **Refresh rates.** Screens that offer 60 Hz and 59.95 Hz show a single "60 Hz".

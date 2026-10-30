@@ -5,7 +5,9 @@
 #   simpleos-input --set KEY VALUE natural|tap|mnatural: on|off; tspeed|mspeed: -1 … 1 – applies right away and is saved
 #   simpleos-input --apply         apply the saved values (once, silently)
 #   simpleos-input --watch         (Openbox autostart) apply, and again when an input device is plugged in later
-#                                  (Bluetooth mouse, USB mouse); waits for udev events, no CPU in between
+#                                  (Bluetooth mouse, USB mouse); waits for udev events, no CPU in between. A keyboard
+#                                  plugged in later also gets the account's layout again (simpleos-keyboard-setup
+#                                  --apply): Xorg gives it the system layout of /etc/default/keyboard (#98)
 # natural = touchpad scrolling direction like a phone (Simple OS default, as on macOS), tap = tap to click,
 # tspeed/mspeed = pointer speed of touchpad/mouse, mnatural = same scrolling direction for a mouse wheel.
 # Mechanism: libinput properties through xinput (the same options as /etc/X11/xorg.conf.d/40-simpleos-input.conf,
@@ -101,6 +103,7 @@ case "${1:-}" in
             sos_session_alive || exit 0   # signed out: this session's X server is gone (ends the udevadm pipe too)
             sleep 2
             apply
+            command -v simpleos-keyboard-setup >/dev/null && simpleos-keyboard-setup --apply
         done
         exit 0 ;;
     *) echo "Usage: $0 --status | --set KEY VALUE | --apply | --watch" >&2; exit 2 ;;

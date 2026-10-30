@@ -101,6 +101,13 @@ apply_lock() {
 # minutes. Each extra "dm-tool lock" makes LightDM throw away the login screen and start a new one; a few of those and
 # the unlock fails ("Failed to start session"): black screen, no way back to the desktop. So: only lock while this
 # session's VT is the active one.
+# #96: and not again while a lock is on its way. LightDM needs about a second to switch to the login screen; in that
+# second the next request (power menu "Sleep" locks, then the sleep signal reaches xss-lock; LightDM's own Lock signal)
+# still saw the desktop and locked a second time. The marker holds the time of the last lock in seconds; the power menu,
+# Control Center and search lock through here too, the sleep hook (/usr/lib/systemd/system-sleep/simpleos-lock) reads
+# and writes the same file. Exit code: that of dm-tool (the callers fall back to loginctl), 0 when nothing was needed.
+LOCK_MARK=${XDG_RUNTIME_DIR:+$XDG_RUNTIME_DIR/simpleos-lock}
+LOCK_GRACE=4
 lock_now() {
     vt=${XDG_VTNR:-}
     if [ -z "$vt" ] && [ -n "${XDG_SESSION_ID:-}" ]; then
@@ -111,6 +118,11 @@ lock_now() {
         ''|0|*[!0-9]*) ;;                             # VT unknown: lock as before
         *) [ -n "$active" ] && [ "$active" != "tty$vt" ] && return 0 ;;   # login screen already in front
     esac
+    if [ -n "$LOCK_MARK" ] && [ -r "$LOCK_MARK" ] && read -r t < "$LOCK_MARK" && is_num "$t"; then
+        d=$(($(date +%s) - t))
+        [ "$d" -ge 0 ] && [ "$d" -lt "$LOCK_GRACE" ] && return 0     # a lock was started just now
+    fi
+    [ -n "$LOCK_MARK" ] && date +%s > "$LOCK_MARK" 2>/dev/null
     # not "loginctl lock-session" as a fallback: xss-lock reacts to that signal itself – an endless loop
     dm-tool lock
 }
@@ -196,7 +208,7 @@ case "${1:-}" in
             on|off) lock_idle=$2; save; apply_lock ;;
             *) echo "simpleos-power: --lock on|off|status" >&2; exit 2 ;;
         esac ;;
-    --lock-now) lock_now ;;
+    --lock-now) lock_now; exit $? ;;
     # A video is playing (simpleos-screensaver): keep the screen on until --apply. Only without a battery –
     # with one, xfce4-power-manager does that itself
     --suspend)

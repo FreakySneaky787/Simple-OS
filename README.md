@@ -31,6 +31,9 @@
 - 20 GB disk space (the installer accepts 10 GB)
 - Internet for the setup wizard (browser, office suite, games) and for updates
 
+Which computers Simple OS is known to work on, what didn't work, and how to add yours:
+[hardware compatibility](docs/HARDWARE.md).
+
 ## Install
 
 1. **Download** `Simple-OS.iso` and `Simple-OS.iso.sha256` from the [latest release](https://github.com/FreakySneaky787/Simple-OS/releases/latest).
@@ -157,6 +160,8 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
     generated), `050-os-prober` (rebuild the GRUB menu once with other systems in it). 1.0.5: `060-bluetooth-restart`
     (ask for a restart so headphone battery levels show). 1.0.6: `user/070-whats-new-existing-account` (an account from
     before 1.0.5 whose Setup Wizard was closed with the window's X is not taken for a new one – "What's new" shows).
+    1.0.7: `080-power-key` (start the power button service right away instead of after the next restart),
+    `090-python-bytecode` (remove the build test's Python bytecode from `/usr/local/bin`).
   - **Files the system changes itself:** tools never write into package files under `/etc/skel` (or other conffiles)
     for everyday settings – a changed conffile is kept by dpkg and the edition tool forever. Per-account changes go
     into the home copies (merged by the edition tool), see `office-menu` below.
@@ -403,7 +408,9 @@ the lb default files, the generated graphics and the fastfetch package.
   is off; dunst: a left click triggers a notification's action (hook 09, dunst 1.9 has no drop-ins).
 - Power menu: `simpleos-powermenu` (Super+X, taskbar button, Menu → Power); Sleep locks the screen first.
   The power button opens it too (`XF86PowerOff` in `rc.xml`; the Openbox autostart holds a logind inhibitor
-  `handle-power-key` for the session, the login screen keeps logind's default). Some laptops (ThinkBook E16) only
+  `handle-power-key` for the session). On the lock screen and the login screen `simpleos-power-key` (root, one
+  `simpleos-power-key@eventN.service` per ACPI "Power Button", started by udev rule 62) decides: somebody signed in →
+  sleep, nobody → shut down (#97; before, logind shut a locked laptop down at once). Some laptops (ThinkBook E16) only
   report the button when it is held for about a second – the firmware drops a quick tap.
 - Keyring: hook 17 masks `gnome-keyring-daemon.socket` (globally) so `pam_gnome_keyring` starts the daemon at login –
   with the systemd socket the login keyring created at the first login was unusable for that whole session.
@@ -413,8 +420,10 @@ the lb default files, the generated graphics and the fastfetch package.
   setting is written to its xfconf channel; without a battery `xset` is used and `simpleos-screensaver` (D-Bus-activated,
   `org.freedesktop.ScreenSaver`, quits 30 s after the last video) answers the browsers' inhibit request. `xss-lock`
   locks with `dm-tool lock` (`simpleos-power --lock-now`) when the screensaver starts – not in the live session and not
-  while the lock screen is already in front (#88); LightDM's `display-setup-script`
-  (`greeter-screen`) darkens the lock screen after 2 minutes. Brightness: `simpleos-osd brightness get|set PCT`
+  while the lock screen is already in front (#88) or a lock was started in the last 4 s (#96: the time is in
+  `$XDG_RUNTIME_DIR/simpleos-lock`; power menu, Control Center and search lock through it too); LightDM's `display-setup-script`
+  (`greeter-screen`) darkens the lock screen after 2 minutes and writes the greeter's clock format in the order of the
+  system language (`/etc/xdg/lightdm/lightdm-gtk-greeter.conf.d/50-simpleos-clock.conf`, #81). Brightness: `simpleos-osd brightness get|set PCT`
   (Control Center → Display). Wi-Fi regulatory country from the time zone: `simpleos-regdom` (service, path unit on
   `/etc/localtime`, udev rule on `ieee80211`).
 - Live mode (`simpleos-live`, detected by `boot=live` or `/run/live/medium`): desktop icon "Install Simple OS",
@@ -438,7 +447,9 @@ the lb default files, the generated graphics and the fastfetch package.
 - Laptop: tap to click and natural scrolling for the touchpad (mouse unchanged), closing the lid = sleep (logind,
   also on AC power; not when docked), battery display only with a real battery. Before every sleep (lid, power
   menu, `systemctl suspend`) `/usr/lib/systemd/system-sleep/simpleos-lock` locks the session (LightDM via D-Bus)
-  and waits until the lock screen is in front – after opening the lid the session is locked.
+  and waits until the lock screen is in front – after opening the lid the session is locked. It does not lock a second
+  time (#96: each extra lock restarts LightDM's login screen): not when the lock screen is in front already, a lock was
+  just started, or xss-lock locks on the sleep signal – then it only waits, and locks only if the lock screen never comes.
 - Do Not Disturb (`simpleos-dnd`, Control Center → Notifications, Menu → Settings, click on the icon in the taskbar):
   notifications paused (`dunstctl set-paused`), optionally without window effects (`--no-effects on`: picom off);
   a bell icon in the taskbar while it is on.
