@@ -57,10 +57,10 @@ Small, safe, mostly things users hit in the first hour. Published **with a new I
 | Other systems stay in the GRUB menu after GRUB updates | done |
 | Bluetooth pairing with a keyboard/phone (#10), monitor hotplug (#28) | confirmed on the ThinkPad E16 |
 
-## 1.0.7 – bugfix release (planned Saturday 2026-10-31)
+## 1.0.7 – bugfix release (published 2026-10-30)
 
 Milestone "1.0.7" on GitHub (all 7 issues closed). Published **with a new ISO** (`./tools/release.sh publish`): built
-2026-10-25 from d790b63 (SHA-256 7fa408ff…), tested on the ThinkPad E16 (TESTING.md section 12) and in a VM (update
+2026-10-25 from 01b79b4 (SHA-256 7fa408ff…), tested on the ThinkPad E16 (TESTING.md section 12) and in a VM (update
 from 1.0.6, update with an almost full disk).
 
 | Item | Status |
