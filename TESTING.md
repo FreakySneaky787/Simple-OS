@@ -359,6 +359,12 @@ from 1.0.6 through Software Updates** (VM-tested 2026-10-25 with the files copie
 Faster start and installation, Language & Region, Camera, display scaling, USB notifications, package versions of test
 builds.
 
+**Update 1.0.7 → 1.1 (VM 2026-10-30, package from `next` f693877 through a local repository):** Software Updates'
+helper rc 0 in 40 s; simpleos 1.1+…, the new packages (GStreamer for the camera, zstd) came along; `dpkg --audit` clean;
+migration 100 rebuilt the initramfs (17 MB, `MODULES=dep`) and the system restarted with it; "What's new in Simple OS 1.1"
+appeared; no failed units; tint2rc (scale line) and the Openbox menu (Camera) merged into the account; greeter-wrapper,
+Xsession step and the Rofi wrapper in place; Language & Region and the camera app (no camera) open.
+
 - [ ] **Small initramfs (issue #47):** fresh installation (BIOS and UEFI, once with LUKS):
       `cat /etc/initramfs-tools/conf.d/simpleos-modules.conf` ends with `MODULES=dep`, `ls -la /boot/initrd.img-*` is
       about 17–40 MB (was ~160 MB), `systemd-analyze` kernel time lower than before; with LUKS the password can be typed
