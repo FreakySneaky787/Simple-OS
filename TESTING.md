@@ -381,8 +381,8 @@ Xsession step and the Rofi wrapper in place; Language & Region and the camera ap
       every start waited ~30 s – the kernel line has `resume=` on the encrypted swap, but the initramfs is built in the
       installer's chroot where the swap is not open, so it was left out (a rebuild in the installed system, e.g. at the
       first kernel update, healed it). bootloader-config now gives the swap the crypttab option `initramfs`: chroot
-      build in the VM → 9.6 s. Check after the next ISO build: an encrypted installation starts in ~10 s from the
-      first boot, `grep initramfs /etc/crypttab` shows the swap line.
+      build in the VM → 9.6 s. ISO e4a665bd (2026-10-31), VM BIOS + "Encrypt system": first start 9.9 s (kernel),
+      swap line with `initramfs` in /etc/crypttab, swap and zram active, no failed units.
 - [x] **zstd squashfs (issue #19):** `build/build.log` says `zstd compressed`; the ISO stays below 2 GiB (`publish`
       refuses otherwise; expected ~1.71 GB); the live session starts and installs (time it against 1.0.7 on the same
       machine). Measured on the 1.0.7 squashfs: xz 1432 MB / 5.6 s to unpack, zstd-19 1514 MB / 2.8 s.
