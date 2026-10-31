@@ -376,6 +376,10 @@ Xsession step and the Rofi wrapper in place; Language & Region and the camera ap
       build OK, the initramfs job took 5 s. ISO from `next` 59c59f0 (2026-10-31), VM UEFI, Calamares "Erase disk":
       `MODULES=dep`, initramfs 15.6 MB, boot 1.1 s kernel + 1.7 s userspace, no failed units. Open: BIOS, LUKS, real
       hardware; the session.log in the live session had only its start line, so the "test build" line was not seen.
+      VM BIOS + "Encrypt system" 2026-10-31: GRUB asks for the passphrase, the initramfs opens root and swap with the
+      key file, initramfs 16 MB with dm-crypt and the USB keyboard drivers. Found: unlocking took 31 s with MODULES=dep
+      against 9 s with MODULES=most (no AES-NI/SHA-SSSE3/AF_ALG drivers) – the hook now adds them: 9.5 s, +95 KB.
+      Check after the next ISO build: an encrypted installation reaches the login screen as fast as before.
 - [x] **zstd squashfs (issue #19):** `build/build.log` says `zstd compressed`; the ISO stays below 2 GiB (`publish`
       refuses otherwise; expected ~1.71 GB); the live session starts and installs (time it against 1.0.7 on the same
       machine). Measured on the 1.0.7 squashfs: xz 1432 MB / 5.6 s to unpack, zstd-19 1514 MB / 2.8 s.

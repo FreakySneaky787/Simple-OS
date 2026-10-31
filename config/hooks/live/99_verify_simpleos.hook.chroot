@@ -973,7 +973,8 @@ check "initramfs: MODULES=dep not tried at the installation, by a migration, or 
       "grep -q '^in_target /usr/local/lib/simpleos/initramfs-dep --try || true' /usr/sbin/bootloader-config &&
        [ -x /usr/share/simpleos/edition/migrations/system/100-initramfs-dep ] && [ -x $IDH ] && sh -n $IDH &&
        [ -x /etc/initramfs-tools/hooks/simpleos-modules ] && sh -n /etc/initramfs-tools/hooks/simpleos-modules &&
-       grep -q 'manual_add_modules ahci .* nvme vmd' /etc/initramfs-tools/hooks/simpleos-modules"
+       grep -q 'manual_add_modules ahci .* nvme vmd' /etc/initramfs-tools/hooks/simpleos-modules &&
+       grep -q 'manual_add_modules aesni_intel .* sha256_ssse3' /etc/initramfs-tools/hooks/simpleos-modules"
 check "initramfs: zstd missing (COMPRESS=zstd falls back to gzip)" \
       "command -v zstd >/dev/null && grep -qx 'COMPRESS=zstd' /etc/initramfs-tools/initramfs.conf"
 check "helper: --upgrade can be mixed with other actions" "! /usr/local/sbin/simpleos-system-setup --upgrade --gaming >/dev/null 2>&1"
