@@ -1,4 +1,4 @@
-# Simple OS 1.0.7
+# Simple OS 1.1
 
 **SOS – Simple Operating System. Keep it Simple.**
 
@@ -6,37 +6,43 @@ Simple OS is a fast, quiet desktop built on Debian 12 "bookworm". It boots strai
 (Openbox, Catppuccin colors), sets itself up with a short wizard and keeps itself up to date. You don't
 need a terminal.
 
-## What's new in 1.0.7
+## What's new in 1.1
 
-A bugfix update. If you run Simple OS 1.0 to 1.0.6, you get it through **Software Updates** – no need to reinstall.
-The first time you sign in afterwards, a short **"What's new"** window shows the highlights.
+The first feature update. If you run Simple OS 1.0 to 1.0.7, you get it through **Software Updates** – no need to
+reinstall. The first time you sign in afterwards, a short **"What's new"** window shows the highlights.
+
+### New
+
+- **Display scaling** (issue #41). Control Center → Display → **Scale** makes text, the taskbar, menus,
+  notifications, the mouse pointer and the login screen bigger: 100, 125, 150 or 200 %. "Automatic" picks it from the
+  screen's real size – 2.8K and 4K laptops start at 150 or 200 %, Full HD screens stay as they are. It applies at
+  once, without signing out.
+- **A larger taskbar** for older eyes: Control Center → Appearance → Taskbar → Layout → **Large** gives a higher bar
+  with a bigger clock.
+- **Language & Region** (issue #42). A new Control Center page changes the language of your apps and the format of
+  dates, numbers and currency. Spell checking and the Firefox and LibreOffice languages are installed with it. Sign out
+  and back in – no restart needed. Simple OS's own tools stay in English for now (see Known issues).
+- **Camera** (issue #44). Menu → Apps → Camera shows your webcam as a mirror and takes photos (Space), saved in
+  Pictures/Camera. It tells you plainly when another app is using the camera or none is found.
+- **Starting up is quicker** (issue #47). The startup files of an installed system shrink from about 160 MB to
+  15–20 MB, so the computer starts about a second sooner and kernel updates finish faster. The new system tries it
+  first and keeps the old way if anything doesn't fit; disk mode changes and USB keyboards (for the disk password)
+  still work.
+- **Faster live system and installation** (issue #19). The ISO is packed with zstd instead of xz: unpacking takes half
+  the time, the download is about 6 % bigger.
 
 ### Fixed
 
-- **Power button on the lock screen** (issue #97). Pressing it while the screen was locked switched the computer off
-  at once, and open windows and unsaved work were lost – on laptops with the button next to the keys one accidental
-  press was enough. Now it puts the computer to sleep. On the desktop it still opens the power menu, and at the login
-  screen with nobody signed in it shuts down as before. Works right after the update, without a restart.
-- **Sleep locks the screen once** (issue #96). Closing the lid or choosing Sleep locked the screen two or three times,
-  and every extra lock restarted the login screen – the same pattern that made unlocking fail in 1.0.5 (#88).
-- **Dates in your language's order** (issue #81). The taskbar clock, its tooltip, the calendar and the clock of the
-  login and lock screen used the US order with translated names ("Oktober 20, 2026"). They now follow the language:
-  "Di, 20. Okt" and "20. Oktober 2026" in German, "20 October 2026" in British English, 2026年10月20日 in Japanese. US
-  English stays as it was.
-- **Keyboards plugged in later** (issue #98) – a USB keyboard, or a Bluetooth keyboard reconnecting after sleep – typed
-  with the system's layout instead of the one chosen for your account (for example y and z swapped on a Swiss or
-  German keyboard).
-- **Software Updates checks the free disk space before installing** (issue #91). Before, "not enough free disk space"
-  only came after the installation had failed halfway. Now nothing is changed when there isn't enough, the message says
-  how much is needed, and a button opens the Storage Cleaner.
-- **Refresh rates** (issue #78). Screens that offer 60 Hz and 59.95 Hz showed both; they show a single "60 Hz" now.
-- About 450 KB of leftover build files are removed from the system (issue #99).
+- **"Safely remove" only for USB drives** (issue #100). A second internal disk with Windows or another Linux on it
+  showed up as a USB drive with a "Safely remove" button.
+- **Test builds no longer block updates** (issue #102). A computer installed from a test build now gets the published
+  version.
 
 ## Download
 
 | File | What it is |
 |---|---|
-| `Simple-OS.iso` | The live and installer image (about 1.5 GB) |
+| `Simple-OS.iso` | The live and installer image (about 1.7 GB) |
 | `Simple-OS.iso.sha256` | Checksum to make sure the download is complete and unchanged |
 | `Simple-OS.packages.txt` | Every Debian package with its exact version (for source code requests) |
 
@@ -56,7 +62,7 @@ The live system needs no password – not for the installer either. Only if some
 `simple` and the password is `live`.
 To install, use **Install Simple OS** on the desktop.
 
-The other files attached here (`simpleos_1.0.7_all.deb`, `Packages`, `InRelease` …) are the signed update repository that
+The other files attached here (`simpleos_1.1_all.deb`, `Packages`, `InRelease` …) are the signed update repository that
 installed systems use. You don't need to download them yourself.
 
 ## System requirements
@@ -70,8 +76,8 @@ installed systems use. You don't need to download them yourself.
 
 - **Setup wizard** on first login: Wi-Fi, browser (Firefox, Chromium or Mullvad Browser), light/dark,
   accent color, office suite (LibreOffice or ONLYOFFICE) and an optional gaming setup (Steam, Lutris, MangoHud)
-- **Control Center** (Super+I) for Wi-Fi, Bluetooth, sound, display and brightness, appearance, notifications, mouse &
-  touchpad, keyboard, printers, power and screen lock, default and startup apps, date & time, storage and backups,
+- **Control Center** (Super+I) for Wi-Fi, Bluetooth, sound, display, brightness and scaling, appearance, notifications,
+  mouse & touchpad, keyboard, language & region, printers, power and screen lock, default and startup apps, date & time, storage and backups,
   password and firewall, updates and drivers
 - **Software Store** (Flathub) and **Software Updates** with a single password prompt. Firmware and BIOS updates
   from the LVFS are included, and so are **new versions of Simple OS itself**: you don't need to reinstall to get
@@ -81,6 +87,7 @@ installed systems use. You don't need to download them yourself.
 - **Firewall** on by default: other devices can't connect to you, while browsing, printing and updates keep working
 - **Battery care** (charge to 80 %) on laptops that support it, **power modes**, and protection against freezing
   when memory runs out (earlyoom)
+- **Camera** app to see your webcam and take photos
 - **Printers & scanners** are found automatically on the network and over USB
 - **Report a Problem** (Menu → Help) saves the details of your computer to a file you can attach to a bug report.
   Your name, user name, network names and addresses are removed.
@@ -88,9 +95,13 @@ installed systems use. You don't need to download them yourself.
 
 ## Known issues
 
-- **English only.** The installer lets you choose your language and keyboard, but the Simple OS tools
-  (Control Center, wizard, messages) are in English. The keyboard layout can be changed at any time in
+- **Simple OS's own tools are in English.** Your apps, menus and date formats follow the language you choose
+  (installer or Control Center → Language & Region), but the Control Center, the setup wizard and Simple OS's messages
+  stay English until their translations come in 1.2. The keyboard layout can be changed at any time in
   Control Center → Keyboard.
+- **Menus close after a slow click.** If you hold the mouse button a little longer, the desktop and window menus and
+  the volume menu close again when you let go. Click quickly, or use the keyboard (Alt+Space for the window menu).
+  Fixed in 1.1.1.
 - **Firewall and LAN games:** hosting a game for others on your local network, and Steam Remote Play as the host,
   are blocked by the firewall. Turn it off for that time in Control Center → Password & Security.
 - **Lenovo laptops:** the first start after installing may show "Self-Healing BIOS ESP" once. That's
