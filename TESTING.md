@@ -387,7 +387,7 @@ Xsession step and the Rofi wrapper in place; Language & Region and the camera ap
 - [ ] **Test builds (issue #102):** `dpkg-query -W simpleos` shows `1.1+<build time>`; Software Updates shows
       "Simple OS 1.1" (no number after it). A machine installed from an earlier test build is offered the published
       build.
-- [ ] **Language & Region (issue #42):** Control Center → Language & Region shows the language the installer set.
+- [x] **Language & Region (issue #42):** Control Center → Language & Region shows the language the installer set.
       Change it to another language (e.g. German → Switzerland): password dialog, progress window "Changing the
       language", then "Sign out now?". After signing out and back in: Firefox, Thunar and the menus are in the new
       language, the taskbar clock and the login screen clock use its date order, `locale` shows `LANG=de_CH.UTF-8`, and
@@ -395,15 +395,17 @@ Xsession step and the Rofi wrapper in place; Language & Region and the camera ap
       Formats → another region (e.g. English language, formats Germany): the example line on the page shows
       "Donnerstag, 29. Oktober 2026 · 1.234,56 · 1.234,50 €" after the change, apps stay English. Cancel the password
       dialog: nothing changes. Without internet: the language changes, the packs come with the next Software Update.
-- [ ] **Camera (issue #44):** Menu → Apps → Camera on the ThinkPad E16: the webcam picture appears within a few
+      ThinkPad E16 2026-10-31 (live session, German → Switzerland): OK; Control Center itself stays English (#43, 1.2).
+- [x] **Camera (issue #44):** Menu → Apps → Camera on the ThinkPad E16: the webcam picture appears within a few
       seconds, moves smoothly (not 5 frames a second), mirrored like a mirror (raise your right hand – it is on the
       right). Take Photo (or Space): white flash, "Saved to Pictures/Camera: Photo …"; the photo opens in the image
       viewer, is sharp and NOT mirrored (text readable). Open Folder shows Pictures/Camera. Camera switch/F-key off or
       lens covered by the privacy slider: what does it show? (No camera found / black picture.) Open the camera in
       Firefox (e.g. a video call test page) and then the Camera app: "The camera is in use", close the tab, Try Again
       → picture. A USB webcam plugged in while the window is open appears in the title bar choice. VM 2026-10-29
-      with the virtual test camera (vivid): all of this except the hardware switch and unplugging.
-- [ ] **Display scaling (issue #41):** on the ThinkPad E16 (16" 1920x1200, ~141 dpi) Control Center → Display → Scale
+      with the virtual test camera (vivid): all of this except the hardware switch and unplugging. ThinkPad E16
+      2026-10-31 (live session, ISO from `next` 59c59f0): OK.
+- [x] **Display scaling (issue #41):** on the ThinkPad E16 (16" 1920x1200, ~141 dpi) Control Center → Display → Scale
       says "Automatic (100 %)" and everything looks exactly as in 1.0.7. Choose 150 %: at once the taskbar, the start
       menu (Super), flyouts (Wi-Fi, Sound, Power – still right above the taskbar), notifications, window titles, the
       right-click menu, the mouse pointer and the Control Center itself are bigger; Firefox and the Terminal after
@@ -415,4 +417,5 @@ Xsession step and the Rofi wrapper in place; Language & Region and the camera ap
       at 200 % (password field, icons) with a faked automatic value; the automatic value itself with mocked xrandr
       (2.8K 200 %, 16" 2560x1600 150 %, Full HD 100 %, 27" 4K 100 %, TV 160x90 mm 100 %, turned screen).
       Taskbar size "Large" (Control Center → Appearance → Taskbar → Layout): higher bar, bigger clock and texts, the
-      Wi-Fi/Sound/Power flyouts still just above it; "Full" again looks as before.
+      Wi-Fi/Sound/Power flyouts still just above it; "Full" again looks as before. ThinkPad E16 2026-10-31 (live
+      session): Automatic 100 %, 150 %, 200 % and Large taskbar OK. Still open: a real 2.8K/4K screen.

@@ -4,7 +4,8 @@
   notifications and the mouse pointer bigger. "Automatic" picks it from your screen's size (2.8K and 4K laptops), or
   choose 125, 150 or 200 % yourself.
 - **Language & Region.** Change the language of your apps and the format of dates, numbers and currency in Control
-  Center → Language & Region. Spell checking and the Firefox and LibreOffice languages come with it.
+  Center → Language & Region. Spell checking and the Firefox and LibreOffice languages come with it. Simple OS's own
+  tools (Control Center, Setup, Software Updates) stay in English for now – their translations come in 1.2.
 - **Camera.** Menu → Apps → Camera shows your webcam and takes photos – they are saved in Pictures/Camera.
 - **A larger taskbar.** Control Center → Appearance → Taskbar → Layout → Large: a higher bar with a bigger clock.
 - **Starting up is quicker.** The files the computer loads at startup are now much smaller.
