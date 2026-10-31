@@ -15,8 +15,4 @@ manual_add_modules ahci ata_piix ata_generic nvme vmd sd_mod sr_mod usb_storage 
 # USB controllers and keyboards (USB, laptop keyboards on I2C, Logitech receivers, Apple)
 manual_add_modules xhci_pci ehci_pci ohci_pci uhci_hcd usbhid hid_generic hid_multitouch i2c_hid_acpi \
     hid_logitech_dj hid_apple
-# Fast crypto for encrypted installations: MODULES=dep leaves out the CPU-accelerated AES/SHA drivers and the kernel
-# crypto interface cryptsetup uses – unlocking root and swap then took 31 s instead of 9 s (VM, LUKS1, 2026-10-31).
-manual_add_modules aesni_intel sha1_ssse3 sha256_ssse3 sha512_ssse3 ghash_clmulni_intel crypto_simd cryptd \
-    af_alg algif_skcipher algif_hash
 exit 0
