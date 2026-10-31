@@ -35,6 +35,9 @@ reinstall. The first time you sign in afterwards, a short **"What's new"** windo
 
 - **"Safely remove" only for USB drives** (issue #100). A second internal disk with Windows or another Linux on it
   showed up as a USB drive with a "Safely remove" button.
+- **Encrypted installations start 20 seconds sooner.** With "Encrypt system" in the installer, every start waited
+  about 30 seconds for the encrypted swap until the first kernel update. New installations start without the wait;
+  existing ones are fixed by this update.
 - **Test builds no longer block updates** (issue #102). A computer installed from a test build now gets the published
   version.
 
