@@ -139,6 +139,8 @@ rest moved to 1.2.
 - **Translations** of Simple OS's own tools (all English today) (#43).
 - **Users & accounts page** in Control Center: create, delete and switch users, change passwords and pictures, administrator or standard user, automatic login (#68).
 - **AppArmor** profiles (#48).
+- **Simpler partitioning page** in the installer (#101): no swap or file system choice, a preselection (alongside
+  another system, otherwise erase disk), disks with model name and what is on them, a plain last warning.
 - **Windows programs** (#85): double-click on a `.exe`/`.msi` offers to run it with Bottles (installed from the Software
   Store if missing), a plain help page on what works (older programs, many games through Steam/Proton) and what doesn't
   (Microsoft 365, current Adobe apps, kernel anti-cheat) with alternatives, and a hint to Steam's own "Steam Play for
