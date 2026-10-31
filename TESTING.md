@@ -376,6 +376,13 @@ Xsession step and the Rofi wrapper in place; Language & Region and the camera ap
       build OK, the initramfs job took 5 s. ISO from `next` 59c59f0 (2026-10-31), VM UEFI, Calamares "Erase disk":
       `MODULES=dep`, initramfs 15.6 MB, boot 1.1 s kernel + 1.7 s userspace, no failed units. Open: BIOS, LUKS, real
       hardware; the session.log in the live session had only its start line, so the "test build" line was not seen.
+      VM BIOS + "Encrypt system" 2026-10-31: GRUB asks for the passphrase, the initramfs opens root and swap with the
+      key file, initramfs 16 MB with dm-crypt and the USB keyboard drivers, `MODULES=dep`. Found (not from #47, older):
+      every start waited ~30 s – the kernel line has `resume=` on the encrypted swap, but the initramfs is built in the
+      installer's chroot where the swap is not open, so it was left out (a rebuild in the installed system, e.g. at the
+      first kernel update, healed it). bootloader-config now gives the swap the crypttab option `initramfs`: chroot
+      build in the VM → 9.6 s. Check after the next ISO build: an encrypted installation starts in ~10 s from the
+      first boot, `grep initramfs /etc/crypttab` shows the swap line.
 - [x] **zstd squashfs (issue #19):** `build/build.log` says `zstd compressed`; the ISO stays below 2 GiB (`publish`
       refuses otherwise; expected ~1.71 GB); the live session starts and installs (time it against 1.0.7 on the same
       machine). Measured on the 1.0.7 squashfs: xz 1432 MB / 5.6 s to unpack, zstd-19 1514 MB / 2.8 s.

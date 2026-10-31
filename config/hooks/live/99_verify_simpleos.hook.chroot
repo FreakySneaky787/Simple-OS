@@ -4692,6 +4692,11 @@ check "$BLC is not the Simple OS version (the Debian original needs a package po
 check "$BLC: shell syntax error" "bash -n $BLC"
 check "Calamares: module bootloader-config does not call $BLC" "grep -q '\"$BLC\"' /usr/lib/calamares/modules/bootloader-config/module.desc"
 check "Calamares: bootloader-config not before bootloader" "awk '/^  - bootloader-config\$/{c=NR} /^  - bootloader\$/{b=NR} END{exit !(c && b && c < b)}' /etc/calamares/settings.conf"
+# Encrypted swap is the resume device on the kernel line; built in the chroot without the crypttab option "initramfs"
+# the initramfs left it out and every start of an encrypted installation waited ~30 s for it. fstab writes crypttab first.
+check "$BLC does not mark the encrypted swap for the initramfs (encrypted installations start 30 s slower)" \
+      "grep -qF '\$4 = \$4 \",initramfs\"' $BLC &&
+       awk '/^  - fstab\$/{f=NR} /^  - bootloader-config\$/{c=NR} END{exit !(f && c && f < c)}' /etc/calamares/settings.conf"
 # os-prober in /etc/default/grub.d: every GRUB update from Debian turns an os-prober line in /etc/default/grub "off" again
 # (grub-pc.config sets grub2/enable_os_prober=false for ANY GRUB_DISABLE_OS_PROBER line) -> other systems vanished
 OPC=/etc/default/grub.d/simpleos-os-prober.cfg

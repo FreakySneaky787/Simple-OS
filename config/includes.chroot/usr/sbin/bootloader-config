@@ -43,6 +43,15 @@ if [ "$(findmnt -n -o SOURCE "$CHROOT" | cut -c -16)" = "/dev/mapper/luks" ]; th
     need cryptsetup keyctl update-initramfs
     echo "UMASK=0077" > "$CHROOT/etc/initramfs-tools/conf.d/initramfs-permissions"
     install_deb cryptsetup-initramfs
+    # Encrypted swap: Calamares puts resume=/dev/mapper/<swap> on the kernel line, but the swap is not open in this
+    # chroot, so cryptsetup's initramfs hook left it out – every start then waited ~30 s for the resume device until
+    # the first kernel update rebuilt the initramfs. The crypttab option "initramfs" makes the hook take it anyway.
+    for swap in $(awk '$3 == "swap" && $1 ~ /^\/dev\/mapper\// { sub(/^\/dev\/mapper\//, "", $1); print $1 }' "$CHROOT/etc/fstab"); do
+        awk -v n="$swap" '$1 == n && $4 !~ /(^|,)initramfs(,|$)/ { $4 = $4 ",initramfs" } { print }' \
+            "$CHROOT/etc/crypttab" > "$CHROOT/etc/crypttab.new" && cat "$CHROOT/etc/crypttab.new" > "$CHROOT/etc/crypttab"
+        rm -f "$CHROOT/etc/crypttab.new"
+        echo " * Encrypted swap $swap goes into the initramfs (resume)"
+    done
 fi
 
 # Small initramfs (#47): MODULES=dep if a test build works in the new system – Calamares' initramfs job comes later and
