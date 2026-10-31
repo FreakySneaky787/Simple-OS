@@ -135,7 +135,7 @@ rest moved to 1.2.
 
 ## 1.1.1 – bugfix release after 1.1
 
-- **Menus close again after a slow click** (issue: see GitHub milestone 1.1.1): holding the button for 0.3 s or
+- **Menus close again after a slow click** (#104): holding the button for 0.3 s or
   more closes the desktop and window menus (Openbox `hideDelay` 200 ms) and the volume slider; the GTK tray menus
   (nm-applet, volume right-click) close after about 0.5 s. Plan: a longer `hideDelay`, and our own flyouts instead of
   the GTK tray menus where needed.
