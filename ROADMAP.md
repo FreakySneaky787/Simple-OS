@@ -115,24 +115,30 @@ Moved from 1.0.4 to keep it small, plus what came up since:
 Bugfix releases (1.0.x) come in between when users report something. Kept to what fits in about two weeks; the
 rest moved to 1.2.
 
-- **HiDPI / display scaling** (#41, **done, needs a real HiDPI screen**: Control Center → Display → Scale – Automatic
+- **HiDPI / display scaling** (#41, **done**, ThinkPad E16 OK, a real 2.8K/4K screen still to come: Control Center → Display → Scale – Automatic
   from the screen's real size (2.8K/4K laptops 200 %, 16" 2560x1600 150 %, Full HD stays 100 %), 100/125/150/200 %;
   text (Xft.dpi), GTK (XSETTINGS, window scale 2 at 200 %), taskbar (tint2's own scaling), Rofi, notifications,
   Openbox titles and menus, pointer, login/lock screen; applies at once, VM 2880x1800).
 - **Language & Region page** (system language, formats) (#42, **done**: Control Center page, languages from iso-codes,
   generates the locale, writes all format lines, installs the language packs; VM: English → German (Switzerland) with
-  formats Germany, applies after signing out without a restart, cancel and offline OK).
+  formats Germany, applies after signing out without a restart, cancel and offline OK; ThinkPad E16 OK).
 - **Boot time & size:** initramfs `MODULES=dep` (#47, **done**: ~160 MB → ~17 MB, kernel phase 2.1 → 1.1 s in a VM,
-  tried in a copy first, extra disk/keyboard drivers so a moved disk still boots), zstd squashfs (#19, **done, needs
-  the next ISO build**: level 19 = +6 % ISO size, unpacks twice as fast).
-- **Webcam / camera test** app (the camera works, but there is nothing to try it with) (#44, **done, needs a test
-  on a real webcam**: Menu → Apps → Camera, mirrored picture, photos to Pictures/Camera, several cameras, "in use"
+  tried in a copy first, extra disk/keyboard drivers so a moved disk still boots), zstd squashfs (#19, **done**:
+  level 19 = +6 % ISO size, unpacks twice as fast; ISO 2026-10-31 1.66 GB, installed in a VM).
+- **Webcam / camera test** app (the camera works, but there is nothing to try it with) (#44, **done**, ThinkPad E16 webcam OK: Menu → Apps → Camera, mirrored picture, photos to Pictures/Camera, several cameras, "in use"
   with Try Again; VM with the virtual test camera).
 - **Done on the side:** USB notifications never offer "Safely remove" for an internal disk (#100); test builds no
   longer block the published package (#102: package version `X.Y.Z+<build time>`).
 - On the side, as far as hardware is at hand: **hardware tests** (NVIDIA desktop with the driver, AMD laptop, dual boot
   with Windows, Secure Boot on) (#49) and a public hardware compatibility page (#92, **done**: `docs/HARDWARE.md`,
   website page, GitHub "Hardware report" form – filled with what was really tested, the rest marked "not tested yet").
+
+## 1.1.1 – bugfix release after 1.1
+
+- **Menus close again after a slow click** (issue: see GitHub milestone 1.1.1): holding the button for 0.3 s or
+  more closes the desktop and window menus (Openbox `hideDelay` 200 ms) and the volume slider; the GTK tray menus
+  (nm-applet, volume right-click) close after about 0.5 s. Plan: a longer `hideDelay`, and our own flyouts instead of
+  the GTK tray menus where needed.
 
 ## 1.2 – feature release after 1.1
 
