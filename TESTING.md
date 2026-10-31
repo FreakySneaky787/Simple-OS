@@ -373,11 +373,14 @@ Xsession step and the Rofi wrapper in place; Language & Region and the camera ap
       keeps MODULES=most). Update from 1.0.7: migration 100 rebuilds it the same way (`sudo cat
       /var/log/simpleos-edition.log`). VM 2026-10-29: 160 → 17 MB, kernel phase 2.1 → 1.1 s; the disk moved from AHCI to
       NVMe still boots (with plain `dep` it stopped at the initramfs shell); Calamares-like chroot from the live ISO: test
-      build OK, the initramfs job took 5 s.
-- [ ] **zstd squashfs (issue #19):** `build/build.log` says `zstd compressed`; the ISO stays below 2 GiB (`publish`
+      build OK, the initramfs job took 5 s. ISO from `next` 59c59f0 (2026-10-31), VM UEFI, Calamares "Erase disk":
+      `MODULES=dep`, initramfs 15.6 MB, boot 1.1 s kernel + 1.7 s userspace, no failed units. Open: BIOS, LUKS, real
+      hardware; the session.log in the live session had only its start line, so the "test build" line was not seen.
+- [x] **zstd squashfs (issue #19):** `build/build.log` says `zstd compressed`; the ISO stays below 2 GiB (`publish`
       refuses otherwise; expected ~1.71 GB); the live session starts and installs (time it against 1.0.7 on the same
       machine). Measured on the 1.0.7 squashfs: xz 1432 MB / 5.6 s to unpack, zstd-19 1514 MB / 2.8 s.
-- [ ] **zstd in the image:** `update-initramfs -u` no longer prints "No zstd … using gzip".
+      ISO 2026-10-31: 1.66 GB, `unsquashfs -s` = zstd level 19, verify hook OK, live session up in 4.9 s, installed in a VM.
+- [x] **zstd in the image:** `update-initramfs -u` no longer prints "No zstd … using gzip" (VM 2026-10-31).
 - [ ] **USB notifications (issue #100):** a computer with a second internal disk that has its own EFI partition
       (Windows/another Linux): opening Software Updates or the Software Center shows no "USB drive is ready". A USB
       stick still shows it, and "Safely remove" still works.
