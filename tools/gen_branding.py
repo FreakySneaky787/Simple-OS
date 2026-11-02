@@ -156,109 +156,246 @@ def make_banner(size, title_px, subtitle):
 
 
 def make_wallpaper(size, day=False):
-    """2.0 "Rigi": a cog railway climbing the mountain at sunset, everything in peach fading into the dark.
-    No logo, no text – the wallpaper should still disappear behind windows (calm, low contrast, empty sky).
-    Night (default): the glow of the sun behind the Rigi in Catppuccin Peach, the sky and slopes fade to Crust.
-    Day (day=True): the same scene in light peach (simpleos-wallpaper-schedule switches).
-    Deterministic (no random numbers), so every build delivers the same picture and day/night show the same scene."""
+    """2.0 "Rigi": sunset at a station on the Rigi. The sun sinks behind an alpine peak and throws soft rays over layered
+    ranges in the haze; a cog railway train comes towards the viewer under its overhead line, the rails catch the light.
+    Flat shapes, everything in Catppuccin Peach fading into the dark. No logo, no text; the upper left (desktop icons)
+    stays calm sky. Night (default): peach into Crust. Day (day=True): the same scene in light peach
+    (simpleos-wallpaper-schedule switches). Deterministic (fixed seeds): every build gives the same picture."""
     import math
+    import random
 
     ss = 2  # supersampling for smooth edges
-    w, h = size[0] * ss, size[1] * ss
+    W, H = size[0] * ss, size[1] * ss
+
+    def X(x):
+        return x * W
+
+    def Y(y):
+        return y * H
 
     if day:
-        top, glow = lerp(WHITE, PEACH, 0.22), lerp(WHITE, PEACH, 0.70)
-        far, near = lerp(WHITE, PEACH, 0.55), lerp(PEACH, (0x5A, 0x34, 0x2C), 0.78)
-        rim, light = WHITE, WHITE
-        ink = (0x3E, 0x24, 0x22)
+        top, mid, glow, ink = lerp(WHITE, PEACH, 0.18), lerp(WHITE, PEACH, 0.42), lerp(WHITE, PEACH, 0.68), (0x5E, 0x38, 0x30)
+        sun_c, ray_a, lamp = WHITE, 34, lerp(WHITE, PEACH, 0.15)
+        ray_c = halo = WHITE
     else:
-        top, glow = CRUST, lerp(CRUST, PEACH, 0.92)
-        far, near = lerp(CRUST, PEACH, 0.42), lerp(CRUST, PEACH, 0.025)
-        rim, light = PEACH, lerp(PEACH, WHITE, 0.25)
-        ink = CRUST
+        top, mid, glow, ink = CRUST, lerp(CRUST, PEACH, 0.40), lerp(PEACH, WHITE, 0.10), CRUST
+        sun_c, ray_a, lamp = lerp(PEACH, WHITE, 0.85), 18, lerp(PEACH, WHITE, 0.75)
+        ray_c = lerp(glow, WHITE, 0.4)
+        halo = lerp(glow, WHITE, 0.35)
 
-    img = gradient((w, h), top, glow, horizontal=False).convert("RGBA")
-    # Sun: a soft glow low over the horizon, right of the middle
-    sun = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    cx, cy, rad = round(w * 0.86), round(h * 0.50), round(h * 0.085)
-    ImageDraw.Draw(sun).ellipse((cx - rad, cy - rad, cx + rad, cy + rad), fill=lerp(glow, WHITE, 0.45) + (230,))
-    img = Image.alpha_composite(img, sun.filter(ImageFilter.GaussianBlur(rad * 0.9)))
-    img = Image.alpha_composite(img, sun.filter(ImageFilter.GaussianBlur(rad * 3.2)))
+    def shade(t):
+        return lerp(glow, ink, t)
 
-    def smooth(x, freq, phase):
-        return math.sin(math.tau * freq * x + phase)
+    # ---- Sky: dark at the top, glowing peach towards the horizon ----
+    img = Image.new("RGB", (W, H))
+    d = ImageDraw.Draw(img)
+    stops = [(0.0, top), (0.30, mid), (0.50, glow), (1.0, glow)]
+    for y in range(H):
+        f = y / H
+        for (fa, ca), (fb, cb) in zip(stops, stops[1:]):
+            if fa <= f <= fb:
+                d.line([(0, y), (W, y)], fill=lerp(ca, cb, (f - fa) / (fb - fa)))
+                break
 
-    def ridge(x, base, peak_x, peak_h, width, wob):
-        """Mountain profile (y in pixels): a broad peak at peak_x plus calm waves."""
-        bump = math.exp(-(((x - peak_x) / width) ** 2))
-        waves = 0.55 * smooth(x, 1.3, 0.7) + 0.30 * smooth(x, 3.1, 2.0) + 0.15 * smooth(x, 6.7, 4.1)
-        return (base - peak_h * bump + wob * waves) * h
+    def soft(draw_fn, blur, tint):
+        """Soft light (glow, rays, haze): drawn at a quarter of the size, blurred, scaled up. The transparent pixels
+        carry the light's own color, so blurring does not mix black into the edges (grey streaks in the day sky)."""
+        k = 0.25
+        small = Image.new("RGBA", (round(W * k), round(H * k)), tint + (0,))
+        draw_fn(ImageDraw.Draw(small), k)
+        small = small.filter(ImageFilter.GaussianBlur(blur * k * size[0] / 1280))  # blur grows with the picture
+        return small.resize((W, H), Image.BILINEAR)
 
-    def draw_layer(img, fn, color, rim_alpha, rim_color):
-        pts = [(i, fn(i / w)) for i in range(0, w + 6, 6)]
-        layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        ImageDraw.Draw(layer).polygon(pts + [(w, h), (0, h)], fill=color + (255,))
-        img = Image.alpha_composite(img, layer)
-        if rim_alpha:
-            edge = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-            ImageDraw.Draw(edge).line(pts, fill=rim_color + (round(255 * rim_alpha),), width=2 * ss)
-            img = Image.alpha_composite(img, edge.filter(ImageFilter.GaussianBlur(ss * 0.8)))
+    def paste_soft(img, layer):
+        return Image.alpha_composite(img.convert("RGBA"), layer).convert("RGB")
+
+    # ---- Sun with rays, sinking behind the shoulder of the big peak ----
+    sx, sy = 0.43, 0.445
+
+    def rays(dd, k):
+        for i in range(16):
+            ang = math.radians(-180 + i * 360 / 16 + 6)
+            half = math.radians(1.6)
+            p = [(X(sx) * k, Y(sy) * k)]
+            for a2 in (ang - half, ang + half):
+                p.append(((X(sx) + math.cos(a2) * W) * k, (Y(sy) + math.sin(a2) * W) * k))
+            dd.polygon(p, fill=ray_c + (ray_a,))
+
+    def sun_glow(dd, k):
+        for r, a_ in ((0.42, 70), (0.20, 110), (0.08, 190)):
+            rr = Y(r) * k
+            dd.ellipse((X(sx) * k - rr, Y(sy) * k - rr, X(sx) * k + rr, Y(sy) * k + rr), fill=halo + (a_,))
+
+    img = paste_soft(img, soft(rays, 10 * ss, ray_c))
+    img = paste_soft(img, soft(sun_glow, 60 * ss, halo))
+    d = ImageDraw.Draw(img, "RGBA")
+    r = Y(0.03)
+    d.ellipse((X(sx) - r, Y(sy) - r, X(sx) + r, Y(sy) + r), fill=sun_c)
+
+    # ---- Mountains: jagged alpine ridges, lighter (more haze) the further away ----
+    def ridge(seed, base, rough, peaks=(), levels=8):
+        rnd = random.Random(seed)
+        n = 2 ** levels
+        pts = [0.0] * (n + 1)
+        pts[0], pts[n] = rnd.uniform(-1, 1) * rough, rnd.uniform(-1, 1) * rough
+        step, amp = n, rough
+        while step > 1:
+            half = step // 2
+            for i in range(half, n, step):
+                pts[i] = (pts[i - half] + pts[i + half]) / 2 + rnd.uniform(-1, 1) * amp
+            step, amp = half, amp * 0.55
+
+        def y_at(x):
+            f = min(max(x, 0.0), 1.0) * n
+            i = min(int(f), n - 1)
+            t = f - i
+            y = pts[i] * (1 - t) + pts[i + 1] * t
+            for px, ph, pw in peaks:
+                y -= ph * max(0.0, 1 - abs(x - px) / pw)  # triangular peaks look alpine
+            return base + y
+        return y_at
+
+    def mountain(img, fn, color, rim=0.0):
+        pts = [(x, Y(fn(x / W))) for x in range(0, W + 4, 4)]
+        d = ImageDraw.Draw(img, "RGBA")
+        d.polygon(pts + [(W, H), (0, H)], fill=color)
+        if rim:
+            # edge of light, strongest close to the sun
+            light = lerp(glow, WHITE, 0.45)
+            for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+                a_ = rim * max(0.0, 1 - abs(x0 / W - sx) / 0.45)
+                if a_ > 0.02:
+                    d.line([(x0, y0), (x1, y1)], fill=light + (round(255 * a_),), width=2 * ss)
         return img
 
-    # Back to front: far range (hazy), the Rigi itself, a dark foreground hill
-    img = draw_layer(img, lambda x: ridge(x, 0.70, 0.18, 0.20, 0.20, 0.030), far, 0.30, rim)
-    rigi = lambda x: ridge(x, 0.80, 0.60, 0.40, 0.27, 0.014)
-    img = draw_layer(img, rigi, lerp(far, near, 0.80), 0.75, rim)
+    img = mountain(img, ridge(3, 0.47, 0.030, [(0.10, 0.05, 0.07), (0.28, 0.04, 0.06), (0.76, 0.06, 0.08),
+                                                (0.93, 0.04, 0.05)]), shade(0.16), 0.35)
+    img = mountain(img, ridge(7, 0.535, 0.028, [(0.50, 0.16, 0.13), (0.575, 0.10, 0.07), (0.18, 0.06, 0.10),
+                                                 (0.88, 0.05, 0.09)]), shade(0.32), 0.75)
 
-    # Cog railway: climbs the left slope of the Rigi towards the summit (a path along the slope, a bit below the ridge)
-    x0, x1 = 0.07, 0.575
-    n = 400
-    track = []
-    for i in range(n + 1):
-        t = i / n
-        x = x0 + (x1 - x0) * t
-        track.append((x * w, rigi(x) + h * (0.060 - 0.030 * t)))
-    rail = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    rd = ImageDraw.Draw(rail)
-    for i in range(0, n, 3):  # sleepers
-        (xa, ya), (xb, yb) = track[i], track[min(i + 1, n)]
-        ang = math.atan2(yb - ya, xb - xa)
-        nx, ny = -math.sin(ang), math.cos(ang)
-        rd.line((xa - nx * 3 * ss, ya - ny * 3 * ss, xa + nx * 3 * ss, ya + ny * 3 * ss), fill=ink + (200,), width=ss)
-    rd.line(track, fill=ink + (255,), width=2 * ss)
-    rd.line([(x, y - 2 * ss) for x, y in track], fill=rim + (130,), width=ss)
-    img = Image.alpha_composite(img, rail)
+    def mist(dd, k):
+        dd.rectangle((0, Y(0.575) * k, W * k, Y(0.615) * k), fill=lerp(glow, WHITE, 0.25) + (80,))
+    img = paste_soft(img, soft(mist, 40 * ss, lerp(glow, WHITE, 0.25)))
 
-    # Train: locomotive + two cars, lights in the windows, placed on the track and turned along the slope
-    car_w, car_h, gap = 62 * ss, 24 * ss, 3 * ss
-    train = Image.new("RGBA", (3 * car_w + 2 * gap + 20 * ss, car_h + 24 * ss), (0, 0, 0, 0))
-    td = ImageDraw.Draw(train)
-    for k in range(3):
-        left = 10 * ss + k * (car_w + gap)
-        td.rounded_rectangle((left, 8 * ss, left + car_w, 8 * ss + car_h), radius=5 * ss, fill=ink + (255,))
-        td.line((left + 6 * ss, 10 * ss, left + car_w - 6 * ss, 10 * ss), fill=rim + (170,), width=ss)
-        for j in range(5):
-            wx = left + 6 * ss + j * (car_w - 12 * ss) / 5
-            td.rounded_rectangle((wx, 8 * ss + 6 * ss, wx + 7 * ss, 8 * ss + 13 * ss), radius=ss, fill=light + (255,))
-    glow_layer = train.filter(ImageFilter.GaussianBlur(3 * ss))
-    ti = round(n * 0.60)
-    (xa, ya), (xb, yb) = track[ti], track[ti + 1]
-    ang = math.degrees(math.atan2(yb - ya, xb - xa))
-    for layer_img, fx in ((glow_layer, 0.55), (train, 1.0)):
-        rot = layer_img.rotate(-ang, resample=Image.BICUBIC, expand=True)
-        if fx < 1:
-            rot.putalpha(rot.getchannel("A").point(lambda a: round(a * fx)))
-        # the middle of the train sits on the rail, its underside touches the track
-        px = round(xa - rot.width / 2 - math.sin(math.radians(ang)) * car_h * 0.45)
-        py = round(ya - rot.height / 2 - math.cos(math.radians(ang)) * car_h * 0.45)
-        canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        canvas.paste(rot, (px, py), rot)
-        img = Image.alpha_composite(img, canvas)
+    img = mountain(img, ridge(11, 0.605, 0.022, [(0.06, 0.04, 0.12), (0.37, 0.035, 0.10), (0.86, 0.05, 0.12)]),
+                   shade(0.50), 0.35)
+    img = mountain(img, ridge(19, 0.685, 0.016, [(0.24, 0.03, 0.20), (0.70, 0.02, 0.15)]), shade(0.66), 0.25)
 
-    # Foreground: a dark hill with a thin edge of light
-    img = draw_layer(img, lambda x: ridge(x, 0.93, 0.15, 0.05, 0.40, 0.018), lerp(near, ink, 0.55), 0.18, rim)
+    # Foreground: a hill on the left, the ground of the station on the right
+    hill_noise = ridge(23, 0.0, 0.006)
 
-    img = img.convert("RGB").resize(size, Image.LANCZOS)
+    def ground(x):
+        if x <= 0.45:  # the hill on the left comes down to the plateau of the station
+            return 0.665 + 0.141 * (x / 0.45) ** 1.6 + hill_noise(x) * (1 - x / 0.45)
+        return 0.806 - 0.021 * (x - 0.45) / 0.55
+    img = mountain(img, ground, shade(0.84), 0.30)
+    d = ImageDraw.Draw(img, "RGBA")
+    # platform at the right with a light edge
+    d.polygon([(X(0.715), Y(0.797)), (X(1.0), Y(0.776)), (X(1.0), H), (X(0.87), H)], fill=shade(0.78))
+    d.line([(X(0.715), Y(0.797)), (X(0.87), H)], fill=lerp(glow, WHITE, 0.2) + (150,), width=3 * ss)
+
+    # ---- The cog railway: front facing the viewer, the body going away to the right ----
+    fx0, fx1, fy0, fy1 = 0.615, 0.695, 0.585, 0.790
+    fw, fh = fx1 - fx0, fy1 - fy0
+    vp = (1.22, 0.665)  # vanishing point of the train body
+
+    def toward(p, t):
+        return (p[0] + (vp[0] - p[0]) * t, p[1] + (vp[1] - p[1]) * t)
+    tf = (1.03 - fx1) / (vp[0] - fx1)
+
+    def side(u, v):
+        t = tf * u ** 0.8  # near windows wider than far ones
+        a_, b_ = toward((fx1, fy0), t), toward((fx1, fy1), t)
+        return (X(a_[0] + (b_[0] - a_[0]) * v), Y(a_[1] + (b_[1] - a_[1]) * v))
+
+    # track: ballast, sleepers, two rails and the rack in the middle, catching the light towards the viewer
+    l0, l1 = (fx0 + 0.10 * fw, fy1), (0.42, 1.01)
+    r0, r1 = (fx1 - 0.10 * fw, fy1), (0.85, 1.01)
+    c0, c1 = ((l0[0] + r0[0]) / 2, fy1), ((l1[0] + r1[0]) / 2, 1.01)
+
+    def P(p0, p1, t):
+        return (X(p0[0] + (p1[0] - p0[0]) * t), Y(p0[1] + (p1[1] - p0[1]) * t))
+    d.polygon([P(l0, l1, 0), P(r0, r1, 0), (X(r1[0] + 0.06), H), (X(l1[0] - 0.06), H)], fill=shade(0.92))
+    for i in range(1, 15):
+        t = (i / 14) ** 1.7
+        d.line([P(l0, l1, t), P(r0, r1, t)], fill=lerp(shade(0.92), glow, 0.12), width=max(1, round((1 + 9 * t) * ss)))
+    rail = lerp(glow, WHITE, 0.25)
+    for a_, b_, w_ in ((l0, l1, 1.0), (r0, r1, 1.0), (c0, c1, 0.7)):
+        for i in range(24):
+            t0, t1 = i / 24, (i + 1) / 24
+            d.line([P(a_, b_, t0), P(a_, b_, t1)], fill=rail + (round(120 + 120 * t1),),
+                   width=max(1, round((1 + 5 * t1) * w_ * ss)))
+
+    # far mast behind the train
+    mast = shade(0.95)
+    d.line([(X(0.865), Y(0.70)), (X(0.865), Y(0.505))], fill=mast, width=4 * ss)
+    d.line([(X(0.865), Y(0.525)), (X(0.80), Y(0.525))], fill=mast, width=3 * ss)
+
+    # body side (away from the sun: darker), with a band of windows reflecting the sky
+    body_hi, body_lo = lerp(PEACH, ink, 0.52), lerp(ink, glow, 0.07)
+    d.polygon([side(0, 0), side(1, 0), side(1, 0.55), side(0, 0.55)], fill=body_hi)
+    d.polygon([side(0, 0.55), side(1, 0.55), side(1, 1), side(0, 1)], fill=body_lo)
+    win = lerp(glow, ink, 0.30)
+    for k_ in range(7):
+        a_, b_ = 0.04 + k_ * 0.137, 0.04 + k_ * 0.137 + 0.105
+        d.polygon([side(a_, 0.14), side(b_, 0.14), side(b_, 0.44), side(a_, 0.44)], fill=win + (230,))
+    d.line([side(0.60, 0), side(0.60, 1)], fill=lerp(body_lo, ink, 0.6), width=2 * ss)  # gap between the cars
+    d.line([side(0, 0), side(1, 0)], fill=lerp(glow, WHITE, 0.2) + (140,), width=2 * ss)  # roof edge
+
+    # front: peach livery on top fading into the dark, two windscreens, three lamps
+    front_hi, front_lo = lerp(PEACH, ink, 0.28), lerp(ink, glow, 0.12)
+    rad = round(X(0.010))
+    d.rounded_rectangle((X(fx0), Y(fy0), X(fx1), Y(fy1)), radius=rad, fill=front_hi)
+    steps = 60
+    for i in range(steps):  # soft fade from the livery into the dark lower half
+        t = i / (steps - 1)
+        y0 = Y(fy0 + fh * (0.45 + 0.30 * t))
+        d.rectangle((X(fx0), y0, X(fx1), Y(fy1)), fill=lerp(front_hi, front_lo, t) + (40,))
+    d.rectangle((X(fx0), Y(fy0 + fh * 0.75), X(fx1), Y(fy1)), fill=front_lo)
+    for wx0, wx1 in ((0.08, 0.47), (0.53, 0.92)):
+        d.rounded_rectangle((X(fx0 + fw * wx0), Y(fy0 + fh * 0.10), X(fx0 + fw * wx1), Y(fy0 + fh * 0.40)),
+                            radius=round(X(0.003)), fill=lerp(glow, ink, 0.18))
+        # reflection of the sunset
+        d.polygon([(X(fx0 + fw * wx0), Y(fy0 + fh * 0.30)), (X(fx0 + fw * (wx0 + 0.16)), Y(fy0 + fh * 0.10)),
+                   (X(fx0 + fw * (wx0 + 0.24)), Y(fy0 + fh * 0.10)), (X(fx0 + fw * wx0), Y(fy0 + fh * 0.37))],
+                  fill=lerp(glow, WHITE, 0.4) + (110,))
+    d.line([(X(fx0) + rad, Y(fy0)), (X(fx1) - rad, Y(fy0))], fill=lerp(glow, WHITE, 0.3) + (200,), width=2 * ss)
+    d.line([(X(fx0), Y(fy0) + rad), (X(fx0), Y(fy1))], fill=lerp(glow, WHITE, 0.3) + (170,), width=2 * ss)
+    d.rectangle((X(fx0 - 0.004), Y(fy1 - fh * 0.06), X(fx1 + 0.004), Y(fy1)), fill=lerp(ink, glow, 0.04))
+    lamps = [(fx0 + fw * 0.20, fy0 + fh * 0.80, 0.045), (fx1 - fw * 0.20, fy0 + fh * 0.80, 0.045),
+             (fx0 + fw * 0.50, fy0 + fh * 0.05, 0.030)]
+    for lx, ly, lr in lamps:
+        rr = X(fw * lr)
+        d.ellipse((X(lx) - rr, Y(ly) - rr, X(lx) + rr, Y(ly) + rr), fill=lamp)
+
+    def lamp_glow(dd, k):
+        for lx, ly, lr in lamps:
+            rr = X(fw * lr) * 4 * k
+            dd.ellipse((X(lx) * k - rr, Y(ly) * k - rr, X(lx) * k + rr, Y(ly) * k + rr), fill=lamp + (120,))
+    if not day:  # in daylight the lamps do not glow
+        img = paste_soft(img, soft(lamp_glow, 14 * ss, lamp))
+    d = ImageDraw.Draw(img, "RGBA")
+
+    # pantograph and overhead line
+    wire = shade(0.97) + (210,)
+
+    def wire_y(x, y_left, y_mast, y_right):
+        return y_left + (y_mast - y_left) * x / 0.70 if x <= 0.70 else y_mast + (y_right - y_mast) * (x - 0.70) / 0.30
+    px_, py_ = side(0.10, 0)
+    top_y = Y(wire_y(px_ / W, 0.255, 0.546, 0.600))
+    d.line([(px_, py_), (px_ - X(0.010), (py_ + top_y) / 2), (px_, top_y)], fill=wire, width=2 * ss)
+    d.line([(px_ - X(0.012), top_y), (px_ + X(0.012), top_y)], fill=wire, width=2 * ss)
+    d.line([(0, Y(0.255)), (X(0.70), Y(0.546)), (X(1.0), Y(0.600))], fill=wire, width=2 * ss)
+    d.line([(0, Y(0.200)), (X(0.70), Y(0.505)), (X(1.0), Y(0.575))], fill=shade(0.97) + (150,), width=ss)
+
+    # near mast on the left of the track, lit from the sun side
+    d.line([(X(0.578), Y(0.86)), (X(0.578), Y(0.47))], fill=mast, width=6 * ss)
+    d.line([(X(0.578) - 2 * ss, Y(0.86)), (X(0.578) - 2 * ss, Y(0.47))], fill=lerp(glow, WHITE, 0.3) + (90,),
+           width=ss)
+    d.line([(X(0.578), Y(0.500)), (X(0.712), Y(0.500))], fill=mast, width=4 * ss)
+    d.line([(X(0.578), Y(0.475)), (X(0.712), Y(0.500))], fill=mast, width=2 * ss)
+
+    img = img.resize(size, Image.LANCZOS)
     # Fine grain against color banding in the dark gradients
     noise = Image.effect_noise(size, 18).convert("RGB")
     return Image.blend(img, noise, 0.018)
