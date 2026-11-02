@@ -5,7 +5,7 @@ tested by us or reported by people who use it – and what didn't work. Your com
 Try the live session from the USB stick first, it changes nothing on the computer. Then
 [tell us how it went](#report-your-computer), so the next person knows.
 
-Last updated: 29 October 2026 (Simple OS 1.0.7).
+Last updated: 2 November 2026 (Simple OS 1.0.7).
 
 ## Tested computers
 
@@ -14,12 +14,17 @@ Last updated: 29 October 2026 (Simple OS 1.0.7).
 | Computer | Firmware | Version | Install | Wi-Fi | Sound | Graphics | Brightness | Suspend | External monitor |
 |---|---|---|---|---|---|---|---|---|---|
 | Lenovo ThinkPad E16 Gen 3 (21TF) – Intel Core 5 210H, Intel graphics, Intel Wi-Fi | UEFI, Secure Boot off | 1.0.7 | ✅ | ⚠️ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Acer Predator – gaming desktop, Intel Core i7 (13th gen), NVIDIA GeForce RTX 4070 Super, 32 GB RAM | UEFI, Secure Boot off, next to Windows | 1.0.7 | ✅ | ✅ | ✅ | – | ✅ | ✅ | ✅ |
 | Dell OptiPlex 9020 – desktop | legacy BIOS, MBR, next to another system | 1.0.3 | ❌ | – | – | – | – | – | – |
 
 **ThinkPad E16 Gen 3:** in daily use since Simple OS 1.0. Wi-Fi: with one router the 5 GHz connection (a wide 160 MHz
 channel) was slow; setting the network to 2.4 GHz in Control Center → Wi-Fi fixed it. Bluetooth headphones, keyboards
 and phones pair. A monitor plugged in later turns on by itself. Suspend and waking up were checked with 1.0.7. The power
 button has to be held for about a second – the firmware ignores a quick tap.
+
+**Acer Predator (gaming desktop):** installed next to Windows with 1.0.7 – installing, Wi-Fi, sound, suspend and
+an external monitor work. Graphics with 3D (games) and the NVIDIA driver weren't tried yet
+([#105](https://github.com/FreakySneaky787/Simple-OS/issues/105)).
 
 **Dell OptiPlex 9020:** with 1.0.3 the installer could leave the disk unable to start (issues
 [#62](https://github.com/FreakySneaky787/Simple-OS/issues/62) and
@@ -35,9 +40,8 @@ follows the window and copy & paste works between the virtual machine and your c
 
 ## Not tested yet – help wanted
 
-- A desktop with an **NVIDIA** graphics card and the NVIDIA driver
+- The **NVIDIA driver** and games on a desktop with an NVIDIA graphics card
 - A laptop with **AMD** graphics
-- **Dual boot with Windows** on a real computer
 - **Secure Boot on** with an installed system on a real computer
 - Older **Mac** laptops (Intel) – they usually need the Broadcom Wi-Fi driver
 
