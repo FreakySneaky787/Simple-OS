@@ -18,10 +18,10 @@
 set -e
 
 STATE="$HOME/.config/simpleos/theme"
-BASE_ACCENT="#89b4fa"   # accent in the shipped files (skel, /usr/share/themes/SimpleOS)
+BASE_ACCENT="#fab387"   # accent in the shipped files (skel, /usr/share/themes/SimpleOS)
 
 mode=dark
-accent=blue
+accent=peach
 [ -r "$STATE" ] && . "$STATE"
 old_accent=$accent
 set_wallpaper=1

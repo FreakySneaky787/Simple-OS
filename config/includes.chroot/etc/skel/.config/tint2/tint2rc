@@ -24,12 +24,12 @@ border_color_pressed = #585b70 0
 # 3: Task (active)
 rounded = 10
 border_width = 1
-background_color = #89b4fa 25
-border_color = #89b4fa 90
-background_color_hover = #89b4fa 35
-border_color_hover = #89b4fa 100
-background_color_pressed = #89b4fa 45
-border_color_pressed = #89b4fa 100
+background_color = #fab387 25
+border_color = #fab387 90
+background_color_hover = #fab387 35
+border_color_hover = #fab387 100
+background_color_pressed = #fab387 45
+border_color_pressed = #fab387 100
 
 # 4: Task (urgent)
 rounded = 10
@@ -213,7 +213,7 @@ clock_rclick_command =
 button = new
 button_text = 
 button_font = FontAwesome 13
-button_font_color = #89b4fa 100
+button_font_color = #fab387 100
 button_padding = 10 4
 button_background_id = 6
 button_centered = 1

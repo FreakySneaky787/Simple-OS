@@ -28,6 +28,7 @@ PINK = (0xF5, 0xC2, 0xE7)
 SUBTEXT = (0xA6, 0xAD, 0xC8)
 CRUST = (0x11, 0x11, 0x1B)
 MAUVE = (0xCB, 0xA6, 0xF7)
+PEACH = (0xFA, 0xB3, 0x87)        # Catppuccin Mocha Peach: accent of 2.0 "Rigi", wallpaper
 LAVENDER = (0xB4, 0xBE, 0xFE)
 # Catppuccin Latte (light counterpart of Mocha) for the day wallpaper
 LATTE_CRUST = (0xDC, 0xE0, 0xE8)
@@ -154,60 +155,107 @@ def make_banner(size, title_px, subtitle):
 
 
 def make_wallpaper(size, day=False):
-    """Minimal motif: layered dunes under a calm sky, a fine edge of light.
-    No logo, no text, no color blobs – the wallpaper should disappear behind windows.
-    Night (default): Catppuccin Mocha, edge of light in lavender. Day (day=True): the same dunes in Catppuccin
-    Latte – a light sky with a hint of blue, a white edge of light (simpleos-wallpaper-schedule switches).
-    Deterministic (fixed random seed), so every build delivers the same picture and day/night show the same
-    landscape."""
+    """2.0 "Rigi": a cog railway climbing the mountain at sunset, everything in peach fading into the dark.
+    No logo, no text – the wallpaper should still disappear behind windows (calm, low contrast, empty sky).
+    Night (default): the glow of the sun behind the Rigi in Catppuccin Peach, the sky and slopes fade to Crust.
+    Day (day=True): the same scene in light peach (simpleos-wallpaper-schedule switches).
+    Deterministic (no random numbers), so every build delivers the same picture and day/night show the same scene."""
     import math
-    import random
 
-    rnd = random.Random(1984)
     ss = 2  # supersampling for smooth edges
     w, h = size[0] * ss, size[1] * ss
 
     if day:
-        # Sky: a light blue shimmer at the top, Latte Base towards the horizon
-        sky = gradient((w, h), lerp(LATTE_BASE, LATTE_BLUE, 0.16), lerp(LATTE_BASE, LATTE_LAVENDER, 0.04),
-                       horizontal=False)
-        layers = [
-            (0.58, lerp(LATTE_BASE, LATTE_SURFACE0, 0.45), 0.050, 0.55),
-            (0.66, lerp(LATTE_SURFACE0, LATTE_BASE, 0.15), 0.060, 0.45),
-            (0.75, LATTE_SURFACE1, 0.070, 0.35),
-            (0.86, lerp(LATTE_SURFACE1, LATTE_SURFACE2, 0.6), 0.060, 0.25),
-        ]
-        rim_color = WHITE
+        top, glow = lerp(WHITE, PEACH, 0.22), lerp(WHITE, PEACH, 0.70)
+        far, near = lerp(WHITE, PEACH, 0.55), lerp(PEACH, (0x5A, 0x34, 0x2C), 0.78)
+        rim, light = WHITE, WHITE
+        ink = (0x3E, 0x24, 0x22)
     else:
-        # Sky: Crust at the top, Base with a hint of lavender towards the horizon
-        sky = gradient((w, h), CRUST, lerp(BASE, LAVENDER, 0.06), horizontal=False)
-        # Dunes from back to front: lighter at the back (haze), darker at the front
-        layers = [
-            (0.58, lerp(BASE, SURFACE, 0.55), 0.050, 0.22),
-            (0.66, lerp(BASE, SURFACE, 0.30), 0.060, 0.18),
-            (0.75, BASE, 0.070, 0.14),
-            (0.86, lerp(MANTLE, CRUST, 0.5), 0.060, 0.10),
-        ]
-        rim_color = LAVENDER
-    img = sky.convert("RGBA")
+        top, glow = CRUST, lerp(CRUST, PEACH, 0.92)
+        far, near = lerp(CRUST, PEACH, 0.42), lerp(CRUST, PEACH, 0.025)
+        rim, light = PEACH, lerp(PEACH, WHITE, 0.25)
+        ink = CRUST
 
-    for base_y, color, amp, rim in layers:
-        waves = [(rnd.uniform(0.6, 1.6), rnd.uniform(0, math.tau), rnd.uniform(0.35, 1.0)) for _ in range(3)]
-        norm = sum(a for _f, _p, a in waves)
-        pts = []
-        for i in range(0, w + 8, 8):
-            x = i / w
-            y = sum(a * math.sin(math.tau * f * x + p) for f, p, a in waves) / norm
-            pts.append((i, (base_y + amp * y) * h))
+    img = gradient((w, h), top, glow, horizontal=False).convert("RGBA")
+    # Sun: a soft glow low over the horizon, right of the middle
+    sun = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    cx, cy, rad = round(w * 0.86), round(h * 0.50), round(h * 0.085)
+    ImageDraw.Draw(sun).ellipse((cx - rad, cy - rad, cx + rad, cy + rad), fill=lerp(glow, WHITE, 0.45) + (230,))
+    img = Image.alpha_composite(img, sun.filter(ImageFilter.GaussianBlur(rad * 0.9)))
+    img = Image.alpha_composite(img, sun.filter(ImageFilter.GaussianBlur(rad * 3.2)))
+
+    def smooth(x, freq, phase):
+        return math.sin(math.tau * freq * x + phase)
+
+    def ridge(x, base, peak_x, peak_h, width, wob):
+        """Mountain profile (y in pixels): a broad peak at peak_x plus calm waves."""
+        bump = math.exp(-(((x - peak_x) / width) ** 2))
+        waves = 0.55 * smooth(x, 1.3, 0.7) + 0.30 * smooth(x, 3.1, 2.0) + 0.15 * smooth(x, 6.7, 4.1)
+        return (base - peak_h * bump + wob * waves) * h
+
+    def draw_layer(img, fn, color, rim_alpha, rim_color):
+        pts = [(i, fn(i / w)) for i in range(0, w + 6, 6)]
         layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        d = ImageDraw.Draw(layer)
-        d.polygon(pts + [(w, h), (0, h)], fill=color + (255,))
-        # Edge of light: a thin line on the ridge, fading softly upwards
-        edge = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        ImageDraw.Draw(edge).line(pts, fill=rim_color + (round(255 * rim),), width=2 * ss)
-        edge = edge.filter(ImageFilter.GaussianBlur(ss))
+        ImageDraw.Draw(layer).polygon(pts + [(w, h), (0, h)], fill=color + (255,))
         img = Image.alpha_composite(img, layer)
-        img = Image.alpha_composite(img, edge)
+        if rim_alpha:
+            edge = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+            ImageDraw.Draw(edge).line(pts, fill=rim_color + (round(255 * rim_alpha),), width=2 * ss)
+            img = Image.alpha_composite(img, edge.filter(ImageFilter.GaussianBlur(ss * 0.8)))
+        return img
+
+    # Back to front: far range (hazy), the Rigi itself, a dark foreground hill
+    img = draw_layer(img, lambda x: ridge(x, 0.70, 0.18, 0.20, 0.20, 0.030), far, 0.30, rim)
+    rigi = lambda x: ridge(x, 0.80, 0.60, 0.40, 0.27, 0.014)
+    img = draw_layer(img, rigi, lerp(far, near, 0.80), 0.75, rim)
+
+    # Cog railway: climbs the left slope of the Rigi towards the summit (a path along the slope, a bit below the ridge)
+    x0, x1 = 0.07, 0.575
+    n = 400
+    track = []
+    for i in range(n + 1):
+        t = i / n
+        x = x0 + (x1 - x0) * t
+        track.append((x * w, rigi(x) + h * (0.060 - 0.030 * t)))
+    rail = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    rd = ImageDraw.Draw(rail)
+    for i in range(0, n, 3):  # sleepers
+        (xa, ya), (xb, yb) = track[i], track[min(i + 1, n)]
+        ang = math.atan2(yb - ya, xb - xa)
+        nx, ny = -math.sin(ang), math.cos(ang)
+        rd.line((xa - nx * 3 * ss, ya - ny * 3 * ss, xa + nx * 3 * ss, ya + ny * 3 * ss), fill=ink + (200,), width=ss)
+    rd.line(track, fill=ink + (255,), width=2 * ss)
+    rd.line([(x, y - 2 * ss) for x, y in track], fill=rim + (130,), width=ss)
+    img = Image.alpha_composite(img, rail)
+
+    # Train: locomotive + two cars, lights in the windows, placed on the track and turned along the slope
+    car_w, car_h, gap = 62 * ss, 24 * ss, 3 * ss
+    train = Image.new("RGBA", (3 * car_w + 2 * gap + 20 * ss, car_h + 24 * ss), (0, 0, 0, 0))
+    td = ImageDraw.Draw(train)
+    for k in range(3):
+        left = 10 * ss + k * (car_w + gap)
+        td.rounded_rectangle((left, 8 * ss, left + car_w, 8 * ss + car_h), radius=5 * ss, fill=ink + (255,))
+        td.line((left + 6 * ss, 10 * ss, left + car_w - 6 * ss, 10 * ss), fill=rim + (170,), width=ss)
+        for j in range(5):
+            wx = left + 6 * ss + j * (car_w - 12 * ss) / 5
+            td.rounded_rectangle((wx, 8 * ss + 6 * ss, wx + 7 * ss, 8 * ss + 13 * ss), radius=ss, fill=light + (255,))
+    glow_layer = train.filter(ImageFilter.GaussianBlur(3 * ss))
+    ti = round(n * 0.60)
+    (xa, ya), (xb, yb) = track[ti], track[ti + 1]
+    ang = math.degrees(math.atan2(yb - ya, xb - xa))
+    for layer_img, fx in ((glow_layer, 0.55), (train, 1.0)):
+        rot = layer_img.rotate(-ang, resample=Image.BICUBIC, expand=True)
+        if fx < 1:
+            rot.putalpha(rot.getchannel("A").point(lambda a: round(a * fx)))
+        # the middle of the train sits on the rail, its underside touches the track
+        px = round(xa - rot.width / 2 - math.sin(math.radians(ang)) * car_h * 0.45)
+        py = round(ya - rot.height / 2 - math.cos(math.radians(ang)) * car_h * 0.45)
+        canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        canvas.paste(rot, (px, py), rot)
+        img = Image.alpha_composite(img, canvas)
+
+    # Foreground: a dark hill with a thin edge of light
+    img = draw_layer(img, lambda x: ridge(x, 0.93, 0.15, 0.05, 0.40, 0.018), lerp(near, ink, 0.55), 0.18, rim)
 
     img = img.convert("RGB").resize(size, Image.LANCZOS)
     # Fine grain against color banding in the dark gradients

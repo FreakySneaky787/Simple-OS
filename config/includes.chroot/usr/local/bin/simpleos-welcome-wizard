@@ -165,7 +165,7 @@ def current_browser():
 
 
 def current_theme():
-    state = {"mode": "dark", "accent": "blue"}
+    state = {"mode": "dark", "accent": "peach"}
     try:
         out = subprocess.run(["simpleos-theme", "--show"], capture_output=True, text=True, timeout=5).stdout
         state.update(line.split("=", 1) for line in out.splitlines() if "=" in line)
@@ -362,7 +362,7 @@ class Wizard(Gtk.Window):
         theme = current_theme()
         self.browser = current_browser()
         self.mode = theme["mode"] if theme["mode"] in ("dark", "light") else "dark"
-        self.accent = theme["accent"] if theme["accent"] in dict(ACCENTS) else "blue"
+        self.accent = theme["accent"] if theme["accent"] in dict(ACCENTS) else "peach"
         self.office = current_office()
         self.gaming = "ultimate" if gaming_installed() else "none"
         self.open_store = False

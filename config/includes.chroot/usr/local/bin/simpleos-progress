@@ -54,7 +54,7 @@ PALETTES = {  # Catppuccin: base, surface0, text, subtext0, overlay0
 
 
 def theme(path=None):
-    mode, accent = "dark", "blue"
+    mode, accent = "dark", "peach"
     try:
         with open(path or os.path.expanduser("~/.config/simpleos/theme")) as f:
             for line in f:

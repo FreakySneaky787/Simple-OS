@@ -4256,7 +4256,7 @@ tcase "dark again" "DISPLAY=:0 XSD_RUNNING=1" "--mode dark" \
      grep -qx "gsettings set org.gnome.desktop.interface color-scheme prefer-dark" $S/gsettings &&
      grep -qx "Net/ThemeName \"Arc-Dark\"" '"$XSD"' && grep -qx "pkill -HUP -x xsettingsd" $S/pkill &&
      grep -qx "openbox --reconfigure" $S/power && grep -qx "/usr/share/backgrounds/simpleos/wallpaper.png" $S/wallpaper &&
-     grep -qE "^ *bg: *#1e1e2e;" '"$RASI"' && grep -qE "^ *fg: *#cdd6f4;" '"$RASI"' && grep -qE "^ *accent: *#89b4fa;" '"$RASI"' &&
+     grep -qE "^ *bg: *#1e1e2e;" '"$RASI"' && grep -qE "^ *fg: *#cdd6f4;" '"$RASI"' && grep -qE "^ *accent: *#fab387;" '"$RASI"' &&
      cmp -s /etc/skel/.config/rofi/config.rasi '"$RASI"
 tcase "xsettingsd not running -> gets started" "DISPLAY=:0" "--mode light" 'waitfor $S/xsd && grep -q "^xsettingsd -c '"$XSD"'" $S/xsd'
 theme_home "$wt/files/note.txt"

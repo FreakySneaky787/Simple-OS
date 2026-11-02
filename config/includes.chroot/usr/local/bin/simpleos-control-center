@@ -401,7 +401,7 @@ def bt_pair(mac):
 def theme_state():
     out = cmd("simpleos-theme", "--show").stdout
     mode = (re.search(r"^mode=(\w+)", out, re.M) or [None, "dark"])[1]
-    accent = (re.search(r"^accent=(\w+)", out, re.M) or [None, "blue"])[1]
+    accent = (re.search(r"^accent=(\w+)", out, re.M) or [None, "peach"])[1]
     return mode, accent
 
 
@@ -1321,7 +1321,7 @@ def main(argv):
 
             def apply_theme(*_):
                 bg(lambda: cmd("simpleos-theme", "--mode", dark.get_active_id() or "dark",
-                               "--accent", acc.get_active_id() or "blue", timeout=60), lambda _r: None)
+                               "--accent", acc.get_active_id() or "peach", timeout=60), lambda _r: None)
             dark.connect("changed", apply_theme)
             acc.connect("changed", apply_theme)
             self.put(card([("Apps", "Dark or light windows", dark),

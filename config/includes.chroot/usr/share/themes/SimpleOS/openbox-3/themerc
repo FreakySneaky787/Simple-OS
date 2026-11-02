@@ -6,7 +6,7 @@ window.handle.width: 0
 window.client.padding.width: 0
 window.client.padding.height: 0
 
-window.active.border.color: #89b4fa
+window.active.border.color: #fab387
 window.inactive.border.color: #313244
 window.active.client.color: #1e1e2e
 window.inactive.client.color: #181825
@@ -36,14 +36,14 @@ window.active.button.unpressed.bg: parentrelative
 window.active.button.unpressed.image.color: #cdd6f4
 window.active.button.hover.bg: flat solid
 window.active.button.hover.bg.color: #313244
-window.active.button.hover.image.color: #89b4fa
+window.active.button.hover.image.color: #fab387
 window.active.button.pressed.bg: flat solid
 window.active.button.pressed.bg.color: #45475a
-window.active.button.pressed.image.color: #89b4fa
+window.active.button.pressed.image.color: #fab387
 window.active.button.disabled.bg: parentrelative
 window.active.button.disabled.image.color: #45475a
 window.active.button.toggled.bg: parentrelative
-window.active.button.toggled.image.color: #89b4fa
+window.active.button.toggled.image.color: #fab387
 window.inactive.button.unpressed.bg: parentrelative
 window.inactive.button.unpressed.image.color: #6c7086
 window.inactive.button.hover.bg: flat solid
@@ -62,7 +62,7 @@ window.inactive.button.toggled.image.color: #6c7086
 # Openbox 3.6 has no padding for menu entries -> a wide border in the background color serves as padding
 # (the selection floats as an area in the menu instead of sticking to the edge). The outline comes from picom: rounded
 # corners (10 px) and a soft shadow instead of a hard, square line. Its own mauve color, so simpleos-theme (replaces
-# only the window accent #89b4fa) does not recolor the menus.
+# only the window accent #fab387) does not recolor the menus.
 menu.border.width: 6
 menu.border.color: #1e1e2e
 menu.overlap.x: -8
@@ -93,6 +93,6 @@ osd.bg.color: #1e1e2e
 osd.label.bg: parentrelative
 osd.label.text.color: #cdd6f4
 osd.hilight.bg: flat solid
-osd.hilight.bg.color: #89b4fa
+osd.hilight.bg.color: #fab387
 osd.unhilight.bg: flat solid
 osd.unhilight.bg.color: #313244
