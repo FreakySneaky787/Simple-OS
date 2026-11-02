@@ -393,7 +393,8 @@ the lb default files, the generated graphics and the fastfetch package.
   Rofi flyouts: rounded card (16 px) with a fine border, a heading instead of a search field, an accent marker on
   the selected entry; Network and Power open above the taskbar on the right, like Windows 11. picom: soft shadows
   and rounded corners for windows; Rofi without picom shadow (picom 9.1 draws it square, it would show through the
-  rounded corners). Wallpaper: layered dunes in Mocha tones with a fine lavender edge, no logo (`gen_branding.py`).
+  rounded corners). Wallpaper (2.0 "Rigi"): a cog railway climbing the Rigi at sunset, all in peach fading into the dark, no logo; the day
+  variant is the same scene in light peach (`gen_branding.py`). Default accent: peach.
   Logo: a lifebuoy (cream, four stripes in Catppuccin Latte Peach); the wordmark "SOS" uses the ring as the "O" and the two
   "S" in a peach → cream gradient, slogan "Keep it Simple" – Calamares, boot menu, Plymouth, wizard, Welcome page.
   Tooltips in German/English; tray icons (nm-applet, blueman, volumeicon, power) bring their own tooltips.

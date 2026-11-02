@@ -15,6 +15,20 @@ The first big release: Simple OS moves to **Debian 13 "trixie"**, the current De
 stays – the same calm desktop, the Setup Wizard, the Control Center, Software Updates – on a newer base. 2.0 is
 named after the **Rigi**, the "Queen of the Mountains" above Lake Lucerne.
 
+### The Rigi look
+
+- **Peach is the default accent color** (Catppuccin Peach `#fab387`; in light mode the stronger `#fe640b`). Menus, taskbar,
+  window frames, Setup Wizard and progress windows all start in peach. Blue, mauve, pink, green and teal stay
+  available in Appearance.
+- **New default wallpaper:** a cog railway climbing the Rigi at sunset – all in peach, fading into the dark. The day
+  variant of the dynamic wallpaper is the same scene in light peach.
+
+  | Night (default) | Day |
+  |---|---|
+  | <img src="docs/rigi-wallpaper-night.webp" width="100%"> | <img src="docs/rigi-wallpaper-day.webp" width="100%"> |
+- **New logo colors:** the lifebuoy has a cream ring with four orange stripes; the two "S" run from peach to cream.
+  Boot menu, installer, Setup Wizard and README use them.
+
 ### New base
 
 - **Debian 13 "trixie"** with security updates from Debian for years to come (regular support until 2028, Debian LTS
