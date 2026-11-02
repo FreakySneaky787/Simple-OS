@@ -39,8 +39,9 @@ LATTE_SURFACE2 = (0xAC, 0xB0, 0xBE)
 LATTE_BLUE = (0x1E, 0x66, 0xF5)
 LATTE_LAVENDER = (0x72, 0x87, 0xFD)
 WHITE = (0xFF, 0xFF, 0xFF)
-RED = (0xF3, 0x8B, 0xA8)          # Catppuccin Mocha Red: stripes of the lifebuoy
-RING = (0xF5, 0xF6, 0xFA)         # base color of the ring (almost white)
+RED = (0xFE, 0x64, 0x0B)          # Catppuccin Latte Peach: stripes of the lifebuoy (2.0 "Rigi")
+CREAM = (0xF5, 0xE0, 0xDC)        # Catppuccin Mocha Rosewater: end of the S gradient and the ring
+RING = CREAM                      # base color of the ring (warm cream)
 TEXT = (0xCD, 0xD6, 0xF4)
 SLOGAN = "Keep it Simple"
 VERSION = ""  # from usr/lib/os-release (main)
@@ -69,8 +70,8 @@ def gradient(size, start, end, horizontal=True):
     return img
 
 
-def gradient_text(canvas, xy, text, font, start=PEACH, end=PINK, anchor="mm"):
-    """Draws text with a horizontal peach->pink gradient."""
+def gradient_text(canvas, xy, text, font, start=PEACH, end=CREAM, anchor="mm"):
+    """Draws text with a horizontal peach->cream gradient."""
     mask = Image.new("L", canvas.size, 0)
     ImageDraw.Draw(mask).text(xy, text, font=font, fill=255, anchor=anchor)
     x0, _, x1, _ = mask.getbbox()
@@ -80,7 +81,7 @@ def gradient_text(canvas, xy, text, font, start=PEACH, end=PINK, anchor="mm"):
 
 
 def make_lifebuoy(size):
-    """Lifebuoy: white ring, four red stripes diagonally (45°, 135°, 225°, 315°), transparent hole.
+    """Lifebuoy: cream ring, four orange stripes diagonally (45°, 135°, 225°, 315°), transparent hole.
     From 40 px and smaller the ring is thicker so the stripes stay visible (taskbar, icons)."""
     s = size * SS
     img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
@@ -125,7 +126,7 @@ def make_wordmark(cap_px):
     x_ring = 2 * SS + sw + gap
     md.text((x_ring + ring_d + gap - l, base_y), "S", font=font, fill=255, anchor="ls")
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    img.paste(gradient((w, h), PEACH, PINK).convert("RGBA"), (0, 0), mask)
+    img.paste(gradient((w, h), PEACH, CREAM).convert("RGBA"), (0, 0), mask)
     buoy = make_lifebuoy(ring_d // SS).resize((ring_d, ring_d), Image.LANCZOS)
     img.alpha_composite(buoy, (x_ring, base_y - cap // 2 - ring_d // 2))
     img = img.crop(img.getbbox())
@@ -140,8 +141,8 @@ def make_banner(size, title_px, subtitle):
 
     # Subtle accent lines at the top/bottom in the gradient
     bar = round(h * 0.012)
-    img.paste(gradient((w, bar), PEACH, PINK), (0, 0))
-    img.paste(gradient((w, bar), PEACH, PINK), (0, h - bar))
+    img.paste(gradient((w, bar), PEACH, CREAM), (0, 0))
+    img.paste(gradient((w, bar), PEACH, CREAM), (0, h - bar))
 
     mark = make_wordmark(title_px * SS)
     img.alpha_composite(mark, ((w - mark.width) // 2, round(h * 0.40) - mark.height // 2))

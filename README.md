@@ -8,7 +8,7 @@
 > [`main`](https://github.com/FreakySneaky787/Simple-OS/tree/main). Plan and timeline: [ROADMAP.md](ROADMAP.md#20-rigi--debian-13-trixie),
 > issues #50–#53. (Remove this note when 2.0 is released.)
 
-<p align="center"><img src="docs/sos-banner.png" alt="SOS – Simple Operating System. Keep it Simple." width="100%"></p>
+<p align="center"><img src="docs/sos-banner.png?v=2" alt="SOS – Simple Operating System. Keep it Simple." width="100%"></p>
 
 **A fast, calm Linux desktop based on Debian 13. It sets itself up, updates itself, and you never need a terminal.**
 
@@ -93,7 +93,7 @@ Every test on real hardware, every bug report and every idea makes Simple OS bet
 A minimal desktop based on Debian 13 "trixie" with Openbox, built with live-build. (1.x: Debian 12 "bookworm", branch
 `main`.)
 
-Brand: **SOS** – Simple Operating System. The "O" is a lifebuoy (red and white – a rescue from Big Tech), the
+Brand: **SOS** – Simple Operating System. The "O" is a lifebuoy (orange and cream – a rescue from Big Tech), the
 slogan is **"Keep it Simple"**. The name stays "Simple OS" (IDs, packages and paths use `simpleos`); SOS is the
 logo and short form.
 
@@ -394,8 +394,8 @@ the lb default files, the generated graphics and the fastfetch package.
   the selected entry; Network and Power open above the taskbar on the right, like Windows 11. picom: soft shadows
   and rounded corners for windows; Rofi without picom shadow (picom 9.1 draws it square, it would show through the
   rounded corners). Wallpaper: layered dunes in Mocha tones with a fine lavender edge, no logo (`gen_branding.py`).
-  Logo: a lifebuoy (white, four stripes in Catppuccin Red); the wordmark "SOS" uses the ring as the "O" and the two
-  "S" in a blue → pink gradient, slogan "Keep it Simple" – Calamares, boot menu, Plymouth, wizard, Welcome page.
+  Logo: a lifebuoy (cream, four stripes in Catppuccin Latte Peach); the wordmark "SOS" uses the ring as the "O" and the two
+  "S" in a peach → cream gradient, slogan "Keep it Simple" – Calamares, boot menu, Plymouth, wizard, Welcome page.
   Tooltips in German/English; tray icons (nm-applet, blueman, volumeicon, power) bring their own tooltips.
 - `simpleos-taskbar-select` (Control Center → Appearance → Taskbar): position top/bottom, layout (Full/Compact,
   Icons + text/Icons only), look (Dark, Dark transparent, Match theme), network/clock display on/off.
