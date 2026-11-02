@@ -156,11 +156,12 @@ def make_banner(size, title_px, subtitle):
 
 
 def make_wallpaper(size, day=False):
-    """2.0 "Rigi": sunset at a station on the Rigi. The sun sinks behind an alpine peak and throws soft rays over layered
-    ranges in the haze; a cog railway train comes towards the viewer under its overhead line, the rails catch the light.
-    Flat shapes, everything in Catppuccin Peach fading into the dark. No logo, no text; the upper left (desktop icons)
-    stays calm sky. Night (default): peach into Crust. Day (day=True): the same scene in light peach
-    (simpleos-wallpaper-schedule switches). Deterministic (fixed seeds): every build gives the same picture."""
+    """2.0 "Rigi": the evening view from a station on the Rigi. The sun sinks into the long chain of the Alps next to a
+    massif with a jagged crown, the lake lies far below with the sun's path on the water, a meadow with firs comes down
+    to the station, and a cog railway train comes in under its overhead line on its trackbed. Flat shapes, everything in
+    Catppuccin Peach fading into the dark. No logo, no text; the upper left (desktop icons) stays calm sky.
+    Night (default): peach into Crust. Day (day=True): the same scene in light peach (simpleos-wallpaper-schedule
+    switches). Deterministic (fixed seeds): every build gives the same picture."""
     import math
     import random
 
@@ -210,7 +211,7 @@ def make_wallpaper(size, day=False):
         return Image.alpha_composite(img.convert("RGBA"), layer).convert("RGB")
 
     # ---- Sun with rays, sinking behind the shoulder of the big peak ----
-    sx, sy = 0.43, 0.445
+    sx, sy = 0.425, 0.49
 
     def rays(dd, k):
         for i in range(16):
@@ -250,8 +251,8 @@ def make_wallpaper(size, day=False):
             i = min(int(f), n - 1)
             t = f - i
             y = pts[i] * (1 - t) + pts[i + 1] * t
-            for px, ph, pw in peaks:
-                y -= ph * max(0.0, 1 - abs(x - px) / pw)  # triangular peaks look alpine
+            # triangular peaks look alpine; the highest one wins where they overlap (a crown, not a spike)
+            y -= max([ph * max(0.0, 1 - abs(x - px) / pw) for px, ph, pw in peaks] or [0.0])
             return base + y
         return y_at
 
@@ -268,31 +269,71 @@ def make_wallpaper(size, day=False):
                     d.line([(x0, y0), (x1, y1)], fill=light + (round(255 * a_),), width=2 * ss)
         return img
 
-    img = mountain(img, ridge(3, 0.47, 0.030, [(0.10, 0.05, 0.07), (0.28, 0.04, 0.06), (0.76, 0.06, 0.08),
-                                                (0.93, 0.04, 0.05)]), shade(0.16), 0.35)
-    img = mountain(img, ridge(7, 0.535, 0.028, [(0.50, 0.16, 0.13), (0.575, 0.10, 0.07), (0.18, 0.06, 0.10),
-                                                 (0.88, 0.05, 0.09)]), shade(0.32), 0.75)
+    # The view from the Rigi: the Alps as a long serrated chain on the horizon, their edges lit like snow
+    rnd = random.Random(5)
+    alps = [(0.02 + i * 0.062 + rnd.uniform(-0.015, 0.015), rnd.uniform(0.018, 0.042), rnd.uniform(0.02, 0.035))
+            for i in range(17)]
+    img = mountain(img, ridge(3, 0.505, 0.014, alps, levels=9), shade(0.14), 0.55)
+    # a massif next to the sun with a jagged crown of rock teeth (like the Pilatus seen from the Rigi)
+    img = mountain(img, ridge(7, 0.60, 0.008, [(0.385, 0.07, 0.09), (0.51, 0.11, 0.17), (0.465, 0.125, 0.07),
+                                                (0.505, 0.140, 0.06), (0.54, 0.132, 0.055), (0.575, 0.125, 0.07)],
+                              levels=9), shade(0.30), 0.85)
+    # low hills on the far shore
+    img = mountain(img, ridge(11, 0.585, 0.012, [(0.08, 0.04, 0.12), (0.25, 0.025, 0.08), (0.80, 0.035, 0.12),
+                                                  (0.95, 0.03, 0.08)]), shade(0.42), 0.30)
 
-    def mist(dd, k):
-        dd.rectangle((0, Y(0.575) * k, W * k, Y(0.615) * k), fill=lerp(glow, WHITE, 0.25) + (80,))
-    img = paste_soft(img, soft(mist, 40 * ss, lerp(glow, WHITE, 0.25)))
+    # The lake far below (Lake Lucerne lies right under the Rigi): water reflecting the evening sky
+    lake_y = 0.588
+    d = ImageDraw.Draw(img)
+    water_top, water_low = lerp(glow, WHITE, 0.10), lerp(glow, ink, 0.40)
+    y0, y1 = round(Y(lake_y)), round(Y(0.80))
+    for y in range(y0, y1):
+        d.line([(0, y), (W, y)], fill=lerp(water_top, water_low, (y - y0) / (y1 - y0)))
 
-    img = mountain(img, ridge(11, 0.605, 0.022, [(0.06, 0.04, 0.12), (0.37, 0.035, 0.10), (0.86, 0.05, 0.12)]),
-                   shade(0.50), 0.35)
-    img = mountain(img, ridge(19, 0.685, 0.016, [(0.24, 0.03, 0.20), (0.70, 0.02, 0.15)]), shade(0.66), 0.25)
+    def sun_path(dd, k):  # the sun's path on the water
+        dd.ellipse((X(sx - 0.018) * k, Y(lake_y) * k, X(sx + 0.018) * k, Y(0.78) * k), fill=sun_c + (150,))
+    img = paste_soft(img, soft(sun_path, 10 * ss, sun_c))
+    d = ImageDraw.Draw(img, "RGBA")
+    for i in range(9):  # glitter
+        gy = lake_y + 0.006 + 0.0035 * i ** 1.5
+        gw = 0.010 + 0.004 * i
+        d.line([(X(sx - gw), Y(gy)), (X(sx + gw), Y(gy))], fill=sun_c + (110,), width=ss)
 
-    # Foreground: a hill on the left, the ground of the station on the right
+    def fog(dd, k):  # evening haze lying on the water
+        dd.rectangle((0, Y(lake_y - 0.012) * k, W * k, Y(lake_y + 0.018) * k), fill=lerp(glow, WHITE, 0.3) + (90,))
+    img = paste_soft(img, soft(fog, 30 * ss, lerp(glow, WHITE, 0.3)))
+
+    # near shore: a tongue of land from the left and hills on the right, framing the lake
+    def shore(x):
+        if x <= 0.36:
+            return 0.615 + 0.12 * (x / 0.36) ** 2
+        if x < 0.40:
+            return 0.735 + (x - 0.36) / 0.04 * 0.30
+        if x < 0.66:
+            return 1.05
+        if x < 0.72:
+            return 1.05 - (x - 0.66) / 0.06 * 0.39
+        return 0.66 - 0.02 * (x - 0.72) / 0.28
+    img = mountain(img, shore, shade(0.58), 0.25)
+
+    # Foreground: the Rigi itself – a meadow coming down from the left to the plateau of the station
     hill_noise = ridge(23, 0.0, 0.006)
 
     def ground(x):
-        if x <= 0.45:  # the hill on the left comes down to the plateau of the station
-            return 0.665 + 0.141 * (x / 0.45) ** 1.6 + hill_noise(x) * (1 - x / 0.45)
-        return 0.806 - 0.021 * (x - 0.45) / 0.55
+        if x <= 0.45:
+            return 0.665 + 0.12 * (x / 0.45) ** 1.6 + hill_noise(x) * (1 - x / 0.45)
+        return 0.785 - 0.010 * (x - 0.45) / 0.55
     img = mountain(img, ground, shade(0.84), 0.30)
     d = ImageDraw.Draw(img, "RGBA")
-    # platform at the right with a light edge
-    d.polygon([(X(0.715), Y(0.797)), (X(1.0), Y(0.776)), (X(1.0), H), (X(0.87), H)], fill=shade(0.78))
-    d.line([(X(0.715), Y(0.797)), (X(0.87), H)], fill=lerp(glow, WHITE, 0.2) + (150,), width=3 * ss)
+    tree = shade(0.92)
+    for tx, th in ((0.05, 0.030), (0.075, 0.042), (0.10, 0.026), (0.19, 0.034), (0.215, 0.046), (0.24, 0.028),
+                   (0.33, 0.032), (0.355, 0.040)):
+        base = Y(ground(tx)) + 2 * ss
+        for k_, (wf, hf) in enumerate(((0.55, 1.0), (0.45, 0.72), (0.34, 0.45))):  # three tiers of a fir
+            half = Y(th) * wf * 0.5
+            top = base - Y(th) * hf
+            bottom = base - Y(th) * (hf - 0.45) if k_ else base
+            d.polygon([(X(tx) - half, bottom), (X(tx), top), (X(tx) + half, bottom)], fill=tree)
 
     # ---- The cog railway: front facing the viewer, the body going away to the right ----
     fx0, fx1, fy0, fy1 = 0.615, 0.695, 0.585, 0.790
@@ -326,6 +367,14 @@ def make_wallpaper(size, day=False):
             d.line([P(a_, b_, t0), P(a_, b_, t1)], fill=rail + (round(120 + 120 * t1),),
                    width=max(1, round((1 + 5 * t1) * w_ * ss)))
 
+    # along the body: trackbed with rails, the platform in front of it, everything in perspective
+    d.polygon([side(0, 1.0), side(1, 1.0), side(1, 1.13), side(0, 1.13)], fill=shade(0.92))
+    for v_ in (1.035, 1.10):
+        d.line([side(0, v_), side(1, v_)], fill=rail + (150,), width=ss)
+    d.polygon([side(0, 1.13), side(1, 1.13), (W, H), (X(0.90), H)], fill=shade(0.78))
+    d.line([side(0, 1.13), side(1, 1.13)], fill=lerp(glow, WHITE, 0.2) + (150,), width=2 * ss)
+    d.line([side(0, 1.13), (X(0.90), H)], fill=lerp(glow, WHITE, 0.2) + (130,), width=3 * ss)
+
     # far mast behind the train
     mast = shade(0.95)
     d.line([(X(0.865), Y(0.70)), (X(0.865), Y(0.505))], fill=mast, width=4 * ss)
@@ -340,6 +389,10 @@ def make_wallpaper(size, day=False):
         a_, b_ = 0.04 + k_ * 0.137, 0.04 + k_ * 0.137 + 0.105
         d.polygon([side(a_, 0.14), side(b_, 0.14), side(b_, 0.44), side(a_, 0.44)], fill=win + (230,))
     d.line([side(0.60, 0), side(0.60, 1)], fill=lerp(body_lo, ink, 0.6), width=2 * ss)  # gap between the cars
+    under = lerp(ink, glow, 0.03)
+    d.polygon([side(0, 0.94), side(1, 0.94), side(1, 1.0), side(0, 1.0)], fill=under)
+    for a_, b_ in ((0.05, 0.20), (0.42, 0.55), (0.66, 0.78), (0.90, 0.98)):  # bogies with their wheels
+        d.polygon([side(a_, 0.93), side(b_, 0.93), side(b_, 1.045), side(a_, 1.045)], fill=under)
     d.line([side(0, 0), side(1, 0)], fill=lerp(glow, WHITE, 0.2) + (140,), width=2 * ss)  # roof edge
 
     # front: peach livery on top fading into the dark, two windscreens, three lamps
@@ -362,6 +415,7 @@ def make_wallpaper(size, day=False):
     d.line([(X(fx0) + rad, Y(fy0)), (X(fx1) - rad, Y(fy0))], fill=lerp(glow, WHITE, 0.3) + (200,), width=2 * ss)
     d.line([(X(fx0), Y(fy0) + rad), (X(fx0), Y(fy1))], fill=lerp(glow, WHITE, 0.3) + (170,), width=2 * ss)
     d.rectangle((X(fx0 - 0.004), Y(fy1 - fh * 0.06), X(fx1 + 0.004), Y(fy1)), fill=lerp(ink, glow, 0.04))
+    d.rectangle((X(fx0 + 0.12 * fw), Y(fy1), X(fx1 - 0.12 * fw), Y(fy1 + 0.012)), fill=lerp(ink, glow, 0.03))
     lamps = [(fx0 + fw * 0.20, fy0 + fh * 0.80, 0.045), (fx1 - fw * 0.20, fy0 + fh * 0.80, 0.045),
              (fx0 + fw * 0.50, fy0 + fh * 0.05, 0.030)]
     for lx, ly, lr in lamps:
@@ -371,9 +425,9 @@ def make_wallpaper(size, day=False):
     def lamp_glow(dd, k):
         for lx, ly, lr in lamps:
             rr = X(fw * lr) * 4 * k
-            dd.ellipse((X(lx) * k - rr, Y(ly) * k - rr, X(lx) * k + rr, Y(ly) * k + rr), fill=lamp + (120,))
+            dd.ellipse((X(lx) * k - rr, Y(ly) * k - rr, X(lx) * k + rr, Y(ly) * k + rr), fill=lamp + (80,))
     if not day:  # in daylight the lamps do not glow
-        img = paste_soft(img, soft(lamp_glow, 14 * ss, lamp))
+        img = paste_soft(img, soft(lamp_glow, 10 * ss, lamp))
     d = ImageDraw.Draw(img, "RGBA")
 
     # pantograph and overhead line
