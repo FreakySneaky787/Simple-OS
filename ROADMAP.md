@@ -9,8 +9,8 @@ Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4, 2026-10-17 for 1
 | Kind | When | What goes in |
 |---|---|---|
 | **Hotfix** (1.0.x) | within days, when needed | only what breaks starting, installing, data or security, or a core function (Wi-Fi, sound, login) |
-| **Bugfix release** (1.0.x, 1.1.x) | every 2–3 weeks | everything collected below, bundled; one restart for the users |
-| **Feature release** (1.1, 1.2 …) | every 2–3 months | new features |
+| **Bugfix release** (1.0.x, 1.1.x, 1.2.x) | every 2–3 weeks | everything collected below, bundled; one restart for the users |
+| **Feature release** (1.1, **1.2 – the last one**) | every 2–3 months | new features. **After 1.2 there are no more feature releases of 1.x** (see "After 1.2") |
 | **Big release** (2.0, 3.0 …) | only with a new Debian version | new base system, new ISO, upgrade path |
 | **New ISO** | with a feature or big release, or when the installer / hardware detection changed | everyone already installed gets the rest through Software Updates, so a pure update is published with `./tools/release.sh publish --no-iso` |
 
@@ -138,13 +138,41 @@ rest moved to 1.2.
   (Microsoft 365, current Adobe apps, kernel anti-cheat) with alternatives, and a hint to Steam's own "Steam Play for
   all titles" switch. Not planned: automatic Windows VMs, CrossOver, our own configs for Windows apps.
 
+## After 1.2 – bugfixes only, the port starts slowly
+
+**Decision (2026-11-02): 1.2 is the last feature release of 1.x.** From then on 1.2.x only gets fixes, and the work goes
+into the Debian 13 port. Why: 1.x runs on Debian 12, whose regular security support ended on 12 July 2026; Debian LTS
+covers it until 30 June 2028 ([debian.org](https://www.debian.org/News/2026/20260712.en.html),
+[release page](https://www.debian.org/releases/oldstable/)). That is enough time for a careful port – and every new
+feature on the old base would have to be ported again.
+
+What is allowed in 1.2.x:
+- fixes for bugs, hardware that does not work, security and data safety (the hotfix and bugfix rules above);
+- **the preparations for 2.0 that must reach 1.x systems first:** the separate update channel per Debian base (so a
+  Debian 12 system is never offered the Debian 13 package, see "2.0" below) and, later, the hint and entry point for
+  the upgrade tool (#52). These are the only "features" allowed, and only because 2.0 depends on them.
+
+What is not: new Control Center pages, new apps, new settings. Ideas that come in go to "Ideas, not scheduled" or to
+2.x. Whatever 1.1/1.2 do not finish moves to 2.x as well – nothing is stretched to squeeze it into 1.2.
+
+How the port goes, in small steps (each step ends with something that builds and can be tested):
+
+| Phase | When | What |
+|---|---|---|
+| 0. Prepare | during 1.1 and 1.2 | keep every new thing portable (no Debian-12-only tricks), collect the list of what breaks (picom/dunst/rofi options, NVIDIA, Calamares, Secure Boot, gammastep, live-build); no changes to the base yet |
+| 1. First build | right after 1.2 | `lb_config.sh` on `trixie`, package lists, no backports pins; the build runs and the ISO starts in a VM (#50) |
+| 2. Make it work | after the first build | the verify hook (`99_verify_simpleos`) green again, then the tools one by one: theme, display, drivers, installer, updates |
+| 3. Preview ISO | planned Q1 2027 – moves if 1.2 takes longer | public preview, real screenshots replace the mock-ups in the README, hardware tests |
+| 4. Upgrade tool and beta | planned Q2 2027 | "Upgrade to Simple OS 2.0" with a restore point (#52), channel split live, tested on several real machines |
+| 5. 2.0 | when 4 has run cleanly | release; 1.2.x keeps getting security and bug fixes until the end of Debian LTS or until few users are left |
+
 ## 2.0 "Rigi" – Debian 13 "trixie"
 
 **Status (2026-10-24):** branch `trixie` created, the texts (README, RELEASE_NOTES, TESTING) describe 2.0 already; the
 code is still the one of 1.0.7 – the port has not started yet (#50).
 
-Simple OS 1.x is built on Debian 12 "bookworm", which moved from the regular security team to Debian LTS in June 2026
-(supported until June 2028 – please re-check the dates). Debian 13 has been the stable release since August 2025.
+Simple OS 1.x is built on Debian 12 "bookworm", which moved from the regular security team to Debian LTS on 12 July 2026
+(LTS supported until 30 June 2028, [debian.org](https://www.debian.org/releases/oldstable/)). Debian 13 has been the stable release since August 2025.
 Moving to it is the one big job of the next year, and it has to be planned, not rushed (issues #50–#53):
 
 - **Why:** newer kernel and Mesa without backports, newer firmware for new laptops, Firefox ESR / LibreOffice / PipeWire
