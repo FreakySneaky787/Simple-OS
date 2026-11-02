@@ -5,7 +5,7 @@
 > **You are on the branch `next`: the new features for Simple OS 1.1, still being tested.** This is not the released
 > Simple OS – that is the [`main` branch](https://github.com/FreakySneaky787/Simple-OS/tree/main) and the
 > [latest release](https://github.com/FreakySneaky787/Simple-OS/releases/latest). What 1.1 brings:
-> [ROADMAP](ROADMAP.md#11--next-feature-release-planned-around-2026-11-07); what is tested so far:
+> [ROADMAP](ROADMAP.md#11--next-feature-release-planned-thursday-2026-11-05); what is tested so far:
 > [TESTING.md, section 13](TESTING.md#13-what-changed-in-11-work-in-progress). Pull requests for new features go here,
 > fixes for the released edition to `main`.
 

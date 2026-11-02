@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4, 2026-10-17 for 1.0.5 and 2026-10-24 for 1.0.6 and 2026-10-25 for 1.0.7 (plan for 1.1). What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
+Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4, 2026-10-17 for 1.0.5 and 2026-10-24 for 1.0.6 and 2026-10-25 for 1.0.7 (plan for 1.1), 2026-11-02: 1.1 on Thursday 2026-11-05. What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -110,7 +110,7 @@ Moved from 1.0.4 to keep it small, plus what came up since:
 | Whatever 1.0.4 users report (Pax's Dell test, #64) | nothing came before the release – moved to 1.0.6 |
 | y/z swapped in search/app menu with Swiss/German keyboards (ThinkPad test) | done – XTEST keyboard gets the real layout |
 
-## 1.1 – next feature release (planned around 2026-11-07)
+## 1.1 – next feature release (planned Thursday 2026-11-05)
 
 Bugfix releases (1.0.x) come in between when users report something. Kept to what fits in about two weeks; the
 rest moved to 1.2.
@@ -130,7 +130,8 @@ rest moved to 1.2.
 - **Done on the side:** USB notifications never offer "Safely remove" for an internal disk (#100); test builds no
   longer block the published package (#102: package version `X.Y.Z+<build time>`).
 - On the side, as far as hardware is at hand: **hardware tests** (NVIDIA desktop with the driver, AMD laptop, dual boot
-  with Windows, Secure Boot on) (#49) and a public hardware compatibility page (#92, **done**: `docs/HARDWARE.md`,
+  with Windows, Secure Boot on) (#49 – moved to milestone 1.2: it needs testers with that hardware; first report: an Acer
+  Predator desktop, #105) and a public hardware compatibility page (#92, **done**: `docs/HARDWARE.md`,
   website page, GitHub "Hardware report" form – filled with what was really tested, the rest marked "not tested yet").
 
 ## 1.1.1 – bugfix release after 1.1
@@ -221,7 +222,7 @@ Moving to it is the one big job of the next year, and it has to be planned, not 
 
 | # | Title | Status |
 |---|---|---|
-| 19 | squashfs uses xz; zstd would be faster | 1.1, decide about the +18 % ISO size |
+| 19 | squashfs uses xz; zstd would be faster | done in 1.1 (zstd level 19, +6 % ISO size) |
 
 ## Decisions we have made (so we don't argue them again)
 
