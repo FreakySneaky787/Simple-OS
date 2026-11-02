@@ -3,7 +3,7 @@
 
 Brand: "SOS" (Simple Operating System), the "O" is a lifebuoy – a rescue from Big Tech – with the slogan
 "Keep it Simple". A white ring with four stripes in Catppuccin Red (red and white, recognizable as a lifebuoy
-even at 16 px), the two "S" in the Simple OS gradient blue -> pink. The logo (logo.png, icon.png) is the ring alone.
+even at 16 px), the two "S" in the Simple OS gradient peach -> pink. The logo (logo.png, icon.png) is the ring alone.
 
 Usage: gen_branding.py <includes.chroot folder> [<bootloaders/isolinux folder>]
         gen_branding.py --readme docs     (only the README banner docs/sos-banner.png)
@@ -69,8 +69,8 @@ def gradient(size, start, end, horizontal=True):
     return img
 
 
-def gradient_text(canvas, xy, text, font, start=BLUE, end=PINK, anchor="mm"):
-    """Draws text with a horizontal blue->pink gradient."""
+def gradient_text(canvas, xy, text, font, start=PEACH, end=PINK, anchor="mm"):
+    """Draws text with a horizontal peach->pink gradient."""
     mask = Image.new("L", canvas.size, 0)
     ImageDraw.Draw(mask).text(xy, text, font=font, fill=255, anchor=anchor)
     x0, _, x1, _ = mask.getbbox()
@@ -125,7 +125,7 @@ def make_wordmark(cap_px):
     x_ring = 2 * SS + sw + gap
     md.text((x_ring + ring_d + gap - l, base_y), "S", font=font, fill=255, anchor="ls")
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    img.paste(gradient((w, h), BLUE, PINK).convert("RGBA"), (0, 0), mask)
+    img.paste(gradient((w, h), PEACH, PINK).convert("RGBA"), (0, 0), mask)
     buoy = make_lifebuoy(ring_d // SS).resize((ring_d, ring_d), Image.LANCZOS)
     img.alpha_composite(buoy, (x_ring, base_y - cap // 2 - ring_d // 2))
     img = img.crop(img.getbbox())
@@ -140,8 +140,8 @@ def make_banner(size, title_px, subtitle):
 
     # Subtle accent lines at the top/bottom in the gradient
     bar = round(h * 0.012)
-    img.paste(gradient((w, bar), BLUE, PINK), (0, 0))
-    img.paste(gradient((w, bar), BLUE, PINK), (0, h - bar))
+    img.paste(gradient((w, bar), PEACH, PINK), (0, 0))
+    img.paste(gradient((w, bar), PEACH, PINK), (0, h - bar))
 
     mark = make_wordmark(title_px * SS)
     img.alpha_composite(mark, ((w - mark.width) // 2, round(h * 0.40) - mark.height // 2))
@@ -288,7 +288,7 @@ def main():
     if len(sys.argv) > 2 and sys.argv[1] == "--readme":
         out = Path(sys.argv[2])
         out.mkdir(parents=True, exist_ok=True)
-        make_banner((1280, 420), 110, "Simple Operating System · Debian 12 · Openbox").save(
+        make_banner((1280, 420), 110, "Simple Operating System · Debian 13 · Openbox").save(
             out / "sos-banner.png", optimize=True)
         return
 
