@@ -141,7 +141,7 @@ rest moved to 1.2.
 ## 2.0 "Rigi" – Debian 13 "trixie"
 
 **Status (2026-10-24):** branch `trixie` created, the texts (README, RELEASE_NOTES, TESTING) describe 2.0 already; the
-code is still the one of 1.0.6 – the port has not started yet (#50).
+code is still the one of 1.0.7 – the port has not started yet (#50).
 
 Simple OS 1.x is built on Debian 12 "bookworm", which moved from the regular security team to Debian LTS in June 2026
 (supported until June 2028 – please re-check the dates). Debian 13 has been the stable release since August 2025.

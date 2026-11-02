@@ -9,7 +9,7 @@ need a terminal.
 ## What's new in 2.0 "Rigi"
 
 > **Draft – 2.0 is not released yet.** This text grows with the work on the branch `trixie`. The current release is
-> [1.0.6](https://github.com/FreakySneaky787/Simple-OS/releases/latest).
+> [1.0.7](https://github.com/FreakySneaky787/Simple-OS/releases/latest).
 
 The first big release: Simple OS moves to **Debian 13 "trixie"**, the current Debian. Everything you know from 1.x
 stays – the same calm desktop, the Setup Wizard, the Control Center, Software Updates – on a newer base. 2.0 is

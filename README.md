@@ -3,7 +3,7 @@
 > [!NOTE]
 > **You are on the branch `trixie`: work on Simple OS 2.0 "Rigi", based on Debian 13 "trixie".** The texts here
 > already describe 2.0 as planned; the code is still being moved over from Debian 12, and there is no 2.0 ISO yet
-> (first preview planned for Q1 2027). The current release is **1.0.6** (Debian 12): download the
+> (first preview planned for Q1 2027). The current release is **1.0.7** (Debian 12): download the
 > [latest release](https://github.com/FreakySneaky787/Simple-OS/releases/latest) or read the README on
 > [`main`](https://github.com/FreakySneaky787/Simple-OS/tree/main). Plan and timeline: [ROADMAP.md](ROADMAP.md#20-rigi--debian-13-trixie),
 > issues #50–#53. (Remove this note when 2.0 is released.)
@@ -67,7 +67,7 @@ Thank you for testing! Every report helps, especially from real hardware.
   apps and settings come along?
 - **Your apps from the Software Store** (Flatpak) and Steam games after the upgrade.
 
-Until then, the current release is 1.0.6 – reports about it are just as welcome.
+Until then, the current release is 1.0.7 – reports about it are just as welcome.
 
 **How to report:**
 
