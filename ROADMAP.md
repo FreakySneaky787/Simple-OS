@@ -162,7 +162,7 @@ How the port goes, in small steps (each step ends with something that builds and
 | 0. Prepare | during 1.1 and 1.2 | keep every new thing portable (no Debian-12-only tricks), collect the list of what breaks (picom/dunst/rofi options, NVIDIA, Calamares, Secure Boot, gammastep, live-build); no changes to the base yet |
 | 1. First build | right after 1.2 | `lb_config.sh` on `trixie`, package lists, no backports pins; the build runs and the ISO starts in a VM (#50) |
 | 2. Make it work | after the first build | the verify hook (`99_verify_simpleos`) green again, then the tools one by one: theme, display, drivers, installer, updates |
-| 3. Preview ISO | planned Q1 2027 – moves if 1.2 takes longer | public preview, real screenshots replace the mock-ups in the README, hardware tests |
+| 3. Preview ISO | planned Q1 2027 – moves if 1.2 takes longer | public preview with real 2.0 screenshots, hardware tests |
 | 4. Upgrade tool and beta | planned Q2 2027 | "Upgrade to Simple OS 2.0" with a restore point (#52), channel split live, tested on several real machines |
 | 5. 2.0 | when 4 has run cleanly | release; 1.2.x keeps getting security and bug fixes until the end of Debian LTS or until few users are left |
 
