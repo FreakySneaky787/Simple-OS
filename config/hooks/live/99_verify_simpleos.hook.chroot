@@ -2232,6 +2232,29 @@ check "migration 070-whats-new-existing-account: changes an existing What's new 
       "$ENV -i HOME=$wt/home XDG_CONFIG_HOME=$wt/wn PATH=/usr/bin:/bin sh $MIG7 && grep -qx 'seen=2.0.2' $wt/wn/simpleos/whats-new &&
        grep -qx 'show=no' $wt/wn/simpleos/whats-new && [ \$(wc -l < $wt/wn/simpleos/whats-new) -eq 2 ]"
 rm -rf "$wt/wn" "$wt/wn-notes" "$wt/wn-osr" "$wt/mock/simpleos-live"
+# 2.0 "Rigi": every account from 1.x moves to the peach accent – taskbar, Rofi, Openbox copy and state together
+# (before: peach window borders, blue taskbar, and a color change later never reached the taskbar)
+MIG20=/usr/share/simpleos/edition/migrations/user/200-rigi-peach-accent
+rp=$wt/rigi; rm -rf "$rp"; mkdir -p "$rp/cfg/tint2" "$rp/cfg/rofi" "$rp/cfg/simpleos" "$rp/home/.themes/SimpleOS/openbox-3"
+sed 's/#fab387/#cba6f7/gI' /etc/skel/.config/tint2/tint2rc > "$rp/cfg/tint2/tint2rc"
+sed 's/#fab387/#cba6f7/gI' /etc/skel/.config/rofi/config.rasi > "$rp/cfg/rofi/config.rasi"
+printf 'mode=dark\naccent=mauve\n' > "$rp/cfg/simpleos/theme"
+check "migration 200-rigi-peach-accent: a mauve 1.x account is not peach afterwards" \
+      "[ -x $MIG20 ] && $ENV -i HOME=$rp/home XDG_CONFIG_HOME=$rp/cfg PATH=/usr/bin:/bin sh $MIG20 &&
+       cmp -s /etc/skel/.config/tint2/tint2rc $rp/cfg/tint2/tint2rc && cmp -s /etc/skel/.config/rofi/config.rasi $rp/cfg/rofi/config.rasi &&
+       [ ! -e $rp/home/.themes/SimpleOS ] && [ \"\$(cat $rp/cfg/simpleos/theme)\" = \"\$(printf 'mode=dark\naccent=peach')\" ]"
+# light mode, blue, no theme state at all, the taskbar badge (mauve/pink in its own block) and the other lines untouched
+sed 's/#fab387/#89B4FA/gI' /etc/skel/.config/tint2/tint2rc > "$rp/cfg/tint2/tint2rc"
+sed 's/#fab387/#1e66f5/gI' /etc/skel/.config/rofi/config.rasi > "$rp/cfg/rofi/config.rasi"
+printf 'mode=light\naccent=blue\n' > "$rp/cfg/simpleos/theme"
+check "migration 200-rigi-peach-accent: light mode – taskbar or Rofi not peach (Latte), or the mode lost" \
+      "$ENV -i HOME=$rp/home XDG_CONFIG_HOME=$rp/cfg PATH=/usr/bin:/bin sh $MIG20 &&
+       cmp -s /etc/skel/.config/tint2/tint2rc $rp/cfg/tint2/tint2rc && grep -qE '^ *accent: *#fe640b;' $rp/cfg/rofi/config.rasi &&
+       grep -qx 'mode=light' $rp/cfg/simpleos/theme && grep -qx 'accent=peach' $rp/cfg/simpleos/theme"
+rm -rf "$rp/cfg/simpleos" "$rp/cfg/rofi" "$rp/home/.themes"
+check "migration 200-rigi-peach-accent: an account without theme state, Rofi or Openbox copy fails" \
+      "$ENV -i HOME=$rp/home XDG_CONFIG_HOME=$rp/cfg PATH=/usr/bin:/bin sh $MIG20 && grep -qx 'mode=dark' $rp/cfg/simpleos/theme"
+rm -rf "$rp"
 
 # ---- Background loops after signing out and in again (KillUserProcesses=no keeps the old session's loop alive):
 #      the new session's loop must take over, a second one in the same session must quit

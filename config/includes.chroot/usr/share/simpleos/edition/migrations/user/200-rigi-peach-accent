@@ -1,0 +1,47 @@
+#!/bin/sh
+# Simple OS 2.0 "Rigi" – every account moves to the new peach accent color (decided 2026-11-02: all accounts, also
+# those that chose another color in 1.x – 2.0 is a new look). Runs once per account at sign-in, before the desktop
+# starts ("edition --user", after the /etc/skel copies were merged); a new account starts in peach and never runs it.
+# Without this, an account from 1.x got peach window borders (the shipped Openbox theme) but kept the blue taskbar
+# (its own tint2rc), and the Control Center showed a color the taskbar didn't have: simpleos-theme replaces the
+# accent it finds in the state file, and a missing state file now means peach – a blue taskbar was never recolored.
+# What it does, without a display (nothing runs yet):
+#   tint2rc: the old accent of the active task (3rd "rounded =" block) and of the app button -> peach; the
+#            "Install Simple OS" badge (mauve/pink in another block) stays
+#   Rofi:    accent -> peach (Latte peach in light mode, like simpleos-theme)
+#   Openbox: the account's own theme copy (~/.themes/SimpleOS, only made for a non-default accent) is removed –
+#            the shipped theme is peach
+#   state:   ~/.config/simpleos/theme = the old mode (dark/light) + accent=peach
+# Never fails (exit 0): a file that is missing is simply skipped.
+cfg=${XDG_CONFIG_HOME:-$HOME/.config}
+state=$cfg/simpleos/theme
+mode=dark
+[ "$(sed -n 's/^mode=//p' "$state" 2>/dev/null | head -n 1)" = light ] && mode=light
+
+# Catppuccin Mocha accents of 1.x except peach (simpleos-theme hex_of)
+old='#(89b4fa|cba6f7|f5c2e7|a6e3a1|94e2d5)'
+
+t=$cfg/tint2/tint2rc
+if [ -f "$t" ] && tmp=$(mktemp "$t.XXXXXX" 2>/dev/null); then
+    if awk -v re="$old" '
+        /^rounded[ \t]*=/ { b++ }
+        {
+            if ((b == 3 || $0 ~ /^button_font_color[ \t]*=/) && tolower($0) ~ re) {
+                line = tolower($0); gsub(re, "#fab387", line); print line
+            } else print
+        }' "$t" > "$tmp"; then
+        cat "$tmp" > "$t"
+    fi
+    rm -f "$tmp"
+fi
+
+rasi=$cfg/rofi/config.rasi
+if [ -f "$rasi" ]; then
+    new='#fab387'; [ "$mode" = light ] && new='#fe640b'
+    sed -i "s/^\(\s*accent:\s*\)#[0-9a-fA-F]\{6\};/\1$new;/" "$rasi" 2>/dev/null
+fi
+
+rm -rf "$HOME/.themes/SimpleOS" 2>/dev/null
+
+mkdir -p "${state%/*}" 2>/dev/null && printf 'mode=%s\naccent=peach\n' "$mode" > "$state" 2>/dev/null
+exit 0

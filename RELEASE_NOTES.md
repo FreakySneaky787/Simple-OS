@@ -19,7 +19,8 @@ named after the **Rigi**, the "Queen of the Mountains" above Lake Lucerne.
 
 - **Peach is the default accent color** (Catppuccin Peach `#fab387`; in light mode the stronger `#fe640b`). Menus, taskbar,
   window frames, Setup Wizard and progress windows all start in peach. Blue, mauve, pink, green and teal stay
-  available in Appearance.
+  available in Appearance. **Upgrading from 1.x switches every account to peach**, whatever color it had – the
+  taskbar, menus and window frames change together; another color can be chosen again in Appearance.
 - **New default wallpaper:** the evening view from the Rigi – the sun sinks into the chain of the Alps, the lake lies far
   below, and a cog railway train comes into the station under its overhead line. All in peach, fading into the dark. The
   day variant of the dynamic wallpaper is the same scene in light peach.
