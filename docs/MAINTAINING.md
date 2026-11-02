@@ -21,7 +21,7 @@ The details are in [TESTING.md](../TESTING.md) (checklist) and the README sectio
 [Updates to new Simple OS editions](../README.md#updates-to-new-simple-os-editions). In short:
 
 1. **Plan:** a milestone per release on GitHub (e.g. "1.0.7"), the date in [ROADMAP.md](../ROADMAP.md) and on the
-   website's roadmap page. Cadence: bugfix every 2–3 weeks, feature release every 2–3 months (ROADMAP "How we release").
+   website's roadmap page. Cadence: bugfix every 2–3 weeks, feature release every 2–3 months (ROADMAP "How we release"); 1.2 is the last feature release of 1.x, after it only bugfixes (ROADMAP "After 1.2").
 2. **Work:** commit locally; `main` is pushed only on release day, so it always matches the published edition. Close
    issues when the work is done and tested ("done, ships in X.Y.Z"), project board item → Done; things that need real
    hardware stay open with the label `verify`.
