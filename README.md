@@ -8,7 +8,7 @@
 > [`main`](https://github.com/FreakySneaky787/Simple-OS/tree/main). Plan and timeline: [ROADMAP.md](ROADMAP.md#20-rigi--debian-13-trixie),
 > issues #50–#53. (Remove this note when 2.0 is released.)
 
-<p align="center"><img src="docs/sos-banner.png?v=2" alt="SOS – Simple Operating System. Keep it Simple." width="100%"></p>
+<p align="center"><img src="docs/sos-banner-rigi.png" alt="SOS – Simple Operating System. Keep it Simple." width="100%"></p>
 
 **A fast, calm Linux desktop based on Debian 13. It sets itself up, updates itself, and you never need a terminal.**
 
@@ -211,7 +211,7 @@ simple-os/
 ├── build_iso.sh, test_vm.sh, test_installed_vm.sh   entry points
 ├── LICENSE, RELEASE_NOTES.md, TESTING.md            GPL-3.0, download text, release checklist
 ├── Containerfile                                   build environment (Debian trixie + live-build)
-├── docs/sos-banner.png   README banner (tools/gen_branding.py --readme docs)
+├── docs/sos-banner-rigi.png   README banner (tools/gen_branding.py --readme docs)
 ├── tools/
 │   ├── lb_config.sh      lb config + build-time parts (branding, fastfetch download, edition package)
 │   ├── build_deb.sh      edition package "simpleos" + APT repository files in output/repo

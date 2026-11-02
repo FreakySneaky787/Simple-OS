@@ -6,7 +6,7 @@ Brand: "SOS" (Simple Operating System), the "O" is a lifebuoy – a rescue from 
 even at 16 px), the two "S" in the Simple OS gradient peach -> pink. The logo (logo.png, icon.png) is the ring alone.
 
 Usage: gen_branding.py <includes.chroot folder> [<bootloaders/isolinux folder>]
-        gen_branding.py --readme docs     (only the README banner docs/sos-banner.png)
+        gen_branding.py --readme docs     (only the README banner docs/sos-banner-rigi.png)
 Generates in it:
   etc/calamares/branding/simpleos/{logo,icon,welcome,slide1}.png
   usr/share/simpleos/logo.png
@@ -134,23 +134,38 @@ def make_wordmark(cap_px):
 
 
 def make_banner(size, title_px, subtitle):
-    """Calamares welcome image/slide: SOS wordmark, below it "Keep it Simple" and a quiet line."""
+    """README banner and Calamares welcome image/slide: the Rigi scene of the wallpaper as a wide band (mountains, lake,
+    the train on the right), darkened towards the left; there the SOS wordmark, "Keep it Simple" and a quiet line."""
     w, h = size[0] * SS, size[1] * SS
-    img = gradient((w, h), BASE, MANTLE, horizontal=False).convert("RGBA")
-    draw = ImageDraw.Draw(img)
+    # the scene at the banner's width, cut so that the horizon sits a little below the middle
+    sw, sh = size[0], max(round(size[0] * 9 / 16), round(size[1] * 1.15))  # never shorter than the banner
+    scene = make_wallpaper((sw, sh))
+    top = max(0, min(sh - size[1], round(sh * 0.535 - size[1] * 0.45)))
+    img = scene.crop((0, top, sw, top + size[1])).resize((w, h), Image.LANCZOS).convert("RGBA")
 
-    # Subtle accent lines at the top/bottom in the gradient
-    bar = round(h * 0.012)
+    # a dark veil from the left, so the text stays readable; the train on the right stays in the light
+    veil = Image.new("L", (w, 1))
+    for x in range(w):
+        f = min(1.0, max(0.0, (x / w - 0.40) / 0.32))  # dark up to 40 %, fading out by 72 %
+        veil.putpixel((x, 0), round(225 * (1 - f * f * (3 - 2 * f))))
+    shade_l = Image.new("RGBA", (w, h), CRUST + (255,))
+    shade_l.putalpha(veil.resize((w, h)))
+    img = Image.alpha_composite(img, shade_l)
+
+    # subtle accent lines at the top/bottom in the gradient
+    bar = max(SS, round(h * 0.012))
     img.paste(gradient((w, bar), PEACH, CREAM), (0, 0))
     img.paste(gradient((w, bar), PEACH, CREAM), (0, h - bar))
 
     mark = make_wordmark(title_px * SS)
-    img.alpha_composite(mark, ((w - mark.width) // 2, round(h * 0.40) - mark.height // 2))
-
     slogan_font = ImageFont.truetype(FONT_BOLD, round(title_px * 0.42) * SS)
-    draw.text((w / 2, h * 0.70), SLOGAN, font=slogan_font, fill=TEXT, anchor="mm")
     sub_font = ImageFont.truetype(FONT, round(title_px * 0.26) * SS)
-    draw.text((w / 2, h * 0.82), subtitle, font=sub_font, fill=SUBTEXT, anchor="mm")
+    draw = ImageDraw.Draw(img)
+    widest = max(mark.width, draw.textlength(SLOGAN, font=slogan_font), draw.textlength(subtitle, font=sub_font))
+    cx = max(w * 0.30, widest / 2 + w * 0.05)
+    img.alpha_composite(mark, (round(cx - mark.width / 2), round(h * 0.38) - mark.height // 2))
+    draw.text((cx, h * 0.67), SLOGAN, font=slogan_font, fill=TEXT, anchor="mm")
+    draw.text((cx, h * 0.79), subtitle, font=sub_font, fill=SUBTEXT, anchor="mm")
 
     return img.convert("RGB").resize(size, Image.LANCZOS)
 
@@ -476,12 +491,12 @@ def make_boot_splash(size, logo_y):
 
 
 def main():
-    # README banner for the repository (docs/sos-banner.png): gen_branding.py --readme docs
+    # README banner for the repository (docs/sos-banner-rigi.png): gen_branding.py --readme docs
     if len(sys.argv) > 2 and sys.argv[1] == "--readme":
         out = Path(sys.argv[2])
         out.mkdir(parents=True, exist_ok=True)
         make_banner((1280, 420), 110, "Simple Operating System · Debian 13 · Openbox").save(
-            out / "sos-banner.png", optimize=True)
+            out / "sos-banner-rigi.png", optimize=True)
         return
 
     root = Path(sys.argv[1] if len(sys.argv) > 1 else ".")
