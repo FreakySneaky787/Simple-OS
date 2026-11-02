@@ -9,7 +9,7 @@ modify them under the terms of the GNU General Public License as published by th
 Foundation, either version 3 of the License, or (at your option) any later version.
 The full license text is in /usr/share/common-licenses/GPL-3.
 
-Simple OS is built on Debian GNU/Linux 12 (bookworm). Every Debian package keeps its own license in
+Simple OS is built on Debian GNU/Linux 13 (trixie). Every Debian package keeps its own license in
 /usr/share/doc/<package>/copyright. The exact package versions of each release are listed in
 Simple-OS.packages.txt next to the ISO; their source code is available from https://snapshot.debian.org
 and https://sources.debian.org.

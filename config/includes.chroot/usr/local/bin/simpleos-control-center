@@ -1775,7 +1775,7 @@ def main(argv):
         def refresh(self):
             self.clear()
             ver = os_version()
-            self.put(card([(f"Simple OS {ver}".strip(), "Based on Debian 12 “bookworm”",
+            self.put(card([(f"Simple OS {ver}".strip(), "Based on Debian 13 “trixie”",
                             button("What's new", lambda: spawn("simpleos-whats-new"))),
                            ("Software Updates", "Simple OS, apps and security fixes",
                             button("Open", lambda: spawn("simpleos-update"), "suggested-action"))]))
