@@ -26,8 +26,8 @@
 
 | | |
 |---|---|
-| <img src="docs/screenshots/desktop.webp?v=2" alt="Preview: the desktop with the file manager" width="100%"><br>The desktop | <img src="docs/screenshots/setup-wizard.webp?v=2" alt="Setup Wizard, choosing the web browser" width="100%"><br>Setup Wizard on the first login |
-| <img src="docs/screenshots/control-center.webp?v=2" alt="Control Center, Appearance page" width="100%"><br>Control Center | <img src="docs/screenshots/app-menu.webp?v=2" alt="App menu with search" width="100%"><br>App menu |
+| <img src="docs/screenshots/preview-desktop.webp" alt="Preview: the desktop with the file manager" width="100%"><br>The desktop | <img src="docs/screenshots/preview-setup-wizard.webp" alt="Setup Wizard, choosing the web browser" width="100%"><br>Setup Wizard on the first login |
+| <img src="docs/screenshots/preview-control-center.webp" alt="Control Center, Appearance page" width="100%"><br>Control Center | <img src="docs/screenshots/preview-app-menu.webp" alt="App menu with search" width="100%"><br>App menu |
 
 ## System requirements
 
