@@ -157,12 +157,14 @@ What is not: new Control Center pages, new apps, new settings. Ideas that come i
 
 What goes into 2.0 (decided 2026-11-03): **the new base and nothing that is not needed for it** – plus everything 1.x
 has by then. In detail:
-- everything from 1.1 and 1.2 **and every 1.x bugfix**: `main` is merged into `trixie` regularly, and once more before
-  the preview ISO, the beta and the release, so 2.0 never lacks a fix that 1.x has;
+- **every feature 1.x has – all of 1.1 and 1.2** (HiDPI scaling #41, Language & Region #42, faster boot #47/#19, camera
+  test #44, translations #43, Users & accounts #68, AppArmor #48, Windows programs #85 …) **and every 1.x bugfix**: `main`
+  is merged into `trixie` regularly, and once more before the preview ISO, the beta and the release, so 2.0 never lacks
+  a feature or a fix that 1.x has;
 - the Rigi look (peach accent, wallpaper, logo colors);
 - the upgrade tool (#52) and the update channels (#106);
 - the simpler partitioning page in the installer (#101), because the installer is ported anyway.
-Everything else (#89 backups of personal files, #56 accessibility, #85 Windows programs, Wayland #87 …) comes in 2.x.
+New things that 1.x does not have (#89 backups of personal files, #56 accessibility, Wayland #87 …) come in 2.x.
 
 Support of 1.x after 2.0: **no fixed end date.** 1.2.x keeps getting fixes as long as people use it; the hard limit is
 Debian's own security support for Debian 12 (Debian LTS until 30 June 2028).
