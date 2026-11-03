@@ -109,7 +109,7 @@ every release – and only after `publish`, because the links point to the new r
 
 - `main` – Simple OS 1.x on Debian 12; releases are tagged `vX.Y.Z` on it.
 - `trixie` – Simple OS 2.0 "Rigi" on Debian 13 (ROADMAP "2.0"). Merge `main` into it regularly so fixes are not lost.
-  Before 2.0 is published, 1.x systems need their own update channel (ROADMAP, issue #52).
+  Before 2.0 is published, 1.x systems need their own update channel (ROADMAP, issue #106).
 
 ## 8. Accounts and access
 

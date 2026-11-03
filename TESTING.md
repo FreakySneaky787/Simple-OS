@@ -344,6 +344,6 @@ plus:
 - [ ] **Software Updates and Store:** updates from Debian 13 and the Simple OS 2.x channel; Flatpak apps install and
       update.
 - [ ] **Update channel:** a 1.x system with the newest 1.x update is **not** offered 2.0 as a normal update.
-- [ ] **Upgrade 1.x → 2.0** (issue #52): on a 1.0.6 VM and one real machine – restore point first, then the
+- [ ] **Upgrade 1.x → 2.0** (issue #52): on a VM with the newest 1.2.x and one real machine – restore point first, then the
       upgrade; afterwards `/etc/os-release` says 2.0, no `bookworm` sources left, no backports pin file, files,
       Flatpak apps, Steam and settings are kept; `dpkg --audit` clean, no failed units.
