@@ -148,23 +148,35 @@ feature on the old base would have to be ported again.
 
 What is allowed in 1.2.x:
 - fixes for bugs, hardware that does not work, security and data safety (the hotfix and bugfix rules above);
-- **the preparations for 2.0 that must reach 1.x systems first:** the separate update channel per Debian base (so a
+- **the preparations for 2.0 that must reach 1.x systems first:** the separate update channel per Debian base (#106, so a
   Debian 12 system is never offered the Debian 13 package, see "2.0" below) and, later, the hint and entry point for
   the upgrade tool (#52). These are the only "features" allowed, and only because 2.0 depends on them.
 
 What is not: new Control Center pages, new apps, new settings. Ideas that come in go to "Ideas, not scheduled" or to
 2.x. Whatever 1.1/1.2 do not finish moves to 2.x as well – nothing is stretched to squeeze it into 1.2.
 
+What goes into 2.0 (decided 2026-11-03): **the new base and nothing that is not needed for it** – plus everything 1.x
+has by then. In detail:
+- everything from 1.1 and 1.2 **and every 1.x bugfix**: `main` is merged into `trixie` regularly, and once more before
+  the preview ISO, the beta and the release, so 2.0 never lacks a fix that 1.x has;
+- the Rigi look (peach accent, wallpaper, logo colors);
+- the upgrade tool (#52) and the update channels (#106);
+- the simpler partitioning page in the installer (#101), because the installer is ported anyway.
+Everything else (#89 backups of personal files, #56 accessibility, #85 Windows programs, Wayland #87 …) comes in 2.x.
+
+Support of 1.x after 2.0: **no fixed end date.** 1.2.x keeps getting fixes as long as people use it; the hard limit is
+Debian's own security support for Debian 12 (Debian LTS until 30 June 2028).
+
 How the port goes, in small steps (each step ends with something that builds and can be tested):
 
 | Phase | When | What |
 |---|---|---|
-| 0. Prepare | during 1.1 and 1.2 | keep every new thing portable (no Debian-12-only tricks), collect the list of what breaks (picom/dunst/rofi options, NVIDIA, Calamares, Secure Boot, gammastep, live-build); no changes to the base yet |
-| 1. First build | right after 1.2 | `lb_config.sh` on `trixie`, package lists, no backports pins; the build runs and the ISO starts in a VM (#50) |
-| 2. Make it work | after the first build | the verify hook (`99_verify_simpleos`) green again, then the tools one by one: theme, display, drivers, installer, updates |
-| 3. Preview ISO | planned Q1 2027 – moves if 1.2 takes longer | public preview with real 2.0 screenshots, hardware tests |
-| 4. Upgrade tool and beta | planned Q2 2027 | "Upgrade to Simple OS 2.0" with a restore point (#52), channel split live, tested on several real machines |
-| 5. 2.0 | when 4 has run cleanly | release; 1.2.x keeps getting security and bug fixes until the end of Debian LTS or until few users are left |
+| 0. Prepare (#107) | during 1.1 and 1.2 | keep every new thing portable (no Debian-12-only tricks), collect the list of what breaks (picom/dunst/rofi options, NVIDIA, Calamares, Secure Boot, gammastep, live-build); no changes to the base yet |
+| 1. First build (#50) | right after 1.2 | `lb_config.sh` on `trixie`, package lists, no backports pins; the build runs and the ISO starts in a VM (#50) |
+| 2. Make it work (#51) | after the first build | the verify hook (`99_verify_simpleos`) green again, then the tools one by one: theme, display, drivers, installer, updates |
+| 3. Preview ISO (#50) | planned Q1 2027 – moves if 1.2 takes longer | public preview with real 2.0 screenshots, hardware tests |
+| 4. Upgrade tool and beta (#52, #106, #53) | planned Q2 2027 | "Upgrade to Simple OS 2.0" with a restore point (#52), channel split live, tested on several real machines |
+| 5. 2.0 (#53) | when 4 has run cleanly | release; 1.2.x keeps getting fixes after it, with no fixed end date (see above) |
 
 ## 2.0 – Debian 13 "trixie"
 
@@ -177,9 +189,12 @@ Moving to it is the one big job of the next year, and it has to be planned, not 
 - **What breaks:** every package list entry, the `simpleos-drivers` NVIDIA logic (driver versions), picom/dunst/rofi
   options, GTK/WebKit versions used by our Python tools, `gammastep`/`nmcli` behaviours (as the night light showed),
   the Calamares settings, Secure Boot packages, `live-build` itself. Plan a branch `trixie` built next to `main`.
+- **Update channel:** 1.x systems follow `releases/latest`. If 2.0 simply became "latest", every Debian 12 system would
+  be offered the Debian 13 package. Before 2.0 is published: one channel per Debian base (e.g. the 1.x source pinned
+  to the newest 1.x release), shipped to 1.x in a last 1.x update; 2.0 reaches 1.x only through the upgrade tool (#106).
 - **For installed systems:** an in-place `dist-upgrade` from Software Updates is possible but risky (third-party sources,
-  Flatpak, NVIDIA DKMS, backups). Options to decide: (a) a guided "Upgrade to Simple OS 2.0" tool with a restore point and
-  checks, (b) a fresh install with a documented migration of the home folder. Probably (a) after a long beta.
+  Flatpak, NVIDIA DKMS, backups). **Decided (2026-11-03): (a)** a guided "Upgrade to Simple OS 2.0" tool with a restore point and
+  checks, after a long beta (#52); (b) a fresh install with a documented migration of the home folder stays only the fallback.
 - **Timeline sketch:** branch + first trixie ISO as a preview in Q1 2027, public beta in Q2, 2.0 when the upgrade
   tool has been run on several real machines.
 
