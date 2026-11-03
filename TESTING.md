@@ -87,3 +87,24 @@ Last results: 1.0 is installed and in daily use on the ThinkPad E16 (UEFI).
 - [ ] Sign out and back in: files you did not change follow the new edition, your change in `rc.xml` is still there
       (`~/.cache/simpleos-edition.log` lists "updated …" / "kept …"). New packages of the edition are installed.
 
+## 6. What changed in 1.1.1
+
+Before publishing (Sunday 2026-11-08), with the new ISO (#114: every release has one):
+
+- [ ] **Slow clicks (issue #104)** – the table of the issue, on the ThinkPad E16 with the **touchpad** (firm click) and
+      a **mouse**: desktop right-click, window title bar right-click, held 0.1 / 0.3 / 0.6 / 1 s – the menu stays open
+      every time; a quick click on an entry still runs it. VM (2026-11-03, `xdotool mousedown/sleep/mouseup`): desktop
+      menu open at 0.1–1.3 s with `hideDelay` 1500, closed from 0.3 s with the old 200.
+- [ ] **Speaker icon (#104)** – left of the network display: a click (short and held) opens the sound menu, a click
+      never mutes; scroll up/down = louder/quieter with the on-screen display; middle click = mute, the icon turns grey;
+      volume keys and the sound menu change the icon at once; Bluetooth headphones connected → the icon follows the new
+      output. Only one speaker icon (no volumeicon in the tray). VM: sound menu open after 0.1–1.5 s holds.
+- [ ] **Update 1.1 → 1.1.1** (VM installed from the 1.1 ISO, Software Updates): after signing out and in, one speaker
+      icon, `grep hideDelay ~/.config/openbox/rc.xml` = 1500, no `volumeicon` in `~/.config/openbox/autostart`; an
+      account with its own autostart line keeps it (migration 110). Taskbar settings (Large, top, network off) still
+      apply and the right icon is in the right place.
+- [ ] **Display scale 150/200 % (#115):** a notification with buttons (e.g. an update notification → right-click or
+      the context key) shows its menu in the same size as the other menus.
+- [ ] **Camera / Language & Region (#116):** a photo is saved as before; with `LANG=de_DE.utf8` written by hand in
+      `/etc/default/locale`, changing only the formats works.
+- [ ] **Fresh install from the 1.1.1 ISO** (BIOS + UEFI) – the usual checks of sections 0–3.

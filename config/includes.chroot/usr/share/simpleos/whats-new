@@ -1,5 +1,11 @@
-# Simple OS 1.1
-## New
+# Simple OS 1.1.1
+## Fixed
+- **Menus stay open after a slow click.** The desktop and window menus no longer close when you hold the mouse
+  button a little longer.
+- **The speaker icon opens the sound menu.** A click on the speaker in the taskbar used to mute the sound; now it
+  opens volume and outputs. Scroll over it for louder/quieter, middle-click to mute.
+- **Notification menus on big screens.** The menu with a notification's buttons now grows with the display scale.
+## New in 1.1
 - **Scale for screens with many pixels.** Control Center → Display → Scale makes text, the taskbar, menus,
   notifications and the mouse pointer bigger. "Automatic" picks it from your screen's size (2.8K and 4K laptops), or
   choose 125, 150 or 200 % yourself.
@@ -9,6 +15,6 @@
 - **Camera.** Menu → Apps → Camera shows your webcam and takes photos – they are saved in Pictures/Camera.
 - **A larger taskbar.** Control Center → Appearance → Taskbar → Layout → Large: a higher bar with a bigger clock.
 - **Starting up is quicker.** The files the computer loads at startup are now much smaller.
-## Fixed
+## Also fixed in 1.1
 - **"Safely remove" only for USB drives.** A second internal disk (with Windows or another Linux on it) no longer
   shows up as a USB drive.

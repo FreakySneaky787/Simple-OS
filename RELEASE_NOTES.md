@@ -1,10 +1,28 @@
-# Simple OS 1.1
+# Simple OS 1.1.1
 
 **SOS – Simple Operating System. Keep it Simple.**
 
 Simple OS is a fast, quiet desktop built on Debian 12 "bookworm". It boots straight into a calm dark desktop
 (Openbox, Catppuccin colors), sets itself up with a short wizard and keeps itself up to date. You don't
 need a terminal.
+
+## What's new in 1.1.1
+
+A bugfix update for 1.1. If you run Simple OS 1.0 to 1.1, you get it through **Software Updates** – no need to
+reinstall. Coming from 1.0.x, you get everything of 1.1 below as well.
+
+### Fixed
+
+- **Menus stay open after a slow click** (issue #104). If you held the mouse button a little longer – or pressed the
+  touchpad firmly – the desktop and window menus closed again as soon as you let go. They now stay open.
+- **The speaker icon opens the sound menu** (issue #104). A click on the speaker in the taskbar used to mute the
+  sound without asking; now it opens the sound menu (volume, outputs, advanced settings), like the network
+  display next to it. Scroll over it for louder/quieter, middle-click to mute. It shows the volume and mute state.
+- **The action menu of notifications follows the display scale** (issue #115). On 2.8K/4K screens it was tiny.
+- **Camera: no empty photo files** (issue #116). If a picture could not be read, the camera saved an empty file and
+  said "Saved"; now it says the photo could not be saved.
+- **Language & Region: changing only the formats** (issue #116) works again on systems whose language setting was
+  written in an unusual way by hand.
 
 ## What's new in 1.1
 
@@ -65,7 +83,7 @@ The live system needs no password – not for the installer either. Only if some
 `simple` and the password is `live`.
 To install, use **Install Simple OS** on the desktop.
 
-The other files attached here (`simpleos_1.1_all.deb`, `Packages`, `InRelease` …) are the signed update repository that
+The other files attached here (`simpleos_1.1.1_all.deb`, `Packages`, `InRelease` …) are the signed update repository that
 installed systems use. You don't need to download them yourself.
 
 ## System requirements
@@ -102,9 +120,9 @@ installed systems use. You don't need to download them yourself.
   (installer or Control Center → Language & Region), but the Control Center, the setup wizard and Simple OS's messages
   stay English until their translations come in 1.2. The keyboard layout can be changed at any time in
   Control Center → Keyboard.
-- **Menus close after a slow click.** If you hold the mouse button a little longer, the desktop and window menus and
-  the volume menu close again when you let go. Click quickly, or use the keyboard (Alt+Space for the window menu).
-  Fixed in 1.1.1 (issue #104).
+- **The network icon's right-click menu** (next to the network display in the taskbar) closes again if you hold the
+  mouse button for more than half a second – a limit of that GTK menu, it has no setting. Click quickly, or use the
+  network display itself (a click opens the Simple OS network menu).
 - **Firewall and LAN games:** hosting a game for others on your local network, and Steam Remote Play as the host,
   are blocked by the firewall. Turn it off for that time in Control Center → Password & Security.
 - **Lenovo laptops:** the first start after installing may show "Self-Healing BIOS ESP" once. That's
