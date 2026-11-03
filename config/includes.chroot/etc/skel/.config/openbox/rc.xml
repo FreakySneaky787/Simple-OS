@@ -24,11 +24,12 @@
     <popupTime>875</popupTime>
   </desktops>
   <resize><drawContents>yes</drawContents></resize>
-  <!-- Menus without delay: submenus open/close immediately. hideDelay: a short click keeps the
-       menu open (with 0 it would close again as soon as the mouse button is released). -->
+  <!-- Menus without delay: submenus open/close immediately. hideDelay: a press shorter than this keeps the menu open
+       when the button is released. 1500 ms (#104, 1.1.1): with 200 a slow click (or a firm touchpad click) of 0.3 s
+       closed the desktop and window menus again as soon as the button was let go. -->
   <menu>
     <file>menu.xml</file>
-    <hideDelay>200</hideDelay>
+    <hideDelay>1500</hideDelay>
     <middle>no</middle>
     <submenuShowDelay>0</submenuShowDelay>
     <submenuHideDelay>0</submenuHideDelay>

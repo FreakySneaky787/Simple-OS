@@ -407,7 +407,23 @@ for home in /etc/skel /home/simple; do
            grep -qx 'execp_lclick_command = /usr/local/bin/simpleos-dnd --toggle' /tmp/dndblock.\$\$; rc=\$?; rm -f /tmp/dndblock.\$\$; [ \$rc -eq 0 ]"
     check "tint2: DND block not before the network block in $home" \
           "[ \$(grep -n '^execp_command = /usr/local/bin/simpleos-dnd --panel' '$tint2rc' | cut -d: -f1) -lt \$(grep -n '^execp_command = simpleos-netinfo --panel' '$tint2rc' | cut -d: -f1) ]"
-    check "tint2: DND icon not in panel_items (two Es) in $home" "grep -qE '^panel_items = PTEE' '$tint2rc'"
+    check "tint2: DND + sound icon not in panel_items (three Es) in $home" "grep -qE '^panel_items = PTEEE' '$tint2rc'"
+    # Sound (1.1.1, #104): the taskbar's own speaker icon instead of volumeicon, between the DND and the network block
+    check "tint2: sound icon missing/wrong (command, permanent, clicks) in $home" \
+          "awk '/^#---- Sound \\(/,/^#---- Sound End/' '$tint2rc' > /tmp/sndblock.\$\$ &&
+           grep -qx 'execp_command = /usr/local/bin/simpleos-volume --panel' /tmp/sndblock.\$\$ &&
+           grep -qx 'execp_continuous = 1' /tmp/sndblock.\$\$ && grep -qx 'execp_markup = 1' /tmp/sndblock.\$\$ &&
+           grep -qx 'execp_lclick_command = /usr/local/bin/simpleos-volume' /tmp/sndblock.\$\$ &&
+           grep -qx 'execp_uwheel_command = /usr/local/bin/simpleos-osd volume up' /tmp/sndblock.\$\$ &&
+           grep -qx 'execp_mclick_command = /usr/local/bin/simpleos-osd volume mute' /tmp/sndblock.\$\$; rc=\$?; rm -f /tmp/sndblock.\$\$; [ \$rc -eq 0 ]"
+    check "tint2: sound block not between the DND and the network block in $home" \
+          "d=\$(grep -n '^execp_command = /usr/local/bin/simpleos-dnd --panel' '$tint2rc' | cut -d: -f1);
+           v=\$(grep -n '^execp_command = /usr/local/bin/simpleos-volume --panel' '$tint2rc' | cut -d: -f1);
+           n=\$(grep -n '^execp_command = simpleos-netinfo --panel' '$tint2rc' | cut -d: -f1);
+           [ -n \"\$d\" ] && [ -n \"\$v\" ] && [ -n \"\$n\" ] && [ \$d -lt \$v ] && [ \$v -lt \$n ]"
+    check "autostart: volumeicon still started in $home (#104)" "! grep -qx 'volumeicon &' '$home/.config/openbox/autostart'"
+    check "rc.xml: menus still close after a slow click (hideDelay not 1500, #104) in $home" \
+          "grep -q '<hideDelay>1500</hideDelay>' '$home/.config/openbox/rc.xml'"
     check "fastfetch: LAN IP (localip) missing in $home" "grep -q '\"type\": \"localip\"' '$home/.config/fastfetch/config.jsonc'"
 done
 check "fastfetch: configuration invalid" "fastfetch -c /etc/skel/.config/fastfetch/config.jsonc --logo none --pipe >/dev/null 2>&1"
@@ -471,7 +487,7 @@ cp /etc/skel/.config/tint2/tint2rc "$tb/.config/tint2/"
 TB="env -u DISPLAY HOME=$tb SIMPLEOS_POWER_SUPPLY=$tb/no-power-supply SIMPLEOS_DATE_FMT= /usr/local/bin/simpleos-taskbar-select"
 check "designer: --set fails" "$TB --set position=top --set size=compact --set tasks=icons --set clock=off --set network=off >/dev/null 2>&1"
 check "designer: position top not set" "grep -qx 'panel_position = top center horizontal' '$tb/.config/tint2/tint2rc'"
-check "designer: clock/network not hidden" "grep -qx 'panel_items = PTESP' '$tb/.config/tint2/tint2rc'"
+check "designer: clock/network not hidden" "grep -qx 'panel_items = PTEESP' '$tb/.config/tint2/tint2rc'"
 check "designer: icons only not set" "grep -qx 'task_text = 0' '$tb/.config/tint2/tint2rc'"
 check "designer: invalid value not rejected" "! $TB --set style=evil >/dev/null 2>&1"
 check "designer: reset does not restore the default" "$TB --set position=bottom --set size=full --set tasks=text --set style=dark --set network=on --set clock=on >/dev/null 2>&1 && cmp -s /etc/skel/.config/tint2/tint2rc '$tb/.config/tint2/tint2rc'"
@@ -481,6 +497,39 @@ check "designer: German clock date still in US order ('Di, Okt 20', #81)" \
        grep -qx 'time2_format = %a, %-d. %b' '$tb/.config/tint2/tint2rc' && grep -qx 'clock_tooltip = %A, %-d. %B %Y' '$tb/.config/tint2/tint2rc' &&
        grep -qx 'time1_format = %H:%M' '$tb/.config/tint2/tint2rc'"
 rm -rf "${tb:?}"
+
+# Sound icon (1.1.1, #104): --panel prints one line of markup (no sound server in the build: the dimmed "off" icon);
+# an older tint2rc without the block gets exactly one, also after several --apply; migration 110 for changed files
+check "simpleos-volume --panel: no taskbar line" \
+      "SIMPLEOS_VOLUME_ONCE=1 /usr/local/bin/simpleos-volume --panel 2>/dev/null | grep -q \"^<span font_desc='FontAwesome 12'\""
+tb=$(mktemp -d)
+mkdir -p "$tb/.config/tint2"
+awk '/^#---- Sound \(/ { s = 1 } s { if (/^#---- Sound End/) { s = 0; e = 1 } next } e { e = 0; if ($0 == "") next } { print }' \
+    /etc/skel/.config/tint2/tint2rc | sed 's/^panel_items = .*/panel_items = PTEESCP/' > "$tb/.config/tint2/tint2rc"
+check "taskbar: the sound block is not added to an older tint2rc (exactly once, after two --apply)" \
+      "! grep -q 'simpleos-volume --panel' '$tb/.config/tint2/tint2rc' &&
+       env -u DISPLAY HOME=$tb SIMPLEOS_POWER_SUPPLY=$tb/no-power-supply SIMPLEOS_DATE_FMT= /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 &&
+       env -u DISPLAY HOME=$tb SIMPLEOS_POWER_SUPPLY=$tb/no-power-supply SIMPLEOS_DATE_FMT= /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 &&
+       [ \$(grep -cx 'execp_command = /usr/local/bin/simpleos-volume --panel' '$tb/.config/tint2/tint2rc') -eq 1 ] &&
+       grep -qx 'panel_items = PTEEESCP' '$tb/.config/tint2/tint2rc' && cmp -s /etc/skel/.config/tint2/tint2rc '$tb/.config/tint2/tint2rc'"
+rm -rf "${tb:?}"
+MIG11=/usr/share/simpleos/edition/migrations/user/110-menus-and-sound-icon
+mt=$(mktemp -d)
+mkdir -p "$mt/c/openbox"
+sed 's|<hideDelay>1500</hideDelay>|<hideDelay>200</hideDelay>|' /etc/skel/.config/openbox/rc.xml > "$mt/c/openbox/rc.xml"
+{ cat /etc/skel/.config/openbox/autostart; echo 'volumeicon &'; echo '# own line'; } > "$mt/c/openbox/autostart"
+check "migration 110: old hideDelay/volumeicon not changed, or own lines lost (#104)" \
+      "[ -x $MIG11 ] && env -i HOME=$mt XDG_CONFIG_HOME=$mt/c PATH=/usr/bin:/bin sh $MIG11 &&
+       grep -q '<hideDelay>1500</hideDelay>' $mt/c/openbox/rc.xml && ! grep -qx 'volumeicon &' $mt/c/openbox/autostart &&
+       grep -qx '# own line' $mt/c/openbox/autostart && cmp -s /etc/skel/.config/openbox/rc.xml $mt/c/openbox/rc.xml"
+sed -i 's|<hideDelay>1500</hideDelay>|<hideDelay>700</hideDelay>|' "$mt/c/openbox/rc.xml"
+check "migration 110: a hideDelay chosen by the user is overwritten" \
+      "env -i HOME=$mt XDG_CONFIG_HOME=$mt/c PATH=/usr/bin:/bin sh $MIG11 && grep -q '<hideDelay>700</hideDelay>' $mt/c/openbox/rc.xml"
+rm -rf "${mt:?}"
+# #116: no empty photo file; Language & Region hands the helper Debian's own spelling of LANG
+check "camera: an empty photo would be saved (#116)" "grep -q 'if not data:' /usr/local/bin/simpleos-camera"
+check "Language & Region: LANG not mapped to its SUPPORTED name before the helper (#116)" \
+      "grep -q 'lang, fmt = known(lang), known(fmt)' /usr/local/bin/simpleos-control-center"
 
 # Network: nm-applet in the tray (left click = Wi-Fi list), Rofi menu (status, Wi-Fi networks, details), password via Rofi,
 # nmcli; no terminals/TUI (nmtui)
@@ -763,7 +812,12 @@ for home in /etc/skel /home/simple; do
           "grep -A1 'keybind key=\"W-h\"' '$home/.config/openbox/rc.xml' | grep -q '<command>/usr/local/bin/simpleos-help</command>'"
 done
 check "dunst: a click on a notification does not trigger an action" "grep -q '^[[:space:]]*mouse_left_click = do_action, close_current\$' /etc/xdg/dunst/dunstrc"
-check "dunst: action menu not via rofi" "grep -q '^[[:space:]]*dmenu = /usr/bin/rofi -dmenu' /etc/xdg/dunst/dunstrc"
+check "dunst: action menu not via the scaled rofi (#115)" "grep -q '^[[:space:]]*dmenu = /usr/local/bin/rofi -dmenu' /etc/xdg/dunst/dunstrc"
+check "dunst (skel): action menu not via the scaled rofi (#115)" "grep -q '^[[:space:]]*dmenu = /usr/local/bin/rofi -dmenu' /etc/skel/.config/dunst/dunstrc"
+# Only the wrapper itself may call /usr/bin/rofi: everything else goes through /usr/local/bin/rofi (display scale, #41)
+check "a Simple OS file calls /usr/bin/rofi directly (skips the display scale, #115)" \
+      "! grep -rlI '/usr/bin/rofi' /usr/local/bin /usr/local/sbin /usr/local/lib/simpleos /etc/skel /etc/xdg/dunst 2>/dev/null | grep -vx '/usr/local/bin/rofi' | grep -q ."
+
 check "apt: package lists are not downloaded daily" "grep -q 'Update-Package-Lists \"1\"' /etc/apt/apt.conf.d/20simpleos-periodic"
 check "apt: automatic installation active" "grep -q 'Unattended-Upgrade \"0\"' /etc/apt/apt.conf.d/20simpleos-periodic"
 check "update launcher missing" "grep -qx 'Exec=/usr/local/bin/simpleos-update' /usr/share/applications/simpleos-update.desktop"
@@ -2752,7 +2806,7 @@ for ps in vm dummy mouse ups; do
           "$BAT SIMPLEOS_POWER_SUPPLY=$tb/ps/$ps /usr/local/bin/simpleos-battery --low-alert && [ ! -e $tb/notify ]"
     cp /etc/skel/.config/tint2/tint2rc "$tb/.config/tint2/"
     check "designer: battery in the bar without a real battery ('$ps', false alarm 'Battery low')" \
-          "$BAT SIMPLEOS_POWER_SUPPLY=$tb/ps/$ps /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 && grep -qx 'panel_items = PTEESCP' $tb/.config/tint2/tint2rc && cmp -s /etc/skel/.config/tint2/tint2rc $tb/.config/tint2/tint2rc"
+          "$BAT SIMPLEOS_POWER_SUPPLY=$tb/ps/$ps /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 && grep -qx 'panel_items = PTEEESCP' $tb/.config/tint2/tint2rc && cmp -s /etc/skel/.config/tint2/tint2rc $tb/.config/tint2/tint2rc"
 done
 rm -f "$tb/notify"
 check "battery: charging -> 'Battery low' anyway" \
@@ -2761,13 +2815,13 @@ check "battery: real battery not detected" "$BAT SIMPLEOS_POWER_SUPPLY=$tb/ps/ch
 check "battery: discharging -> no 'Battery low' notification" \
       "$BAT SIMPLEOS_POWER_SUPPLY=$tb/ps/laptop /usr/local/bin/simpleos-battery --low-alert && grep -q 'Battery low' $tb/notify"
 check "designer: battery not in the bar despite a battery" \
-      "$BAT SIMPLEOS_POWER_SUPPLY=$tb/ps/laptop /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 && grep -qx 'panel_items = PTEESBCP' $tb/.config/tint2/tint2rc"
+      "$BAT SIMPLEOS_POWER_SUPPLY=$tb/ps/laptop /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 && grep -qx 'panel_items = PTEEESBCP' $tb/.config/tint2/tint2rc"
 rm -f "$tb/notify"
 VM="env -u DISPLAY HOME=$tb PATH=$tb/bin:/usr/local/bin:/usr/bin:/bin SIMPLEOS_VIRT=kvm SIMPLEOS_POWER_SUPPLY=$tb/ps/laptop"
 check "battery: VM with a passed-through battery shows a battery icon" "! $VM /usr/local/bin/simpleos-battery --present"
 check "battery: false alarm 'Battery low' in a VM" "$VM /usr/local/bin/simpleos-battery --low-alert && [ ! -e $tb/notify ]"
 check "designer: battery in the bar in a VM" \
-      "$VM /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 && grep -qx 'panel_items = PTEESCP' $tb/.config/tint2/tint2rc"
+      "$VM /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 && grep -qx 'panel_items = PTEEESCP' $tb/.config/tint2/tint2rc"
 rm -rf "${tb:?}"
 # xfce4-power-manager / UPower: no own battery notifications, power manager only with a real battery, UPower not
 # in VMs (phantom power device with 0 % -> otherwise "low power" or CriticalPowerAction)
@@ -3031,7 +3085,7 @@ cp /etc/skel/.config/tint2/tint2rc "$lt/tb/.config/tint2/"
 TL="env -u DISPLAY HOME=$lt/tb SIMPLEOS_POWER_SUPPLY=$lt/no-power-supply SIMPLEOS_DATE_FMT= /usr/local/bin/simpleos-taskbar-select --apply"
 TRC=$lt/tb/.config/tint2/tint2rc
 check "taskbar (live): badge missing" \
-      "SIMPLEOS_LIVE=1 $TL >/dev/null 2>&1 && grep -qx 'panel_items = PTEEPSCP' $TRC && [ \$(grep -cx 'button = new' $TRC) -eq 3 ] &&
+      "SIMPLEOS_LIVE=1 $TL >/dev/null 2>&1 && grep -qx 'panel_items = PTEEEPSCP' $TRC && [ \$(grep -cx 'button = new' $TRC) -eq 3 ] &&
        grep -qx 'button_lclick_command = /usr/local/bin/simpleos-install' $TRC && grep -qx 'button_background_id = 8' $TRC"
 check "taskbar (live): the badge button is not between the app and power button" \
       "awk '/^button_lclick_command/{n++; c[n]=\$0} END{exit !(c[1] ~ /rofi/ && c[2] ~ /simpleos-install/ && c[3] ~ /powermenu/)}' $TRC"

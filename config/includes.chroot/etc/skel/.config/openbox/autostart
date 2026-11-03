@@ -67,7 +67,8 @@ nm-applet &
 # devices with 0 % as "low power" via UPower. Notifications/tray icon are off anyway
 # (/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml), battery display: tint2 + simpleos-battery
 simpleos-battery --present && xfce4-power-manager &
-volumeicon &
+# Sound: the speaker icon is the taskbar's own (simpleos-volume --panel, tint2rc) – volumeicon is no longer started
+# (1.1.1, #104: its left click muted the sound, its slider and menu closed after a slow click)
 # Taskbar: apply the settings (e.g. battery display only on devices with a battery), then start it.
 # Without DISPLAY, otherwise --apply starts a tint2 itself and there would be two bars.
 env -u DISPLAY simpleos-taskbar-select --apply 2>/dev/null

@@ -1,0 +1,20 @@
+#!/bin/sh
+# Simple OS 1.1.1 – menus that stay open after a slow click, the taskbar's own speaker icon (#104). Runs once per
+# account at sign-in, before the desktop starts ("edition --user", after the /etc/skel copies were merged); a new
+# account gets both from /etc/skel and never runs it. Only for accounts whose files were not merged because they had
+# been changed (keyboard layout, own entries …):
+#   rc.xml     <hideDelay>200</hideDelay> (the old default) -> 1500: a press of 0.3 s closed the desktop and window
+#              menus again when the button was let go. Another value was chosen by the user and stays.
+#   autostart  the line "volumeicon &" goes (its left click muted the sound); the speaker icon is now in the
+#              taskbar (simpleos-taskbar-select --apply at sign-in adds its block to tint2rc).
+# Never fails (exit 0): a file that is missing is simply skipped.
+cfg=${XDG_CONFIG_HOME:-$HOME/.config}
+rc=$cfg/openbox/rc.xml
+if [ -f "$rc" ] && grep -q '<hideDelay>200</hideDelay>' "$rc"; then
+    sed -i 's|<hideDelay>200</hideDelay>|<hideDelay>1500</hideDelay>|' "$rc" 2>/dev/null
+fi
+auto=$cfg/openbox/autostart
+if [ -f "$auto" ] && grep -qx 'volumeicon &' "$auto"; then
+    sed -i '/^volumeicon &$/d' "$auto" 2>/dev/null
+fi
+exit 0

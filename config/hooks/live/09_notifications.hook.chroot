@@ -3,9 +3,10 @@ set -e
 # Re-run on Simple OS updates (package simpleos, edition --system): must stay idempotent.
 # Notifications (dunst 1.9 has no drop-in configuration): a left click on a notification triggers its
 # action – e.g. "Open" for a USB stick (simpleos-usb-notify) or "Install" for updates (simpleos-update).
-# The action menu (several buttons) uses rofi instead of dmenu, which is not installed.
+# The action menu (several buttons) uses rofi instead of dmenu, which is not installed – through /usr/local/bin/rofi,
+# so it follows the display scale like every other menu (#115; /usr/bin/rofi stayed at 100 % on HiDPI screens).
 RC=/etc/xdg/dunst/dunstrc
 sed -i 's|^\([[:space:]]*mouse_left_click[[:space:]]*=\).*|\1 do_action, close_current|' "$RC"
-sed -i 's|^\([[:space:]]*dmenu[[:space:]]*=\).*|\1 /usr/bin/rofi -dmenu -p Action|' "$RC"
+sed -i 's|^\([[:space:]]*dmenu[[:space:]]*=\).*|\1 /usr/local/bin/rofi -dmenu -p Action|' "$RC"
 grep -q '^[[:space:]]*mouse_left_click = do_action, close_current$' "$RC"
-grep -q '^[[:space:]]*dmenu = /usr/bin/rofi -dmenu -p Action$' "$RC"
+grep -q '^[[:space:]]*dmenu = /usr/local/bin/rofi -dmenu -p Action$' "$RC"
