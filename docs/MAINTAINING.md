@@ -38,8 +38,11 @@ The details are in [TESTING.md](../TESTING.md) (checklist) and the README sectio
    never run it between the final build and `publish`.
 6. **Test:** TESTING.md – at least a fresh VM install (BIOS and UEFI) and an **update from the previous release**
    through Software Updates (a VM installed from the old ISO).
-7. **Publish:** `./tools/release.sh sign && ./tools/release.sh publish` (asks for the key's passphrase). Use
-   `publish --no-iso` when neither the installer nor hardware detection changed – the old ISO stays the download.
+7. **Publish:** `./tools/release.sh sign && ./tools/release.sh publish` (asks for the key's passphrase). **Every
+   release comes with a new ISO** (#114): `publish` marks the release as "latest", and README and website send new
+   users to the latest release for the ISO – one without an ISO would leave them without a download. `--no-iso` is
+   refused unless `SIMPLEOS_ALLOW_NO_ISO=1` (an emergency hotfix only; then point README, website and the release text
+   to the last ISO by hand).
    `publish` creates a draft, uploads the ISO and the signed repository, checks everything, and only then marks it as
    "latest" – from that moment installed systems are offered the new edition.
 8. **After publishing:** the website (section 6), close the milestone, an announcement in Discussions → Announcements

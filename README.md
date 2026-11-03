@@ -105,7 +105,7 @@ logo and short form.
 | `./test_installed_vm.sh [--uefi\|--secureboot]` | Boot the installed system from that mode's disk |
 | `./tools/release.sh key` | Once: create the release signing key (private key outside the repo, public key into the image) |
 | `./tools/release.sh version X.Y.Z` | Set the version of the next edition everywhere it is shown (`usr/lib/os-release`, installer branding) |
-| `./tools/release.sh sign` / `publish [--no-iso]` | Sign `output/repo`, publish it with the ISO as GitHub release `v<VERSION>` ("latest") |
+| `./tools/release.sh sign` / `publish` | Sign `output/repo`, publish it with the ISO as GitHub release `v<VERSION>` ("latest"); every release has an ISO (#114) |
 
 Release: test checklist in `TESTING.md`, text for the download page in `RELEASE_NOTES.md` (its `#known-issues`
 section is the target of the installer's "Known issues" button).
