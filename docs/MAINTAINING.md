@@ -130,7 +130,7 @@ every release – and only after `publish`, because the links point to the new r
   - Merging a bugfix release (`main`, e.g. 1.0.8) into `next` conflicts in `usr/lib/os-release`, the installer branding
     and `whats-new`: keep `next`'s version, and add the bugfix's notes to its "What's new" if they matter.
 - `trixie` – Simple OS 2.0 "Rigi" on Debian 13 (ROADMAP "2.0"). Merge `main` into it regularly so fixes are not lost.
-  Before 2.0 is published, 1.x systems need their own update channel (ROADMAP, issue #52).
+  Before 2.0 is published, 1.x systems need their own update channel (ROADMAP, issue #106).
 
 ## 8. Accounts and access
 
