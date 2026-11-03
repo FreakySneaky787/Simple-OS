@@ -101,6 +101,9 @@ plus:
       and Intel graphics, Wi-Fi (also Broadcom), Bluetooth incl. headphone battery, sound over HDMI/USB, sleep.
 - [ ] **Software Updates and Store:** updates from Debian 13 and the Simple OS 2.x channel; Flatpak apps install and
       update.
+- [ ] **Lifebuoy loading animation** (#113): the turning lifebuoy at boot (Plymouth), in the installer, in
+      `simpleos-progress`, in Control Center / Software Center / Setup Wizard and as the busy cursor when a program
+      starts; light and dark mode, sharp at 16–24 px, a real percentage bar stays where there is one.
 - [ ] **Update channel:** a 1.x system with the newest 1.x update is **not** offered 2.0 as a normal update.
 - [ ] **Upgrade 1.x → 2.0** (issue #52): on a VM with the newest 1.2.x and one real machine – restore point first, then the
       upgrade; afterwards `/etc/os-release` says 2.0, no `bookworm` sources left, no backports pin file, files,

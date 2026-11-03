@@ -69,7 +69,11 @@ has by then. In detail:
   test #44, translations #43, Users & accounts #68, AppArmor #48, Windows programs #85 …) **and every 1.x bugfix**: `main`
   is merged into `trixie` regularly, and once more before the preview ISO, the beta and the release, so 2.0 never lacks
   a feature or a fix that 1.x has;
-- the Rigi look (peach accent, wallpaper, logo colors);
+- the Rigi look (peach accent, wallpaper, logo colors) and with it **the lifebuoy as the one loading animation** (#113,
+  decided 2026-11-03): a small turning lifebuoy from the logo wherever the system is busy – boot (own Plymouth theme),
+  installer (Calamares branding), `simpleos-progress`, one shared widget instead of `Gtk.Spinner` in Control Center,
+  Software Center and Setup Wizard, and an animated busy cursor for program starts; calm, never instead of a real
+  percentage, still when animations are reduced;
 - the upgrade tool (#52) and the update channels (#106);
 - the simpler partitioning page in the installer (#101), because the installer is ported anyway.
 New things that 1.x does not have (#89 backups of personal files, #56 accessibility, Wayland #87 …) come in 2.1 and
@@ -91,8 +95,9 @@ How the port goes, in small steps (each step ends with something that builds and
 
 ## 2.0 "Rigi" – Debian 13 "trixie"
 
-**Status (2026-10-24):** branch `trixie` created, the texts (README, RELEASE_NOTES, TESTING) describe 2.0 already; the
-code is still the one of 1.0.7 – the port has not started yet (#50).
+**Status (2026-11-03):** branch `trixie` since 2026-10-24; the Rigi look (peach accent, wallpaper by day
+and night, logo colors) and the texts (README, RELEASE_NOTES, TESTING) are there, the rest of the code is still the
+one of 1.x – the port itself has not started yet (#107, #50).
 
 Simple OS 1.x is built on Debian 12 "bookworm", which moved from the regular security team to Debian LTS on 12 July 2026
 (LTS supported until 30 June 2028, [debian.org](https://www.debian.org/releases/oldstable/)). Debian 13 has been the stable release since August 2025.
