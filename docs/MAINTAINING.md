@@ -27,7 +27,8 @@ The details are in [TESTING.md](../TESTING.md) (checklist) and the README sectio
    hardware stay open with the label `verify`.
 3. **Version:** `./tools/release.sh version X.Y.Z`, then `RELEASE_NOTES.md` (it is the release text and the target of
    the installer's "Known issues" button), the "What's new" text (`config/includes.chroot/usr/share/simpleos/whats-new`),
-   the ROADMAP table, a TESTING section.
+   the ROADMAP table, a TESTING section. After the release, remove the version from ROADMAP.md, its TESTING section
+   and the website's roadmap page – they only show what is still coming.
 4. **Release day:** `git fetch origin` (merge if something was changed on GitHub), `git push`.
 5. **Build:** `sudo ./build_iso.sh` (Podman container from `Containerfile`, log in `build/build.log`; the verify hook
    must end with `Simple OS verify: OK`). Then `cd output && sha256sum -c Simple-OS.iso.sha256`.
@@ -93,7 +94,7 @@ No code needed for most of them:
 
 - **Hardware reports:** install on a computer and report what works (issue #49, label `verify`).
 - **Docs:** typos, clearer help texts, screenshots for the help pages.
-- **Translations** of Simple OS's own tools – planned for 1.1 (#43); say which language in Discussions.
+- **Translations** of Simple OS's own tools – planned for 1.2 (#43); say which language in Discussions.
 - Small bugs with the label `good first issue`.
 
 ## 6. Website
@@ -103,7 +104,8 @@ every release – and only after `publish`, because the links point to the new r
 
 - `download.html`: version, date, ISO size, SHA-256 (from `output/Simple-OS.iso.sha256`), links to `vX.Y.Z`.
 - `index.html`: news, version, "Coming next"; `simple-os.html`: version history row.
-- `roadmap.html`: mirrors ROADMAP.md (release marked "Released", next date).
+- `roadmap.html`: mirrors ROADMAP.md – only what is still coming; a released version is removed (its notes are in
+  the GitHub release).
 
 ## 7. Branches
 
