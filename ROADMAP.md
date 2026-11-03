@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4, 2026-10-17 for 1.0.5, 2026-10-24 for 1.0.6 and 2026-10-25 for 1.0.7 (this copy on the branch `trixie` follows the work on 2.0 "Rigi"). What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
+Written after 1.0.3 (2026-10-09), updated 2026-10-14 for 1.0.4, 2026-10-17 for 1.0.5, 2026-10-24 for 1.0.6 and 2026-10-25 for 1.0.7 (this copy on the branch `trixie` follows the work on 2.0 "Rigi"; 2.x plan 2026-11-03). What is already done is in `RELEASE_NOTES.md`; what to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -164,7 +164,8 @@ has by then. In detail:
 - the Rigi look (peach accent, wallpaper, logo colors);
 - the upgrade tool (#52) and the update channels (#106);
 - the simpler partitioning page in the installer (#101), because the installer is ported anyway.
-New things that 1.x does not have (#89 backups of personal files, #56 accessibility, Wayland #87 …) come in 2.x.
+New things that 1.x does not have (#89 backups of personal files, #56 accessibility, Wayland #87 …) come in 2.1 and
+later (see "2.x" below).
 
 Support of 1.x after 2.0: **no fixed end date.** 1.2.x keeps getting fixes as long as people use it; the hard limit is
 Debian's own security support for Debian 12 (Debian LTS until 30 June 2028).
@@ -206,20 +207,52 @@ Moving to it is the one big job of the next year, and it has to be planned, not 
 - **Codename: Rigi** ("REE-gee", the "Queen of the Mountains") – one per big release, Swiss mountains.
   Ideas for 3.0 and later in [docs/CODENAMES.md](docs/CODENAMES.md).
 
-## 2.x – Wayland (not in 2.0.x)
+## 2.x – feature releases after 2.0
 
-- **Wayland session with labwc** (#87): first an extra login session "Simple OS (Wayland, preview)" next to the X11
-  default, the tools moved over one by one (taskbar, idle/lock, displays, clipboard, screenshots, night light, menus).
-  Not in any 2.0.x release – never change the base and the desktop in the same release. **Later in 2.x** (e.g. 2.2 or
-  2.3): Wayland becomes the default once everything works; X11 stays as a fallback for a while.
+2.0 "Rigi" brings only the new base. New features start with 2.1, one theme per release, every 2–3 months like the 1.x
+feature releases. The order may change with what users report; hardware support is not a release of its own – it
+grows with every release (#49, the hardware compatibility page).
+
+### 2.1 – keep your data safe
+
+- **Backups of personal files** (#89) – today the restore points (Timeshift) only cover the system.
+- **Recovery assistant** (#108): "Simple OS – restore" in the boot menu, to bring back a restore point when the
+  desktop no longer starts.
+- **Update scheduling** (#109): install updates when shutting down or at a set time, together with the option for
+  automatic security updates (#54).
+- **Clipboard history with images and pinned entries** (#110).
+- Small: make the split view of the file manager (Thunar, F3) visible in its menu and the help.
+
+### 2.2 – usable for everyone
+
+- **Accessibility** (#56): screen reader, large cursor, high-contrast theme in Appearance.
+- **Fingerprint reader** (`fprintd`) and a setup page (#55).
+- **Wayland session with labwc, preview** (#87): an extra login session "Simple OS (Wayland, preview)" next to the X11
+  default; the tools move over one by one (taskbar, idle/lock, displays, clipboard, screenshots, night light, menus).
+  Not in any 2.0.x release – never change the base and the desktop in the same release.
+
+### 2.3 – tools
+
+- **Wayland becomes the default** (#87) once everything works; X11 stays as a fallback for a while.
+- **Screenshot editor** (#111): arrows, text, crop and blur. Here and not earlier because the screenshot tool uses
+  `maim` (X11 only) and has to be rebuilt for Wayland anyway – the editor is built once, on the new tool.
+- **RGB lighting and game controllers** (#112, optional): no own RGB tool – OpenRGB recommended in the Software Store;
+  controllers work out of the box and show their battery level.
+
+### Three areas
+
+The work is sorted into three areas, also as labels on GitHub (`core`, `desktop`, `tools`):
+
+| Area | What belongs to it |
+|---|---|
+| **Simple OS Core** – the foundation | system, kernel, updates, security, drivers, installer, recovery |
+| **Simple OS Desktop** – using it | Control Center, taskbar, file manager, search, notifications, windows |
+| **Simple OS Tools** – the helpers | backups, cleaner, Software Store, hardware, screenshots, diagnostics |
 
 ## Ideas, not scheduled
 
 - Own **Simple OS Software Store** (#86): the whole Flathub catalogue in the Simple OS style, replacing Bazaar/GNOME
   Software – grown step by step from today's Software Center, no extra multi-GB runtime.
-- Automatic security updates as an option (today: a notification, you click Install) (#54).
-- Fingerprint reader support (`fprintd`) and a setup page (#55).
-- Accessibility: screen reader, large cursor, high-contrast theme in Appearance (#56).
 - Printer/scanner setup screenshots in the help; a built-in "Get help" that links to the project page.
 - Continuous build check on GitHub (build the ISO in CI and run the verify hook on every push; needs a runner that can do `lb build`) (#58).
 - arm64 image (Raspberry Pi / Apple-less ARM laptops) (#59) – **not planned**; if at all, most likely not before the 2.x
