@@ -21,13 +21,13 @@ named after the **Rigi**, the "Queen of the Mountains" above Lake Lucerne.
   window frames, Setup Wizard and progress windows all start in peach. Blue, mauve, pink, green and teal stay
   available in Appearance. **Upgrading from 1.x switches every account to peach**, whatever color it had – the
   taskbar, menus and window frames change together; another color can be chosen again in Appearance.
-- **New default wallpaper:** the evening view from the Rigi – the sun sinks into the chain of the Alps, the lake lies far
-  below, and a cog railway train comes into the station under its overhead line. All in peach, fading into the dark. The
-  day variant of the dynamic wallpaper is the same scene in light peach.
+- **New default wallpaper:** the view from the Rigi – the chain of the Alps, the lake far below, and a cog railway train
+  coming into the station under its overhead line. At night it is really dark: the moon and stars, the moon's path on
+  the lake and the lit train. The day variant of the dynamic wallpaper shows the sun and the same scene in light peach.
 
   | Night (default) | Day |
   |---|---|
-  | <img src="docs/rigi-view-night.webp" width="100%"> | <img src="docs/rigi-view-day.webp" width="100%"> |
+  | <img src="docs/rigi-moon-night.webp" width="100%"> | <img src="docs/rigi-sun-day.webp" width="100%"> |
 - **New logo colors:** the lifebuoy has a cream ring with four orange stripes; the two "S" run from peach to cream.
   Boot menu, installer, Setup Wizard and README use them.
 

@@ -6,7 +6,7 @@ Brand: "SOS" (Simple Operating System), the "O" is a lifebuoy – a rescue from 
 even at 16 px), the two "S" in the Simple OS gradient peach -> pink. The logo (logo.png, icon.png) is the ring alone.
 
 Usage: gen_branding.py <includes.chroot folder> [<bootloaders/isolinux folder>]
-        gen_branding.py --readme docs     (only the README banner docs/sos-banner-rigi.png)
+        gen_branding.py --readme docs     (only the README banner docs/sos-banner-rigi-night.png)
 Generates in it:
   etc/calamares/branding/simpleos/{logo,icon,welcome,slide1}.png
   usr/share/simpleos/logo.png
@@ -175,8 +175,9 @@ def make_wallpaper(size, day=False):
     massif with a jagged crown, the lake lies far below with the sun's path on the water, a meadow with firs comes down
     to the station, and a cog railway train comes in under its overhead line on its trackbed. Flat shapes, everything in
     Catppuccin Peach fading into the dark. No logo, no text; the upper left (desktop icons) stays calm sky.
-    Night (default): peach into Crust. Day (day=True): the same scene in light peach (simpleos-wallpaper-schedule
-    switches). Deterministic (fixed seeds): every build gives the same picture."""
+    Night (default): really dark – the moon and stars instead of the sun, only a last peach glow over the Alps, the
+    moon's path on the lake and the lit train. Day (day=True): the sun and the same scene in light peach
+    (simpleos-wallpaper-schedule switches). Deterministic (fixed seeds): every build gives the same picture."""
     import math
     import random
 
@@ -194,10 +195,11 @@ def make_wallpaper(size, day=False):
         sun_c, ray_a, lamp = WHITE, 34, lerp(WHITE, PEACH, 0.15)
         ray_c = halo = WHITE
     else:
-        top, mid, glow, ink = CRUST, lerp(CRUST, PEACH, 0.40), lerp(PEACH, WHITE, 0.10), CRUST
-        sun_c, ray_a, lamp = lerp(PEACH, WHITE, 0.85), 18, lerp(PEACH, WHITE, 0.75)
+        # night: really dark, only a last peach glow over the Alps, the moon instead of the sun
+        top, mid, glow, ink = CRUST, lerp(CRUST, PEACH, 0.10), lerp(CRUST, PEACH, 0.34), CRUST
+        sun_c, ray_a, lamp = lerp(CREAM, WHITE, 0.3), 0, lerp(PEACH, WHITE, 0.75)
         ray_c = lerp(glow, WHITE, 0.4)
-        halo = lerp(glow, WHITE, 0.35)
+        halo = lerp(glow, CREAM, 0.5)
 
     def shade(t):
         return lerp(glow, ink, t)
@@ -225,8 +227,8 @@ def make_wallpaper(size, day=False):
     def paste_soft(img, layer):
         return Image.alpha_composite(img.convert("RGBA"), layer).convert("RGB")
 
-    # ---- Sun with rays, sinking behind the shoulder of the big peak ----
-    sx, sy = 0.425, 0.49
+    # ---- Day: the sun with rays, sinking behind the shoulder of the big peak. Night: the moon and stars ----
+    sx, sy = (0.425, 0.49) if day else (0.30, 0.20)
 
     def rays(dd, k):
         for i in range(16):
@@ -242,11 +244,35 @@ def make_wallpaper(size, day=False):
             rr = Y(r) * k
             dd.ellipse((X(sx) * k - rr, Y(sy) * k - rr, X(sx) * k + rr, Y(sy) * k + rr), fill=halo + (a_,))
 
-    img = paste_soft(img, soft(rays, 10 * ss, ray_c))
-    img = paste_soft(img, soft(sun_glow, 60 * ss, halo))
-    d = ImageDraw.Draw(img, "RGBA")
-    r = Y(0.03)
-    d.ellipse((X(sx) - r, Y(sy) - r, X(sx) + r, Y(sy) + r), fill=sun_c)
+    def moon_glow(dd, k):
+        for r, a_ in ((0.16, 35), (0.06, 70)):
+            rr = Y(r) * k
+            dd.ellipse((X(sx) * k - rr, Y(sy) * k - rr, X(sx) * k + rr, Y(sy) * k + rr), fill=halo + (a_,))
+
+    if day:
+        img = paste_soft(img, soft(rays, 10 * ss, ray_c))
+        img = paste_soft(img, soft(sun_glow, 60 * ss, halo))
+        d = ImageDraw.Draw(img, "RGBA")
+        r = Y(0.03)
+        d.ellipse((X(sx) - r, Y(sy) - r, X(sx) + r, Y(sy) + r), fill=sun_c)
+    else:
+        d = ImageDraw.Draw(img, "RGBA")
+        rnd = random.Random(42)
+        for _ in range(110):  # stars, denser and brighter towards the top
+            x_, y_ = rnd.random(), 0.44 * rnd.random() ** 1.4
+            if math.hypot((x_ - sx) * W / H, y_ - sy) < 0.07:
+                continue
+            rr = ss * rnd.choice((0.6, 0.9, 1.3))
+            a_ = round((40 + 150 * rnd.random()) * (1 - y_ / 0.44))
+            d.ellipse((X(x_) - rr, Y(y_) - rr, X(x_) + rr, Y(y_) + rr), fill=CREAM + (a_,))
+        img = paste_soft(img, soft(moon_glow, 40 * ss, halo))
+        # crescent moon: a disc with a second disc cut out
+        r = Y(0.028)
+        m = Image.new("L", (W, H), 0)
+        md = ImageDraw.Draw(m)
+        md.ellipse((X(sx) - r, Y(sy) - r, X(sx) + r, Y(sy) + r), fill=255)
+        md.ellipse((X(sx) - r * 0.45, Y(sy) - r * 1.15, X(sx) + r * 1.55, Y(sy) + r * 0.85), fill=0)
+        img.paste(Image.new("RGB", (W, H), sun_c), (0, 0), m.filter(ImageFilter.GaussianBlur(ss * 0.6)))
 
     # ---- Mountains: jagged alpine ridges, lighter (more haze) the further away ----
     def ridge(seed, base, rough, peaks=(), levels=8):
@@ -279,7 +305,7 @@ def make_wallpaper(size, day=False):
             # edge of light, strongest close to the sun
             light = lerp(glow, WHITE, 0.45)
             for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
-                a_ = rim * max(0.0, 1 - abs(x0 / W - sx) / 0.45)
+                a_ = rim * (1.0 if day else 0.45) * max(0.0, 1 - abs(x0 / W - sx) / 0.45)
                 if a_ > 0.02:
                     d.line([(x0, y0), (x1, y1)], fill=light + (round(255 * a_),), width=2 * ss)
         return img
@@ -306,13 +332,13 @@ def make_wallpaper(size, day=False):
         d.line([(0, y), (W, y)], fill=lerp(water_top, water_low, (y - y0) / (y1 - y0)))
 
     def sun_path(dd, k):  # the sun's path on the water
-        dd.ellipse((X(sx - 0.018) * k, Y(lake_y) * k, X(sx + 0.018) * k, Y(0.78) * k), fill=sun_c + (150,))
+        dd.ellipse((X(sx - 0.018) * k, Y(lake_y) * k, X(sx + 0.018) * k, Y(0.78) * k), fill=sun_c + (150 if day else 80,))
     img = paste_soft(img, soft(sun_path, 10 * ss, sun_c))
     d = ImageDraw.Draw(img, "RGBA")
     for i in range(9):  # glitter
         gy = lake_y + 0.006 + 0.0035 * i ** 1.5
         gw = 0.010 + 0.004 * i
-        d.line([(X(sx - gw), Y(gy)), (X(sx + gw), Y(gy))], fill=sun_c + (110,), width=ss)
+        d.line([(X(sx - gw), Y(gy)), (X(sx + gw), Y(gy))], fill=sun_c + (110 if day else 70,), width=ss)
 
     def fog(dd, k):  # evening haze lying on the water
         dd.rectangle((0, Y(lake_y - 0.012) * k, W * k, Y(lake_y + 0.018) * k), fill=lerp(glow, WHITE, 0.3) + (90,))
@@ -396,10 +422,10 @@ def make_wallpaper(size, day=False):
     d.line([(X(0.865), Y(0.525)), (X(0.80), Y(0.525))], fill=mast, width=3 * ss)
 
     # body side (away from the sun: darker), with a band of windows reflecting the sky
-    body_hi, body_lo = lerp(PEACH, ink, 0.52), lerp(ink, glow, 0.07)
+    body_hi, body_lo = lerp(PEACH, ink, 0.52 if day else 0.66), lerp(ink, glow, 0.07)
     d.polygon([side(0, 0), side(1, 0), side(1, 0.55), side(0, 0.55)], fill=body_hi)
     d.polygon([side(0, 0.55), side(1, 0.55), side(1, 1), side(0, 1)], fill=body_lo)
-    win = lerp(glow, ink, 0.30)
+    win = lerp(glow, ink, 0.30) if day else lerp(PEACH, WHITE, 0.25)  # at night the cars are lit inside
     for k_ in range(7):
         a_, b_ = 0.04 + k_ * 0.137, 0.04 + k_ * 0.137 + 0.105
         d.polygon([side(a_, 0.14), side(b_, 0.14), side(b_, 0.44), side(a_, 0.44)], fill=win + (230,))
@@ -411,7 +437,7 @@ def make_wallpaper(size, day=False):
     d.line([side(0, 0), side(1, 0)], fill=lerp(glow, WHITE, 0.2) + (140,), width=2 * ss)  # roof edge
 
     # front: peach livery on top fading into the dark, two windscreens, three lamps
-    front_hi, front_lo = lerp(PEACH, ink, 0.28), lerp(ink, glow, 0.12)
+    front_hi, front_lo = lerp(PEACH, ink, 0.28 if day else 0.48), lerp(ink, glow, 0.12)
     rad = round(X(0.010))
     d.rounded_rectangle((X(fx0), Y(fy0), X(fx1), Y(fy1)), radius=rad, fill=front_hi)
     steps = 60
@@ -422,7 +448,7 @@ def make_wallpaper(size, day=False):
     d.rectangle((X(fx0), Y(fy0 + fh * 0.75), X(fx1), Y(fy1)), fill=front_lo)
     for wx0, wx1 in ((0.08, 0.47), (0.53, 0.92)):
         d.rounded_rectangle((X(fx0 + fw * wx0), Y(fy0 + fh * 0.10), X(fx0 + fw * wx1), Y(fy0 + fh * 0.40)),
-                            radius=round(X(0.003)), fill=lerp(glow, ink, 0.18))
+                            radius=round(X(0.003)), fill=lerp(glow, ink, 0.18) if day else lerp(ink, PEACH, 0.22))
         # reflection of the sunset
         d.polygon([(X(fx0 + fw * wx0), Y(fy0 + fh * 0.30)), (X(fx0 + fw * (wx0 + 0.16)), Y(fy0 + fh * 0.10)),
                    (X(fx0 + fw * (wx0 + 0.24)), Y(fy0 + fh * 0.10)), (X(fx0 + fw * wx0), Y(fy0 + fh * 0.37))],
@@ -491,12 +517,12 @@ def make_boot_splash(size, logo_y):
 
 
 def main():
-    # README banner for the repository (docs/sos-banner-rigi.png): gen_branding.py --readme docs
+    # README banner for the repository (docs/sos-banner-rigi-night.png): gen_branding.py --readme docs
     if len(sys.argv) > 2 and sys.argv[1] == "--readme":
         out = Path(sys.argv[2])
         out.mkdir(parents=True, exist_ok=True)
         make_banner((1280, 420), 110, "Simple Operating System · Debian 13 · Openbox").save(
-            out / "sos-banner-rigi.png", optimize=True)
+            out / "sos-banner-rigi-night.png", optimize=True)
         return
 
     root = Path(sys.argv[1] if len(sys.argv) > 1 else ".")

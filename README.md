@@ -8,7 +8,7 @@
 > [`main`](https://github.com/FreakySneaky787/Simple-OS/tree/main). Plan and timeline: [ROADMAP.md](ROADMAP.md#20-rigi--debian-13-trixie),
 > issues #50–#53. (Remove this note when 2.0 is released.)
 
-<p align="center"><img src="docs/sos-banner-rigi.png" alt="SOS – Simple Operating System. Keep it Simple." width="100%"></p>
+<p align="center"><img src="docs/sos-banner-rigi-night.png" alt="SOS – Simple Operating System. Keep it Simple." width="100%"></p>
 
 **A fast, calm Linux desktop based on Debian 13. It sets itself up, updates itself, and you never need a terminal.**
 
@@ -26,8 +26,8 @@
 
 | | |
 |---|---|
-| <img src="docs/screenshots/preview-rigi-view-desktop.webp" alt="Preview: the desktop with the file manager" width="100%"><br>The desktop | <img src="docs/screenshots/preview-rigi-view-setup-wizard.webp" alt="Setup Wizard, choosing the web browser" width="100%"><br>Setup Wizard on the first login |
-| <img src="docs/screenshots/preview-rigi-view-control-center.webp" alt="Control Center, Appearance page" width="100%"><br>Control Center | <img src="docs/screenshots/preview-rigi-view-app-menu.webp" alt="App menu with search" width="100%"><br>App menu |
+| <img src="docs/screenshots/preview-rigi-night-desktop.webp" alt="Preview: the desktop with the file manager" width="100%"><br>The desktop | <img src="docs/screenshots/preview-rigi-night-setup-wizard.webp" alt="Setup Wizard, choosing the web browser" width="100%"><br>Setup Wizard on the first login |
+| <img src="docs/screenshots/preview-rigi-night-control-center.webp" alt="Control Center, Appearance page" width="100%"><br>Control Center | <img src="docs/screenshots/preview-rigi-night-app-menu.webp" alt="App menu with search" width="100%"><br>App menu |
 
 ## System requirements
 
@@ -212,7 +212,7 @@ simple-os/
 ├── build_iso.sh, test_vm.sh, test_installed_vm.sh   entry points
 ├── LICENSE, RELEASE_NOTES.md, TESTING.md            GPL-3.0, download text, release checklist
 ├── Containerfile                                   build environment (Debian trixie + live-build)
-├── docs/sos-banner-rigi.png   README banner (tools/gen_branding.py --readme docs)
+├── docs/sos-banner-rigi-night.png   README banner (tools/gen_branding.py --readme docs)
 ├── tools/
 │   ├── lb_config.sh      lb config + build-time parts (branding, fastfetch download, edition package)
 │   ├── build_deb.sh      edition package "simpleos" + APT repository files in output/repo
@@ -399,8 +399,9 @@ the lb default files, the generated graphics and the fastfetch package.
   Rofi flyouts: rounded card (16 px) with a fine border, a heading instead of a search field, an accent marker on
   the selected entry; Network and Power open above the taskbar on the right, like Windows 11. picom: soft shadows
   and rounded corners for windows; Rofi without picom shadow (picom 9.1 draws it square, it would show through the
-  rounded corners). Wallpaper (2.0 "Rigi"): the evening view from the Rigi, the Alps and the lake below, a cog railway train at the station
-  under its overhead line, all in peach fading into the dark, no logo; the day variant is the same scene in light peach (`gen_branding.py`). Default accent: peach.
+  rounded corners). Wallpaper (2.0 "Rigi"): the view from the Rigi, the Alps and the lake below, a cog railway train at the station under
+  its overhead line, peach fading into the dark; at night with the moon and stars, no logo; the day variant shows the
+  sun and the same scene in light peach (`gen_branding.py`). Default accent: peach.
   Logo: a lifebuoy (cream, four stripes in Catppuccin Latte Peach); the wordmark "SOS" uses the ring as the "O" and the two
   "S" in a peach → cream gradient, slogan "Keep it Simple" – Calamares, boot menu, Plymouth, wizard, Welcome page.
   Tooltips in German/English; tray icons (nm-applet, blueman, volumeicon, power) bring their own tooltips.
