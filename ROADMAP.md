@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Last updated 2026-11-05. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
+Last updated 2026-11-04. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
 `TESTING.md`.
 
 ## How we release
