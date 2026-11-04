@@ -9,7 +9,7 @@ need a terminal.
 ## What's new in 2.0 "Rigi"
 
 > **Draft – 2.0 is not released yet.** This text grows with the work on the branch `trixie`. The current release is
-> [1.0.7](https://github.com/FreakySneaky787/Simple-OS/releases/latest).
+> [1.1](https://github.com/FreakySneaky787/Simple-OS/releases/latest).
 
 The first big release: Simple OS moves to **Debian 13 "trixie"**, the current Debian. Everything you know from 1.x
 stays – the same calm desktop, the Setup Wizard, the Control Center, Software Updates – on a newer base. 2.0 is
@@ -53,7 +53,7 @@ named after the **Rigi**, the "Queen of the Mountains" above Lake Lucerne.
 
 | File | What it is |
 |---|---|
-| `Simple-OS.iso` | The live and installer image (about 1.5 GB) |
+| `Simple-OS.iso` | The live and installer image (about 1.7 GB) |
 | `Simple-OS.iso.sha256` | Checksum to make sure the download is complete and unchanged |
 | `Simple-OS.packages.txt` | Every Debian package with its exact version (for source code requests) |
 
@@ -87,8 +87,8 @@ installed systems use. You don't need to download them yourself.
 
 - **Setup wizard** on first login: Wi-Fi, browser (Firefox, Chromium or Mullvad Browser), light/dark,
   accent color, office suite (LibreOffice or ONLYOFFICE) and an optional gaming setup (Steam, Lutris, MangoHud)
-- **Control Center** (Super+I) for Wi-Fi, Bluetooth, sound, display and brightness, appearance, notifications, mouse &
-  touchpad, keyboard, printers, power and screen lock, default and startup apps, date & time, storage and backups,
+- **Control Center** (Super+I) for Wi-Fi, Bluetooth, sound, display, brightness and scaling, appearance, notifications,
+  mouse & touchpad, keyboard, language & region, printers, power and screen lock, default and startup apps, date & time, storage and backups,
   password and firewall, updates and drivers
 - **Software Store** (Flathub) and **Software Updates** with a single password prompt. Firmware and BIOS updates
   from the LVFS are included, and so are **new versions of Simple OS itself**: you don't need to reinstall to get
@@ -98,6 +98,7 @@ installed systems use. You don't need to download them yourself.
 - **Firewall** on by default: other devices can't connect to you, while browsing, printing and updates keep working
 - **Battery care** (charge to 80 %) on laptops that support it, **power modes**, and protection against freezing
   when memory runs out (earlyoom)
+- **Camera** app to see your webcam and take photos
 - **Printers & scanners** are found automatically on the network and over USB
 - **Report a Problem** (Menu → Help) saves the details of your computer to a file you can attach to a bug report.
   Your name, user name, network names and addresses are removed.
@@ -105,9 +106,13 @@ installed systems use. You don't need to download them yourself.
 
 ## Known issues
 
-- **English only.** The installer lets you choose your language and keyboard, but the Simple OS tools
-  (Control Center, wizard, messages) are in English. The keyboard layout can be changed at any time in
+- **Simple OS's own tools are in English.** Your apps, menus and date formats follow the language you choose
+  (installer or Control Center → Language & Region), but the Control Center, the setup wizard and Simple OS's messages
+  stay English until their translations come in 1.2. The keyboard layout can be changed at any time in
   Control Center → Keyboard.
+- **Menus close after a slow click.** If you hold the mouse button a little longer, the desktop and window menus and
+  the volume menu close again when you let go. Click quickly, or use the keyboard (Alt+Space for the window menu).
+  Fixed in 1.1.1 (issue #104).
 - **Firewall and LAN games:** hosting a game for others on your local network, and Steam Remote Play as the host,
   are blocked by the firewall. Turn it off for that time in Control Center → Password & Security.
 - **Lenovo laptops:** the first start after installing may show "Self-Healing BIOS ESP" once. That's

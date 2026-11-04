@@ -3,31 +3,12 @@
 # "edition --system"). Up to 1.0.3 the image's /etc/locale.gen listed only en_US.UTF-8, so the installer could not
 # switch on another language: /etc/default/locale named e.g. de_DE.UTF-8, but it was never generated (programs fell
 # back to English, apt printed perl locale warnings). Every locale named in /etc/default/locale that Debian knows is
-# switched on in /etc/locale.gen; locale-gen runs if one of them is missing. Exit != 0 -> again next time.
-# Tests: SIMPLEOS_LOCALE_FILE, SIMPLEOS_LOCALE_GEN, SIMPLEOS_SUPPORTED, SIMPLEOS_LOCALE_GEN_CMD, SIMPLEOS_LOCALE_A_CMD
+# switched on in /etc/locale.gen; locale-gen runs if one of them is missing (/usr/local/lib/simpleos/locale-enable,
+# since 1.1 shared with Control Center → Language & Region). Exit != 0 -> again next time.
+# Tests: SIMPLEOS_LOCALE_FILE, SIMPLEOS_LOCALE_ENABLE + the variables of locale-enable (SIMPLEOS_LOCALE_GEN,
+# SIMPLEOS_SUPPORTED, SIMPLEOS_LOCALE_GEN_CMD, SIMPLEOS_LOCALE_A_CMD)
 DEFAULT=${SIMPLEOS_LOCALE_FILE:-/etc/default/locale}
-GEN=${SIMPLEOS_LOCALE_GEN:-/etc/locale.gen}
-SUPPORTED=${SIMPLEOS_SUPPORTED:-/usr/share/i18n/SUPPORTED}
-GEN_CMD=${SIMPLEOS_LOCALE_GEN_CMD:-locale-gen}
-LIST_CMD=${SIMPLEOS_LOCALE_A_CMD:-locale -a}
-[ -f "$DEFAULT" ] && [ -f "$SUPPORTED" ] || exit 0
-# "de_DE.UTF-8" -> "de_DE.utf8" (how locale -a writes it)
-norm() {
-    printf '%s\n' "$1" | awk '{ i = index($0, "."); if (!i) { print; exit }
-        cs = substr($0, i + 1); mod = ""; j = index(cs, "@"); if (j) { mod = substr(cs, j); cs = substr(cs, 1, j - 1) }
-        cs = tolower(cs); gsub(/[^a-z0-9]/, "", cs); print substr($0, 1, i) cs mod }'
-}
-have=$($LIST_CMD 2>/dev/null)
-missing=0
-for loc in $(sed -n 's/^[A-Z_]*=//p' "$DEFAULT" | tr -d "\"'" | sort -u); do
-    case "$loc" in ""|C|C.*|POSIX) continue ;; esac
-    line=$(awk -v l="$loc" '$1 == l { print; exit }' "$SUPPORTED")
-    [ -n "$line" ] || { echo "040-locale-gen: $loc unknown – skipped"; continue; }
-    if ! grep -qxF "$line" "$GEN" 2>/dev/null; then
-        echo "$line" >> "$GEN" || exit 1
-        echo "040-locale-gen: $loc switched on"
-    fi
-    printf '%s\n' "$have" | grep -qxF "$(norm "$loc")" || missing=1
-done
-[ "$missing" -eq 1 ] || exit 0
-$GEN_CMD
+ENABLE=${SIMPLEOS_LOCALE_ENABLE:-/usr/local/lib/simpleos/locale-enable}
+[ -f "$DEFAULT" ] && [ -f "${SIMPLEOS_SUPPORTED:-/usr/share/i18n/SUPPORTED}" ] || exit 0
+# shellcheck disable=SC2046
+exec "$ENABLE" $(sed -n 's/^[A-Z_]*=//p' "$DEFAULT" | tr -d "\"'" | sort -u)

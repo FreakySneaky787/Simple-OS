@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Last updated 2026-11-03 (this copy on the branch `trixie` follows the work on 2.0 "Rigi"). Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
+Last updated 2026-11-04 (this copy on the branch `trixie` follows the work on 2.0 "Rigi"). Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -18,23 +18,14 @@ Rules that keep it small: no new always-running process without a good reason (t
 on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook.chroot`; anything that mocks can hide
 (night light in 1.0.3!) is run for real once, e.g. in a container with Xvfb; nothing is published untested on hardware.
 
-## 1.1 – next feature release (planned around 2026-11-07)
+## 1.1.1 – bugfix release after 1.1
 
-Bugfix releases (1.0.x) come in between when users report something. Kept to what fits in about two weeks; the
-rest moved to 1.2.
-
-- **HiDPI / display scaling** (#41) – the biggest gap: nothing scales today (no Xft/DPI, no GDK scale, tint2/Openbox use
-  pixels). On a 2.8K/4K laptop everything is tiny. Plan: a "Scale" setting in Control Center → Display (100/125/150/200 %)
-  that sets Xft.dpi, XSETTINGS (also cursor size), GDK scale for 200 %, Rofi/dunst/kitty sizes and the tint2 panel height
-  and clock font (also a "Large" taskbar size – asked for on Bluesky, the clock is too small for older eyes);
-  automatic default from the screen's real DPI. Needs a HiDPI test screen first (open question: the resolution of the
-  development laptop).
-- **Language & Region page** (system language, formats) (#42).
-- **Boot time & size:** initramfs `MODULES=dep` (113 MB → much smaller, faster boot) (#47), zstd squashfs
-  (#19: faster live session and install, ISO +18 %).
-- **Webcam / camera test** app (the camera works, but there is nothing to try it with) (#44).
-- On the side, as far as hardware is at hand: **hardware tests** (NVIDIA desktop with the driver, AMD laptop, dual boot
-  with Windows, Secure Boot on) (#49) and a public hardware compatibility page (#92).
+- **Menus close again after a slow click** (#104): holding the button for 0.3 s or
+  more closes the desktop and window menus (Openbox `hideDelay` 200 ms) and the volume slider; the GTK tray menus
+  (nm-applet, volume right-click) close after about 0.5 s. Plan: a longer `hideDelay`, and our own flyouts instead of
+  the GTK tray menus where needed.
+- **One icon for all software stores** (#117): Software Center, Software Store (Bazaar) and GNOME Software show the
+  same icon in the menu, search, taskbar and notifications (local `.desktop` overrides, no patched Flatpak).
 
 ## 1.2 – feature release after 1.1
 

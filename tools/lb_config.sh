@@ -19,6 +19,8 @@ TOOLS=$(cd "$(dirname "$0")" && pwd)
 # --apt-options: never ask during the build. A conffile that already exists in the image (created by another package's
 # scripts) would otherwise stop the build at dpkg's question; the edition tool takes the Simple OS version on the
 # first installation of the package simpleos.
+# squashfs with zstd level 19 instead of xz (#19): unpacks about twice as fast (live session, installation), the ISO
+# grows by about 6 % (1.0.7: 1432 -> 1514 MB for the squashfs; GitHub's limit is 2 GiB per file).
 # Kernel/firmware/microcode from bookworm-backports: config/archives/backports.pref.chroot (kernel 6.12 knows e.g.
 # Intel Raptor Lake 0xA7AA; with 6.1 the screen stayed at 800x600).
 lb config \
@@ -29,6 +31,8 @@ lb config \
     --apt-recommends false \
     --firmware-chroot false \
     --firmware-binary false \
+    --chroot-squashfs-compression-type zstd \
+    --chroot-squashfs-compression-level 19 \
     --apt-options "--yes -o Acquire::Retries=5 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold" \
     --bootappend-live "boot=live components locales=en_US.UTF-8 keyboard-layouts=us quiet splash hostname=simple-os username=simple" \
     --bootappend-live-failsafe "boot=live components memtest noapic noapm nodma nomce nolapic nosmp nosplash vga=788 locales=en_US.UTF-8 keyboard-layouts=us hostname=simple-os username=simple"

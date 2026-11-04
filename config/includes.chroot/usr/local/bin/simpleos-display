@@ -19,6 +19,8 @@
 #                               until someone configures it); unplugged -> released; nothing left on -> all on again.
 #                               Waits for udev's DRM events, uses no CPU in between.
 #   simpleos-display --hotplug  one such check against the outputs remembered last (what --watch does per event)
+# After every change of the resolution (restore, menu, hotplug): simpleos-scale --refresh, so that the taskbar keeps the
+# display scale (#41; tint2 scales by the monitor's dpi, which changes with the resolution).
 # Tests: SIMPLEOS_DISPLAY_TIMEOUT = seconds until the automatic revert, SIMPLEOS_DISPLAY_STATE = file with the outputs.
 
 SOS_NAME=simpleos-display SOS_TITLE=Display SOS_ICON=video-display SOS_PROMPT=Display
@@ -174,6 +176,7 @@ hotplug() {
         sos_notify "Display connected: $names. The desktop now extends onto it – Super+P changes that." low
     fi
 }
+scale_refresh() { [ -x /usr/local/bin/simpleos-scale ] && /usr/local/bin/simpleos-scale --refresh >/dev/null 2>&1; }
 watch_displays() {
     command -v udevadm >/dev/null || { sos_log "udevadm missing"; return 0; }
     query
@@ -184,6 +187,7 @@ watch_displays() {
         sos_session_alive || exit 0   # signed out: this session's X server is gone (ends the udevadm pipe too)
         sleep 1
         hotplug
+        scale_refresh
     done
 }
 case "${1:-}" in
@@ -199,9 +203,10 @@ case "${1:-}" in
         else
             best
         fi
+        scale_refresh
         exit 0 ;;
-    --best) best; exit 0 ;;
-    --hotplug) hotplug; exit 0 ;;
+    --best) best; scale_refresh; exit 0 ;;
+    --hotplug) hotplug; scale_refresh; exit 0 ;;
     --watch)   # one per session; a watcher of a signed-out session is ended (common.sh)
         sos_single_instance "${XDG_RUNTIME_DIR:-$SOS_LOG_DIR}/simpleos-display-watch.pid" || exit 0
         watch_displays; exit 0 ;;
@@ -259,6 +264,7 @@ apply() {
         xrandr $prev >&2 2>&1 || sos_log "revert failed"
         sos_notify "Display settings restored." low
     fi
+    scale_refresh
 }
 
 # FontAwesome 4: desktop U+F108, expand U+F065, refresh U+F021, clone U+F24D, arrow-right U+F061,

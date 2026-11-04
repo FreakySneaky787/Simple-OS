@@ -6,6 +6,7 @@
 #                                 set the version of the next edition everywhere it is shown: VERSION_ID (what the build
 #                                 and the package use), VERSION and PRETTY_NAME in usr/lib/os-release, the installer's
 #                                 branding (etc/calamares/branding/simpleos/branding.desc). The build refuses a mismatch.
+#                                 The package simpleos gets X.Y.Z+<build time> (tools/build_deb.sh, #102).
 #   ./tools/release.sh sign       sign output/repo (after ./build_iso.sh): InRelease + Release.gpg
 #   ./tools/release.sh publish [--no-iso]
 #                                 GitHub release v<VERSION> with the ISO and the signed repository, then mark it as
@@ -73,7 +74,8 @@ check_repo() {
     v=$(version)
     for f in "${REPO_FILES[@]}"; do [ -s "$REPO/$f" ] || die "$REPO/$f missing – ./build_iso.sh, then ./tools/release.sh sign"; done
     [ -f "$REPO/simpleos_${v}_all.deb" ] || die "$REPO/simpleos_${v}_all.deb missing – the repository is from another version (os-release says $v)"
-    awk -v v="$v" '/^Package: simpleos$/ { p = 1 } p && /^Version:/ { if ($2 == v) found = 1; p = 0 } END { exit !found }' "$REPO/Packages" ||
+    # "X.Y.Z+<build time>" (tools/build_deb.sh, #102); plain "X.Y.Z" up to 1.0.7
+    awk -v v="$v" '/^Package: simpleos$/ { p = 1 } p && /^Version:/ { if ($2 == v || $2 ~ ("^" v "\\+[0-9]+$")) found = 1; p = 0 } END { exit !found }' "$REPO/Packages" ||
         die "Packages does not list simpleos $v"
     check_signature || die "the signature does not match $PUBKEY"
     # GitHub renames asset names with other characters (+ ~ : …) – apt would then not find the file
@@ -133,6 +135,12 @@ cmd_publish() {
     [ -n "$repo" ] || die "no GitHub URL in $SOURCES"
     tag="v$v"
     check_repo
+    # The release text is RELEASE_NOTES.md, so it must be about this version. And a feature release comes from the branch
+    # next: its notice at the top of the README ("still being tested") must be gone first (docs/MAINTAINING.md, section 7)
+    [ "$(head -n1 RELEASE_NOTES.md 2>/dev/null)" = "# Simple OS $v" ] ||
+        die "RELEASE_NOTES.md is not about $v (first line must be '# Simple OS $v') – write the release text first"
+    ! grep -q 'simpleos-next-branch' README.md ||
+        die "README.md still has the notice of the branch next at the top – remove it, commit, push, then publish"
     # The next edition recognizes unchanged files by their versions in git – an edition from uncommitted files
     # would not be in it (its files would count as "changed by the user" forever)
     [ -z "$(git status --porcelain -- config tools)" ] || die "uncommitted changes in config/ or tools/ – commit, rebuild, then publish"
@@ -160,6 +168,8 @@ cmd_publish() {
     for f in "$REPO"/*; do assets+=("$f"); done
     if [ "$with_iso" = 1 ]; then
         [ -f "$ISO" ] || die "$ISO missing (or --no-iso for an update without a new ISO)"
+        # GitHub takes release files up to 2 GiB (the zstd squashfs since 1.1, #19, made the ISO ~6 % bigger)
+        [ "$(stat -c %s "$ISO")" -lt 2147483648 ] || die "$ISO is 2 GiB or bigger – GitHub does not accept it as a release file"
         # Same build: the ISO must contain this repository's simpleos package (a later --config-only rebuilds output/repo
         # without the marker build_iso.sh writes; file times do not help – live-build dates the ISO to the build start)
         (cd "$REPO" && sha256sum --quiet -c .in-iso >/dev/null 2>&1) ||

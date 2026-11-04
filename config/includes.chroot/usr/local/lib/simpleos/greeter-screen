@@ -7,15 +7,18 @@
 # reads /etc/lightdm/lightdm-gtk-greeter.conf last, so clock-format is not in it but in a file of its conf.d, written here
 # from the system's LC_TIME (/etc/default/locale, the language the installer or Language & Region set) through
 # /usr/local/lib/simpleos/date-formats – only when it changed. No package owns that file.
+# Scale of the login/lock screen on screens with many pixels (#41): the automatic value of simpleos-scale (nobody is
+# signed in yet, so no personal setting) as the greeter's xft-dpi and cursor size, in its own conf.d file – none at 100 %.
 # Never an error: a failing script must not stop the login.
 # Tests: SIMPLEOS_DEFAULT_LOCALE (instead of /etc/default/locale), SIMPLEOS_GREETER_CONFD (the conf.d folder),
-# SIMPLEOS_DATE_FORMATS (the helper).
+# SIMPLEOS_DATE_FORMATS (the helper), SIMPLEOS_SCALE (simpleos-scale).
 PATH=/usr/bin:/bin
 command -v xset >/dev/null && xset s 120 120 +dpms dpms 120 120 120 2>/dev/null
 
 LOCALE_FILE=${SIMPLEOS_DEFAULT_LOCALE:-/etc/default/locale}
 CONFD=${SIMPLEOS_GREETER_CONFD:-/etc/xdg/lightdm/lightdm-gtk-greeter.conf.d}
 DATE_FORMATS=${SIMPLEOS_DATE_FORMATS:-/usr/local/lib/simpleos/date-formats}
+SCALE=${SIMPLEOS_SCALE:-/usr/local/bin/simpleos-scale}
 locale_var() { sed -n "s/^$1=\"\{0,1\}\([^\"]*\)\"\{0,1\}\$/\1/p" "$LOCALE_FILE" 2>/dev/null | tail -n 1; }
 clock() {
     lang=$(locale_var LANG) lc_time=$(locale_var LC_TIME)
@@ -27,5 +30,17 @@ clock() {
     [ "$(cat "$f" 2>/dev/null)" = "$new" ] && return 0
     mkdir -p "$CONFD" && printf '%s\n' "$new" > "$f"
 }
+scale() {
+    f=$CONFD/50-simpleos-scale.conf
+    p=$("$SCALE" --recommended 2>/dev/null)
+    case "$p" in
+        125|150|200) ;;
+        *) rm -f "$f"; return 0 ;;
+    esac
+    new=$(printf '# Simple OS – written by /usr/local/lib/simpleos/greeter-screen from the screen size, do not edit\n[greeter]\nxft-dpi=%s\ncursor-theme-size=%s' $((96 * p / 100)) $((24 * p / 100)))
+    [ "$(cat "$f" 2>/dev/null)" = "$new" ] && return 0
+    mkdir -p "$CONFD" && printf '%s\n' "$new" > "$f"
+}
 clock 2>/dev/null
+scale 2>/dev/null
 exit 0

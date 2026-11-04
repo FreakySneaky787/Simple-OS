@@ -93,12 +93,13 @@ FW_MARK=${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}/simpleos/firmware-installed
 APT_STAMPS=${SIMPLEOS_APT_STAMPS-/var/lib/simpleos/apt-refreshed /var/lib/apt/periodic/update-success-stamp}
 # Package names with updates (one line per package): what the helper would install (see above). "Inst package [old]
 # (new …)" = new version; new packages without "[old]" (e.g. the kernel package behind linux-image-amd64) do not count.
-# apt-get -s needs no root. The edition package comes first as "Simple OS <new version>".
+# apt-get -s needs no root. The edition package comes first as "Simple OS <new version>" (without the build time
+# "+YYYYMMDDHHMMSS" of the package version, #102).
 upgradable() {
     sim=$(LC_ALL=C apt-get -s full-upgrade 2>/dev/null) || sim=
     printf '%s\n' "$sim" | grep -q '^Remv ' && sim=$(LC_ALL=C apt-get -s upgrade --with-new-pkgs 2>/dev/null)
     printf '%s\n' "$sim" | awk '$1 == "Inst" && $3 ~ /^\[/ {
-        if ($2 == "simpleos") { v = $4; sub(/^\(/, "", v); print "Simple OS " v } else rest = rest $2 "\n" }
+        if ($2 == "simpleos") { v = $4; sub(/^\(/, "", v); sub(/\+[0-9]+$/, "", v); print "Simple OS " v } else rest = rest $2 "\n" }
         END { printf "%s", rest }'
 }
 # Packages of the installed edition that are still missing (an earlier installation of them failed)

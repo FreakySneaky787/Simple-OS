@@ -22,16 +22,20 @@ The details are in [TESTING.md](../TESTING.md) (checklist) and the README sectio
 
 1. **Plan:** a milestone per release on GitHub (e.g. "1.0.7"), the date in [ROADMAP.md](../ROADMAP.md) and on the
    website's roadmap page. Cadence: bugfix every 2–3 weeks, feature release every 2–3 months (ROADMAP "How we release"); 1.2 is the last feature release of 1.x, after it only bugfixes (ROADMAP "After 1.2").
-2. **Work:** commit locally; `main` is pushed only on release day, so it always matches the published edition. Close
-   issues when the work is done and tested ("done, ships in X.Y.Z"), project board item → Done; things that need real
-   hardware stay open with the label `verify`.
+2. **Work:** bugfixes for the next 1.0.x on `main`, new features on `next` (section 7). `main` is pushed only on
+   release day, so it always matches the published edition; `next` is pushed as the work goes on. Close issues when
+   the work is done and tested ("done, ships in X.Y.Z"), project board item → Done; things that need real hardware stay
+   open with the label `verify`.
 3. **Version:** `./tools/release.sh version X.Y.Z`, then `RELEASE_NOTES.md` (it is the release text and the target of
    the installer's "Known issues" button), the "What's new" text (`config/includes.chroot/usr/share/simpleos/whats-new`),
    the ROADMAP table, a TESTING section. After the release, remove the version from ROADMAP.md, its TESTING section
    and the website's roadmap page – they only show what is still coming.
 4. **Release day:** `git fetch origin` (merge if something was changed on GitHub), `git push`.
 5. **Build:** `sudo ./build_iso.sh` (Podman container from `Containerfile`, log in `build/build.log`; the verify hook
-   must end with `Simple OS verify: OK`). Then `cd output && sha256sum -c Simple-OS.iso.sha256`.
+   must end with `Simple OS verify: OK`). Then `cd output && sha256sum -c Simple-OS.iso.sha256`. Build as often as
+   needed: the package version carries the build time (`X.Y.Z+YYYYMMDDHHMMSS`), so machines installed from an earlier
+   test build still get the published build. Careful: `./build_iso.sh --config-only` also rebuilds `output/repo` –
+   never run it between the final build and `publish`.
 6. **Test:** TESTING.md – at least a fresh VM install (BIOS and UEFI) and an **update from the previous release**
    through Software Updates (a VM installed from the old ISO).
 7. **Publish:** `./tools/release.sh sign && ./tools/release.sh publish` (asks for the key's passphrase). Use
@@ -39,7 +43,8 @@ The details are in [TESTING.md](../TESTING.md) (checklist) and the README sectio
    `publish` creates a draft, uploads the ISO and the signed repository, checks everything, and only then marks it as
    "latest" – from that moment installed systems are offered the new edition.
 8. **After publishing:** the website (section 6), close the milestone, an announcement in Discussions → Announcements
-   (title "Simple OS X.Y.Z is out", the previous one is the template), thank testers in their issues.
+   (title "Simple OS X.Y.Z is out", the previous one is the template), thank testers in their issues. Merge `main` into
+   `next` and `trixie` (section 7).
 
 Never publish a "latest" release without the repository files – `publish` refuses it, because it would break
 "Check for updates" on every installed system.
@@ -109,7 +114,21 @@ every release – and only after `publish`, because the links point to the new r
 
 ## 7. Branches
 
-- `main` – Simple OS 1.x on Debian 12; releases are tagged `vX.Y.Z` on it.
+- `main` – the published Simple OS 1.x edition on Debian 12, plus the bugfixes for the next 1.0.x release. Releases are
+  tagged `vX.Y.Z` on it; it is pushed on release day only.
+- `next` – **the branch for new features**: everything for the next feature release (1.1, 1.2 …). Pushed as the work
+  goes on, so others can follow it. Test ISOs are built from it like from `main` (the package version carries the build
+  time, so test systems still get the published build later).
+  - After every bugfix release: `git switch next && git merge main` – the fixes reach the new features.
+  - Feature release: when `next` is tested (TESTING.md), `git switch main && git merge next` (a fast-forward if `main`
+    got no fixes in the meantime), then release from `main` as in section 2.
+  - Docs that are already true for the published edition (website links, issue forms) may go to `main` directly.
+  - `next` says what it is: it carries the version of the coming feature release (`./tools/release.sh version 1.1`,
+    with its "What's new" notes – test ISOs from `next` show "Simple OS 1.1"), and a notice at the top of `README.md`
+    (marker `simpleos-next-branch`). Before the feature release: write `RELEASE_NOTES.md` for it and remove the notice –
+    `./tools/release.sh publish` refuses otherwise. When `next` starts the following feature release, both come back.
+  - Merging a bugfix release (`main`, e.g. 1.0.8) into `next` conflicts in `usr/lib/os-release`, the installer branding
+    and `whats-new`: keep `next`'s version, and add the bugfix's notes to its "What's new" if they matter.
 - `trixie` – Simple OS 2.0 "Rigi" on Debian 13 (ROADMAP "2.0"). Merge `main` into it regularly so fixes are not lost.
   Before 2.0 is published, 1.x systems need their own update channel (ROADMAP, issue #106).
 

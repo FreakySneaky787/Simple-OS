@@ -43,6 +43,9 @@
       <item label="Image Viewer" icon="/usr/share/simpleos/menu-icons/image.svg">
         <action name="Execute"><command>viewnior</command></action>
       </item>
+      <item label="Camera" icon="/usr/share/simpleos/menu-icons/camera.svg">
+        <action name="Execute"><command>/usr/local/bin/simpleos-camera</command></action>
+      </item>
     </menu>
     <separator />
     <!-- Order: everyday apps – Settings (each entry opens its Control Center page) – Tools – Help – Power; keyboard

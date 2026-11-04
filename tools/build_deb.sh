@@ -185,9 +185,14 @@ find "$ROOT" -path "$ROOT/DEBIAN" -prune -o ! -type l -exec chmod go-w {} +
 # Every regular file under /etc is a conffile: changed by the user/admin -> kept on updates (helper: --force-confold)
 (cd "$ROOT" && find etc -type f | sed 's|^|/|' | sort) > "$ROOT/DEBIAN/conffiles"
 HOME_URL=$(sed -n 's/^HOME_URL="\(.*\)"/\1/p' "$INC/usr/lib/os-release")
+# Package version = edition + build time (#102). The test builds before a release carry the release's version too: with
+# plain "X.Y.Z", a system installed from such a build has "X.Y.Z" already and is never offered the published package
+# (the fixes made after that build never arrive). The published build is always the newest one, so it is always the
+# highest "X.Y.Z+<time>". Everything shown to people (os-release, installer, What's new, edition tool) stays "X.Y.Z".
+PKG_VERSION=$VERSION+$(date -u +%Y%m%d%H%M%S)
 cat > "$ROOT/DEBIAN/control" <<CTRL
 Package: simpleos
-Version: $VERSION
+Version: $PKG_VERSION
 Architecture: all
 Maintainer: Simple OS <simpleos@users.noreply.github.com>
 Installed-Size: $(du -sk --exclude=DEBIAN "$ROOT" | cut -f1)
@@ -200,6 +205,7 @@ Description: Simple OS – desktop, tools and settings
  Updates of this package bring installed systems to the newest Simple OS edition.
 CTRL
 
+# The file name without the build time: GitHub renames release assets with a "+" (apt would not find the file)
 DEB=simpleos_${VERSION}_all.deb
 mkdir -p config/packages.chroot
 rm -f config/packages.chroot/simpleos_*.deb
@@ -217,4 +223,4 @@ cp config/packages.chroot/*.deb "$REPO_OUT/"
         -o APT::FTPArchive::Release::Description="Simple OS $VERSION" release . > "$STAGE/Release"
     mv "$STAGE/Release" Release
 )
-echo "Edition package: config/packages.chroot/$DEB ($(du -h "config/packages.chroot/$DEB" | cut -f1)), repository: output/repo (unsigned)"
+echo "Edition package: config/packages.chroot/$DEB (version $PKG_VERSION, $(du -h "config/packages.chroot/$DEB" | cut -f1)), repository: output/repo (unsigned)"

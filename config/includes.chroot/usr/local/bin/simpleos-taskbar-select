@@ -3,10 +3,12 @@
 #   simpleos-taskbar-select                  selection via Rofi (position, layout, look, network/clock)
 #   simpleos-taskbar-select --set key=value  set directly, e.g. --set position=top --set clock=off
 #   simpleos-taskbar-select --apply          apply the settings again (simpleos-theme after dark/light)
-# Keys: position=bottom|top  size=full|compact  tasks=text|icons  style=dark|transparent|theme
+# Keys: position=bottom|top  size=full|compact|large  tasks=text|icons  style=dark|transparent|theme
 #            network=on|off  clock=on|off
 # Only the affected lines in ~/.config/tint2/tint2rc are changed (the accent color from simpleos-theme
 # and everything else stays), then tint2 reloads the file via SIGUSR1 in the running process (no restart).
+# Display scale (simpleos-scale, #41): scale_relative_to_dpi from simpleos-scale --tint2-ref – tint2 then scales sizes
+# and fonts itself; the line is added to an older tint2rc that does not have it yet.
 set -e
 
 STATE="$HOME/.config/simpleos/taskbar"
@@ -22,7 +24,7 @@ is_live() { /usr/local/bin/simpleos-live --check 2>/dev/null; }
 
 valid() {  # $1 = key, $2 = value
     case "$1=$2" in
-        position=bottom|position=top|size=full|size=compact|tasks=text|tasks=icons) return 0 ;;
+        position=bottom|position=top|size=full|size=compact|size=large|tasks=text|tasks=icons) return 0 ;;
         style=dark|style=transparent|style=theme|network=on|network=off|clock=on|clock=off) return 0 ;;
     esac
     return 1
@@ -57,12 +59,20 @@ apply() {
     fi
 
     # Size and task display
-    if [ "$size" = compact ]; then height=34 task_h=26 tray=16; else height=40 task_h=30 tray=18; fi
+    # Large (#41, asked for on Bluesky: the clock was too small for older eyes): a higher bar, bigger clock and texts –
+    # on any screen, independent of the display scale (which scales everything, also this)
+    font=10 small=8 icon=13
+    case "$size" in
+        compact) height=34 task_h=26 tray=16 ;;
+        large)   height=48 task_h=38 tray=22 font=12 small=10 icon=16 ;;
+        *)       height=40 task_h=30 tray=18 ;;
+    esac
     if [ "$tasks" = icons ]; then
         task_text=0 task_centered=1 task_padding="8 4 0" task_w=$((task_h + 16))
     else
         task_text=1 task_centered=0 task_padding="10 4 8" task_w=200
         [ "$size" = compact ] && task_w=160
+        [ "$size" = large ] && task_w=240
     fi
 
     # Bar: app button, tasks, Do Not Disturb icon, [network], [live badge], tray, [battery], [clock], power button
@@ -90,6 +100,8 @@ apply() {
     kv="panel_position|$position center horizontal;panel_size|100% $height;panel_items|$items"
     kv="$kv;task_text|$task_text;task_centered|$task_centered;task_padding|$task_padding"
     kv="$kv;task_maximum_size|$task_w $task_h;systray_icon_size|$tray"
+    kv="$kv;task_font|Inter Medium $font;execp_font|Inter Medium $font;bat1_font|Inter Medium $font;bat2_font|Inter $small"
+    kv="$kv;time1_font|Inter Semibold $font;time2_font|Inter $small;button_font|FontAwesome $icon"
     kv="$kv;task_font_color|$fg;task_active_font_color|$fg;task_urgent_font_color|$fg"
     kv="$kv;task_iconified_font_color|$dim;clock_font_color|$fg;execp_font_color|$fg;battery_font_color|$fg"
     # Date of the clock in the order of the language (#81): "Di, 20. Okt" instead of "Di, Okt 20"
@@ -97,6 +109,10 @@ apply() {
     d_short=$(printf '%s\n' "$dates" | sed -n 's/^short=//p') d_full=$(printf '%s\n' "$dates" | sed -n 's/^full=//p')
     [ -n "$d_short" ] && kv="$kv;time2_format|$d_short"
     [ -n "$d_full" ] && kv="$kv;clock_tooltip|$d_full"
+    # Display scale (#41): 0 = off (100 %)
+    scale_ref=$(simpleos-scale --tint2-ref 2>/dev/null) || scale_ref=0
+    case "$scale_ref" in ""|*[!0-9.]*) scale_ref=0 ;; esac
+    kv="$kv;scale_relative_to_dpi|$scale_ref"
 
     tmp=$(mktemp "$TINT2RC.XXXXXX")
     awk -v bg="$bg" -v kv="$kv" -v live="$live" '
@@ -146,7 +162,13 @@ apply() {
         print "#---- Live-Badge End"
         print ""
     }
-    /^#---- Panel/ { panel = 1 }
+    # scale_relative_to_dpi missing (tint2rc from before 1.1): at the end of the Panel section
+    /^#---- / && in_panel && !have_scale { print "scale_relative_to_dpi = " K["scale_relative_to_dpi"]; have_scale = 1 }
+    /^#---- / { in_panel = 0 }
+    /^#---- Panel/ { panel = 1; in_panel = 1 }
+    /^scale_relative_to_dpi = / { have_scale = 1 }
+    in_panel && /^$/ { blank++; next }
+    blank { for (; blank > 0; blank--) print "" }
     !panel && /^rounded = / { block++ }
     match($0, /^[a-z0-9_]+ = /) {
         key = substr($0, 1, RLENGTH - 3)
@@ -191,7 +213,7 @@ pick() {  # $1 = title, rest = entries; the current value is marked with ●
 mark() { if [ "$1" = "$2" ]; then echo "●  $3"; else echo "○  $3"; fi; }
 label() {
     case "$1" in
-        bottom) echo Bottom ;; top) echo Top ;; full) echo Full ;; compact) echo Compact ;;
+        bottom) echo Bottom ;; top) echo Top ;; full) echo Full ;; compact) echo Compact ;; large) echo Large ;;
         text) echo "icons + text" ;; icons) echo "icons only" ;;
         dark) echo Dark ;; transparent) echo "Dark transparent" ;; theme) echo "Match theme" ;;
         on) echo on ;; off) echo off ;;
@@ -213,8 +235,9 @@ while :; do
         Layout*)
             case "$(pick "Layout" \
                 "$(mark "$size" full "Full (40 px bar)")" "$(mark "$size" compact "Compact (34 px bar)")" \
+                "$(mark "$size" large "Large (48 px bar, bigger clock and text)")" \
                 "$(mark "$tasks" text "Icons + text")" "$(mark "$tasks" icons "Icons only")")" in
-                *Full*) size=full ;; *Compact*) size=compact ;;
+                *Full*) size=full ;; *Compact*) size=compact ;; *Large*) size=large ;;
                 *"Icons + text") tasks=text ;; *"Icons only") tasks=icons ;; *) continue ;;
             esac ;;
         Look*)

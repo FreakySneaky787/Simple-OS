@@ -100,6 +100,9 @@ panel_window_name = tint2
 disable_transparency = 0
 mouse_effects = 1
 font_shadow = 0
+# Display scale (Control Center → Display → Scale): simpleos-taskbar-select writes it from simpleos-scale – tint2 scales
+# sizes and fonts by monitor dpi / this value; 0 = off (100 %)
+scale_relative_to_dpi = 0
 mouse_hover_icon_asb = 100 0 10
 mouse_pressed_icon_asb = 100 0 0
 

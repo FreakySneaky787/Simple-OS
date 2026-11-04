@@ -5,7 +5,8 @@
 #   device_mounted   -> "USB drive is ready" with the buttons "Open" (a click on the notification is enough) -> file manager
 #                       and "Safely remove" -> unmount + power off the drive (udiskie-umount --detach)
 #   device_unmounted -> "can be removed safely" (only for a drive announced above)
-#   only mounts below /media (udiskie's own); the installer's or other programs' mounts are not announced
+#   only mounts below /media/<user> (udiskie's own) of removable drives; the installer's, root's (fwupd) or
+#   other programs' mounts and internal disks are not announced
 #   job_failed       -> a clear error message
 # Other events are ignored. No set -e, always exit 0; details in ~/.cache/simpleos-usb-notify.log.
 
@@ -47,10 +48,21 @@ SEEN=${XDG_RUNTIME_DIR:-$SOS_LOG_DIR}/simpleos-usb-notify.mounted
 case "$event" in
     device_mounted)
         [ -n "$path" ] && [ "$path" != None ] || exit 0
-        # Only what udiskie itself opened (/media/<user>/…). udiskie also reports mounts of other programs – the
-        # installer mounts the new system at /tmp/calamares-root-…: "USB drive is ready" with "Safely remove"
-        # (unmount + power off the disk) appeared in the middle of the installation
-        case "$path" in /media/*|/run/media/*) ;; *) sos_log "ignored: $name mounted at $path (not by udiskie)"; exit 0 ;; esac
+        # Only what udiskie itself opened for the signed-in user (/media/<user>/…). udiskie also reports mounts of
+        # other programs – the installer mounts the new system at /tmp/calamares-root-…: "USB drive is ready" with
+        # "Safely remove" (unmount + power off the disk) appeared in the middle of the installation; fwupd (root)
+        # mounts the EFI partition of a second internal disk at /media/root/… after every update check (#100)
+        user=${USER:-$(id -un 2>/dev/null)}
+        case "$path" in
+            /media/"$user"/*|/run/media/"$user"/*) ;;
+            *) sos_log "ignored: $name mounted at $path (not by udiskie for $user)"; exit 0 ;;
+        esac
+        # A partition of an internal disk (HOTPLUG 0, e.g. opened in the file manager) is no USB drive: "Safely
+        # remove" would power off the whole internal disk (#100). Same test as simpleos-install
+        src=$(findmnt -n -o SOURCE --mountpoint "$path" 2>/dev/null)
+        if [ -n "$src" ] && [ "$(lsblk -ndo HOTPLUG "$src" 2>/dev/null | tr -d ' ')" = 0 ]; then
+            sos_log "ignored: $name mounted at $path (internal disk $src)"; exit 0
+        fi
         command -v notify-send >/dev/null || exit 0
         seen=$(grep -vxF "$name" "$SEEN" 2>/dev/null)
         printf '%s\n%s\n' "$seen" "$name" | grep . > "$SEEN" 2>/dev/null

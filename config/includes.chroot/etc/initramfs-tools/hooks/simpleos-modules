@@ -1,0 +1,18 @@
+#!/bin/sh
+# Simple OS – drivers that always go into a small initramfs (MODULES=dep, installed systems, #47).
+# MODULES=dep only takes the drivers of this computer's system disk. These few (about 2 MB) come along as well, so the
+# system still starts when the firmware's disk mode is switched (AHCI <-> Intel VMD/RST, IDE compatibility), when the
+# disk moves to another computer or into a USB case, and the LUKS password can be typed on a USB keyboard.
+# With MODULES=most (the live system, Debian's default) they are in anyway – nothing to do.
+PREREQ=""
+prereqs() { echo "$PREREQ"; }
+case "${1:-}" in prereqs) prereqs; exit 0 ;; esac
+. /usr/share/initramfs-tools/hook-functions
+[ "${MODULES:-}" = dep ] || exit 0
+# Disk controllers and disks (built-in ones are skipped by modprobe)
+manual_add_modules ahci ata_piix ata_generic nvme vmd sd_mod sr_mod usb_storage uas \
+    sdhci_pci sdhci_acpi mmc_block virtio_pci virtio_blk virtio_scsi
+# USB controllers and keyboards (USB, laptop keyboards on I2C, Logitech receivers, Apple)
+manual_add_modules xhci_pci ehci_pci ohci_pci uhci_hcd usbhid hid_generic hid_multitouch i2c_hid_acpi \
+    hid_logitech_dj hid_apple
+exit 0

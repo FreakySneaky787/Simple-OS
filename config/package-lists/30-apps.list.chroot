@@ -18,6 +18,10 @@ atril
 mpv
 viewnior
 galculator
+# Camera (simpleos-camera, #44): GStreamer from Python (GObject introspection) and its GTK picture widget
+gir1.2-gstreamer-1.0
+gir1.2-gst-plugins-base-1.0
+gstreamer1.0-gtk3
 # Disks: format USB sticks, write ISO images, disk health (Control Center → System)
 gnome-disk-utility
 htop

@@ -102,12 +102,15 @@ sos_rofi() {
 }
 
 # Flyout position like Windows 11: SOS_CORNER=1 -> on the right above the taskbar (or below it if the
-# bar is at the top via the designer); otherwise centered. 60 px = 40 px bar + 10 px gap + 10 px air.
+# bar is at the top via the designer); otherwise centered. 60 px = 40 px bar + 10 px gap + 10 px air; the "Large"
+# bar is 8 px higher. The display scale (#41) scales these px with the bar (/usr/local/bin/rofi).
 sos_position() {
     [ "${SOS_CORNER:-0}" = 1 ] || { echo "location: center; anchor: center;"; return 0; }
     pos=$(sed -n 's/^position=//p' "${HOME:-/tmp}/.config/simpleos/taskbar" 2>/dev/null)
-    if [ "$pos" = top ]; then echo "location: north east; anchor: north east; x-offset: -12px; y-offset: 60px;"
-    else echo "location: south east; anchor: south east; x-offset: -12px; y-offset: -60px;"; fi
+    off=60
+    grep -qx 'size=large' "${HOME:-/tmp}/.config/simpleos/taskbar" 2>/dev/null && off=68
+    if [ "$pos" = top ]; then echo "location: north east; anchor: north east; x-offset: -12px; y-offset: ${off}px;"
+    else echo "location: south east; anchor: south east; x-offset: -12px; y-offset: -${off}px;"; fi
 }
 
 # Menu from rows with a hidden action: sos_add "display (markup)" "action<TAB>data…";

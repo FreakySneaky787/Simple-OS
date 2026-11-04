@@ -9,3 +9,6 @@ thermald
 # BIOS/firmware updates from LVFS (Lenovo, Dell, HP …) via Software Updates; signed EFI part for Secure Boot
 fwupd
 fwupd-amd64-signed
+# initramfs-tools packs with zstd (COMPRESS=zstd in initramfs.conf) – without the program it fell back to gzip
+# ("W: No zstd … using gzip"; only recommended, and the image is built without Recommends): slower to unpack at boot
+zstd

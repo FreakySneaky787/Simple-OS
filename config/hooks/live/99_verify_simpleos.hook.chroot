@@ -20,7 +20,8 @@ for f in /usr/local/bin/simpleos-powermenu /usr/local/bin/simpleos-screenshot /u
          /usr/local/bin/simpleos-wallpaper-schedule /usr/local/bin/simpleos-progress /usr/local/bin/simpleos-taskmanager \
          /usr/local/sbin/simpleos-backup-helper /usr/local/sbin/simpleos-cleaner-helper /usr/local/sbin/simpleos-taskmanager-helper \
          /usr/local/bin/simpleos-drivers /usr/local/bin/simpleos-osd /usr/local/sbin/simpleos-live-tune /usr/local/bin/simpleos-keyboard-setup \
-         /usr/local/bin/simpleos-setup \
+         /usr/local/bin/simpleos-setup /usr/local/bin/simpleos-camera /usr/local/lib/simpleos/locale-enable \
+         /usr/local/bin/simpleos-scale /usr/local/bin/rofi /usr/local/lib/simpleos/greeter-wrapper \
          /usr/local/sbin/simpleos-post-install /usr/local/sbin/simpleos-efi-refresh \
          /usr/local/sbin/simpleos-system-setup; do
     chmod 0755 "$f" 2>/dev/null || true
@@ -176,6 +177,15 @@ check "migration 040-locale-gen: missing system language (de_DE, de_CH) not swit
 printf 'de_CH.utf8\nde_DE.utf8\n' >> "$lg/have"; cp "$lg/gen" "$lg/gen.before"
 check "migration 040-locale-gen: runs locale-gen or changes /etc/locale.gen when nothing is missing" \
       "mig4 && cmp -s $lg/gen $lg/gen.before && [ \"\$(grep -c . $lg/gen.log)\" -eq 1 ]"
+# The same logic for Control Center → Language & Region (#42): /usr/local/lib/simpleos/locale-enable LOCALE…
+LE=/usr/local/lib/simpleos/locale-enable
+printf 'fr_FR.UTF-8 UTF-8\nsr_RS@latin UTF-8\n' >> "$lg/supported"
+lenable() { SIMPLEOS_LOCALE_GEN=$lg/gen SIMPLEOS_SUPPORTED=$lg/supported SIMPLEOS_LOCALE_GEN_CMD=${LE_GEN:-$lg/locale-gen} \
+            SIMPLEOS_LOCALE_A_CMD="cat $lg/have" "$LE" "$@" >/dev/null 2>&1; }
+check "locale-enable: new language (fr_FR, sr_RS@latin) not switched on, or locale-gen not run once" \
+      "[ -x $LE ] && lenable fr_FR.UTF-8 sr_RS@latin xx_XX.UTF-8 C.UTF-8 && grep -qx 'fr_FR.UTF-8 UTF-8' $lg/gen &&
+       grep -qx 'sr_RS@latin UTF-8' $lg/gen && ! grep -q 'xx_XX\|^C' $lg/gen && [ \"\$(grep -c . $lg/gen.log)\" -eq 2 ]"
+check "locale-enable: a failing locale-gen counts as success" "! LE_GEN=false lenable fr_FR.UTF-8"
 rm -rf "${lg:?}"
 # Login keyring (#32): pam_gnome_keyring must start the daemon itself – with the systemd socket the login keyring created
 # at the first login was not usable in that session (hook 17)
@@ -412,7 +422,8 @@ for home in /etc/skel /home/simple; do
                '/usr/local/bin/simpleos-control-center wifi' '/usr/local/bin/simpleos-control-center appearance' \
                '/usr/local/bin/simpleos-control-center printers' '/usr/local/bin/simpleos-control-center apps' \
                simpleos-netinfo simpleos-welcome-wizard /usr/local/bin/simpleos-whats-new \
-               /usr/local/bin/simpleos-powermenu /usr/local/bin/simpleos-help /usr/local/bin/simpleos-update; do
+               /usr/local/bin/simpleos-powermenu /usr/local/bin/simpleos-help /usr/local/bin/simpleos-update \
+               /usr/local/bin/simpleos-camera; do
         check "menu.xml: '$cmd' missing in $home" "grep -qF '<command>$cmd</command>' '$menu'"
     done
     for cmd in obconf lxappearance arandr gnome-software nm-connection-editor; do
@@ -922,19 +933,87 @@ check "grub-pc-devices not run by simpleos-post-install, --upgrade or a migratio
       "grep -q '^/usr/local/lib/simpleos/grub-pc-devices ||' /usr/local/sbin/simpleos-post-install &&
        grep -q '^    /usr/local/lib/simpleos/grub-pc-devices ||' /usr/local/sbin/simpleos-system-setup &&
        [ -x /usr/share/simpleos/edition/migrations/system/030-grub-pc-devices ] && [ -x $GPH ]"
+# Small initramfs for installed systems (MODULES=dep, #47): tried in a copy of /etc/initramfs-tools first, only then
+# conf.d/simpleos-modules.conf; the live system keeps MODULES=most. Model: mkinitramfs writes the image when the copy has
+# MODULES=dep (MKFAIL=1: fails, MKEMPTY=1: empty image), update-initramfs logs to $id/upd (UPDFAIL=1: fails)
+id=$(mktemp -d)
+mkdir -p "$id/bin" "$id/etc/conf.d" "$id/etc/hooks" "$id/boot"
+printf '#!/bin/sh\nwhile [ $# -gt 1 ]; do case "$1" in -d) d=$2; shift ;; -o) o=$2; shift ;; esac; shift; done\necho "mkinitramfs $1" >> "$ID/mk"\n[ "$MKFAIL" = 1 ] && { echo "mkinitramfs: failed to determine device for /" >&2; exit 1; }\ngrep -qx MODULES=dep "$d/conf.d/simpleos-modules.conf" || exit 1\n[ "$MKEMPTY" = 1 ] && : > "$o" || echo initrd > "$o"\n' > "$id/bin/mkinitramfs"
+printf '#!/bin/sh\necho "update-initramfs $*" >> "$ID/upd"\n[ "$UPDFAIL" != 1 ]\n' > "$id/bin/update-initramfs"
+printf '#!/bin/sh\n[ "$CHROOT" = 1 ]\n' > "$id/bin/systemd-detect-virt"
+chmod 0755 "$id/bin/"*
+IDH=/usr/local/lib/simpleos/initramfs-dep
+idrun() {   # --try|--apply, then variables
+    rm -f "$id/mk" "$id/upd" "$id/etc/conf.d/simpleos-modules.conf"
+    touch "$id/boot/vmlinuz-6.1.0-9-amd64" "$id/boot/vmlinuz-6.12.9+bpo-amd64"
+    m=$1; shift
+    env -i ID="$id" PATH="$id/bin:/usr/bin:/bin" SIMPLEOS_INITRAMFS_DIR="$id/etc" SIMPLEOS_BOOT_DIR="$id/boot" "$@" sh $IDH "$m" 2>/dev/null
+}
+IDC=$id/etc/conf.d/simpleos-modules.conf
+check "initramfs-dep --try: test build works -> MODULES=dep not set, or set without a test of the newest kernel" \
+      "idrun --try && grep -qx MODULES=dep $IDC && grep -qx 'mkinitramfs 6.12.9+bpo-amd64' $id/mk && [ ! -e $id/upd ]"
+check "initramfs-dep --try: MODULES=dep set although the test build failed" "idrun --try MKFAIL=1 && [ ! -e $IDC ]"
+check "initramfs-dep --try: MODULES=dep set although the test build was empty" "idrun --try MKEMPTY=1 && [ ! -e $IDC ]"
+check "initramfs-dep --apply: not set, or the initramfs not rebuilt" \
+      "idrun --apply && grep -qx MODULES=dep $IDC && grep -qx 'update-initramfs -u -k all' $id/upd"
+check "initramfs-dep --apply: update-initramfs failed, MODULES=dep stays (the next kernel update would use it)" \
+      "idrun --apply UPDFAIL=1 && [ ! -e $IDC ]"
+check "initramfs-dep --apply: changes the image build (chroot)" "idrun --apply CHROOT=1 && [ ! -e $IDC ] && [ ! -e $id/mk ]"
+check "initramfs-dep --try: runs in the installer's chroot (the new system) – must not skip it" "idrun --try CHROOT=1 && [ -e $IDC ]"
+check "initramfs-dep: changes something when MODULES=dep is set already" \
+      "idrun --try && rm -f $id/mk && env -i ID=$id PATH=$id/bin:/usr/bin:/bin SIMPLEOS_INITRAMFS_DIR=$id/etc SIMPLEOS_BOOT_DIR=$id/boot sh $IDH --apply 2>/dev/null && [ ! -e $id/mk ] && [ ! -e $id/upd ]"
+rm -f "$id/boot/"* "$id/mk" "$IDC"
+check "initramfs-dep: changes something without a kernel in /boot" \
+      "env -i ID=$id PATH=$id/bin:/usr/bin:/bin SIMPLEOS_INITRAMFS_DIR=$id/etc SIMPLEOS_BOOT_DIR=$id/boot sh $IDH --try 2>/dev/null && [ ! -e $IDC ] && [ ! -e $id/mk ]"
+check "initramfs-dep: wrong usage accepted" "! sh $IDH 2>/dev/null"
+rm -rf "${id:?}"
+check "initramfs: the live system (image) does not keep MODULES=most, or carries the MODULES=dep setting" \
+      "grep -qx 'MODULES=most' /etc/initramfs-tools/initramfs.conf && [ ! -e /etc/initramfs-tools/conf.d/simpleos-modules.conf ]"
+check "initramfs: MODULES=dep not tried at the installation, by a migration, or the extra drivers hook missing" \
+      "grep -q '^in_target /usr/local/lib/simpleos/initramfs-dep --try || true' /usr/sbin/bootloader-config &&
+       [ -x /usr/share/simpleos/edition/migrations/system/100-initramfs-dep ] && [ -x $IDH ] && sh -n $IDH &&
+       [ -x /etc/initramfs-tools/hooks/simpleos-modules ] && sh -n /etc/initramfs-tools/hooks/simpleos-modules &&
+       grep -q 'manual_add_modules ahci .* nvme vmd' /etc/initramfs-tools/hooks/simpleos-modules"
+check "initramfs: zstd missing (COMPRESS=zstd falls back to gzip)" \
+      "command -v zstd >/dev/null && grep -qx 'COMPRESS=zstd' /etc/initramfs-tools/initramfs.conf"
 check "helper: --upgrade can be mixed with other actions" "! /usr/local/sbin/simpleos-system-setup --upgrade --gaming >/dev/null 2>&1"
 # Every call a tool really makes must be accepted (simpleos-update --upgrade/--refresh,
 # wizard/Software Center, browser selection, Control Center firewall, drivers, simpleos-post-install --repos) – a
 # wrong combination check once rejected EVERY update as an invalid call (exit 2)
 for a in "--upgrade" "--refresh" "--repos" "--firewall on" "--firewall off" "--drivers intel-microcode nvidia-driver" \
-         "--browser chromium --purge-firefox" "--browser mullvad --office onlyoffice --gaming" "--office libreoffice" "--gaming"; do
+         "--browser chromium --purge-firefox" "--browser mullvad --office onlyoffice --gaming" "--office libreoffice" "--gaming" \
+         "--locale de_CH.UTF-8" "--locale en_US.UTF-8 --formats de_DE.UTF-8" "--locale sr_RS@latin"; do
     check "helper: valid call '$a' rejected" \
           "SIMPLEOS_SETUP_ARGCHECK=1 /usr/local/sbin/simpleos-system-setup $a 2>/dev/null | grep -qx 'ARGS: ok'"
 done
-for a in "--upgrade --refresh" "--repos --upgrade" "--refresh --browser mullvad" "--upgrade --office libreoffice" "--drivers"; do
+for a in "--upgrade --refresh" "--repos --upgrade" "--refresh --browser mullvad" "--upgrade --office libreoffice" "--drivers" \
+         "--locale" "--locale de_DE" "--locale xx_XX.UTF-8" "--locale ../de_DE.UTF-8" "--formats de_DE.UTF-8" \
+         "--locale de_CH.UTF-8 --upgrade" "--locale de_CH.UTF-8 --formats de_DE" "--locale de_CH.UTF-8 --gaming"; do
     check "helper: invalid call '$a' accepted" "! SIMPLEOS_SETUP_ARGCHECK=1 /usr/local/sbin/simpleos-system-setup $a >/dev/null 2>&1"
 done
 check "simpleos-update does not call the helper with --upgrade" "grep -q 'pkexec \"\$HELPER\" --upgrade' /usr/local/bin/simpleos-update"
+# Control Center → Language & Region (#42): --locale switches the locales on (locale-enable dummy), writes /etc/default/locale
+# without the old LANGUAGE/LC_ALL lines, ALWAYS with the LC_* lines (= the formats, or the language): LightDM's environment
+# keeps the boot's LC_* values, a file with only LANG left the old formats in the session; locale-enable failing -> nothing written
+LR=$(mktemp -d)
+printf 'de_CH.UTF-8 UTF-8\nde_DE ISO-8859-1\nde_DE.UTF-8 UTF-8\nen_US.UTF-8 UTF-8\n' > "$LR/supported"
+printf '#!/bin/sh\necho "$*" >> "%s/enabled"\n[ "$LR_FAIL" != 1 ]\n' "$LR" > "$LR/enable"; chmod 0755 "$LR/enable"
+lrun() { printf 'LANG=en_US.UTF-8\nLANGUAGE=en_US:en\nLC_ALL=C\nLC_TIME=en_GB.UTF-8\n' > "$LR/locale"; rm -f "$LR/enabled"
+         SIMPLEOS_SETUP_DRYRUN=1 SIMPLEOS_SUPPORTED=$LR/supported SIMPLEOS_LOCALE_FILE=$LR/locale SIMPLEOS_LOCALE_ENABLE=$LR/enable \
+             /usr/local/sbin/simpleos-system-setup "$@" > "$LR/out" 2>&1; }
+check "helper --locale: language not set, old LANGUAGE/LC_ALL/LC_TIME lines kept, formats missing or locale not switched on" \
+      "lrun --locale de_CH.UTF-8 && [ \"\$(head -n 1 $LR/locale)\" = 'LANG=de_CH.UTF-8' ] && grep -qx 'de_CH.UTF-8' $LR/enabled &&
+       [ \"\$(grep -c '^LC_[A-Z]*=de_CH.UTF-8\$' $LR/locale)\" -eq 9 ] && [ \"\$(wc -l < $LR/locale)\" -eq 10 ] &&
+       grep -qx 'STEP: Setting the language' $LR/out && [ \"\$(stat -c %a $LR/locale)\" = 644 ]"
+check "helper --locale --formats: the formats are not written as LC_* lines (the installer's set)" \
+      "lrun --locale de_CH.UTF-8 --formats de_DE.UTF-8 && grep -qx 'de_CH.UTF-8 de_DE.UTF-8' $LR/enabled &&
+       [ \"\$(head -n 1 $LR/locale)\" = 'LANG=de_CH.UTF-8' ] && [ \"\$(grep -c '^LC_[A-Z]*=de_DE.UTF-8\$' $LR/locale)\" -eq 9 ] &&
+       grep -qx 'LC_TIME=de_DE.UTF-8' $LR/locale && ! grep -q 'LC_ALL\|LANGUAGE\|LC_MESSAGES' $LR/locale"
+check "helper --locale --formats: formats equal to the language written wrong" \
+      "lrun --locale de_CH.UTF-8 --formats de_CH.UTF-8 && [ \"\$(grep -c '=de_CH.UTF-8\$' $LR/locale)\" -eq 10 ]"
+check "helper --locale: /etc/default/locale changed although the locales could not be generated" \
+      "! LR_FAIL=1 lrun --locale de_CH.UTF-8 && grep -qx 'LANGUAGE=en_US:en' $LR/locale && ! ls $LR/locale.?* >/dev/null 2>&1"
+rm -rf "${LR:?}"
 check "old power menu /usr/bin/simpleos-powermenu still present" "[ ! -e /usr/bin/simpleos-powermenu ]"
 
 # Click paths with the same dummies as above (+ power, apt, pkexec, file manager); every case: exit 0.
@@ -969,7 +1048,7 @@ for p in firefox-esr libc6 openssl tzdata linux-image-amd64 curl; do
     i=$((i + 1))
 done
 [ "${UPDATES:-0}" -gt 0 ] && echo "Inst linux-image-6.12.57+deb12-amd64 (6.12.57 Debian Backports [amd64])"
-[ "$NEWEDITION" = 1 ] && echo "Inst simpleos [1.0] (1.1 Simple OS:./ [all])"
+[ "$NEWEDITION" = 1 ] && echo "Inst simpleos [1.0.7] (1.1+20261107120000 Simple OS:./ [all])"
 if [ "$*" = "-s full-upgrade" ] && [ "$NEEDREMOVE" = 1 ]; then
     echo "Inst firmware-misc-nonfree [1] (2 Debian Backports [all])"; echo "Remv firmware-old [1]"
 fi
@@ -1141,26 +1220,46 @@ echo $$ > "$wt/home/.cache/simpleos-update-watch.pid"
 hcase "$U --watch" "watch: a second one runs next to the first" "" "UPDATES=1 SIMPLEOS_UPDATE_FIRST=0 SIMPLEOS_UPDATE_ROUNDS=1" "" '[ ! -s $S/notify ]'
 rm -f "$wt/home/.cache/simpleos-update-watch.pid" "$wt/mock/flatpak"
 USB=/usr/local/bin/simpleos-usb-notify
-hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "stick plugged in, Open clicked" "" "NOTIFY_ACTION=yes" "" \
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "stick plugged in, Open clicked" "" "NOTIFY_ACTION=yes USER=simple" "" \
     'grep -q "\"STICK\" is ready" $S/notify && grep -q "yes=Open" $S/notify && grep -qx "thunar /media/simple/STICK" $S/opened'
-hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "click on the notification itself" "" "NOTIFY_ACTION=default" "" \
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "click on the notification itself" "" "NOTIFY_ACTION=default USER=simple" "" \
     'grep -qx "thunar /media/simple/STICK" $S/opened'
-hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "notification dismissed" "" "" "" '[ ! -e $S/opened ]'
-hcase "$USB device_mounted /media/simple/X None None" "without a name" "" "" "" 'grep -q "\"USB drive\" is ready" $S/notify'
-hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "without thunar -> xdg-open" "thunar" "NOTIFY_ACTION=yes" "" \
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "notification dismissed" "" "USER=simple" "" '[ ! -e $S/opened ]'
+hcase "$USB device_mounted /media/simple/X None None" "without a name" "" "USER=simple" "" 'grep -q "\"USB drive\" is ready" $S/notify'
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "without thunar -> xdg-open" "thunar" "NOTIFY_ACTION=yes USER=simple" "" \
     'grep -qx "xdg-open /media/simple/STICK" $S/opened'
-hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "without a file manager -> notification" "thunar xdg-open" "NOTIFY_ACTION=yes" "" \
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "without a file manager -> notification" "thunar xdg-open" "NOTIFY_ACTION=yes USER=simple" "" \
     'grep -q "Your files are in /media/simple/STICK" $S/notify'
 hcase "$USB device_unmounted None STICK Kingston" "safely remove" "" "" "" 'grep -q "\"STICK\" can now be removed safely" $S/notify'
 hcase "$USB job_failed None STICK Kingston" "error" "" "" "" 'grep -q "could not be opened" $S/notify'
 hcase "$USB device_added None STICK Kingston" "other events silent" "" "" "" '[ ! -s $S/notify ]'
 # The installer's own mounts (Calamares: /tmp/calamares-root-…) are no USB drive – no "ready"/"Safely remove" during the
 # installation, and its unmounting no "can be removed safely"
-hcase "$USB device_mounted /tmp/calamares-root-x1/boot/efi SYSTEM None" "installer mount announced as a drive" "" "NOTIFY_ACTION=eject" "" \
+hcase "$USB device_mounted /tmp/calamares-root-x1/boot/efi SYSTEM None" "installer mount announced as a drive" "" "NOTIFY_ACTION=eject USER=simple" "" \
     '[ ! -s $S/notify ] && [ ! -s $S/umount ]'
 hcase "$USB device_unmounted None SYSTEM None" "unmounting of a drive never announced" "" "" "" '[ ! -s $S/notify ]'
 hcase "$USB" "without arguments" "" "" "" '[ ! -s $S/notify ]'
-hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "notify-send missing" "notify-send" "" "" '[ ! -e $S/opened ]'
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "notify-send missing" "notify-send" "USER=simple" "" '[ ! -e $S/opened ]'
+# #100: fwupd (root) mounts the EFI partition of a second internal disk at /media/root/… – no "ready" with "Safely remove"
+# (powers off the internal disk); likewise a partition of an internal disk the user opened (HOTPLUG 0)
+hcase "$USB device_mounted /media/root/A391-8FED None None" "root's mount (fwupd) announced as a drive" "" "USER=simple NOTIFY_ACTION=eject" "" \
+    '[ ! -s $S/notify ] && [ ! -s $S/umount ]'
+hcase "$USB device_mounted /media/other/STICK STICK Kingston" "another user's mount announced" "" "USER=simple" "" '[ ! -s $S/notify ]'
+hcase "$USB device_mounted /run/media/simple/STICK STICK Kingston" "stick below /run/media/<user>" "" "USER=simple" "" \
+    'grep -q "\"STICK\" is ready" $S/notify'
+printf '#!/bin/sh
+case "$*" in *" /media/simple/Data") echo /dev/sda5 ;; *" /media/simple/STICK") echo /dev/sdb1 ;; esac
+' > "$wt/mock/findmnt"
+printf '#!/bin/sh
+for a; do dev=$a; done
+case "$dev" in /dev/sdb*) echo "      1" ;; *) echo "      0" ;; esac
+' > "$wt/mock/lsblk"
+chmod 0755 "$wt/mock/findmnt" "$wt/mock/lsblk"
+hcase "$USB device_mounted /media/simple/Data Data None" "partition of an internal disk announced as a drive" "" "USER=simple NOTIFY_ACTION=eject" "" \
+    '[ ! -s $S/notify ] && [ ! -s $S/umount ]'
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "USB stick (HOTPLUG 1)" "" "USER=simple NOTIFY_ACTION=yes" "" \
+    'grep -q "\"STICK\" is ready" $S/notify && grep -qx "thunar /media/simple/STICK" $S/opened'
+rm -f "$wt/mock/findmnt" "$wt/mock/lsblk"
 
 # Rofi errors and missing tools: never end silently. Grab error -> new attempt, rofi missing/does not start
 # -> notification (network info: the info itself as a notification). rofi-retry for the set -e scripts.
@@ -1950,9 +2049,9 @@ done
 # ---- USB popup: "Open" / "Safely remove" (udiskie-umount --detach)
 printf '#!/bin/sh\necho "udiskie-umount $*" >> "$WT/umount"\nexit ${UMOUNT_RC:-0}\n' > "$wt/mock/udiskie-umount"
 chmod 0755 "$wt/mock/udiskie-umount"
-hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "Safely remove" "" "NOTIFY_ACTION=eject" "" \
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "Safely remove" "" "NOTIFY_ACTION=eject USER=simple" "" \
     'grep -q "eject=Safely remove" $S/notify && grep -qx "udiskie-umount --detach /media/simple/STICK" $S/umount && [ ! -e $S/opened ]'
-hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "Safely remove: still in use" "" "NOTIFY_ACTION=eject UMOUNT_RC=1" "" \
+hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "Safely remove: still in use" "" "NOTIFY_ACTION=eject UMOUNT_RC=1 USER=simple" "" \
     'grep -q "still in use" $S/notify'
 
 # ---- Control Center + Software Center (Python/GTK3): logic with the dummies, then real windows via
@@ -1964,6 +2063,14 @@ for f in $CC $SC; do
 done
 CCL="import importlib.machinery as m; c = m.SourceFileLoader('c', '$CC').load_module()"
 ccpy() { rm -rf "${S:?}"; mkdir -p "$S"; $ENV -i HOME="$wt/home" WT="$S" PATH="$wt/mock:$wt/py:$wt/sys" "$@" 2>"$S/err"; }
+# Control Center → Display → Scale (#41) reads simpleos-scale --status (dummy: also builds the card in the self-test below)
+printf '#!/bin/sh\n[ "$1" = --status ] && printf "setting=auto\\nscale=200\\nrecommended=200\\n"\nexit 0\n' > "$wt/mock/simpleos-scale"
+chmod 0755 "$wt/mock/simpleos-scale"
+check "Control Center → Display: scale not read or choices wrong" "ccpy python3 -c \"$CCL
+assert c.scale_status() == {'setting': 'auto', 'scale': '200', 'recommended': '200'}, c.scale_status()
+assert [k for k, _t in c.SCALES] == ['100', '125', '150', '200']\""
+check "Control Center: a resolution change does not keep the taskbar at the display scale" \
+      "grep -q 'cmd(\"simpleos-scale\", \"--refresh\"' $CC && grep -q 'self.set_scale(' $CC"
 check "Control Center: sound outputs read incorrectly" "ccpy PHONES=1 python3 -c \"$CCL
 o = c.outputs()
 assert o == [('alsa_output.pci.analog-stereo', 'analog-output-speaker', 'Built-in Audio – Speakers', True),
@@ -1995,6 +2102,172 @@ assert [(x[1], x[2], x[3], x[5]) for x in d] == [('WH-1000XM4', True, 'Headphone
 assert c.bt_subtitle('Headphones', True, 80) == 'Headphones · Connected · Battery 80 %' and c.bt_subtitle('Mouse', False, None) == 'Mouse'
 assert [x[1] for x in c.bt_scan(1)] == ['Xbox Controller']\""
 check "Control Center: wrong without a Bluetooth adapter" "ccpy BT=none python3 -c \"$CCL; assert c.bt_state() == (False, False)\""
+# Control Center → Language & Region (#42): names from iso-codes + glibc, the system's language and formats, the example
+LRF=$(mktemp)
+printf '#  File generated by update-locale\nLANG="de_CH.UTF-8"\nLC_TIME=de_DE.UTF-8\n' > "$LRF"
+check "Control Center → Language & Region: languages, the system setting or the format example wrong" "python3 -c \"$CCL
+assert 'language' in [p[0] for p in c.PAGES] and c.ALIASES['region'] == 'language'
+n = c.locales()
+assert n['de_CH.UTF-8'] == ('German – Deutsch', 'Switzerland') and n['en_US.UTF-8'] == ('English', 'United States'), n.get('de_CH.UTF-8')
+assert n['sr_RS@latin'][1] == 'Serbia (Latin)' and n['el_GR.UTF-8'][0].startswith('Greek') and len(n) > 250, len(n)
+assert len({v[0] for v in n.values() if v[0].startswith('German')}) == 1 and 'de_DE' not in n
+c.LOCALE_FILE = c.Path('$LRF'); assert c.system_locale() == ('de_CH.UTF-8', 'de_DE.UTF-8'), c.system_locale()
+c.LOCALE_FILE = c.Path('/nonexistent'); assert c.system_locale() == ('en_US.UTF-8', 'en_US.UTF-8')
+assert c.locale_key('de_DE.utf8') == c.locale_key('de_DE.UTF-8') != c.locale_key('de_CH.UTF-8')
+assert c.locale_source('ca_ES.UTF-8@valencia') == 'ca_ES@valencia' and c.locale_source('sr_RS@latin') == 'sr_RS@latin'
+e = c.format_example('en_US.UTF-8')
+assert e.endswith('1,234.56 · \\\$1,234.50') and ', 20' in e, e
+assert c.format_example('xx_XX.UTF-8') == ''\""
+rm -f "$LRF"
+# Camera (#44): the size/frame rate it asks for, names, photo file names, errors in plain language; packages + launcher
+CAM=/usr/local/bin/simpleos-camera
+check "Camera: GStreamer for Python or the GTK picture widget missing (gir1.2-gstreamer-1.0 …)" \
+      "python3 -c \"import gi; gi.require_version('Gst', '1.0'); gi.require_version('GstVideo', '1.0'); from gi.repository import Gst, GstVideo; Gst.init(None)
+assert all(Gst.ElementFactory.find(e) for e in ('gtksink', 'v4l2src', 'decodebin', 'videoflip', 'jpegenc', 'appsink', 'jpegdec'))\""
+check "Camera: launcher missing or wrong" "grep -qx 'Exec=/usr/local/bin/simpleos-camera' /usr/share/applications/simpleos-camera.desktop &&
+       grep -qx 'Name=Camera' /usr/share/applications/simpleos-camera.desktop"
+check "Camera: picture size, names or messages wrong" "python3 -c \"import importlib.machinery as m; c = m.SourceFileLoader('c', '$CAM').load_module()
+raw = 'video/x-raw, format=(string)YUY2, width=(int)%d, height=(int)%d, pixel-aspect-ratio=(fraction)1/1, framerate=(fraction)%s'
+jpg = 'image/jpeg, width=(int)%d, height=(int)%d, framerate=(fraction)%s'
+# full size raw only at 5 fps, MJPEG 30 fps: the smooth MJPEG; raw 640x480 at 30 fps loses to MJPEG 1280x720
+s = [raw % (1280, 720, '{ 10/1, 5/1 }'), raw % (640, 480, '{ 30/1, 15/1 }'), jpg % (1280, 720, '{ 30/1, 15/1 }'), jpg % (1920, 1080, '30/1')]
+assert c.best_caps(s) == 'image/jpeg,width=1920,height=1080,framerate=30/1', c.best_caps(s)
+assert c.best_caps(s[:3]) == 'image/jpeg,width=1280,height=720,framerate=30/1', c.best_caps(s[:3])
+assert c.best_caps([raw % (1920, 1080, '5/1'), jpg % (1280, 720, '30/1')]) == 'image/jpeg,width=1280,height=720,framerate=30/1'
+assert c.best_caps([raw % (3840, 2160, '30/1'), raw % (1280, 720, '30/1')]) == 'video/x-raw,format=YUY2,width=1280,height=720,framerate=30/1'
+assert c.best_caps([raw % (1280, 720, '[ 1/1, 60/1 ]')]).endswith('framerate=30/1')
+assert c.best_caps([raw % (640, 480, '{ 60/1, 30/1 }')]).endswith('framerate=30/1')
+assert c.best_caps([]) is None and c.best_caps(['video/x-bayer, width=(int)640']) is None
+assert c.camera_label('Integrated Camera: Integrated C') == 'Integrated Camera' and c.camera_label('vivid') == 'vivid'
+assert c.camera_label('Logitech BRIO') == 'Logitech BRIO' and c.camera_label('') == 'Camera'
+assert c.numbered(['vivid', 'vivid', 'BRIO', 'vivid']) == ['vivid', 'vivid 2', 'BRIO', 'vivid 3']
+import datetime, pathlib, tempfile
+d = pathlib.Path(tempfile.mkdtemp()); t = datetime.datetime(2026, 10, 29, 20, 31, 5)
+assert c.photo_path(d, t).name == 'Photo 2026-10-29 20-31-05.jpg'
+c.photo_path(d, t).touch(); assert c.photo_path(d, t).name == 'Photo 2026-10-29 20-31-05 (2).jpg'
+assert 'in use' in c.explain('Gerät /dev/video0 ist belegt', '', 'busy')[0] and c.explain('x', '', 'gone') == c.NO_CAMERA
+assert 'in use' in c.explain('Device /dev/video0 is busy')[0] and c.explain('Could not open device: No such file')[0] == c.NO_CAMERA[0]
+assert 'F8' in c.NO_CAMERA[1]\""
+check "Camera: the preview is not mirrored (videoflip)" "python3 -c \"import importlib.machinery as m, tempfile; c = m.SourceFileLoader('c', '$CAM').load_module()
+import gi; gi.require_version('Gst', '1.0'); gi.require_version('GdkPixbuf', '2.0'); from gi.repository import Gst, GdkPixbuf; Gst.init(None)
+f = tempfile.mktemp(suffix='.png')
+p = Gst.parse_launch('videotestsrc num-buffers=1 pattern=smpte ! ' + c.MIRROR + ' ! videoconvert ! pngenc ! filesink location=' + f)
+p.set_state(Gst.State.PLAYING); p.get_bus().timed_pop_filtered(10 * Gst.SECOND, Gst.MessageType.EOS | Gst.MessageType.ERROR); p.set_state(Gst.State.NULL)
+px = GdkPixbuf.Pixbuf.new_from_file(f).get_pixels()
+assert px[2] > 150 and px[0] < 60, px[:3]\""
+# Display scale (HiDPI, #41): the automatic percent from xrandr's pixels + millimetres (2.8K/4K laptops bigger, Full HD
+# laptops unchanged, TVs that report 160x90 mm, turned screens), what --session/--set write, the xsettingsd lines, tint2's
+# reference dpi, Rofi's px/font dpi, the taskbar line, the login screen, the Openbox theme
+SCALE_TOOL=/usr/local/bin/simpleos-scale
+HS=$(mktemp -d)
+mkdir -p "$HS/home/.cache/simpleos" "$HS/bin"
+cat > "$HS/bin/xrandr" <<'XRANDR'
+#!/bin/sh
+case "$XR" in
+e16)  echo 'eDP-1 connected primary 1920x1200+0+0 (normal left inverted right x axis y axis) 344mm x 215mm' ;;
+k28)  echo 'eDP-1 connected primary 2880x1800+0+0 (normal left inverted right x axis y axis) 302mm x 189mm' ;;
+k25)  echo 'eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 345mm x 215mm' ;;
+m27)  echo 'DP-1 connected primary 3840x2160+0+0 (normal left inverted right x axis y axis) 597mm x 336mm' ;;
+rot)  echo 'eDP-1 connected primary 1800x2880+0+0 left (normal left inverted right x axis y axis) 302mm x 189mm' ;;
+tv)   echo 'HDMI-1 connected primary 1920x1080+0+0 (normal left inverted right x axis y axis) 160mm x 90mm' ;;
+nomm) echo 'Virtual-1 connected primary 2880x1800+0+0 (normal left inverted right x axis y axis) 0mm x 0mm' ;;
+dual) echo 'eDP-1 connected 1920x1200+0+0 (normal left inverted right x axis y axis) 344mm x 215mm'
+      echo 'DP-1 connected primary 3840x2160+1920+0 (normal left inverted right x axis y axis) 527mm x 296mm' ;;
+off)  echo 'DP-2 connected (normal left inverted right x axis y axis)'
+      echo 'eDP-1 connected 2880x1800+0+0 (normal left inverted right x axis y axis) 302mm x 189mm' ;;
+esac
+XRANDR
+printf '#!/bin/sh\ncat > "$HS_OUT/xrdb"\n' > "$HS/bin/xrdb"
+printf '#!/bin/sh\nfor a do printf "[%%s]\\n" "$a"; done\n' > "$HS/bin/realrofi"
+chmod 0755 "$HS/bin/"*
+hsx() { env -u DISPLAY HOME="$HS/home" HS_OUT="$HS" SIMPLEOS_XRANDR="$HS/bin/xrandr" SIMPLEOS_XRDB="$HS/bin/xrdb" "$@"; }
+HSC=$HS/home/.cache/simpleos/scale
+for t in e16:100 k28:200 k25:150 m27:100 rot:200 tv:100 nomm:100 dual:150 off:200 none:100; do
+    check "simpleos-scale: automatic scale for the screen '${t%%:*}' is not ${t#*:} %" "[ \"\$(XR=${t%%:*} hsx $SCALE_TOOL --recommended)\" = ${t#*:} ]"
+done
+check "simpleos-scale --session: Xft.dpi, cursor size or the session cache wrong (automatic on a 16\" 2560x1600 screen)" \
+      "XR=k25 hsx $SCALE_TOOL --session && grep -qx 'Xft.dpi: 144' $HS/xrdb && grep -qx 'Xcursor.size: 36' $HS/xrdb &&
+       grep -qx 'percent=150' $HSC && grep -qx 'tint2_ref=126.00' $HSC && [ \"\$(hsx $SCALE_TOOL --tint2-ref)\" = 126.00 ]"
+check "simpleos-scale --set: an invalid value accepted" \
+      "! hsx $SCALE_TOOL --set 175 >/dev/null 2>&1 && ! hsx $SCALE_TOOL --set 'auto;x' >/dev/null 2>&1 && ! hsx $SCALE_TOOL --bogus >/dev/null 2>&1"
+check "simpleos-scale --set 200: setting, cache or X resources wrong" \
+      "XR=nomm hsx $SCALE_TOOL --set 200 >/dev/null && grep -qx 'scale=200' $HS/home/.config/simpleos/scale && grep -qx 'percent=200' $HSC &&
+       grep -qx 'tint2_ref=48.00' $HSC && grep -qx 'Xft.dpi: 192' $HS/xrdb && [ \"\$(hsx $SCALE_TOOL --percent)\" = 200 ] &&
+       hsx $SCALE_TOOL --status | grep -qx 'setting=200'"
+check "simpleos-scale --xsettings: GTK not twice as big at 200 % (window scale 2, the text must not double twice)" \
+      "hsx $SCALE_TOOL --xsettings > $HS/xs && grep -qx 'Gdk/WindowScalingFactor 2' $HS/xs && grep -qx 'Xft/DPI 196608' $HS/xs &&
+       grep -qx 'Gdk/UnscaledDPI 98304' $HS/xs && grep -qx 'Gtk/CursorThemeSize 48' $HS/xs"
+check "simpleos-scale --set auto on a Full HD laptop: not exactly as before (Xft.dpi 96, GTK 1x, taskbar option off)" \
+      "XR=e16 hsx $SCALE_TOOL --set auto >/dev/null && grep -qx 'scale=auto' $HS/home/.config/simpleos/scale && grep -qx 'percent=100' $HSC &&
+       grep -qx 'tint2_ref=0' $HSC && grep -qx 'Xft.dpi: 96' $HS/xrdb && grep -qx 'Xcursor.size: 24' $HS/xrdb &&
+       hsx $SCALE_TOOL --xsettings | grep -qx 'Gdk/WindowScalingFactor 1' && hsx $SCALE_TOOL --xsettings | grep -qx 'Xft/DPI 98304'"
+check "simpleos-scale --tint2-ref: not tint2's own dpi (per axis int(pixels / mm * 25.4), the larger one) / scale" \
+      "printf 'percent=200\n' > $HSC && [ \"\$(XR=k28 hsx $SCALE_TOOL --tint2-ref)\" = 121.00 ] && [ \"\$(XR=rot hsx $SCALE_TOOL --tint2-ref)\" = 193.50 ] &&
+       printf 'percent=150\n' > $HSC && [ \"\$(XR=nomm hsx $SCALE_TOOL --tint2-ref)\" = 64.00 ]"
+check "simpleos-scale --refresh: does something at 100 %" "printf 'percent=100\ntint2_ref=0\n' > $HSC && XR=k28 hsx $SCALE_TOOL --refresh && grep -qx 'tint2_ref=0' $HSC"
+# Rofi: the wrapper in /usr/local/bin comes first; at 100 % it hands everything over unchanged
+RW=/usr/local/bin/rofi
+mkdir -p "$HS/home/.config/rofi" && cp /etc/skel/.config/rofi/config.rasi "$HS/home/.config/rofi/"
+check "rofi wrapper: not the Rofi that the menus start (PATH)" "[ \"\$(PATH=/usr/local/bin:/usr/bin:/bin command -v rofi)\" = $RW ]"
+check "rofi wrapper: changes something at 100 %" \
+      "printf 'percent=100\n' > $HSC && [ \"\$(HOME=$HS/home SIMPLEOS_ROFI=$HS/bin/realrofi $RW -dmenu -theme-str 'window { width: 440px; }')\" = '[-dmenu]
+[-theme-str]
+[window { width: 440px; }]' ]"
+check "rofi wrapper: font dpi or px sizes not scaled at 150 % (or text outside the theme changed)" \
+      "printf 'percent=150\n' > $HSC && HOME=$HS/home SIMPLEOS_ROFI=$HS/bin/realrofi $RW -p 'A 10px label' -theme-str 'window { width: 440px; x-offset: -12px; }' > $HS/rofi.out &&
+       grep -qxF '[144]' $HS/rofi.out && grep -qxF '[window { width: 660px; x-offset: -18px; }]' $HS/rofi.out && grep -qxF '[A 10px label]' $HS/rofi.out &&
+       grep -qxF '[$HS/home/.cache/simpleos/rofi-150.rasi]' $HS/rofi.out && grep -q 'width: *900px;' $HS/home/.cache/simpleos/rofi-150.rasi"
+check "rofi wrapper: Rofi missing without an error (sos_rofi shows its notification only on 'error')" \
+      "out=\$(HOME=$HS/home SIMPLEOS_ROFI=/nonexistent $RW -dmenu 2>&1); [ \$? -eq 127 ] && printf '%s' \"\$out\" | grep -q error"
+# Taskbar: tint2 scales by monitor dpi / scale_relative_to_dpi; an older tint2rc gets the line in its Panel section
+check "taskbar: scale_relative_to_dpi missing in the shipped tint2rc (0 = off)" "grep -qx 'scale_relative_to_dpi = 0' /etc/skel/.config/tint2/tint2rc"
+mkdir -p "$HS/tb/.config/tint2" "$HS/tbin"
+printf '#!/bin/sh\necho 121.00\n' > "$HS/tbin/simpleos-scale"; chmod 0755 "$HS/tbin/simpleos-scale"
+grep -v '^scale_relative_to_dpi' /etc/skel/.config/tint2/tint2rc > "$HS/tb/.config/tint2/tint2rc"
+check "taskbar: the display scale does not reach tint2 (older tint2rc without the line)" \
+      "env -u DISPLAY HOME=$HS/tb PATH=$HS/tbin:/usr/local/bin:/usr/bin:/bin SIMPLEOS_DATE_FMT= /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 &&
+       [ \"\$(grep -c '^scale_relative_to_dpi = 121.00\$' $HS/tb/.config/tint2/tint2rc)\" -eq 1 ] &&
+       awk '/^#---- Panel/ { p = 1 } /^#---- Taskbar/ { exit } p && /^scale_relative_to_dpi/ { f = 1 } END { exit !f }' $HS/tb/.config/tint2/tint2rc"
+# "Large" taskbar (asked for on Bluesky: the clock too small for older eyes): higher bar, bigger clock/texts, the flyouts
+# above it; back to "Full" = the shipped file again
+cp /etc/skel/.config/tint2/tint2rc "$HS/tb/.config/tint2/tint2rc"
+check "taskbar: size Large not higher with a bigger clock, or not exactly back with Full" \
+      "env -u DISPLAY HOME=$HS/tb PATH=$HS/tbin:/usr/local/bin:/usr/bin:/bin SIMPLEOS_DATE_FMT= /usr/local/bin/simpleos-taskbar-select --set size=large >/dev/null 2>&1 &&
+       grep -qx 'panel_size = 100% 48' $HS/tb/.config/tint2/tint2rc && grep -qx 'time1_font = Inter Semibold 12' $HS/tb/.config/tint2/tint2rc &&
+       grep -qx 'time2_font = Inter 10' $HS/tb/.config/tint2/tint2rc && grep -qx 'systray_icon_size = 22' $HS/tb/.config/tint2/tint2rc &&
+       HOME=$HS/tb sh -c '. /usr/local/lib/simpleos/common.sh; SOS_CORNER=1 sos_position' | grep -q 'y-offset: -68px' &&
+       env -u DISPLAY HOME=$HS/tb PATH=/usr/bin:/bin SIMPLEOS_DATE_FMT= /usr/local/bin/simpleos-taskbar-select --set size=full >/dev/null 2>&1 &&
+       cmp -s /etc/skel/.config/tint2/tint2rc $HS/tb/.config/tint2/tint2rc &&
+       HOME=$HS/tb sh -c '. /usr/local/lib/simpleos/common.sh; SOS_CORNER=1 sos_position' | grep -q 'y-offset: -60px'"
+# Login/lock screen: the automatic value (greeter-screen), at 200 % GTK twice as big (greeter-wrapper)
+printf '#!/bin/sh\necho "$HS_P"\n' > "$HS/bin/rec"; chmod 0755 "$HS/bin/rec"
+gsx() { HS_P=$1 SIMPLEOS_SCALE=$HS/bin/rec SIMPLEOS_GREETER_CONFD=$HS/gconf SIMPLEOS_DEFAULT_LOCALE=/nonexistent \
+       SIMPLEOS_DATE_FORMATS=/bin/true /usr/local/lib/simpleos/greeter-screen; }
+check "login screen: text not bigger at 200 % or the file left at 100 % (greeter-screen)" \
+      "gsx 200 && grep -qx 'xft-dpi=192' $HS/gconf/50-simpleos-scale.conf && grep -qx 'cursor-theme-size=48' $HS/gconf/50-simpleos-scale.conf &&
+       gsx 100 && [ ! -e $HS/gconf/50-simpleos-scale.conf ] && [ -e $HS/gconf/50-simpleos-clock.conf ]"
+GW=/usr/local/lib/simpleos/greeter-wrapper
+check "login screen: greeter-wrapper not used, does not start the greeter, or GTK not twice as big at 200 %" \
+      "grep -qx 'greeter-wrapper=$GW' /etc/lightdm/lightdm.conf.d/10_simpleos.conf &&
+       [ \"\$(SIMPLEOS_GREETER_SCALE_CONF=$HS/nonexistent $GW sh -c 'echo \${GDK_SCALE:-none}')\" = none ] &&
+       printf '[greeter]\nxft-dpi=192\n' > $HS/gw.conf && [ \"\$(SIMPLEOS_GREETER_SCALE_CONF=$HS/gw.conf $GW sh -c 'echo \$GDK_SCALE \$GDK_DPI_SCALE')\" = '2 0.5' ] &&
+       printf '[greeter]\nxft-dpi=144\n' > $HS/gw.conf && [ \"\$(SIMPLEOS_GREETER_SCALE_CONF=$HS/gw.conf $GW sh -c 'echo \${GDK_SCALE:-none}')\" = none ]"
+# GTK (xsettingsd) and Openbox (theme copy: borders and paddings) follow the scale
+mkdir -p "$HS/th/.cache/simpleos"
+thx() { printf 'percent=%s\n' "$1" > "$HS/th/.cache/simpleos/scale"; shift; env -u DISPLAY HOME="$HS/th" /usr/local/bin/simpleos-theme "$@" >/dev/null 2>&1; }
+check "simpleos-theme: XSETTINGS without the display scale (GTK would stay small at 200 %)" \
+      "thx 200 --xsettings && grep -qx 'Gdk/WindowScalingFactor 2' $HS/th/.config/xsettingsd/xsettingsd.conf &&
+       grep -qx 'Net/ThemeName \"Arc-Dark\"' $HS/th/.config/xsettingsd/xsettingsd.conf"
+check "simpleos-theme: Openbox paddings not scaled at 150 % or a theme copy left at 100 % with the default accent" \
+      "thx 150 --openbox-theme && grep -qx 'menu.border.width: 9' $HS/th/.themes/SimpleOS/openbox-3/themerc &&
+       grep -qx 'padding.width: 12' $HS/th/.themes/SimpleOS/openbox-3/themerc && grep -qi '#89b4fa' $HS/th/.themes/SimpleOS/openbox-3/themerc &&
+       thx 100 --openbox-theme && [ ! -e $HS/th/.themes/SimpleOS ]"
+check "Xsession: display scale not set before the desktop starts (82simpleos-scale)" \
+      "sh -n /etc/X11/Xsession.d/82simpleos-scale && grep -q 'simpleos-scale --session' /etc/X11/Xsession.d/82simpleos-scale &&
+       grep -q 'simpleos-display --restore' /etc/X11/Xsession.d/82simpleos-scale"
+check "simpleos-display: a resolution change does not keep the taskbar at the display scale (simpleos-scale --refresh)" \
+      "[ \"\$(grep -c 'scale_refresh' /usr/local/bin/simpleos-display)\" -ge 6 ]"
+rm -rf "${HS:?}"
 # Control Center → Wi-Fi (#76): its own view – the list online AND offline, Disconnect on the connected network,
 # no Setup Wizard texts ("Next"); the nmcli dummy of simpleos-wifi above
 check "Control Center → Wi-Fi: online via Wi-Fi -> no list / no Disconnect (#76)" "ccpy NET=wifi python3 -c \"$CCL
@@ -2353,7 +2626,9 @@ if command -v broadwayd >/dev/null && command -v dbus-run-session >/dev/null; th
     # Wi-Fi, so the plain run never fills the Wi-Fi page's list (#76 slipped through that way)
     for app in "$CC|SIMPLEOS_CC_SELFTEST" "$CC|SIMPLEOS_CC_SELFTEST|NET=wifi" "$CC|SIMPLEOS_CC_SELFTEST|NET=wifi-down" \
                "$SC|SIMPLEOS_SC_SELFTEST" "/usr/local/bin/simpleos-taskmanager|SIMPLEOS_TM_SELFTEST" \
-               "/usr/local/bin/simpleos-calendar|SIMPLEOS_CALENDAR_SELFTEST" "/usr/local/bin/simpleos-whats-new|SIMPLEOS_WHATS_NEW_SELFTEST"; do
+               "/usr/local/bin/simpleos-calendar|SIMPLEOS_CALENDAR_SELFTEST" "/usr/local/bin/simpleos-whats-new|SIMPLEOS_WHATS_NEW_SELFTEST" \
+               "/usr/local/bin/simpleos-camera|SIMPLEOS_CAMERA_SELFTEST" \
+               "/usr/local/bin/simpleos-camera|SIMPLEOS_CAMERA_SELFTEST|SIMPLEOS_CAMERA_TEST_SOURCE=videotestsrc is-live=true"; do
         prog=${app%%|*}; rest=${app#*|}; var=${rest%%|*}; net=; [ "$rest" = "$var" ] || net=${rest#*|}
         mkdir -p "$wt/bw"; chmod 0700 "$wt/bw"
         # server and program with the same XDG_RUNTIME_DIR (the Broadway socket lives there)
@@ -4440,6 +4715,11 @@ check "$BLC is not the Simple OS version (the Debian original needs a package po
 check "$BLC: shell syntax error" "bash -n $BLC"
 check "Calamares: module bootloader-config does not call $BLC" "grep -q '\"$BLC\"' /usr/lib/calamares/modules/bootloader-config/module.desc"
 check "Calamares: bootloader-config not before bootloader" "awk '/^  - bootloader-config\$/{c=NR} /^  - bootloader\$/{b=NR} END{exit !(c && b && c < b)}' /etc/calamares/settings.conf"
+# Encrypted swap is the resume device on the kernel line; built in the chroot without the crypttab option "initramfs"
+# the initramfs left it out and every start of an encrypted installation waited ~30 s for it. fstab writes crypttab first.
+check "$BLC does not mark the encrypted swap for the initramfs (encrypted installations start 30 s slower)" \
+      "grep -qF '\$4 = \$4 \",initramfs\"' $BLC &&
+       awk '/^  - fstab\$/{f=NR} /^  - bootloader-config\$/{c=NR} END{exit !(f && c && f < c)}' /etc/calamares/settings.conf"
 # os-prober in /etc/default/grub.d: every GRUB update from Debian turns an os-prober line in /etc/default/grub "off" again
 # (grub-pc.config sets grub2/enable_os_prober=false for ANY GRUB_DISABLE_OS_PROBER line) -> other systems vanished
 OPC=/etc/default/grub.d/simpleos-os-prober.cfg
@@ -4629,8 +4909,9 @@ check "simpleos-post-install does not remove the installer link handler" \
 OSV=$(sed -n 's/^VERSION_ID="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' /usr/lib/os-release)
 ED=/usr/share/simpleos/edition
 SOSSRC=/etc/apt/sources.list.d/simpleos.sources
-check "edition: package simpleos not installed as version $OSV (os-release VERSION_ID)" \
-      "[ \"\$(dpkg-query -W -f='\${Status} \${Version}' simpleos 2>/dev/null)\" = 'install ok installed $OSV' ]"
+# Package version = VERSION_ID + build time (#102): a test build's system is offered the published build of the same version
+check "edition: package simpleos not installed as version $OSV+<build time> (os-release VERSION_ID)" \
+      "dpkg-query -W -f='\${Status} \${Version}\n' simpleos 2>/dev/null | grep -qxE 'install ok installed $OSV\\+[0-9]{14}'"
 # The version everywhere it is shown (./tools/release.sh version X.Y.Z): os-release and the installer (Calamares)
 check "version: os-release (VERSION/PRETTY_NAME) or the installer's branding shows another version than $OSV" \
       "grep -qx 'VERSION=\"$OSV\"' /usr/lib/os-release && grep -qx 'PRETTY_NAME=\"Simple OS v$OSV\"' /usr/lib/os-release &&
