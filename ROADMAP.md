@@ -44,7 +44,10 @@ rest moved to 1.2.
 - **Windows programs** (#85): double-click on a `.exe`/`.msi` offers to run it with Bottles (installed from the Software
   Store if missing), a plain help page on what works (older programs, many games through Steam/Proton) and what doesn't
   (Microsoft 365, current Adobe apps, kernel anti-cheat) with alternatives, and a hint to Steam's own "Steam Play for
-  all titles" switch. Not planned: automatic Windows VMs, CrossOver, our own configs for Windows apps.
+  all titles" switch. The Setup Wizard gets a page "Optional Components" with **Simple OS Windows Integration (SOS-WI)**:
+  one checkbox, off by default, that installs Bottles at the end of the wizard ("Additional downloads required. You
+  can install it later from the Software Store."). SOS-WI is only the name of this bundle, not our own Windows layer.
+  Not planned: automatic Windows VMs, CrossOver, our own configs for Windows apps.
 
 ## After 1.2 – bugfixes only, the port starts slowly
 
