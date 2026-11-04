@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Last updated 2026-11-03. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
+Last updated 2026-11-05. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -17,30 +17,6 @@ Last updated 2026-11-03. Released versions are not listed here: they are in `REL
 Rules that keep it small: no new always-running process without a good reason (the image is built without Recommends
 on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook.chroot`; anything that mocks can hide
 (night light in 1.0.3!) is run for real once, e.g. in a container with Xvfb; nothing is published untested on hardware.
-
-## 1.1 – next feature release (planned Thursday 2026-11-05)
-
-Bugfix releases (1.0.x) come in between when users report something. Kept to what fits in about two weeks; the
-rest moved to 1.2.
-
-- **HiDPI / display scaling** (#41, **done**, ThinkPad E16 OK, a real 2.8K/4K screen still to come: Control Center → Display → Scale – Automatic
-  from the screen's real size (2.8K/4K laptops 200 %, 16" 2560x1600 150 %, Full HD stays 100 %), 100/125/150/200 %;
-  text (Xft.dpi), GTK (XSETTINGS, window scale 2 at 200 %), taskbar (tint2's own scaling), Rofi, notifications,
-  Openbox titles and menus, pointer, login/lock screen; applies at once, VM 2880x1800).
-- **Language & Region page** (system language, formats) (#42, **done**: Control Center page, languages from iso-codes,
-  generates the locale, writes all format lines, installs the language packs; VM: English → German (Switzerland) with
-  formats Germany, applies after signing out without a restart, cancel and offline OK; ThinkPad E16 OK).
-- **Boot time & size:** initramfs `MODULES=dep` (#47, **done**: ~160 MB → ~17 MB, kernel phase 2.1 → 1.1 s in a VM,
-  tried in a copy first, extra disk/keyboard drivers so a moved disk still boots), zstd squashfs (#19, **done**:
-  level 19 = +6 % ISO size, unpacks twice as fast; ISO 2026-10-31 1.66 GB, installed in a VM).
-- **Webcam / camera test** app (the camera works, but there is nothing to try it with) (#44, **done**, ThinkPad E16 webcam OK: Menu → Apps → Camera, mirrored picture, photos to Pictures/Camera, several cameras, "in use"
-  with Try Again; VM with the virtual test camera).
-- **Done on the side:** USB notifications never offer "Safely remove" for an internal disk (#100); test builds no
-  longer block the published package (#102: package version `X.Y.Z+<build time>`).
-- On the side, as far as hardware is at hand: **hardware tests** (NVIDIA desktop with the driver, AMD laptop, dual boot
-  with Windows, Secure Boot on) (#49 – moved to milestone 1.2: it needs testers with that hardware; first report: an Acer
-  Predator desktop, #105) and a public hardware compatibility page (#92, **done**: `docs/HARDWARE.md`,
-  website page, GitHub "Hardware report" form – filled with what was really tested, the rest marked "not tested yet").
 
 ## 1.1.1 – bugfix release after 1.1
 
