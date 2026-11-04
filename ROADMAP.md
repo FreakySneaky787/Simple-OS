@@ -48,6 +48,8 @@ rest moved to 1.2.
   more closes the desktop and window menus (Openbox `hideDelay` 200 ms) and the volume slider; the GTK tray menus
   (nm-applet, volume right-click) close after about 0.5 s. Plan: a longer `hideDelay`, and our own flyouts instead of
   the GTK tray menus where needed.
+- **One icon for all software stores** (#117): Software Center, Software Store (Bazaar) and GNOME Software show the
+  same icon in the menu, search, taskbar and notifications (local `.desktop` overrides, no patched Flatpak).
 
 ## 1.2 – feature release after 1.1
 
@@ -57,7 +59,10 @@ rest moved to 1.2.
 - **Windows programs** (#85): double-click on a `.exe`/`.msi` offers to run it with Bottles (installed from the Software
   Store if missing), a plain help page on what works (older programs, many games through Steam/Proton) and what doesn't
   (Microsoft 365, current Adobe apps, kernel anti-cheat) with alternatives, and a hint to Steam's own "Steam Play for
-  all titles" switch. Not planned: automatic Windows VMs, CrossOver, our own configs for Windows apps.
+  all titles" switch. The Setup Wizard gets a page "Optional Components" with **SOS Bridge**:
+  one checkbox, off by default, that installs Bottles at the end of the wizard ("Additional downloads required. You
+  can install it later from the Software Store."). SOS Bridge is only the name of this bundle, not our own Windows layer.
+  Not planned: automatic Windows VMs, CrossOver, our own configs for Windows apps.
 
 ## After 1.2 – bugfixes only, the port starts slowly
 
