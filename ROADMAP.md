@@ -48,6 +48,8 @@ rest moved to 1.2.
   more closes the desktop and window menus (Openbox `hideDelay` 200 ms) and the volume slider; the GTK tray menus
   (nm-applet, volume right-click) close after about 0.5 s. Plan: a longer `hideDelay`, and our own flyouts instead of
   the GTK tray menus where needed.
+- **One icon for all software stores** (#117): Software Center, Software Store (Bazaar) and GNOME Software show the
+  same icon in the menu, search, taskbar and notifications (local `.desktop` overrides, no patched Flatpak).
 
 ## 1.2 – feature release after 1.1
 
