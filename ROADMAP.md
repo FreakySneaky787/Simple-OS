@@ -33,13 +33,13 @@ Planned for Sunday 2026-11-08, **with a new ISO** (every release has one, #114).
 - **Notification action menu not scaled** (#115, **done**): dunst calls `/usr/local/bin/rofi`; verify: nothing calls
   `/usr/bin/rofi` directly.
 - **Small** (#116, **done**): camera never saves an empty photo; Language & Region maps LANG to Debian's spelling.
-- **Each software store gets its own icon** (#117): Software Center, Software Store (Bazaar) and GNOME Software can
+- **Each software store gets its own icon** (#117, **done**): Software Center, Software Store (Bazaar) and GNOME Software can
   be told apart at a glance in the menu, search, taskbar and notifications (no patched Flatpak).
-- **Restore point before an update: no frozen "0%"** (#119): while Timeshift is still checking, the progress window
+- **Restore point before an update: no frozen "0%"** (#119, **done**): while Timeshift is still checking, the progress window
   shows "working" instead of 0 % and "??? left", and explains that the first restore point can take a while.
-- **Plain text while installing updates** (#120): "Installing updates (5 of 14)" instead of apt's "Unpacking apt (2.6.2)
+- **Plain text while installing updates** (#120, **done**): "Installing updates (5 of 14)" instead of apt's "Unpacking apt (2.6.2)
   over (2.6.1) …"; apt's own lines only go to the log.
-- **Bigger window buttons** (#121): minimize, maximize and close get their own, larger images and a bigger click
+- **Bigger window buttons** (#121, **done**): minimize, maximize and close get their own, larger images and a bigger click
   area (the theme had none, so Openbox used its 6-pixel defaults); they follow the display scale.
 
 ## 1.2 – feature release after 1.1

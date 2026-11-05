@@ -5,6 +5,11 @@
 - **The speaker icon opens the sound menu.** A click on the speaker in the taskbar used to mute the sound; now it
   opens volume and outputs. Scroll over it for louder/quieter, middle-click to mute.
 - **Notification menus on big screens.** The menu with a notification's buttons now grows with the display scale.
+- **Bigger window buttons.** Minimize, maximize and close are larger and easier to hit; close turns red under the
+  pointer.
+- **Updates in plain words.** The update window says "Installing updates (5 of 14)" instead of technical package
+  lines, and a restore point no longer looks stuck at 0 %.
+- **Each software store has its own icon.** The Software Center and the Software Store are easy to tell apart.
 ## New in 1.1
 - **Scale for screens with many pixels.** Control Center → Display → Scale makes text, the taskbar, menus,
   notifications and the mouse pointer bigger. "Automatic" picks it from your screen's size (2.8K and 4K laptops), or

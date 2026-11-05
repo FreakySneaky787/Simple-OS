@@ -23,6 +23,18 @@ reinstall. Coming from 1.0.x, you get everything of 1.1 below as well.
   said "Saved"; now it says the photo could not be saved.
 - **Language & Region: changing only the formats** (issue #116) works again on systems whose language setting was
   written in an unusual way by hand.
+- **Bigger window buttons** (issue #121). Minimize, maximize and close at the top right of every window were tiny
+  (Openbox's 6-pixel defaults). They now have clear shapes of their own, a larger click area, follow the display
+  scale, and the close button turns red under the pointer.
+- **Updates in plain words** (issue #120). While installing, the progress window said things like "Unpacking apt
+  (2.6.2) over (2.6.1) ..." and flickered. It now says "Downloading updates (3 of 14)", "Installing updates (5 of
+  14)" and "Finishing up"; apt's own lines are only in the log.
+- **The restore point before an update no longer looks frozen** (issue #119). The first restore point can take 10–20
+  minutes; the window stood at "0%" and "??? left" the whole time. Now the bar shows that it is working, it counts
+  the files already copied, and a line explains that the wait is normal.
+- **Each software store has its own icon** (issue #117). The Software Center and the Software Store looked the same
+  in the menu and the search; the Software Store now has a shop icon, and Bazaar no longer shows up as a second
+  store entry.
 
 ## What's new in 1.1
 

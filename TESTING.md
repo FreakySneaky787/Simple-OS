@@ -107,4 +107,23 @@ Before publishing (Sunday 2026-11-08), with the new ISO (#114: every release has
       the context key) shows its menu in the same size as the other menus.
 - [ ] **Camera / Language & Region (#116):** a photo is saved as before; with `LANG=de_DE.utf8` written by hand in
       `/etc/default/locale`, changing only the formats works.
+- [ ] **Window buttons (#121):** minimize/maximize/close are clear shapes (line, square, two squares when maximized,
+      ×), noticeably bigger than in 1.1 and easy to hit with the touchpad; close turns red under the pointer, the others
+      get a dark background. Control Center → Display → Scale 125/150/200 %: the buttons and their images grow with it
+      (no tiny 6-pixel images in a big title bar). Another accent color (Appearance): images stay. Update from 1.1 with
+      150 % or another accent: right after signing in the new buttons (migration 130). Container 2026-11-05 (Xvfb,
+      Openbox 3.6.1): buttons 18/22/26/34 px with 10/12/15/20 px images at 100/125/150/200 %.
+- [ ] **Updates in plain words (#120):** during the update 1.1 → 1.1.1 the window says "Downloading updates (n of
+      m)", "Installing updates (n of m)", "Finishing up" – never a line with "Unpacking", "Setting up" or version
+      numbers, and the bar does not jump back. `~/.cache/simpleos-update.log` has a section "apt/dpkg output".
+      Pull the network cable during the download: the notification still names the reason (internet).
+- [ ] **Restore point (#119):** Backup → "Restore point before updates" on, no restore point yet, then the update:
+      while Timeshift prepares, the bar glides (no "0%", no "???"), the line below says "Copying system files · n
+      files" and counts up, the hint says "This can take 10–20 minutes"; after 3 minutes "Still working, this is
+      normal". Once Timeshift reports a percentage the normal bar with "… left" takes over.
+- [ ] **Store icons (#117):** Menu/search (Super): Software Center (grid), Software Store (shop front), GNOME Software
+      (bag) – three different icons, in dark and light mode. Open the Software Store once (Bazaar installed): the menu
+      and the search show no separate "Bazaar" entry; `~/.local/share/applications/io.github.kolunmi.Bazaar.desktop`
+      has `NoDisplay=true`. Update from 1.1 with Bazaar already installed: the "Bazaar" entry is gone after signing in
+      (migration 120).
 - [ ] **Fresh install from the 1.1.1 ISO** (BIOS + UEFI) – the usual checks of sections 0–3.
