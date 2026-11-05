@@ -27,6 +27,8 @@ on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook
 - **Each software store gets its own icon** (#117): Software Center, Software Store (Bazaar) and GNOME Software can
   be told apart at a glance in the menu, search, taskbar and notifications (local `.desktop` overrides, no patched
   Flatpak).
+- **Restore point before an update: no frozen "0%"** (#119): while Timeshift is still checking, the progress window
+  shows "working" instead of 0 % and "??? left", and explains that the first restore point can take a while.
 
 ## 1.2 – feature release after 1.1
 
