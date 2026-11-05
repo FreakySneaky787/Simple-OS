@@ -91,11 +91,11 @@ Last results: 1.0 is installed and in daily use on the ThinkPad E16 (UEFI).
 
 Before publishing (Sunday 2026-11-08), with the new ISO (#114: every release has one):
 
-- [ ] **Slow clicks (issue #104)** – the table of the issue, on the ThinkPad E16 with the **touchpad** (firm click) and
+- [x] **Slow clicks (issue #104)** – the table of the issue, on the ThinkPad E16 with the **touchpad** (firm click) and
       a **mouse**: desktop right-click, window title bar right-click, held 0.1 / 0.3 / 0.6 / 1 s – the menu stays open
       every time; a quick click on an entry still runs it. VM (2026-11-03, `xdotool mousedown/sleep/mouseup`): desktop
       menu open at 0.1–1.3 s with `hideDelay` 1500, closed from 0.3 s with the old 200.
-- [ ] **Speaker icon (#104)** – left of the network display: a click (short and held) opens the sound menu, a click
+- [x] **Speaker icon (#104)** – left of the network display: a click (short and held) opens the sound menu, a click
       never mutes; scroll up/down = louder/quieter with the on-screen display; middle click = mute, the icon turns grey;
       volume keys and the sound menu change the icon at once; Bluetooth headphones connected → the icon follows the new
       output. Only one speaker icon (no volumeicon in the tray). VM: sound menu open after 0.1–1.5 s holds.
@@ -107,7 +107,7 @@ Before publishing (Sunday 2026-11-08), with the new ISO (#114: every release has
       the context key) shows its menu in the same size as the other menus.
 - [ ] **Camera / Language & Region (#116):** a photo is saved as before; with `LANG=de_DE.utf8` written by hand in
       `/etc/default/locale`, changing only the formats works.
-- [ ] **Window buttons (#121):** minimize/maximize/close are clear shapes (line, square, two squares when maximized,
+- [x] **Window buttons (#121):** minimize/maximize/close are clear shapes (line, square, two squares when maximized,
       ×), noticeably bigger than in 1.1 and easy to hit with the touchpad; close turns red under the pointer, the others
       get a dark background. Control Center → Display → Scale 125/150/200 %: the buttons and their images grow with it
       (no tiny 6-pixel images in a big title bar). Another accent color (Appearance): images stay. Update from 1.1 with
@@ -130,9 +130,11 @@ Before publishing (Sunday 2026-11-08), with the new ISO (#114: every release has
       VM 2026-11-05: 1.1's window still showed "0%" / "??? left"; with 1.1.1's code: "Measuring the system" →
       "Copying system files · 3,593 … 192,081 files" with the gliding bar and the hint, no "0%", no "???" (the VM's
       first restore point took ~20 s, the slow case was not reproduced).
-- [ ] **Store icons (#117):** Menu/search (Super): Software Center (grid), Software Store (shop front), GNOME Software
+- [x] **Store icons (#117):** Menu/search (Super): Software Center (grid), Software Store (shop front), GNOME Software
       (bag) – three different icons, in dark and light mode. Open the Software Store once (Bazaar installed): the menu
       and the search show no separate "Bazaar" entry; `~/.local/share/applications/io.github.kolunmi.Bazaar.desktop`
       has `NoDisplay=true`. Update from 1.1 with Bazaar already installed: the "Bazaar" entry is gone after signing in
       (migration 120). Live ISO VM 2026-11-05: three different icons in the search (Bazaar case not tested in a VM).
 - [ ] **Fresh install from the 1.1.1 ISO** (BIOS + UEFI) – the usual checks of sections 0–3.
+      ThinkPad E16 Gen 3 2026-11-05 (ISO a9576af0, installed): slow clicks with the touchpad, speaker icon, window
+      buttons and store icons – all OK (user).
