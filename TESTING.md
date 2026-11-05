@@ -112,18 +112,27 @@ Before publishing (Sunday 2026-11-08), with the new ISO (#114: every release has
       get a dark background. Control Center → Display → Scale 125/150/200 %: the buttons and their images grow with it
       (no tiny 6-pixel images in a big title bar). Another accent color (Appearance): images stay. Update from 1.1 with
       150 % or another accent: right after signing in the new buttons (migration 130). Container 2026-11-05 (Xvfb,
-      Openbox 3.6.1): buttons 18/22/26/34 px with 10/12/15/20 px images at 100/125/150/200 %.
+      Openbox 3.6.1): buttons 18/22/26/34 px with 10/12/15/20 px images at 100/125/150/200 %. VM update 1.1 → 1.1.1
+      with accent mauve and an old theme copy (themerc only): after the restart the copy has the images and the
+      bevel, mauve kept (migration 130); hideDelay 1500, no volumeicon, What's new 1.1.1 shown, 0 failed units.
 - [ ] **Updates in plain words (#120):** during the update 1.1 → 1.1.1 the window says "Downloading updates (n of
       m)", "Installing updates (n of m)", "Finishing up" – never a line with "Unpacking", "Setting up" or version
       numbers, and the bar does not jump back. `~/.cache/simpleos-update.log` has a section "apt/dpkg output".
       Pull the network cable during the download: the notification still names the reason (internet).
+      VM 2026-11-05 (1.1 → 1.1.1 from ISO a9576af0's repository, then a second update with re-versioned test packages
+      so the NEW code runs): "Downloading updates (1 of 2)", "(2 of 2)", "Installing updates (2 of 2)" 69 % → 80 % →
+      "Updates installed" 100 %, no apt line in the window; a failed download (404) and a broken package still named
+      the reason in the notification (stderr), an interrupted run was repaired by the next one (`dpkg --audit` clean).
 - [ ] **Restore point (#119):** Backup → "Restore point before updates" on, no restore point yet, then the update:
       while Timeshift prepares, the bar glides (no "0%", no "???"), the line below says "Copying system files · n
       files" and counts up, the hint says "This can take 10–20 minutes"; after 3 minutes "Still working, this is
       normal". Once Timeshift reports a percentage the normal bar with "… left" takes over.
+      VM 2026-11-05: 1.1's window still showed "0%" / "??? left"; with 1.1.1's code: "Measuring the system" →
+      "Copying system files · 3,593 … 192,081 files" with the gliding bar and the hint, no "0%", no "???" (the VM's
+      first restore point took ~20 s, the slow case was not reproduced).
 - [ ] **Store icons (#117):** Menu/search (Super): Software Center (grid), Software Store (shop front), GNOME Software
       (bag) – three different icons, in dark and light mode. Open the Software Store once (Bazaar installed): the menu
       and the search show no separate "Bazaar" entry; `~/.local/share/applications/io.github.kolunmi.Bazaar.desktop`
       has `NoDisplay=true`. Update from 1.1 with Bazaar already installed: the "Bazaar" entry is gone after signing in
-      (migration 120).
+      (migration 120). Live ISO VM 2026-11-05: three different icons in the search (Bazaar case not tested in a VM).
 - [ ] **Fresh install from the 1.1.1 ISO** (BIOS + UEFI) – the usual checks of sections 0–3.
