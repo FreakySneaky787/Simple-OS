@@ -42,10 +42,12 @@ on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook
 - **Windows programs** (#85): double-click on a `.exe`/`.msi` offers to run it with Bottles (installed from the Software
   Store if missing), a plain help page on what works (older programs, many games through Steam/Proton) and what doesn't
   (Microsoft 365, current Adobe apps, kernel anti-cheat) with alternatives, and a hint to Steam's own "Steam Play for
-  all titles" switch. The Setup Wizard gets a page "Optional Components" with **SOS Bridge**:
+  all titles" switch. The Setup Wizard gets a page "Optional Components" (#126) with **SOS Bridge**:
   one checkbox, off by default, that installs Bottles at the end of the wizard ("Additional downloads required. You
   can install it later from the Software Store."). SOS Bridge is only the name of this bundle, not our own Windows layer.
   Not planned: automatic Windows VMs, CrossOver, our own configs for Windows apps.
+- **Optional Components** in the Setup Wizard (#126): a short list, all off by default – SOS Bridge, Gaming Support
+  (Steam, launchers, controllers) and Developer Tools; Simple Health and Remote Support join in 2.x once they exist.
 
 ## After 1.2 – bugfixes only, the port starts slowly
 
