@@ -13,7 +13,7 @@ Last updated: 2 November 2026 (Simple OS 1.0.7).
 
 | Computer | Firmware | Version | Install | Wi-Fi | Sound | Graphics | Brightness | Suspend | External monitor |
 |---|---|---|---|---|---|---|---|---|---|
-| Lenovo ThinkPad E16 Gen 3 (21TF) – Intel Core 5 210H, Intel graphics, Intel Wi-Fi | UEFI, Secure Boot off | 1.0.7 | ✅ | ⚠️ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Lenovo ThinkPad E16 Gen 3 (21TF) – Intel Core 5 210H, Intel graphics, Intel Wi-Fi | UEFI, Secure Boot off | 1.0.7, 1.1 | ✅ | ⚠️ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Acer Predator – gaming desktop, Intel Core i7 (13th gen), NVIDIA GeForce RTX 4070 Super, 32 GB RAM | UEFI, Secure Boot off, next to Windows | 1.0.7 | ✅ | ✅ | ✅ | – | ✅ | ✅ | ✅ |
 | Dell OptiPlex 9020 – desktop | legacy BIOS, MBR, next to another system | 1.0.3 | ❌ | – | – | – | – | – | – |
 
