@@ -1,5 +1,13 @@
 # Simple OS
 
+<!-- simpleos-next-branch: this notice belongs to the branch "next" only. Remove it when next is merged into main for a
+     release – ./tools/release.sh publish refuses while it is here (docs/MAINTAINING.md, section 7). -->
+> **You are on the branch `next`: Simple OS 1.1.1, a bug-fix release that is still being worked on and tested.** This
+> is not the released Simple OS – that is the [`main` branch](https://github.com/FreakySneaky787/Simple-OS/tree/main) and
+> the [latest release](https://github.com/FreakySneaky787/Simple-OS/releases/latest). What 1.1.1 brings:
+> [ROADMAP](ROADMAP.md#111--bugfix-release-after-11) and the
+> [milestone 1.1.1](https://github.com/FreakySneaky787/Simple-OS/milestone/10). Pull requests go here.
+
 <p align="center"><img src="docs/sos-banner.png" alt="SOS – Simple Operating System. Keep it Simple." width="100%"></p>
 
 **A fast, calm Linux desktop based on Debian 12. It sets itself up, updates itself, and you never need a terminal.**
