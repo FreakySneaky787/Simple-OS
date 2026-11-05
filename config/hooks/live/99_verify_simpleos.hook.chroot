@@ -2322,6 +2322,29 @@ check "simpleos-theme: Openbox paddings not scaled at 150 % or a theme copy left
       "thx 150 --openbox-theme && grep -qx 'menu.border.width: 9' $HS/th/.themes/SimpleOS/openbox-3/themerc &&
        grep -qx 'padding.width: 12' $HS/th/.themes/SimpleOS/openbox-3/themerc && grep -qi '#89b4fa' $HS/th/.themes/SimpleOS/openbox-3/themerc &&
        thx 100 --openbox-theme && [ ! -e $HS/th/.themes/SimpleOS ]"
+# #121: window buttons – own images (10 px at 100 % instead of Openbox's built-in 6 px), one set per scale (Openbox does
+# not scale them), a bigger button through the label's invisible bevel, red close on hover; the user's theme copy takes
+# the set of its scale (a copy without images fell back to the 6 px bitmaps)
+xw() { sed -n 's/^#define [a-z_]*_width //p' "$1" 2>/dev/null; }
+OBT=/usr/share/themes/SimpleOS/openbox-3
+OBC=$HS/th/.themes/SimpleOS/openbox-3
+check "window buttons: the theme has no images of its own, or a set has the wrong size (#121)" \
+      "bok=1; for n in iconify max max_toggled close; do [ \"\$(xw $OBT/\$n.xbm)\" = 10 ] || bok=0;
+         for pw in 125:12 150:15 200:20; do [ \"\$(xw /usr/share/simpleos/openbox-buttons/\${pw%%:*}/\$n.xbm)\" = \${pw#*:} ] || bok=0; done; done; [ \$bok = 1 ]"
+check "window buttons: no bigger click area (label bevel) or no red close button on hover (#121)" \
+      "lok=1; for w in active inactive; do grep -qx \"window.\$w.label.bg: raised solid bevel2\" $OBT/themerc &&
+         grep -qx \"window.\$w.label.bg.highlight: 0\" $OBT/themerc && grep -qx \"window.\$w.label.bg.shadow: 0\" $OBT/themerc &&
+         grep -qx \"window.\$w.button.close.hover.bg.color: #d20f39\" $OBT/themerc || lok=0; done; [ \$lok = 1 ]"
+mkdir -p "$HS/th/.config/simpleos"
+check "simpleos-theme: the Openbox theme copy lacks the button images of its scale (#121)" \
+      "thx 150 --openbox-theme && [ \"\$(xw $OBC/close.xbm)\" = 15 ] && [ \"\$(xw $OBC/max_toggled.xbm)\" = 15 ] &&
+       thx 200 --openbox-theme && [ \"\$(xw $OBC/close.xbm)\" = 20 ] && [ \"\$(xw $OBC/iconify.xbm)\" = 20 ] &&
+       printf 'mode=dark\naccent=mauve\n' > $HS/th/.config/simpleos/theme && thx 100 --openbox-theme &&
+       [ \"\$(xw $OBC/close.xbm)\" = 10 ] && [ \"\$(xw $OBC/max.xbm)\" = 10 ]"
+rm -f "$HS/th/.config/simpleos/theme"; thx 100 --openbox-theme
+check "user migration 130 (window buttons in the theme copy, #121) missing" \
+      "[ -x /usr/share/simpleos/edition/migrations/user/130-window-buttons ] &&
+       grep -q 'simpleos-theme --openbox-theme' /usr/share/simpleos/edition/migrations/user/130-window-buttons"
 check "Xsession: display scale not set before the desktop starts (82simpleos-scale)" \
       "sh -n /etc/X11/Xsession.d/82simpleos-scale && grep -q 'simpleos-scale --session' /etc/X11/Xsession.d/82simpleos-scale &&
        grep -q 'simpleos-display --restore' /etc/X11/Xsession.d/82simpleos-scale"

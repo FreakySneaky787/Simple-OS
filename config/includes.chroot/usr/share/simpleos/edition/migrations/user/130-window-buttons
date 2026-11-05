@@ -1,0 +1,8 @@
+#!/bin/sh
+# Simple OS 1.1.1 – bigger window buttons (#121). Runs once per account at sign-in. Accounts with their own copy of the
+# Openbox theme (another accent color or a display scale other than 100 %, ~/.themes/SimpleOS) get it written again:
+# the old copy had only the themerc, so Openbox would keep its tiny built-in button images and the old label. Accounts
+# without a copy use the system theme and need nothing. Never fails (exit 0).
+[ -f "$HOME/.themes/SimpleOS/openbox-3/themerc" ] || exit 0
+[ -x /usr/local/bin/simpleos-theme ] && /usr/local/bin/simpleos-theme --openbox-theme >/dev/null 2>&1
+exit 0

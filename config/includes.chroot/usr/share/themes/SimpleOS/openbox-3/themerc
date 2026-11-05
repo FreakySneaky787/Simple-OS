@@ -17,9 +17,19 @@ window.inactive.title.bg: flat solid
 window.inactive.title.bg.color: #181825
 window.active.title.separator.color: #313244
 window.inactive.title.separator.color: #181825
-window.active.label.bg: parentrelative
+# Window buttons (#121): Openbox makes them as big as the title label minus 2 px – with a plain label (title font
+# height) that was 14 px at 100 %. A bevel adds 2 px on each side of the label = 18 px buttons; highlight and shadow 0
+# and the title's own color keep it invisible. The images (iconify/max/max_toggled/close.xbm, 10 px instead of
+# Openbox's built-in 6 px) come from tools/gen-openbox-buttons.py; simpleos-theme copies the set for 125/150/200 %.
+window.active.label.bg: raised solid bevel2
+window.active.label.bg.color: #1e1e2e
+window.active.label.bg.highlight: 0
+window.active.label.bg.shadow: 0
 window.active.label.text.color: #cdd6f4
-window.inactive.label.bg: parentrelative
+window.inactive.label.bg: raised solid bevel2
+window.inactive.label.bg.color: #181825
+window.inactive.label.bg.highlight: 0
+window.inactive.label.bg.shadow: 0
 window.inactive.label.text.color: #6c7086
 window.label.text.justify: center
 
@@ -56,6 +66,20 @@ window.inactive.button.disabled.bg: parentrelative
 window.inactive.button.disabled.image.color: #313244
 window.inactive.button.toggled.bg: parentrelative
 window.inactive.button.toggled.image.color: #6c7086
+# Close: red under the pointer, like on Windows, so it is clear which button closes (#121). Own red, not the accent
+# (simpleos-theme replaces only #89b4fa).
+window.active.button.close.hover.bg: flat solid
+window.active.button.close.hover.bg.color: #d20f39
+window.active.button.close.hover.image.color: #ffffff
+window.active.button.close.pressed.bg: flat solid
+window.active.button.close.pressed.bg.color: #a50d2d
+window.active.button.close.pressed.image.color: #ffffff
+window.inactive.button.close.hover.bg: flat solid
+window.inactive.button.close.hover.bg.color: #d20f39
+window.inactive.button.close.hover.image.color: #ffffff
+window.inactive.button.close.pressed.bg: flat solid
+window.inactive.button.close.pressed.bg.color: #a50d2d
+window.inactive.button.close.pressed.image.color: #ffffff
 
 # Menus (right-click, window menu) – Catppuccin Mocha:
 #   Base #1e1e2e, text #cdd6f4, selection Surface0 #313244 with Mauve #cba6f7, separators Surface1 #45475a.
