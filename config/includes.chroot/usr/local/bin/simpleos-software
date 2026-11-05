@@ -9,9 +9,16 @@
 # Installation with a progress window (simpleos-progress), log in ~/.cache/simpleos-software.log. Errors are
 # classified: not enough space / Flathub not reachable / other error (then with a log hint) – before,
 # every error was "Check your internet connection", even if only space was missing.
-# No set -e, exit 0. Tests: SIMPLEOS_SW_FREE_MB replaces the free space, SIMPLEOS_SW_NET=0/1 the network check.
+# Icon (#117): its own, a shop front (io.elementary.appcenter from Papirus) – the Software Center keeps
+# system-software-install, GNOME Software its own bag. Bazaar's own launcher would be a fourth "store" in the menu and
+# the search with yet another icon: a copy in ~/.local/share/applications hides it (NoDisplay) and gives it the store's
+# icon. Not /usr/local/share: /etc/profile.d/flatpak.sh puts Flatpak's exports BEFORE it in XDG_DATA_DIRS, only the
+# user's own folder comes first. Re-written at every start (a Flatpak update may change Exec); the Flatpak itself is never
+# touched. "--hide-launcher" only writes that copy (user migration 120 for accounts that already have Bazaar).
+# No set -e, exit 0. Tests: SIMPLEOS_SW_FREE_MB replaces the free space, SIMPLEOS_SW_NET=0/1 the network check,
+# SIMPLEOS_SW_EXPORTS Flatpak's applications folder.
 
-SOS_NAME=simpleos-software SOS_TITLE="Software Store" SOS_ICON=system-software-install
+SOS_NAME=simpleos-software SOS_TITLE="Software Store" SOS_ICON=io.elementary.appcenter
 LIB=/usr/local/lib/simpleos/common.sh
 [ -r "$LIB" ] || { notify-send "Software Store" "Simple OS is incomplete (missing $LIB)." 2>/dev/null; exit 0; }
 . "$LIB"
@@ -22,8 +29,28 @@ NEED_FULL=2600   # MB: Bazaar + GNOME runtime + GL extensions
 NEED_APP=300     # MB: runtime already present
 fail() { sos_notify "$1" critical; exit 0; }
 
+hide_launcher() {
+    _src=${SIMPLEOS_SW_EXPORTS:-/var/lib/flatpak/exports/share/applications}/$APP.desktop
+    _dst=${XDG_DATA_HOME:-$HOME/.local/share}/applications/$APP.desktop
+    [ -f "$_src" ] || return 0
+    mkdir -p "${_dst%/*}" 2>/dev/null || return 0
+    awk -v icon="$SOS_ICON" '
+        /^\[/ { sec = $0 }
+        sec == "[Desktop Entry]" && /^(Icon|NoDisplay|X-SimpleOS-Override)=/ { next }
+        { print }
+        $0 == "[Desktop Entry]" { print "Icon=" icon; print "NoDisplay=true"; print "X-SimpleOS-Override=117" }' \
+        "$_src" > "$_dst.tmp" 2>/dev/null && mv -f "$_dst.tmp" "$_dst" 2>/dev/null
+    rm -f "$_dst.tmp" 2>/dev/null
+    return 0
+}
+if [ "${1:-}" = --hide-launcher ]; then
+    hide_launcher
+    exit 0
+fi
+
 command -v flatpak >/dev/null || fail "The Software Store is not available (Flatpak is missing)."
 if flatpak info "$APP" >/dev/null 2>&1; then
+    hide_launcher
     exec flatpak run "$APP" "$@"
 fi
 flatpak remotes --system --columns=name 2>/dev/null | grep -qx flathub ||
@@ -81,6 +108,7 @@ out=$(cat "$feed")
 rm -f "$feed" "$rcf"
 
 if [ "$rc" -eq 0 ] && flatpak info "$APP" >/dev/null 2>&1; then
+    hide_launcher
     setsid -f flatpak run "$APP" "$@" >/dev/null 2>&1
     exit 0
 fi

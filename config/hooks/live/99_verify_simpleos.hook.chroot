@@ -4267,7 +4267,7 @@ check "sfdisk wrapper: changes a normal call (primary partition, --json)" \
 rm -rf "${lt:?}"
 # simpleos-software with a Flatpak dummy: FP_INSTALLED=1 (already there), FP_RUNTIME=1 (GNOME runtime there),
 # FP_MODE=ok|space|net|other (result of flatpak install)
-for t in tee df setsid; do [ -e "$wt/sys/$t" ] || ln -s "$(command -v $t)" "$wt/sys/$t"; done
+for t in tee df setsid mv; do [ -e "$wt/sys/$t" ] || ln -s "$(command -v $t)" "$wt/sys/$t"; done
 cat > "$wt/mock/flatpak" <<'MOCK'
 #!/bin/sh
 echo "flatpak $*" >> "$WT/flatpak"
@@ -4305,6 +4305,33 @@ hcase "$SWS" "space runs out during the installation -> space message instead of
     'grep -q "Not enough free space to install the Software Store" $S/notify && ! grep -qi "internet" $S/notify'
 hcase "$SWS" "other error -> log hint" "" "SIMPLEOS_LIVE=0 SIMPLEOS_SW_FREE_MB=9000 SIMPLEOS_SW_NET=1 FP_MODE=other" "" \
     'grep -q "could not be installed. Details: ~/.cache/simpleos-software.log" $S/notify'
+# #117: Bazaar's own launcher hidden in the user's folder (Flatpak's exports come before /usr/local/share), with the
+# Software Store's icon; its actions and Exec untouched, written again at every start (not twice)
+mkdir -p "$wt/fpexp"
+printf '[Desktop Entry]\nName=Bazaar\nExec=/usr/bin/flatpak run --branch=stable --arch=x86_64 --command=bazaar io.github.kolunmi.Bazaar\nIcon=io.github.kolunmi.Bazaar\nType=Application\n\n[Desktop Action search]\nName=Search\nIcon=keep-me\n' \
+    > "$wt/fpexp/io.github.kolunmi.Bazaar.desktop"
+BZ="$wt/home/.local/share/applications/io.github.kolunmi.Bazaar.desktop"
+rm -f "$BZ"
+bz_ok='grep -qx NoDisplay=true '"$BZ"' && [ "$(grep -c "^Icon=io.elementary.appcenter$" '"$BZ"')" = 1 ] && [ "$(grep -c "^NoDisplay=" '"$BZ"')" = 1 ] &&
+       grep -qx Icon=keep-me '"$BZ"' && grep -q "^Exec=/usr/bin/flatpak run .*io.github.kolunmi.Bazaar" '"$BZ"' && ! grep -q "^Icon=io.github" '"$BZ"
+hcase "$SWS" "installed -> Bazaar's own launcher hidden, with the Software Store's icon (#117)" "" "FP_INSTALLED=1 SIMPLEOS_SW_EXPORTS=$wt/fpexp" "" "$bz_ok"
+hcase "$SWS" "started again -> the copy is written again, not doubled (#117)" "" "FP_INSTALLED=1 SIMPLEOS_SW_EXPORTS=$wt/fpexp" "" "$bz_ok"
+rm -f "$BZ"
+hcase "$SWS --hide-launcher" "migration 120: only the copy, Bazaar does not start (#117)" "" "SIMPLEOS_SW_EXPORTS=$wt/fpexp" "" \
+    "$bz_ok"' && ! grep -q "flatpak run" $S/flatpak 2>/dev/null'
+rm -f "$BZ"
+hcase "$SWS --hide-launcher" "Bazaar not installed -> no copy (#117)" "" "SIMPLEOS_SW_EXPORTS=$wt/nothing" "" "[ ! -e '$BZ' ]"
+rm -rf "$wt/fpexp" "$BZ"
+check "user migration 120 (Bazaar's launcher, #117) missing or does not call simpleos-software --hide-launcher" \
+      "[ -x /usr/share/simpleos/edition/migrations/user/120-store-launcher ] &&
+       grep -q 'simpleos-software --hide-launcher' /usr/share/simpleos/edition/migrations/user/120-store-launcher"
+check "Software Center, Software Store and GNOME Software: not three different icons, or one missing in Papirus (#117)" \
+      "i1=\$(sed -n 's/^Icon=//p' /usr/share/applications/simpleos-software-center.desktop) &&
+       i2=\$(sed -n 's/^Icon=//p' /usr/share/applications/simpleos-software.desktop) &&
+       i3=\$(sed -n 's/^Icon=//p' /usr/share/applications/org.gnome.Software.desktop | head -n 1) &&
+       [ -n \"\$i1\" ] && [ -n \"\$i2\" ] && [ -n \"\$i3\" ] && [ \"\$i1\" != \"\$i2\" ] && [ \"\$i1\" != \"\$i3\" ] && [ \"\$i2\" != \"\$i3\" ] &&
+       grep -q \"SOS_ICON=\$i2\$\" /usr/local/bin/simpleos-software && iok=1 &&
+       for i in \$i1 \$i2 \$i3; do [ -n \"\$(find /usr/share/icons/Papirus/64x64 -name \"\$i.svg\")\" ] || iok=0; done; [ \$iok = 1 ]"
 rm -f "$wt/mock/flatpak"
 
 # ---- Progress (progress-filter): flatpak/apt/timeshift -> PROGRESS/STAGE, RIGHT AWAY (awk/mawk buffered pipes,
