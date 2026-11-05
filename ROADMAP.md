@@ -47,7 +47,7 @@ on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook
   can install it later from the Software Store."). SOS Bridge is only the name of this bundle, not our own Windows layer.
   Not planned: automatic Windows VMs, CrossOver, our own configs for Windows apps.
 - **Optional Components** in the Setup Wizard (#126): a short list, all off by default – SOS Bridge, Gaming Support
-  (Steam, launchers, controllers) and Developer Tools; Simple Health and Remote Support join in 2.x once they exist.
+  (Steam, launchers, controllers) and Developer Tools. Simple Health (#127) and Remote Support (#128) are ideas with low priority.
 
 ## After 1.2 – bugfixes only, the port starts slowly
 
