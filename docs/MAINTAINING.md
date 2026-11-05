@@ -22,8 +22,8 @@ The details are in [TESTING.md](../TESTING.md) (checklist) and the README sectio
 
 1. **Plan:** a milestone per release on GitHub (e.g. "1.0.7"), the date in [ROADMAP.md](../ROADMAP.md) and on the
    website's roadmap page. Cadence: bugfix every 2–3 weeks, feature release every 2–3 months (ROADMAP "How we release"); 1.2 is the last feature release of 1.x, after it only bugfixes (ROADMAP "After 1.2").
-2. **Work:** bugfixes for the next 1.0.x on `main`, new features on `next` (section 7). `main` is pushed only on
-   release day, so it always matches the published edition; `next` is pushed as the work goes on. Close issues when
+2. **Work:** everything for the next release on `next` (section 7) – at the moment the fixes for 1.1.1. `main` is
+   pushed only on release day, so it always matches the published edition; `next` is pushed as the work goes on. Close issues when
    the work is done and tested ("done, ships in X.Y.Z"), project board item → Done; things that need real hardware stay
    open with the label `verify`.
 3. **Version:** `./tools/release.sh version X.Y.Z`, then `RELEASE_NOTES.md` (it is the release text and the target of
@@ -114,21 +114,22 @@ every release – and only after `publish`, because the links point to the new r
 
 ## 7. Branches
 
-- `main` – the published Simple OS 1.x edition on Debian 12, plus the bugfixes for the next 1.0.x release. Releases are
-  tagged `vX.Y.Z` on it; it is pushed on release day only.
-- `next` – **the branch for new features**: everything for the next feature release (1.1, 1.2 …). Pushed as the work
-  goes on, so others can follow it. Test ISOs are built from it like from `main` (the package version carries the build
-  time, so test systems still get the published build later).
-  - After every bugfix release: `git switch next && git merge main` – the fixes reach the new features.
-  - Feature release: when `next` is tested (TESTING.md), `git switch main && git merge next` (a fast-forward if `main`
-    got no fixes in the meantime), then release from `main` as in section 2.
+- `main` – the published Simple OS 1.x edition on Debian 12. Releases are tagged `vX.Y.Z` on it; it changes only on
+  release day (when `next` is merged into it) or for an urgent hotfix.
+- `next` – **the branch for the next release**, bugfix or feature release: at the moment **1.1.1**, after it 1.2, then
+  the 1.2.x fixes. Pushed as the work goes on, so others can follow it. Test ISOs are built from it like from `main`
+  (the package version carries the build time, so test systems still get the published build later).
+  - Release: when `next` is tested (TESTING.md), `git switch main && git merge next` (a fast-forward), then release from
+    `main` as in section 2.
+  - A hotfix that cannot wait (starting, installing, data, security): on `main`, released, then
+    `git switch next && git merge main`.
   - Docs that are already true for the published edition (website links, issue forms) may go to `main` directly.
-  - `next` says what it is: it carries the version of the coming feature release (`./tools/release.sh version 1.1`,
-    with its "What's new" notes – test ISOs from `next` show "Simple OS 1.1"), and a notice at the top of `README.md`
-    (marker `simpleos-next-branch`). Before the feature release: write `RELEASE_NOTES.md` for it and remove the notice –
-    `./tools/release.sh publish` refuses otherwise. When `next` starts the following feature release, both come back.
-  - Merging a bugfix release (`main`, e.g. 1.0.8) into `next` conflicts in `usr/lib/os-release`, the installer branding
-    and `whats-new`: keep `next`'s version, and add the bugfix's notes to its "What's new" if they matter.
+  - `next` says what it is: it carries the version of the coming release (`./tools/release.sh version 1.1.1`, with its
+    "What's new" notes – test ISOs from `next` show "Simple OS 1.1.1"), and a notice at the top of `README.md`
+    (marker `simpleos-next-branch`). Before the release: write `RELEASE_NOTES.md` for it and remove the notice –
+    `./tools/release.sh publish` refuses otherwise. When `next` starts the following release, both come back.
+  - Merging a hotfix (`main`) into `next` conflicts in `usr/lib/os-release`, the installer branding and `whats-new`:
+    keep `next`'s version, and add the hotfix's notes to its "What's new" if they matter.
 - `trixie` – Simple OS 2.0 "Rigi" on Debian 13 (ROADMAP "2.0"). Merge `main` into it regularly so fixes are not lost.
   Before 2.0 is published, 1.x systems need their own update channel (ROADMAP, issue #106).
 

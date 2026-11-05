@@ -32,7 +32,8 @@ Always make a backup (e.g. a Rescuezilla image) before installing on a disk with
 - **Open an issue first** and describe what you want to change, so we can agree on it before you spend time on it.
   Small fixes (typos, docs) can go straight to a pull request.
 - Keep pull requests **small** and about one thing.
-- **Which branch:** new features go to `next` (the next feature release), fixes for the current edition to `main`.
+- **Which branch:** pull requests go to `next`, the branch for the next release – at the moment the bugfix release
+  1.1.1. `main` only changes on release day.
 - Build and test as described in [For developers](README.md#for-developers): `./build_iso.sh`, then
   `./test_vm.sh` (BIOS) and `./test_vm.sh --uefi`.
 - Simple OS is for normal users: keep things simple, with no terminal needed for everyday tasks.
