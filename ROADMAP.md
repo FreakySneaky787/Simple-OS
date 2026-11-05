@@ -145,6 +145,9 @@ grows with every release (#49, the hardware compatibility page).
 - **Wayland becomes the default** (#87) once everything works; X11 stays as a fallback for a while.
 - **Screenshot editor** (#111): arrows, text, crop and blur. Here and not earlier because the screenshot tool uses
   `maim` (X11 only) and has to be rebuilt for Wayland anyway – the editor is built once, on the new tool.
+- **Simple Bridge** (#123): SOS Bridge from 1.2 grows step by step – Windows programs in the app menu, plain error
+  hints ("needs the Visual C++ runtime"), backups of bottles; later an App Center with automatic setup and compatibility
+  reports, and maybe a stand-alone tool for other distributions.
 - **RGB lighting and game controllers** (#112, optional): no own RGB tool – OpenRGB recommended in the Software Store;
   controllers work out of the box and show their battery level.
 
