@@ -47,17 +47,18 @@ Already running Simple OS? New versions arrive through **Software Updates** – 
 
 Thank you for testing! Every report helps, especially from real hardware.
 
-**Wanted right now** (1.0.7 is out):
+**Wanted right now** (1.1 is out):
 
-- **Sleep and the screen lock:** close the lid or pick Sleep, then sign in again. Is the screen locked only once, and
-  does your desktop come back? On the lock screen, does the power button put the computer to sleep?
-- **Installing next to Windows** (dual boot), also **without internet**: is the clock right afterwards, in Windows and
-  in Simple OS?
-- **Installing on real hardware**, in **legacy BIOS / MBR** mode as well as **UEFI**. Do your other systems stay in the
-  boot menu after the first GRUB update?
-- **Updating from 1.0.6** through Software Updates: does the "What's new" window show up after the restart?
-- **Installing in your language** (not English): are dates in your language's order (taskbar clock, calendar)? And the
-  search with a non-US keyboard (Super key, then type).
+- **Display scaling** on a high-resolution screen: Control Center → Display → Scale (automatic or 100 to 200 %). Is
+  everything sharp and the right size – windows, taskbar, menus, the login screen?
+- **Language & Region:** pick another language or other formats, sign out and in again. Are dates, numbers and the
+  currency right?
+- **Camera:** does the Camera app show your webcam, and can you take a photo?
+- **Starting up:** does your computer start quicker than with 1.0.7? With an encrypted installation: can you type the
+  password, also with a USB keyboard?
+- **Updating from 1.0.7** through Software Updates: does it restart cleanly, and does the "What's new" window show up?
+- **Installing on real hardware**, in **legacy BIOS / MBR** mode as well as **UEFI**, also next to Windows. Do your
+  other systems stay in the boot menu?
 
 **How to report:**
 
