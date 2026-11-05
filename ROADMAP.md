@@ -31,6 +31,8 @@ on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook
   shows "working" instead of 0 % and "??? left", and explains that the first restore point can take a while.
 - **Plain text while installing updates** (#120): "Installing updates (5 of 14)" instead of apt's "Unpacking apt (2.6.2)
   over (2.6.1) …"; apt's own lines only go to the log.
+- **Bigger window buttons** (#121): minimize, maximize and close get their own, larger images and a bigger click
+  area (the theme had none, so Openbox used its 6-pixel defaults); they follow the display scale.
 
 ## 1.2 – feature release after 1.1
 
