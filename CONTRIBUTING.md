@@ -32,8 +32,9 @@ Always make a backup (e.g. a Rescuezilla image) before installing on a disk with
 - **Open an issue first** and describe what you want to change, so we can agree on it before you spend time on it.
   Small fixes (typos, docs) can go straight to a pull request.
 - Keep pull requests **small** and about one thing.
-- **Which branch:** fixes for the current release (1.x, Debian 12) go to `main`, new 1.x features to `next`; work for
-  2.0 "Rigi" (Debian 13) goes to `trixie`. Not sure? Use `main` – fixes from there are merged into `trixie` regularly.
+- **Which branch:** fixes and features for 1.x (Debian 12) go to `next`, the branch for the next 1.x release (at the
+  moment the bugfix release 1.1.1); work for 2.0 "Rigi" (Debian 13) goes to `trixie`. Not sure? Use `next` – what is
+  released from there is merged into `trixie` regularly.
 - Build and test as described in [For developers](README.md#for-developers): `./build_iso.sh`, then
   `./test_vm.sh` (BIOS) and `./test_vm.sh --uefi`.
 - Simple OS is for normal users: keep things simple, with no terminal needed for everyday tasks.
