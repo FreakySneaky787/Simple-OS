@@ -134,6 +134,8 @@ grows with every release (#49, the hardware compatibility page).
   desktop no longer starts.
 - **Update scheduling** (#109): install updates when shutting down or at a set time, together with the option for
   automatic security updates (#54).
+- **Restore points: choose how many are kept and for how long** (#122), e.g. at most 3, none older than 30 days;
+  the newest one always stays.
 - **Clipboard history with images and pinned entries** (#110).
 - Small: make the split view of the file manager (Thunar, F3) visible in its menu and the help.
 
