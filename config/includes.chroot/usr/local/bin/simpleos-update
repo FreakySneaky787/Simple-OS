@@ -176,7 +176,11 @@ install_updates() {
     # Progress window with real progress (PROGRESS/STAGE from the helper); appears only after the password dialog.
     # Without --title: the helper's STEP lines are the heading ("Checking for updates" -> "Installing updates"),
     # otherwise it also said "Installing updates" when just checking. Nothing to do -> the helper reports "DONE: Already up to date"
+    # The window follows only the helper's stdout (STEP/STAGE/PROGRESS/…): apt/dpkg write "Unpacking apt (2.6.2) over
+    # (2.6.1) ...", "(Reading database ... 45%" to stderr – shown in the window they flickered as the description and moved
+    # the bar (#120). stderr goes to its own file; both end up in the log and in $log (error texts for the notification).
     out=$(mktemp) || out=/dev/null
+    err=$(mktemp) || err=/dev/null
     PROGRESS=/usr/local/bin/simpleos-progress
     ppid=
     if [ -x "$PROGRESS" ] && [ "$out" != /dev/null ]; then
@@ -187,11 +191,14 @@ install_updates() {
     else
         sos_notify "Installing updates … You can keep working. Don't turn off the computer."
     fi
-    pkexec "$HELPER" --upgrade >"$out" 2>&1
+    pkexec "$HELPER" --upgrade >"$out" 2>"$err"
     rc=$?
     [ "$out" != /dev/null ] && { cat "$out" >>"$SOS_LOG"; echo "EXIT: $rc" >>"$out"; }
+    [ "$err" != /dev/null ] && { echo "--- apt/dpkg output:"; cat "$err"; } >>"$SOS_LOG" 2>/dev/null
     [ -n "$ppid" ] && wait "$ppid" 2>/dev/null
-    log=$(cat "$out" 2>/dev/null); [ "$out" != /dev/null ] && rm -f "$out"
+    log=$(cat "$out" "$err" 2>/dev/null)
+    [ "$out" != /dev/null ] && rm -f "$out"
+    [ "$err" != /dev/null ] && rm -f "$err"
     sos_log "helper exit $rc"
     case "$rc" in
         0)  fwnote=
