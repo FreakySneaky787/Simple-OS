@@ -99,13 +99,13 @@ Before publishing (Sunday 2026-11-08), with the new ISO (#114: every release has
       never mutes; scroll up/down = louder/quieter with the on-screen display; middle click = mute, the icon turns grey;
       volume keys and the sound menu change the icon at once; Bluetooth headphones connected → the icon follows the new
       output. Only one speaker icon (no volumeicon in the tray). VM: sound menu open after 0.1–1.5 s holds.
-- [ ] **Update 1.1 → 1.1.1** (VM installed from the 1.1 ISO, Software Updates): after signing out and in, one speaker
+- [x] **Update 1.1 → 1.1.1** (VM installed from the 1.1 ISO, Software Updates): after signing out and in, one speaker
       icon, `grep hideDelay ~/.config/openbox/rc.xml` = 1500, no `volumeicon` in `~/.config/openbox/autostart`; an
       account with its own autostart line keeps it (migration 110). Taskbar settings (Large, top, network off) still
       apply and the right icon is in the right place.
-- [ ] **Display scale 150/200 % (#115):** a notification with buttons (e.g. an update notification → right-click or
+- [x] **Display scale 150/200 % (#115):** a notification with buttons (e.g. an update notification → right-click or
       the context key) shows its menu in the same size as the other menus.
-- [ ] **Camera / Language & Region (#116):** a photo is saved as before; with `LANG=de_DE.utf8` written by hand in
+- [x] **Camera / Language & Region (#116):** a photo is saved as before; with `LANG=de_DE.utf8` written by hand in
       `/etc/default/locale`, changing only the formats works.
 - [x] **Window buttons (#121):** minimize/maximize/close are clear shapes (line, square, two squares when maximized,
       ×), noticeably bigger than in 1.1 and easy to hit with the touchpad; close turns red under the pointer, the others
@@ -115,7 +115,7 @@ Before publishing (Sunday 2026-11-08), with the new ISO (#114: every release has
       Openbox 3.6.1): buttons 18/22/26/34 px with 10/12/15/20 px images at 100/125/150/200 %. VM update 1.1 → 1.1.1
       with accent mauve and an old theme copy (themerc only): after the restart the copy has the images and the
       bevel, mauve kept (migration 130); hideDelay 1500, no volumeicon, What's new 1.1.1 shown, 0 failed units.
-- [ ] **Updates in plain words (#120):** during the update 1.1 → 1.1.1 the window says "Downloading updates (n of
+- [x] **Updates in plain words (#120):** during the update 1.1 → 1.1.1 the window says "Downloading updates (n of
       m)", "Installing updates (n of m)", "Finishing up" – never a line with "Unpacking", "Setting up" or version
       numbers, and the bar does not jump back. `~/.cache/simpleos-update.log` has a section "apt/dpkg output".
       Pull the network cable during the download: the notification still names the reason (internet).
@@ -123,7 +123,7 @@ Before publishing (Sunday 2026-11-08), with the new ISO (#114: every release has
       so the NEW code runs): "Downloading updates (1 of 2)", "(2 of 2)", "Installing updates (2 of 2)" 69 % → 80 % →
       "Updates installed" 100 %, no apt line in the window; a failed download (404) and a broken package still named
       the reason in the notification (stderr), an interrupted run was repaired by the next one (`dpkg --audit` clean).
-- [ ] **Restore point (#119):** Backup → "Restore point before updates" on, no restore point yet, then the update:
+- [x] **Restore point (#119):** Backup → "Restore point before updates" on, no restore point yet, then the update:
       while Timeshift prepares, the bar glides (no "0%", no "???"), the line below says "Copying system files · n
       files" and counts up, the hint says "This can take 10–20 minutes"; after 3 minutes "Still working, this is
       normal". Once Timeshift reports a percentage the normal bar with "… left" takes over.
@@ -135,6 +135,7 @@ Before publishing (Sunday 2026-11-08), with the new ISO (#114: every release has
       and the search show no separate "Bazaar" entry; `~/.local/share/applications/io.github.kolunmi.Bazaar.desktop`
       has `NoDisplay=true`. Update from 1.1 with Bazaar already installed: the "Bazaar" entry is gone after signing in
       (migration 120). Live ISO VM 2026-11-05: three different icons in the search (Bazaar case not tested in a VM).
-- [ ] **Fresh install from the 1.1.1 ISO** (BIOS + UEFI) – the usual checks of sections 0–3.
+- [x] **Fresh install from the 1.1.1 ISO** (BIOS + UEFI) – the usual checks of sections 0–3.
       ThinkPad E16 Gen 3 2026-11-05 (ISO a9576af0, installed): slow clicks with the touchpad, speaker icon, window
-      buttons and store icons – all OK (user).
+      buttons and store icons – all OK (user). Fresh install, #115 (notification menu at 150/200 %) and #116 (camera,
+      Language & Region) checked by the user 2026-11-07 – OK.
