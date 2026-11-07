@@ -22,7 +22,7 @@ The details are in [TESTING.md](../TESTING.md) (checklist) and the README sectio
 
 1. **Plan:** a milestone per release on GitHub (e.g. "1.0.7"), the date in [ROADMAP.md](../ROADMAP.md) and on the
    website's roadmap page. Cadence: bugfix every 2–3 weeks, feature release every 2–3 months (ROADMAP "How we release"); 1.2 is the last feature release of 1.x, after it only bugfixes (ROADMAP "After 1.2").
-2. **Work:** everything for the next release on `next` (section 7) – at the moment the fixes for 1.1.1. `main` is
+2. **Work:** everything for the next release on `next` (section 7) – at the moment the fixes for 1.1.2. `main` is
    pushed only on release day, so it always matches the published edition; `next` is pushed as the work goes on. Close issues when
    the work is done and tested ("done, ships in X.Y.Z"), project board item → Done; things that need real hardware stay
    open with the label `verify`.
@@ -119,7 +119,7 @@ every release – and only after `publish`, because the links point to the new r
 
 - `main` – the published Simple OS 1.x edition on Debian 12. Releases are tagged `vX.Y.Z` on it; it changes only on
   release day (when `next` is merged into it) or for an urgent hotfix.
-- `next` – **the branch for the next release**, bugfix or feature release: at the moment **1.1.1**, after it 1.2, then
+- `next` – **the branch for the next release**, bugfix or feature release: at the moment **1.1.2**, after it 1.2, then
   the 1.2.x fixes. Pushed as the work goes on, so others can follow it. Test ISOs are built from it like from `main`
   (the package version carries the build time, so test systems still get the published build later).
   - Release: when `next` is tested (TESTING.md), `git switch main && git merge next` (a fast-forward), then release from

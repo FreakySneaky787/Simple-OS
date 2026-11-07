@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Last updated 2026-11-04. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
+Last updated 2026-11-08. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -17,30 +17,6 @@ Last updated 2026-11-04. Released versions are not listed here: they are in `REL
 Rules that keep it small: no new always-running process without a good reason (the image is built without Recommends
 on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook.chroot`; anything that mocks can hide
 (night light in 1.0.3!) is run for real once, e.g. in a container with Xvfb; nothing is published untested on hardware.
-
-## 1.1.1 – bugfix release after 1.1
-
-Planned for Sunday 2026-11-08, **with a new ISO** (every release has one, #114).
-
-- **Menus close again after a slow click** (#104, **done**): Openbox `hideDelay` 200 → 1500 ms (VM: desktop menu
-  stays open at 0.1–1.3 s holds; 200 reproduced the bug from 0.3 s). The speaker icon is the taskbar's own
-  (`simpleos-volume --panel`) instead of volumeicon, whose left click **muted the sound** (its source: button 1 without
-  `lmb_slider` = mute toggle + a 1.5 s popup – what looked like a closing slider) – click = sound flyout at every
-  hold time, wheel = volume, middle = mute. Migration 110 for accounts with a changed rc.xml/autostart. Left: the
-  nm-applet right-click menu (GTK, no setting) – Known issues.
-- **Release without an ISO left "latest" without one** (#114, **done**): every release comes with an ISO;
-  `release.sh publish --no-iso` is refused unless `SIMPLEOS_ALLOW_NO_ISO=1`.
-- **Notification action menu not scaled** (#115, **done**): dunst calls `/usr/local/bin/rofi`; verify: nothing calls
-  `/usr/bin/rofi` directly.
-- **Small** (#116, **done**): camera never saves an empty photo; Language & Region maps LANG to Debian's spelling.
-- **Each software store gets its own icon** (#117, **done**): Software Center, Software Store (Bazaar) and GNOME Software can
-  be told apart at a glance in the menu, search, taskbar and notifications (no patched Flatpak).
-- **Restore point before an update: no frozen "0%"** (#119, **done**): while Timeshift is still checking, the progress window
-  shows "working" instead of 0 % and "??? left", and explains that the first restore point can take a while.
-- **Plain text while installing updates** (#120, **done**): "Installing updates (5 of 14)" instead of apt's "Unpacking apt (2.6.2)
-  over (2.6.1) …"; apt's own lines only go to the log.
-- **Bigger window buttons** (#121, **done**): minimize, maximize and close get their own, larger images and a bigger click
-  area (the theme had none, so Openbox used its 6-pixel defaults); they follow the display scale.
 
 ## 1.2 – feature release after 1.1
 
