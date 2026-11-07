@@ -344,6 +344,8 @@ def main():
                 data = bytes(info.data) if ok else b""
                 if ok:
                     jpeg.get_buffer().unmap(info)
+                if not data:      # never an empty file that says "Saved" (#116)
+                    raise OSError("the picture could not be read from the camera")
                 folder = photo_dir()
                 folder.mkdir(parents=True, exist_ok=True)
                 path = photo_path(folder)

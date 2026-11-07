@@ -117,6 +117,12 @@ write_openbox_theme() {
     sed "s/$BASE_ACCENT/$hex/gI" /usr/share/themes/SimpleOS/openbox-3/themerc | awk -v p="$pct" '
         /^[a-z.]+:[ \t]*[0-9]+[ \t]*$/ { split($0, kv, ":"); print kv[1] ": " int(kv[2] * p / 100 + 0.5); next }
         { print }' > "$ob_dir/themerc"
+    # The window buttons' images (#121): Openbox takes them from the theme's own folder – a copy without them fell back
+    # to its built-in 6 px bitmaps. Openbox does not scale them, so the set drawn for this scale.
+    set_dir=/usr/share/themes/SimpleOS/openbox-3
+    [ "$pct" != 100 ] && [ -d "/usr/share/simpleos/openbox-buttons/$pct" ] && set_dir=/usr/share/simpleos/openbox-buttons/$pct
+    rm -f "$ob_dir"/*.xbm
+    cp "$set_dir"/*.xbm "$ob_dir"/ 2>/dev/null || true
 }
 if [ "$openbox_only" = 1 ]; then
     write_openbox_theme

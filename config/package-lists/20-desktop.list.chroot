@@ -81,7 +81,7 @@ rtkit
 pavucontrol
 # pactl for the volume keys (talks to pipewire-pulse)
 pulseaudio-utils
-volumeicon-alsa
+# volumeicon-alsa: no longer in the image since 1.1.1 – the speaker icon is the taskbar's own (simpleos-volume --panel, #104)
 # Screenshots (Print, Shift+Print); xclip: screenshot + clipboard history (Super+V) into the clipboard
 maim
 xclip

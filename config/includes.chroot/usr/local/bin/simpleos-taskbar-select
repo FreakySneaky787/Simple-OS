@@ -75,16 +75,17 @@ apply() {
         [ "$size" = large ] && task_w=240
     fi
 
-    # Bar: app button, tasks, Do Not Disturb icon, [network], [live badge], tray, [battery], [clock], power button
-    # tint2 assigns the executor blocks to the "E"s in order: the DND block comes before the network block and
-    # is always there (it only shows something while DND is on) -> first E = DND, second E = network
+    # Bar: app button, tasks, Do Not Disturb icon, sound icon, [network], [live badge], tray, [battery], [clock], power
+    # tint2 assigns the executor blocks to the "E"s in order: the DND and sound blocks come before the network block
+    # and are always there (DND only shows something while it is on) -> first E = DND, second E = sound (1.1.1, #104:
+    # instead of volumeicon in the tray), third E = network
     # Battery only if there really is one: without a battery tint2 reports 0 % and triggers "Battery low",
     # VMs sometimes provide a dummy (present 0)
     # Live badge: tint2 assigns the buttons to the "P"s in order -> the badge block sits between the app and
     # power button and only exists in the live session (otherwise the power slot would get the badge)
     live=0
     is_live && live=1
-    items=PTE
+    items=PTEE
     [ "$network" = on ] && items=${items}E
     [ "$live" = 1 ] && items=${items}P
     items=${items}S
@@ -141,7 +142,29 @@ apply() {
         print "execp_rclick_command = /usr/local/bin/simpleos-control-center notifications"
         print "#---- Do Not Disturb End"
         print ""
+        print "#---- Sound (speaker icon: simpleos-volume --panel; click = sound menu, wheel = volume, middle click = mute; 1.1.1, #104)"
+        print "execp = new"
+        print "execp_command = /usr/local/bin/simpleos-volume --panel"
+        print "execp_interval = 0"
+        print "execp_continuous = 1"
+        print "execp_has_icon = 0"
+        print "execp_markup = 1"
+        print "execp_font_color = " (("execp_font_color" in K) ? K["execp_font_color"] : "#cdd6f4 100")
+        print "execp_padding = 6 4"
+        print "execp_background_id = 6"
+        print "execp_centered = 1"
+        print "execp_tooltip = Sound – click: volume and outputs · scroll: louder/quieter · middle click: mute"
+        print "execp_lclick_command = /usr/local/bin/simpleos-volume"
+        print "execp_rclick_command = /usr/local/bin/simpleos-volume"
+        print "execp_mclick_command = /usr/local/bin/simpleos-osd volume mute"
+        print "execp_uwheel_command = /usr/local/bin/simpleos-osd volume up"
+        print "execp_dwheel_command = /usr/local/bin/simpleos-osd volume down"
+        print "#---- Sound End"
+        print ""
     }
+    # Sound: like Do Not Disturb, always removed and inserted again right after it
+    /^#---- Sound/ { sskip = 1 }
+    sskip { if (/^#---- Sound End/) { sskip = 0; eat = 1 } next }
     # Live badge: always remove the old block, insert it again before the power button in the live session ("Power-Button" = old name)
     /^#---- Live-Badge/ { skip = 1 }
     skip { if (/^#---- Live-Badge End/) { skip = 0; eat = 1 } next }

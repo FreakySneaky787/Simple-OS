@@ -47,7 +47,7 @@
     icon_theme = Papirus-Dark
     enable_recursive_icon_lookup = true
 
-    dmenu = /usr/bin/rofi -dmenu -p Action
+    dmenu = /usr/local/bin/rofi -dmenu -p Action
     browser = /usr/bin/xdg-open
     mouse_left_click = do_action, close_current
     mouse_middle_click = close_current

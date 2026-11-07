@@ -82,7 +82,7 @@ background_color_pressed = #f5c2e7 100
 border_color_pressed = #f5c2e7 0
 
 #---- Panel
-panel_items = PTEESCP
+panel_items = PTEEESCP
 panel_size = 100% 40
 # Distance from the screen edge (left/right, bottom) -> the bar floats
 panel_margin = 12 10
@@ -166,6 +166,25 @@ execp_tooltip = Do Not Disturb is on – click to turn it off
 execp_lclick_command = /usr/local/bin/simpleos-dnd --toggle
 execp_rclick_command = /usr/local/bin/simpleos-control-center notifications
 #---- Do Not Disturb End
+
+#---- Sound (speaker icon: simpleos-volume --panel; click = sound menu, wheel = volume, middle click = mute; 1.1.1, #104)
+execp = new
+execp_command = /usr/local/bin/simpleos-volume --panel
+execp_interval = 0
+execp_continuous = 1
+execp_has_icon = 0
+execp_markup = 1
+execp_font_color = #cdd6f4 100
+execp_padding = 6 4
+execp_background_id = 6
+execp_centered = 1
+execp_tooltip = Sound – click: volume and outputs · scroll: louder/quieter · middle click: mute
+execp_lclick_command = /usr/local/bin/simpleos-volume
+execp_rclick_command = /usr/local/bin/simpleos-volume
+execp_mclick_command = /usr/local/bin/simpleos-osd volume mute
+execp_uwheel_command = /usr/local/bin/simpleos-osd volume up
+execp_dwheel_command = /usr/local/bin/simpleos-osd volume down
+#---- Sound End
 
 #---- Network (LAN IP visible directly, details in the tooltip = stderr; click = Wi-Fi menu, right-click = Super+N)
 execp = new

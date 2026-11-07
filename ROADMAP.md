@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Last updated 2026-11-04 (this copy on the branch `trixie` follows the work on 2.0 "Rigi"). Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
+Last updated 2026-11-08 (this copy on the branch `trixie` follows the work on 2.0 "Rigi"). Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -12,27 +12,11 @@ Last updated 2026-11-04 (this copy on the branch `trixie` follows the work on 2.
 | **Bugfix release** (1.0.x, 1.1.x, 1.2.x) | every 2–3 weeks | everything collected below, bundled; one restart for the users |
 | **Feature release** (1.1, **1.2 – the last one**) | every 2–3 months | new features. **After 1.2 there are no more feature releases of 1.x** (see "After 1.2") |
 | **Big release** (2.0, 3.0 …) | only with a new Debian version | new base system, new ISO, upgrade path |
-| **New ISO** | with a feature or big release, or when the installer / hardware detection changed | everyone already installed gets the rest through Software Updates, so a pure update is published with `./tools/release.sh publish --no-iso` |
+| **New ISO** | with every release (#114, since 1.1.1) | the newest release is the download for new users – README and website point to "latest", so it must always have an ISO; installed systems get the update through Software Updates either way |
 
 Rules that keep it small: no new always-running process without a good reason (the image is built without Recommends
 on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook.chroot`; anything that mocks can hide
 (night light in 1.0.3!) is run for real once, e.g. in a container with Xvfb; nothing is published untested on hardware.
-
-## 1.1.1 – bugfix release after 1.1
-
-- **Menus close again after a slow click** (#104): holding the button for 0.3 s or
-  more closes the desktop and window menus (Openbox `hideDelay` 200 ms) and the volume slider; the GTK tray menus
-  (nm-applet, volume right-click) close after about 0.5 s. Plan: a longer `hideDelay`, and our own flyouts instead of
-  the GTK tray menus where needed.
-- **Each software store gets its own icon** (#117): Software Center, Software Store (Bazaar) and GNOME Software can
-  be told apart at a glance in the menu, search, taskbar and notifications (local `.desktop` overrides, no patched
-  Flatpak).
-- **Restore point before an update: no frozen "0%"** (#119): while Timeshift is still checking, the progress window
-  shows "working" instead of 0 % and "??? left", and explains that the first restore point can take a while.
-- **Plain text while installing updates** (#120): "Installing updates (5 of 14)" instead of apt's "Unpacking apt (2.6.2)
-  over (2.6.1) …"; apt's own lines only go to the log.
-- **Bigger window buttons** (#121): minimize, maximize and close get their own, larger images and a bigger click
-  area (the theme had none, so Openbox used its 6-pixel defaults); they follow the display scale.
 
 ## 1.2 – feature release after 1.1
 

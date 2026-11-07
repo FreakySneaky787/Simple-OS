@@ -407,7 +407,23 @@ for home in /etc/skel /home/simple; do
            grep -qx 'execp_lclick_command = /usr/local/bin/simpleos-dnd --toggle' /tmp/dndblock.\$\$; rc=\$?; rm -f /tmp/dndblock.\$\$; [ \$rc -eq 0 ]"
     check "tint2: DND block not before the network block in $home" \
           "[ \$(grep -n '^execp_command = /usr/local/bin/simpleos-dnd --panel' '$tint2rc' | cut -d: -f1) -lt \$(grep -n '^execp_command = simpleos-netinfo --panel' '$tint2rc' | cut -d: -f1) ]"
-    check "tint2: DND icon not in panel_items (two Es) in $home" "grep -qE '^panel_items = PTEE' '$tint2rc'"
+    check "tint2: DND + sound icon not in panel_items (three Es) in $home" "grep -qE '^panel_items = PTEEE' '$tint2rc'"
+    # Sound (1.1.1, #104): the taskbar's own speaker icon instead of volumeicon, between the DND and the network block
+    check "tint2: sound icon missing/wrong (command, permanent, clicks) in $home" \
+          "awk '/^#---- Sound \\(/,/^#---- Sound End/' '$tint2rc' > /tmp/sndblock.\$\$ &&
+           grep -qx 'execp_command = /usr/local/bin/simpleos-volume --panel' /tmp/sndblock.\$\$ &&
+           grep -qx 'execp_continuous = 1' /tmp/sndblock.\$\$ && grep -qx 'execp_markup = 1' /tmp/sndblock.\$\$ &&
+           grep -qx 'execp_lclick_command = /usr/local/bin/simpleos-volume' /tmp/sndblock.\$\$ &&
+           grep -qx 'execp_uwheel_command = /usr/local/bin/simpleos-osd volume up' /tmp/sndblock.\$\$ &&
+           grep -qx 'execp_mclick_command = /usr/local/bin/simpleos-osd volume mute' /tmp/sndblock.\$\$; rc=\$?; rm -f /tmp/sndblock.\$\$; [ \$rc -eq 0 ]"
+    check "tint2: sound block not between the DND and the network block in $home" \
+          "d=\$(grep -n '^execp_command = /usr/local/bin/simpleos-dnd --panel' '$tint2rc' | cut -d: -f1);
+           v=\$(grep -n '^execp_command = /usr/local/bin/simpleos-volume --panel' '$tint2rc' | cut -d: -f1);
+           n=\$(grep -n '^execp_command = simpleos-netinfo --panel' '$tint2rc' | cut -d: -f1);
+           [ -n \"\$d\" ] && [ -n \"\$v\" ] && [ -n \"\$n\" ] && [ \$d -lt \$v ] && [ \$v -lt \$n ]"
+    check "autostart: volumeicon still started in $home (#104)" "! grep -qx 'volumeicon &' '$home/.config/openbox/autostart'"
+    check "rc.xml: menus still close after a slow click (hideDelay not 1500, #104) in $home" \
+          "grep -q '<hideDelay>1500</hideDelay>' '$home/.config/openbox/rc.xml'"
     check "fastfetch: LAN IP (localip) missing in $home" "grep -q '\"type\": \"localip\"' '$home/.config/fastfetch/config.jsonc'"
 done
 check "fastfetch: configuration invalid" "fastfetch -c /etc/skel/.config/fastfetch/config.jsonc --logo none --pipe >/dev/null 2>&1"
@@ -471,7 +487,7 @@ cp /etc/skel/.config/tint2/tint2rc "$tb/.config/tint2/"
 TB="env -u DISPLAY HOME=$tb SIMPLEOS_POWER_SUPPLY=$tb/no-power-supply SIMPLEOS_DATE_FMT= /usr/local/bin/simpleos-taskbar-select"
 check "designer: --set fails" "$TB --set position=top --set size=compact --set tasks=icons --set clock=off --set network=off >/dev/null 2>&1"
 check "designer: position top not set" "grep -qx 'panel_position = top center horizontal' '$tb/.config/tint2/tint2rc'"
-check "designer: clock/network not hidden" "grep -qx 'panel_items = PTESP' '$tb/.config/tint2/tint2rc'"
+check "designer: clock/network not hidden" "grep -qx 'panel_items = PTEESP' '$tb/.config/tint2/tint2rc'"
 check "designer: icons only not set" "grep -qx 'task_text = 0' '$tb/.config/tint2/tint2rc'"
 check "designer: invalid value not rejected" "! $TB --set style=evil >/dev/null 2>&1"
 check "designer: reset does not restore the default" "$TB --set position=bottom --set size=full --set tasks=text --set style=dark --set network=on --set clock=on >/dev/null 2>&1 && cmp -s /etc/skel/.config/tint2/tint2rc '$tb/.config/tint2/tint2rc'"
@@ -481,6 +497,39 @@ check "designer: German clock date still in US order ('Di, Okt 20', #81)" \
        grep -qx 'time2_format = %a, %-d. %b' '$tb/.config/tint2/tint2rc' && grep -qx 'clock_tooltip = %A, %-d. %B %Y' '$tb/.config/tint2/tint2rc' &&
        grep -qx 'time1_format = %H:%M' '$tb/.config/tint2/tint2rc'"
 rm -rf "${tb:?}"
+
+# Sound icon (1.1.1, #104): --panel prints one line of markup (no sound server in the build: the dimmed "off" icon);
+# an older tint2rc without the block gets exactly one, also after several --apply; migration 110 for changed files
+check "simpleos-volume --panel: no taskbar line" \
+      "SIMPLEOS_VOLUME_ONCE=1 /usr/local/bin/simpleos-volume --panel 2>/dev/null | grep -q \"^<span font_desc='FontAwesome 12'\""
+tb=$(mktemp -d)
+mkdir -p "$tb/.config/tint2"
+awk '/^#---- Sound \(/ { s = 1 } s { if (/^#---- Sound End/) { s = 0; e = 1 } next } e { e = 0; if ($0 == "") next } { print }' \
+    /etc/skel/.config/tint2/tint2rc | sed 's/^panel_items = .*/panel_items = PTEESCP/' > "$tb/.config/tint2/tint2rc"
+check "taskbar: the sound block is not added to an older tint2rc (exactly once, after two --apply)" \
+      "! grep -q 'simpleos-volume --panel' '$tb/.config/tint2/tint2rc' &&
+       env -u DISPLAY HOME=$tb SIMPLEOS_POWER_SUPPLY=$tb/no-power-supply SIMPLEOS_DATE_FMT= /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 &&
+       env -u DISPLAY HOME=$tb SIMPLEOS_POWER_SUPPLY=$tb/no-power-supply SIMPLEOS_DATE_FMT= /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 &&
+       [ \$(grep -cx 'execp_command = /usr/local/bin/simpleos-volume --panel' '$tb/.config/tint2/tint2rc') -eq 1 ] &&
+       grep -qx 'panel_items = PTEEESCP' '$tb/.config/tint2/tint2rc' && cmp -s /etc/skel/.config/tint2/tint2rc '$tb/.config/tint2/tint2rc'"
+rm -rf "${tb:?}"
+MIG11=/usr/share/simpleos/edition/migrations/user/110-menus-and-sound-icon
+mt=$(mktemp -d)
+mkdir -p "$mt/c/openbox"
+sed 's|<hideDelay>1500</hideDelay>|<hideDelay>200</hideDelay>|' /etc/skel/.config/openbox/rc.xml > "$mt/c/openbox/rc.xml"
+{ cat /etc/skel/.config/openbox/autostart; echo 'volumeicon &'; echo '# own line'; } > "$mt/c/openbox/autostart"
+check "migration 110: old hideDelay/volumeicon not changed, or own lines lost (#104)" \
+      "[ -x $MIG11 ] && env -i HOME=$mt XDG_CONFIG_HOME=$mt/c PATH=/usr/bin:/bin sh $MIG11 &&
+       grep -q '<hideDelay>1500</hideDelay>' $mt/c/openbox/rc.xml && ! grep -qx 'volumeicon &' $mt/c/openbox/autostart &&
+       grep -qx '# own line' $mt/c/openbox/autostart && cmp -s /etc/skel/.config/openbox/rc.xml $mt/c/openbox/rc.xml"
+sed -i 's|<hideDelay>1500</hideDelay>|<hideDelay>700</hideDelay>|' "$mt/c/openbox/rc.xml"
+check "migration 110: a hideDelay chosen by the user is overwritten" \
+      "env -i HOME=$mt XDG_CONFIG_HOME=$mt/c PATH=/usr/bin:/bin sh $MIG11 && grep -q '<hideDelay>700</hideDelay>' $mt/c/openbox/rc.xml"
+rm -rf "${mt:?}"
+# #116: no empty photo file; Language & Region hands the helper Debian's own spelling of LANG
+check "camera: an empty photo would be saved (#116)" "grep -q 'if not data:' /usr/local/bin/simpleos-camera"
+check "Language & Region: LANG not mapped to its SUPPORTED name before the helper (#116)" \
+      "grep -q 'lang, fmt = known(lang), known(fmt)' /usr/local/bin/simpleos-control-center"
 
 # Network: nm-applet in the tray (left click = Wi-Fi list), Rofi menu (status, Wi-Fi networks, details), password via Rofi,
 # nmcli; no terminals/TUI (nmtui)
@@ -763,7 +812,12 @@ for home in /etc/skel /home/simple; do
           "grep -A1 'keybind key=\"W-h\"' '$home/.config/openbox/rc.xml' | grep -q '<command>/usr/local/bin/simpleos-help</command>'"
 done
 check "dunst: a click on a notification does not trigger an action" "grep -q '^[[:space:]]*mouse_left_click = do_action, close_current\$' /etc/xdg/dunst/dunstrc"
-check "dunst: action menu not via rofi" "grep -q '^[[:space:]]*dmenu = /usr/bin/rofi -dmenu' /etc/xdg/dunst/dunstrc"
+check "dunst: action menu not via the scaled rofi (#115)" "grep -q '^[[:space:]]*dmenu = /usr/local/bin/rofi -dmenu' /etc/xdg/dunst/dunstrc"
+check "dunst (skel): action menu not via the scaled rofi (#115)" "grep -q '^[[:space:]]*dmenu = /usr/local/bin/rofi -dmenu' /etc/skel/.config/dunst/dunstrc"
+# Only the wrapper itself may call /usr/bin/rofi: everything else goes through /usr/local/bin/rofi (display scale, #41)
+check "a Simple OS file calls /usr/bin/rofi directly (skips the display scale, #115)" \
+      "! grep -rlI '/usr/bin/rofi' /usr/local/bin /usr/local/sbin /usr/local/lib/simpleos /etc/skel /etc/xdg/dunst 2>/dev/null | grep -vx '/usr/local/bin/rofi' | grep -q ."
+
 check "apt: package lists are not downloaded daily" "grep -q 'Update-Package-Lists \"1\"' /etc/apt/apt.conf.d/20simpleos-periodic"
 check "apt: automatic installation active" "grep -q 'Unattended-Upgrade \"0\"' /etc/apt/apt.conf.d/20simpleos-periodic"
 check "update launcher missing" "grep -qx 'Exec=/usr/local/bin/simpleos-update' /usr/share/applications/simpleos-update.desktop"
@@ -1033,7 +1087,7 @@ for m in systemctl loginctl; do
 done
 printf '#!/bin/sh\necho "dm-tool $*" >> "$WT/power"\n' > "$wt/mock/dm-tool"
 printf '#!/bin/sh\necho "openbox $*" >> "$WT/power"\n' > "$wt/mock/openbox"
-printf '#!/bin/sh\necho "$*" >> "$WT/pkexec"\n[ -n "$PKEXEC_OUT" ] && echo "$PKEXEC_OUT" | tr _ " "\nexit ${PKEXEC_RC:-0}\n' > "$wt/mock/pkexec"
+printf '#!/bin/sh\necho "$*" >> "$WT/pkexec"\n[ -n "$PKEXEC_OUT" ] && echo "$PKEXEC_OUT" | tr _ " "\n[ -n "$PKEXEC_ERR" ] && echo "$PKEXEC_ERR" | tr _ " " >&2\nexit ${PKEXEC_RC:-0}\n' > "$wt/mock/pkexec"
 printf '#!/bin/sh\necho "thunar $*" > "$WT/opened"\n' > "$wt/mock/thunar"
 printf '#!/bin/sh\necho "xdg-open $*" > "$WT/opened"\n' > "$wt/mock/xdg-open"
 # apt-get -s: UPDATES packages with a new version (+ a new kernel package that does not count); NEEDREMOVE=1: one
@@ -1151,6 +1205,12 @@ touch "$wt/reboot-required"
 hcase "$U" "installation fails, restart pending -> hint" "" \
     "UPDATES=1 PKEXEC_RC=1 SIMPLEOS_REBOOT_FLAG=$wt/reboot-required" "0" 'grep -q "Restart your computer first, then try again" $S/notify'
 rm -f "$wt/reboot-required"
+# #120: apt writes its errors to stderr – that no longer goes into the progress window, but still into the notification
+hcase "$U" "installation fails: the apt error on stderr is in the notification" "" \
+    "UPDATES=1 PKEXEC_RC=1 PKEXEC_ERR=E:_Sub-process_/usr/bin/dpkg_returned_an_error_code_(1)" "0" \
+    'grep -q "could not be installed: Sub-process /usr/bin/dpkg returned an error code (1). Details" $S/notify'
+check "simpleos-update: apt/dpkg's stderr goes into the progress window (#120)" \
+      "grep -q 'pkexec \"\$HELPER\" --upgrade >\"\$out\" 2>\"\$err\"' $U && grep -q 'log=\$(cat \"\$out\" \"\$err\"' $U"
 hcase "$U" "installation fails: error line with <, & escaped" "" \
     "UPDATES=1 PKEXEC_RC=1 PKEXEC_OUT=E:_a<b&c" "0" 'grep -q "could not be installed: a&lt;b&amp;c" $S/notify'
 hcase "$U" "installation fails: another installation running" "" \
@@ -2262,6 +2322,29 @@ check "simpleos-theme: Openbox paddings not scaled at 150 % or a theme copy left
       "thx 150 --openbox-theme && grep -qx 'menu.border.width: 9' $HS/th/.themes/SimpleOS/openbox-3/themerc &&
        grep -qx 'padding.width: 12' $HS/th/.themes/SimpleOS/openbox-3/themerc && grep -qi '#89b4fa' $HS/th/.themes/SimpleOS/openbox-3/themerc &&
        thx 100 --openbox-theme && [ ! -e $HS/th/.themes/SimpleOS ]"
+# #121: window buttons – own images (10 px at 100 % instead of Openbox's built-in 6 px), one set per scale (Openbox does
+# not scale them), a bigger button through the label's invisible bevel, red close on hover; the user's theme copy takes
+# the set of its scale (a copy without images fell back to the 6 px bitmaps)
+xw() { sed -n 's/^#define [a-z_]*_width //p' "$1" 2>/dev/null; }
+OBT=/usr/share/themes/SimpleOS/openbox-3
+OBC=$HS/th/.themes/SimpleOS/openbox-3
+check "window buttons: the theme has no images of its own, or a set has the wrong size (#121)" \
+      "bok=1; for n in iconify max max_toggled close; do [ \"\$(xw $OBT/\$n.xbm)\" = 10 ] || bok=0;
+         for pw in 125:12 150:15 200:20; do [ \"\$(xw /usr/share/simpleos/openbox-buttons/\${pw%%:*}/\$n.xbm)\" = \${pw#*:} ] || bok=0; done; done; [ \$bok = 1 ]"
+check "window buttons: no bigger click area (label bevel) or no red close button on hover (#121)" \
+      "lok=1; for w in active inactive; do grep -qx \"window.\$w.label.bg: raised solid bevel2\" $OBT/themerc &&
+         grep -qx \"window.\$w.label.bg.highlight: 0\" $OBT/themerc && grep -qx \"window.\$w.label.bg.shadow: 0\" $OBT/themerc &&
+         grep -qx \"window.\$w.button.close.hover.bg.color: #d20f39\" $OBT/themerc || lok=0; done; [ \$lok = 1 ]"
+mkdir -p "$HS/th/.config/simpleos"
+check "simpleos-theme: the Openbox theme copy lacks the button images of its scale (#121)" \
+      "thx 150 --openbox-theme && [ \"\$(xw $OBC/close.xbm)\" = 15 ] && [ \"\$(xw $OBC/max_toggled.xbm)\" = 15 ] &&
+       thx 200 --openbox-theme && [ \"\$(xw $OBC/close.xbm)\" = 20 ] && [ \"\$(xw $OBC/iconify.xbm)\" = 20 ] &&
+       printf 'mode=dark\naccent=mauve\n' > $HS/th/.config/simpleos/theme && thx 100 --openbox-theme &&
+       [ \"\$(xw $OBC/close.xbm)\" = 10 ] && [ \"\$(xw $OBC/max.xbm)\" = 10 ]"
+rm -f "$HS/th/.config/simpleos/theme"; thx 100 --openbox-theme
+check "user migration 130 (window buttons in the theme copy, #121) missing" \
+      "[ -x /usr/share/simpleos/edition/migrations/user/130-window-buttons ] &&
+       grep -q 'simpleos-theme --openbox-theme' /usr/share/simpleos/edition/migrations/user/130-window-buttons"
 check "Xsession: display scale not set before the desktop starts (82simpleos-scale)" \
       "sh -n /etc/X11/Xsession.d/82simpleos-scale && grep -q 'simpleos-scale --session' /etc/X11/Xsession.d/82simpleos-scale &&
        grep -q 'simpleos-display --restore' /etc/X11/Xsession.d/82simpleos-scale"
@@ -2775,7 +2858,7 @@ for ps in vm dummy mouse ups; do
           "$BAT SIMPLEOS_POWER_SUPPLY=$tb/ps/$ps /usr/local/bin/simpleos-battery --low-alert && [ ! -e $tb/notify ]"
     cp /etc/skel/.config/tint2/tint2rc "$tb/.config/tint2/"
     check "designer: battery in the bar without a real battery ('$ps', false alarm 'Battery low')" \
-          "$BAT SIMPLEOS_POWER_SUPPLY=$tb/ps/$ps /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 && grep -qx 'panel_items = PTEESCP' $tb/.config/tint2/tint2rc && cmp -s /etc/skel/.config/tint2/tint2rc $tb/.config/tint2/tint2rc"
+          "$BAT SIMPLEOS_POWER_SUPPLY=$tb/ps/$ps /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 && grep -qx 'panel_items = PTEEESCP' $tb/.config/tint2/tint2rc && cmp -s /etc/skel/.config/tint2/tint2rc $tb/.config/tint2/tint2rc"
 done
 rm -f "$tb/notify"
 check "battery: charging -> 'Battery low' anyway" \
@@ -2784,13 +2867,13 @@ check "battery: real battery not detected" "$BAT SIMPLEOS_POWER_SUPPLY=$tb/ps/ch
 check "battery: discharging -> no 'Battery low' notification" \
       "$BAT SIMPLEOS_POWER_SUPPLY=$tb/ps/laptop /usr/local/bin/simpleos-battery --low-alert && grep -q 'Battery low' $tb/notify"
 check "designer: battery not in the bar despite a battery" \
-      "$BAT SIMPLEOS_POWER_SUPPLY=$tb/ps/laptop /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 && grep -qx 'panel_items = PTEESBCP' $tb/.config/tint2/tint2rc"
+      "$BAT SIMPLEOS_POWER_SUPPLY=$tb/ps/laptop /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 && grep -qx 'panel_items = PTEEESBCP' $tb/.config/tint2/tint2rc"
 rm -f "$tb/notify"
 VM="env -u DISPLAY HOME=$tb PATH=$tb/bin:/usr/local/bin:/usr/bin:/bin SIMPLEOS_VIRT=kvm SIMPLEOS_POWER_SUPPLY=$tb/ps/laptop"
 check "battery: VM with a passed-through battery shows a battery icon" "! $VM /usr/local/bin/simpleos-battery --present"
 check "battery: false alarm 'Battery low' in a VM" "$VM /usr/local/bin/simpleos-battery --low-alert && [ ! -e $tb/notify ]"
 check "designer: battery in the bar in a VM" \
-      "$VM /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 && grep -qx 'panel_items = PTEESCP' $tb/.config/tint2/tint2rc"
+      "$VM /usr/local/bin/simpleos-taskbar-select --apply >/dev/null 2>&1 && grep -qx 'panel_items = PTEEESCP' $tb/.config/tint2/tint2rc"
 rm -rf "${tb:?}"
 # xfce4-power-manager / UPower: no own battery notifications, power manager only with a real battery, UPower not
 # in VMs (phantom power device with 0 % -> otherwise "low power" or CriticalPowerAction)
@@ -3054,7 +3137,7 @@ cp /etc/skel/.config/tint2/tint2rc "$lt/tb/.config/tint2/"
 TL="env -u DISPLAY HOME=$lt/tb SIMPLEOS_POWER_SUPPLY=$lt/no-power-supply SIMPLEOS_DATE_FMT= /usr/local/bin/simpleos-taskbar-select --apply"
 TRC=$lt/tb/.config/tint2/tint2rc
 check "taskbar (live): badge missing" \
-      "SIMPLEOS_LIVE=1 $TL >/dev/null 2>&1 && grep -qx 'panel_items = PTEEPSCP' $TRC && [ \$(grep -cx 'button = new' $TRC) -eq 3 ] &&
+      "SIMPLEOS_LIVE=1 $TL >/dev/null 2>&1 && grep -qx 'panel_items = PTEEEPSCP' $TRC && [ \$(grep -cx 'button = new' $TRC) -eq 3 ] &&
        grep -qx 'button_lclick_command = /usr/local/bin/simpleos-install' $TRC && grep -qx 'button_background_id = 8' $TRC"
 check "taskbar (live): the badge button is not between the app and power button" \
       "awk '/^button_lclick_command/{n++; c[n]=\$0} END{exit !(c[1] ~ /rofi/ && c[2] ~ /simpleos-install/ && c[3] ~ /powermenu/)}' $TRC"
@@ -3946,12 +4029,24 @@ for th, want in (("mode=dark\naccent=blue\n", ("#1e1e2e", "#313244", "#89b4fa"))
 # Input: apt, pacman, timeshift, zenity, key lines; machine lines (FREE:) ignored
 cases = {"Progress: [ 45%]": (45, ""), "(2/5) installing vim  [######-----]  40%": (40, "(2/5) installing vim"),
          " 47.30% complete (7m 40s remaining)": (47.3, ""), "70": (70, ""), "# Copying files": (None, "Copying files"),
-         "STAGE: Copying": (None, "Copying"), "PERCENT: 12": (12, ""), "FREE: 5000": (None, "")}
+         "STAGE: Copying": (None, "Copying"), "PERCENT: 12": (12, ""), "FREE: 5000": (None, ""),
+         # #120: apt/dpkg's own lines are neither the description nor a percentage
+         "Unpacking apt (2.6.2) over (2.6.1) ...": (None, ""), "(Reading database ... 45%(Reading database ... 100%": (None, ""),
+         "Setting up apt (2.6.2) ...": (None, ""), "Processing triggers for man-db (2.11.2-2) ...": (None, ""),
+         "Preparing to unpack .../apt_2.6.2_amd64.deb ...": (None, ""), "E: Sub-process failed": (None, "E: Sub-process failed")}
 for line, (pct, msg) in cases.items():
     st = sp.State("T"); st.feed(line)
     assert st.pct == pct and st.message == msg, (line, st.pct, st.message)
 st = sp.State("T"); st.feed(" 47.30% complete (7m 40s remaining)"); assert st.remaining == "7m 40s", st.remaining
 st = sp.State("T"); st.feed("FREE: 5000"); assert not st.started
+# #119: 0 % = nothing measurable yet -> gliding block (pct None), never "???" or a time at 0 %; HINT replaces --hint
+for l in (" 0.00% complete (??? remaining)", "PROGRESS: 0.00 ???", "PROGRESS: 0", "0"):
+    st = sp.State("T"); st.feed(l)
+    assert st.pct is None and st.remaining == "" and st.started, (l, st.pct, st.remaining)
+st = sp.State("T"); st.feed("PROGRESS: 12 ???"); assert st.pct == 12 and st.remaining == "", st.remaining
+st = sp.State("T"); st.feed("HINT: Takes a while"); assert st.hint == "Takes a while" and st.message == ""
+st.feed("HINT:"); assert st.hint is None
+st.feed("HINT: x"); st.feed("STEP: Installing updates"); assert st.hint is None
 # new step -> its own progress (the bar does not jump back from 100), title stays, no raw name
 st = sp.State("Installing updates", fixed_title=True)
 for l in ("STEP: Checking", "PROGRESS: 100", "STEP: Restoring 2026-10-01_14-30-00"):
@@ -4218,7 +4313,7 @@ check "sfdisk wrapper: changes a normal call (primary partition, --json)" \
 rm -rf "${lt:?}"
 # simpleos-software with a Flatpak dummy: FP_INSTALLED=1 (already there), FP_RUNTIME=1 (GNOME runtime there),
 # FP_MODE=ok|space|net|other (result of flatpak install)
-for t in tee df setsid; do [ -e "$wt/sys/$t" ] || ln -s "$(command -v $t)" "$wt/sys/$t"; done
+for t in tee df setsid mv; do [ -e "$wt/sys/$t" ] || ln -s "$(command -v $t)" "$wt/sys/$t"; done
 cat > "$wt/mock/flatpak" <<'MOCK'
 #!/bin/sh
 echo "flatpak $*" >> "$WT/flatpak"
@@ -4256,6 +4351,33 @@ hcase "$SWS" "space runs out during the installation -> space message instead of
     'grep -q "Not enough free space to install the Software Store" $S/notify && ! grep -qi "internet" $S/notify'
 hcase "$SWS" "other error -> log hint" "" "SIMPLEOS_LIVE=0 SIMPLEOS_SW_FREE_MB=9000 SIMPLEOS_SW_NET=1 FP_MODE=other" "" \
     'grep -q "could not be installed. Details: ~/.cache/simpleos-software.log" $S/notify'
+# #117: Bazaar's own launcher hidden in the user's folder (Flatpak's exports come before /usr/local/share), with the
+# Software Store's icon; its actions and Exec untouched, written again at every start (not twice)
+mkdir -p "$wt/fpexp"
+printf '[Desktop Entry]\nName=Bazaar\nExec=/usr/bin/flatpak run --branch=stable --arch=x86_64 --command=bazaar io.github.kolunmi.Bazaar\nIcon=io.github.kolunmi.Bazaar\nType=Application\n\n[Desktop Action search]\nName=Search\nIcon=keep-me\n' \
+    > "$wt/fpexp/io.github.kolunmi.Bazaar.desktop"
+BZ="$wt/home/.local/share/applications/io.github.kolunmi.Bazaar.desktop"
+rm -f "$BZ"
+bz_ok='grep -qx NoDisplay=true '"$BZ"' && [ "$(grep -c "^Icon=io.elementary.appcenter$" '"$BZ"')" = 1 ] && [ "$(grep -c "^NoDisplay=" '"$BZ"')" = 1 ] &&
+       grep -qx Icon=keep-me '"$BZ"' && grep -q "^Exec=/usr/bin/flatpak run .*io.github.kolunmi.Bazaar" '"$BZ"' && ! grep -q "^Icon=io.github" '"$BZ"
+hcase "$SWS" "installed -> Bazaar's own launcher hidden, with the Software Store's icon (#117)" "" "FP_INSTALLED=1 SIMPLEOS_SW_EXPORTS=$wt/fpexp" "" "$bz_ok"
+hcase "$SWS" "started again -> the copy is written again, not doubled (#117)" "" "FP_INSTALLED=1 SIMPLEOS_SW_EXPORTS=$wt/fpexp" "" "$bz_ok"
+rm -f "$BZ"
+hcase "$SWS --hide-launcher" "migration 120: only the copy, Bazaar does not start (#117)" "" "SIMPLEOS_SW_EXPORTS=$wt/fpexp" "" \
+    "$bz_ok"' && ! grep -q "flatpak run" $S/flatpak 2>/dev/null'
+rm -f "$BZ"
+hcase "$SWS --hide-launcher" "Bazaar not installed -> no copy (#117)" "" "SIMPLEOS_SW_EXPORTS=$wt/nothing" "" "[ ! -e '$BZ' ]"
+rm -rf "$wt/fpexp" "$BZ"
+check "user migration 120 (Bazaar's launcher, #117) missing or does not call simpleos-software --hide-launcher" \
+      "[ -x /usr/share/simpleos/edition/migrations/user/120-store-launcher ] &&
+       grep -q 'simpleos-software --hide-launcher' /usr/share/simpleos/edition/migrations/user/120-store-launcher"
+check "Software Center, Software Store and GNOME Software: not three different icons, or one missing in Papirus (#117)" \
+      "i1=\$(sed -n 's/^Icon=//p' /usr/share/applications/simpleos-software-center.desktop) &&
+       i2=\$(sed -n 's/^Icon=//p' /usr/share/applications/simpleos-software.desktop) &&
+       i3=\$(sed -n 's/^Icon=//p' /usr/share/applications/org.gnome.Software.desktop | head -n 1) &&
+       [ -n \"\$i1\" ] && [ -n \"\$i2\" ] && [ -n \"\$i3\" ] && [ \"\$i1\" != \"\$i2\" ] && [ \"\$i1\" != \"\$i3\" ] && [ \"\$i2\" != \"\$i3\" ] &&
+       grep -q \"SOS_ICON=\$i2\$\" /usr/local/bin/simpleos-software && iok=1 &&
+       for i in \$i1 \$i2 \$i3; do [ -n \"\$(find /usr/share/icons/Papirus/64x64 -name \"\$i.svg\")\" ] || iok=0; done; [ \$iok = 1 ]"
 rm -f "$wt/mock/flatpak"
 
 # ---- Progress (progress-filter): flatpak/apt/timeshift -> PROGRESS/STAGE, RIGHT AWAY (awk/mawk buffered pipes,
@@ -4276,10 +4398,26 @@ check "Wizard/Software Center: PROGRESS with remaining text not readable (the ba
       "grep -q 'num, _, rest = line\[10:\].partition' /usr/local/bin/simpleos-welcome-wizard &&
        grep -q 'num, _, rest = line\[10:\].partition' /usr/local/bin/simpleos-software-center"
 check "progress-filter apt: download/installation mapped wrong" \
-      "[ \"\$(printf 'dlstatus:1:50:x\npmstatus:sl:50:y\nE: Failure\n' | $PF apt | tr '\n' '|')\" = 'STAGE: Downloading|PROGRESS: 20|STAGE: Installing sl|PROGRESS: 70|E: Failure|' ] &&
+      "[ \"\$(printf 'dlstatus:1:50:x\npmstatus:sl:50:y\nE: Failure\n' | $PF apt | tr '\n' '|')\" = 'STAGE: Downloading|PROGRESS: 20|STAGE: Installing|PROGRESS: 70|E: Failure|' ] &&
        [ \"\$(printf 'dlstatus:1:100:x\n' | $PF apt --dl 5 40 | grep PROGRESS)\" = 'PROGRESS: 40' ]"
+# #120: Software Updates in plain words – counted, no package names/versions, the bar never goes back, triggers = Finishing up
+check "progress-filter apt --updates: no plain 'Downloading/Installing updates (n of m)' or 'Finishing up'" \
+      "[ \"\$(printf 'dlstatus:3:70:Retrieving file 3 of 4\ndlstatus:4:100:Retrieving file 4 of 4\ndlstatus:4:89:Retrieving file 4 of 4\npmstatus:dpkg-exec:0:Running dpkg\npmstatus:apt:10:Unpacking apt (amd64)\npmstatus:libc6:60:Configuring libc6 (amd64)\npmstatus:man-db:97:Running post-installation trigger man-db\nE: Failure\n' |
+         $PF apt --updates 4 | tr '\n' '|')\" = 'STAGE: Downloading updates (3 of 4)|PROGRESS: 28|STAGE: Downloading updates (4 of 4)|PROGRESS: 40|STAGE: Installing updates (1 of 4)|PROGRESS: 46|STAGE: Installing updates (3 of 4)|PROGRESS: 76|STAGE: Finishing up|PROGRESS: 98|E: Failure|' ]"
+check "Software Updates: the helper does not hand the number of updates to the apt filter (#120)" \
+      "grep -q 'APT_FILTER_ARGS=\"--updates ' $SSU && grep -q 'progress-filter apt \$APT_FILTER_ARGS' $SSU && grep -q 'dpkg --configure -a >&2' $SSU"
 check "progress-filter timeshift: percent/remaining/stage wrong" \
       "[ \"\$(printf 'Estimating system size...\n 12.50%% complete (14m 2s remaining)\r 12.50%% complete (14m 2s remaining)\rTagged snapshot\n' | $PF timeshift | tr '\n' '|')\" = 'STAGE: Measuring the system|PROGRESS: 12.50 14m 2s|STAGE: Finishing up|' ]"
+# #119: the first restore point sits at "0.00% complete (??? remaining)" for many minutes – no PROGRESS 0, no "???",
+# the files rsync handled (its --log-file) as the stage, a hint that explains the wait, the hint back once it measures
+mkdir -p "$wt/tslog/1"; printf 'a\nb\nc\n' > "$wt/tslog/1/rsync-log"
+check "progress-filter timeshift: frozen 0 %/'???' passed on, or no file count/hint while Timeshift measures nothing (#119)" \
+      "out=\$(printf 'Creating new snapshot...\n 0.00%% complete (??? remaining)\r 0.00%% complete (??? remaining)\r 47.30%% complete (7m 40s remaining)\rTagged snapshot\n' |
+         SIMPLEOS_RSYNC_LOGS='$wt/tslog/*/rsync-log' $PF timeshift) &&
+       printf '%s\n' \"\$out\" | grep -qx 'STAGE: Copying system files · 3 files' && printf '%s\n' \"\$out\" | grep -q '^HINT: This can take 10' &&
+       printf '%s\n' \"\$out\" | grep -qx 'HINT:' && printf '%s\n' \"\$out\" | grep -qx 'PROGRESS: 47.30 7m 40s' &&
+       ! printf '%s\n' \"\$out\" | grep -q -e '???' -e '^PROGRESS: 0'"
+rm -rf "$wt/tslog"
 # Timing test: the first PROGRESS line must be there BEFORE the source has finished (otherwise the filter buffers)
 check "progress-filter does not stream (progress would only come at the end)" \
       "rm -f $wt/pf.first; { printf 'Installing 1/1… 30%%\r'; /bin/sleep 2; printf 'Installing 1/1… 60%%\rInstallation complete.\n'; } |

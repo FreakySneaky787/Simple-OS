@@ -2,7 +2,7 @@
 """Simple OS – translate the progress of flatpak / apt / timeshift into live lines for progress windows and the wizard.
 
     flatpak install --system -y flathub APP 2>&1 | progress-filter flatpak
-    apt-get -o APT::Status-Fd=3 … 3>&1 1>&2   | progress-filter apt [--dl FROM TO] [--inst FROM TO]
+    apt-get -o APT::Status-Fd=3 … 3>&1 1>&2   | progress-filter apt [--dl FROM TO] [--inst FROM TO] [--updates N]
     timeshift --create … 2>&1                 | progress-filter timeshift
 
 Output: "PROGRESS: <percent> [<rest>]" and "STAGE: <text>", immediately and one by one (flush). All other lines pass
@@ -17,9 +17,20 @@ flatpak (WITHOUT --noninteractive, otherwise Flatpak prints no progress): overvi
   Flatpak reports the speed only for the current part, and it varies extremely per part (GL drivers from many small
   files ~80 kB/s, large runtimes as deltas several MB/s) – extrapolated that gave "2 h left" for minutes.
 apt: "dlstatus:…:<percent>:…" -> download share (default 0–40 %), "pmstatus:<package>:<percent>:…" -> installation
-  (default 40–100 %), STAGE "Downloading" / "Installing <package>".
-timeshift: "12.34% complete (5m 10s remaining)" -> percent + rest; sections in plain language.
+  (default 40–100 %), STAGE "Downloading" / "Installing" – plain words, no package names or versions (#120); the bar
+  never goes back within a phase (apt's download percentage jumps). --updates N (Software Updates, N = planned
+  packages): "Downloading updates (3 of 14)" from apt's "Retrieving file 3 of 14", "Installing updates (5 of 14)"
+  counted from apt's overall percentage, "Finishing up" for the triggers (initramfs, GRUB, man-db …) at the end.
+timeshift: "12.34% complete (5m 10s remaining)" -> percent + rest; sections in plain language. While Timeshift has no
+  measure yet ("0.00% complete (??? remaining)" – the first restore point copies the whole system and can sit there for
+  20 minutes, #119) there is NO "PROGRESS: 0" (the window glides instead of standing at 0 %) and never "???"; instead the
+  files rsync has handled so far, counted from its --log-file (/run/timeshift/<pid>/backup/timeshift/snapshots/<name>/
+  rsync-log), as "STAGE: Copying system files · 12,340 files" every few seconds, and "HINT: <text>" for the window's hint
+  line: the wait is normal, later "still working". "HINT:" (empty) = back to the window's own hint.
 """
+import glob
+import select
+import time
 import os
 import re
 import sys
@@ -28,6 +39,11 @@ UNIT = {"": 1, "k": 1e3, "m": 1e6, "g": 1e9}
 # Speed only together with Flatpak's own estimate ("00:12"): it only appears once the speed has settled
 SPEED = re.compile(r"\d+%\s+([\d.]+)\s*([kMG]?)(?:B|bytes)/s\s+\d+:\d\d")
 PARTIAL = 0.05
+RSYNC_LOGS = "/run/timeshift/*/backup/timeshift/snapshots/*/rsync-log"
+TS_HINT = "This can take 10–20 minutes – don't turn off the computer"
+TS_HINT_LATE = "Still working, this is normal – don't turn off the computer"
+TS_LATE = 180          # s without a real percentage -> TS_HINT_LATE
+TS_TICK = 2.0          # s between two looks at the rsync log
 TS_STAGES = (
     (re.compile(r"Estimating system size"), "Measuring the system"),
     (re.compile(r"Mounted|Mounting|Saving to device|Creating new snapshot"), "Preparing the backup disk"),
@@ -59,9 +75,18 @@ class Filter:
         self.weights, self.count, self.speed, self.speed_part = {}, 0, "", None
         self.dl = (0.0, 40.0)
         self.inst = (40.0, 100.0)
+        self.updates = 0          # --updates N: number of planned packages (0 = generic texts)
+        # timeshift: waiting without a percentage since (monotonic), hint sent, rsync log being counted
+        self.ts_wait, self.ts_hint, self.ts_measured = None, None, False
+        self.ts_log, self.ts_pos, self.ts_files, self.ts_shown, self.ts_next = None, 0, 0, -1, 0.0
+        self.started = time.time()
+        self.rsync_logs = os.environ.get("SIMPLEOS_RSYNC_LOGS", RSYNC_LOGS)   # test: another glob
+        self.apt_phase, self.apt_max = None, 0.0
         it = iter(args)
         for a in it:
-            if a in ("--dl", "--inst"):
+            if a == "--updates":
+                self.updates = max(0, int(next(it)))
+            elif a in ("--dl", "--inst"):
                 rng = (float(next(it)), float(next(it)))
                 if a == "--dl":
                     self.dl = rng
@@ -133,24 +158,58 @@ class Filter:
                 p = float(parts[2])
             except ValueError:
                 return
-            lo, hi = self.dl if parts[0] == "dlstatus" else self.inst
-            if parts[0] == "dlstatus":
-                self.stage("Downloading")
+            kind, desc = parts[0], parts[3] if len(parts) > 3 else ""
+            if kind != self.apt_phase:            # new phase: its own maximum
+                self.apt_phase, self.apt_max = kind, 0.0
+            self.apt_max = p = max(self.apt_max, min(100.0, p))
+            lo, hi = self.dl if kind == "dlstatus" else self.inst
+            if kind == "dlstatus":
+                text = "Downloading updates" if self.updates else "Downloading"
+                m = re.match(r"Retrieving file (\d+) of (\d+)", desc)
+                if self.updates and m:
+                    text += f" ({m.group(1)} of {m.group(2)})"
+                self.stage(text)
+            elif parts[1] == "dpkg-exec":
+                pass                              # "Running dpkg": the current text stays
+            elif desc.startswith("Running"):      # "Running post-installation trigger …"
+                self.stage("Finishing up")
+            elif self.updates:
+                n = min(self.updates, int(p / 100 * self.updates) + 1)
+                self.stage(f"Installing updates ({n} of {self.updates})")
             else:
-                self.stage("Installing " + parts[1])
+                self.stage("Installing")
             self.pct(lo + (hi - lo) * p / 100)
             return
         self.passthrough(line)
 
     # ------------------------------------------------------------ timeshift
+    def hint(self, text):
+        if text != self.ts_hint:
+            out(("HINT: " + text).rstrip())
+            self.ts_hint = text
+
     def timeshift(self, line):
         m = re.search(r"(\d+(?:\.\d+)?)% complete", line)
         if m:
             rest = re.search(r"\(([^()]*?) remaining\)", line)
             v = m.group(1)
-            key = (v, rest.group(1) if rest else "")
+            left = rest.group(1).strip() if rest else ""
+            if not re.search(r"\d", left):
+                left = ""                         # "???" is not a time
+            if float(v) <= 0:                     # nothing measurable yet: no frozen 0 %, explain the wait
+                if self.ts_wait is None:
+                    self.ts_wait = time.monotonic()
+                if not self.ts_measured:
+                    self.hint(TS_HINT)
+                self.tick()
+                return
+            if not self.ts_measured:
+                self.ts_measured = True
+                if self.ts_hint:
+                    self.hint("")                 # back to the window's own hint
+            key = (v, left)
             if key != self.last_pct:
-                out(f"PROGRESS: {v}" + (f" {key[1]}" if key[1] else ""))
+                out(f"PROGRESS: {v}" + (f" {left}" if left else ""))
                 self.last_pct = key
             return
         for rx, text in TS_STAGES:
@@ -159,17 +218,54 @@ class Filter:
                 return
         # do not pass other timeshift lines through (they are in the log)
 
+    def tick(self):
+        """timeshift while waiting: count rsync's log lines (one per file) and send them; the late hint."""
+        if self.mode != "timeshift" or self.ts_wait is None or self.ts_measured:
+            return
+        now = time.monotonic()
+        if now < self.ts_next:
+            return
+        self.ts_next = now + TS_TICK
+        if now - self.ts_wait >= TS_LATE:
+            self.hint(TS_HINT_LATE)
+        if self.ts_log is None:
+            # only a log of THIS run (an old snapshot's log is complete and would count wrong)
+            logs = [f for f in glob.glob(self.rsync_logs) if os.path.getmtime(f) >= self.started - 5]
+            if not logs:
+                return
+            self.ts_log = max(logs, key=os.path.getmtime)
+        try:
+            with open(self.ts_log, "rb") as fh:
+                fh.seek(self.ts_pos)
+                data = fh.read(16 << 20)          # at most 16 MB per look, the rest next time
+        except OSError:
+            return
+        self.ts_pos += len(data)
+        self.ts_files += data.count(b"\n")
+        if self.ts_files != self.ts_shown and self.ts_files > 0:
+            self.stage(f"Copying system files · {self.ts_files:,} files")
+            self.ts_shown = self.ts_files
+
     def feed(self, line):
         getattr(self, self.mode)(line.rstrip())
 
 
 def main(argv):
     if len(argv) < 2 or argv[1] not in ("flatpak", "apt", "timeshift"):
-        print("Usage: progress-filter flatpak|apt|timeshift [--dl A B] [--inst A B]", file=sys.stderr)
+        print("Usage: progress-filter flatpak|apt|timeshift [--dl A B] [--inst A B] [--updates N]", file=sys.stderr)
         return 2
     f = Filter(argv[1], argv[2:])
     rest = b""
     while True:
+        # timeshift: also look at the rsync log while timeshift prints nothing new
+        if f.mode == "timeshift":
+            try:
+                ready, _, _ = select.select([0], [], [], TS_TICK)
+            except InterruptedError:
+                continue
+            if not ready:
+                f.tick()
+                continue
         try:
             chunk = os.read(0, 65536)
         except InterruptedError:

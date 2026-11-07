@@ -10,7 +10,10 @@
 #   ./tools/release.sh sign       sign output/repo (after ./build_iso.sh): InRelease + Release.gpg
 #   ./tools/release.sh publish [--no-iso]
 #                                 GitHub release v<VERSION> with the ISO and the signed repository, then mark it as
-#                                 "latest" – from that moment every installed Simple OS is offered the new edition
+#                                 "latest" – from that moment every installed Simple OS is offered the new edition.
+#                                 Every release carries an ISO (#114): README and website send new users to the
+#                                 latest release for the ISO. --no-iso is refused unless SIMPLEOS_ALLOW_NO_ISO=1 – and
+#                                 then README, website and the release text must point to the last ISO yourself.
 #
 # Installed systems read the repository from https://github.com/<owner>/<repo>/releases/latest/download/
 # (/etc/apt/sources.list.d/simpleos.sources). So EVERY release must carry the repository files – a "latest" release
@@ -128,6 +131,14 @@ cmd_sign() {
 cmd_publish() {
     local with_iso=1
     [ "${1:-}" = --no-iso ] && with_iso=0
+    # A release without an ISO becomes "latest" without one: README ("Download … from the latest release") and the
+    # website's download checklist then lead nowhere (#114). Only on purpose, with the links fixed by hand.
+    if [ "$with_iso" = 0 ] && [ "${SIMPLEOS_ALLOW_NO_ISO:-}" != 1 ]; then
+        die "--no-iso: the new release would be \"latest\" without an ISO – README and website send new users there (#114).
+     Build an ISO (sudo ./build_iso.sh) and publish without --no-iso. Only for an emergency hotfix:
+     SIMPLEOS_ALLOW_NO_ISO=1 ./tools/release.sh publish --no-iso, then point README, website and the release text
+     to the ISO of the last release that has one."
+    fi
     command -v gh >/dev/null || die "GitHub CLI (gh) missing"
     local v repo tag latest
     v=$(version)

@@ -9,7 +9,7 @@ need a terminal.
 ## What's new in 2.0 "Rigi"
 
 > **Draft – 2.0 is not released yet.** This text grows with the work on the branch `trixie`. The current release is
-> [1.1](https://github.com/FreakySneaky787/Simple-OS/releases/latest).
+> [1.1.1](https://github.com/FreakySneaky787/Simple-OS/releases/latest).
 
 The first big release: Simple OS moves to **Debian 13 "trixie"**, the current Debian. Everything you know from 1.x
 stays – the same calm desktop, the Setup Wizard, the Control Center, Software Updates – on a newer base. 2.0 is
@@ -110,9 +110,9 @@ installed systems use. You don't need to download them yourself.
   (installer or Control Center → Language & Region), but the Control Center, the setup wizard and Simple OS's messages
   stay English until their translations come in 1.2. The keyboard layout can be changed at any time in
   Control Center → Keyboard.
-- **Menus close after a slow click.** If you hold the mouse button a little longer, the desktop and window menus and
-  the volume menu close again when you let go. Click quickly, or use the keyboard (Alt+Space for the window menu).
-  Fixed in 1.1.1 (issue #104).
+- **The network icon's right-click menu** (next to the network display in the taskbar) closes again if you hold the
+  mouse button for more than half a second – a limit of that GTK menu, it has no setting. Click quickly, or use the
+  network display itself (a click opens the Simple OS network menu).
 - **Firewall and LAN games:** hosting a game for others on your local network, and Steam Remote Play as the host,
   are blocked by the firewall. Turn it off for that time in Control Center → Password & Security.
 - **Lenovo laptops:** the first start after installing may show "Self-Healing BIOS ESP" once. That's

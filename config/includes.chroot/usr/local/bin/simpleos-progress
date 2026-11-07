@@ -13,7 +13,11 @@ Without a percentage a rounded block glides calmly back and forth. Colors strict
 Input (optional) – STDIN as a pipe/file or --follow FILE (grows, ends only with "EXIT:"):
     TITLE: <text>  / STEP: <text>      heading (STEP only if no --title is given)
     MESSAGE: <text> / STAGE: <text>    description
-    PERCENT: <X> / PROGRESS: <X> [<rest>]   percent (+ time left)
+    PERCENT: <X> / PROGRESS: <X> [<rest>]   percent (+ time left); 0 % = nothing measurable yet -> the calm gliding
+                                       block instead of a frozen "0%", and a time left only if it is a time ("???" is
+                                       dropped, #119)
+    HINT: <text>                       replaces the --hint line (only shown if the window has one); "HINT:" alone =
+                                       back to --hint; a new STEP also goes back
     DONE: <text>                       final text instead of --done (e.g. "Already up to date")
     EXIT: <code>                       end: 0 -> bar full, let it stand briefly, close; otherwise close immediately
     <number>  or  # <text>             like zenity --progress
@@ -21,6 +25,8 @@ Input (optional) – STDIN as a pipe/file or --follow FILE (grows, ends only wit
                                        timeshift "47.30% complete (7m 40s remaining)"); the rest (without
                                        progress bars made of #/=/-) becomes the description
     KEY: value (upper case, unknown, e.g. FREE:/NEED:)  is ignored (machine lines of the helpers)
+    apt/dpkg's own lines ("Unpacking apt (2.6.2) over …", "Setting up …", "(Reading database ... 45%" …) are ignored
+    too: technical noise that flickered as the description and moved the bar (#120) – they belong in the log
 End of STDIN without EXIT = success. STDIN as a terminal or /dev/null = no input: the window shows --message and
 --percent/--indeterminate until Esc, --timeout or the end of --pid. With --follow it only appears with the first
 line (so it does not cover the pkexec password dialog). Esc/click on × only hides it.
@@ -86,6 +92,9 @@ PCT = re.compile(r"(\d{1,3}(?:\.\d+)?)\s?%")
 REMAIN = re.compile(r"\(([^()]*?) remaining\)")
 BARS = re.compile(r"\[[#=\-.>*\s]*\]|\[\s*\d{1,3}%\s*\]")
 MACHINE = re.compile(r"^[A-Z_]{2,}: ")
+APT_NOISE = re.compile(r"^(\(Reading database|Reading database|Unpacking |Preparing to unpack|Setting up |Selecting "
+                       r"previously unselected|Processing triggers for |(Get|Hit|Ign):\d|Fetched |Reading package lists|"
+                       r"Building dependency tree|Reading state information)")
 
 
 class State:
@@ -94,17 +103,29 @@ class State:
         self.fixed = fixed_title  # --title given: the helpers' STEP texts (raw point names) do not replace it
         self.exit, self.started = None, False
         self.done_text = ""  # the helper's "DONE: <text>" replaces --done
+        self.hint = None     # "HINT: <text>" replaces --hint (None = --hint)
 
     def set_pct(self, val):
         try:
-            self.pct = max(0.0, min(100.0, float(val)))
-            return True
+            v = max(0.0, min(100.0, float(val)))
         except ValueError:
             return False
+        # 0 % is "nothing measurable yet" (Timeshift's first restore point sits there for many minutes, #119): show
+        # it as working (gliding block) instead of a frozen 0 %
+        self.pct = v if v > 0 else None
+        return True
+
+    def set_remaining(self, text):
+        """Only a real time ("7m 40s", "0:12") and only with a percentage – never "???" or a time at 0 %."""
+        text = text.strip()
+        self.remaining = text if self.pct is not None and re.search(r"\d", text) else ""
 
     def feed(self, line):
         line = line.strip()
         if not line:
+            return
+        if line.startswith("HINT:"):
+            self.hint = line[5:].strip() or None
             return
         key, sep, val = line.partition(": ")
         val = val.strip()
@@ -113,7 +134,7 @@ class State:
             if key == "STEP" and val != "Done":
                 # new step (e.g. update: restore point -> apt -> Flatpak): its own progress from 0,
                 # until then the bar swings – otherwise it would stand at 100 % and jump back
-                self.pct, self.remaining = None, ""
+                self.pct, self.remaining, self.hint = None, "", None
             if val and val != "Done" and (key == "TITLE" or not self.fixed):
                 self.title = val
         elif sep and key in ("MESSAGE", "STAGE"):
@@ -121,7 +142,8 @@ class State:
         elif sep and key in ("PERCENT", "PROGRESS"):
             num, _, rest = val.partition(" ")
             if self.set_pct(num):
-                self.started, self.remaining = True, rest.strip()
+                self.started = True
+                self.set_remaining(rest)
         elif sep and key == "DONE":
             self.done_text = val
         elif sep and key == "EXIT":
@@ -129,8 +151,8 @@ class State:
                 self.exit = int(val)
             except ValueError:
                 self.exit = 1
-        elif MACHINE.match(line):
-            return  # FREE:/NEED:/PATH: … of the helpers
+        elif MACHINE.match(line) or APT_NOISE.match(line):
+            return  # FREE:/NEED:/PATH: … of the helpers, apt/dpkg's lines (#120)
         elif re.fullmatch(r"\d{1,3}(\.\d+)?", line):  # zenity: bare number
             self.started = self.set_pct(line) or self.started
         elif line.startswith("#"):  # zenity: "# text"
@@ -142,7 +164,7 @@ class State:
                 self.set_pct(m[-1])
             r = REMAIN.search(line)
             if r:
-                self.remaining = r.group(1).strip()
+                self.set_remaining(r.group(1))
             text = BARS.sub(" ", REMAIN.sub(" ", line))
             text = PCT.sub(" ", text) if m else text
             text = re.sub(r"\b(complete|Progress:)\s*", " ", text) if m else text
@@ -493,7 +515,8 @@ def run_window(args, st, src):
             view = {"title": done if self.done_at and done else st.title, "message": st.message,
                     "pct": self.shown_pct, "done": bool(self.done_at), "remaining": st.remaining,
                     "elapsed": clock(now - self.op_start) if self.op_start and src.active else "",
-                    "hint": hint, "rounded": self.rounded, "hover_close": self.hover_close}
+                    "hint": (st.hint if st.hint is not None else hint) if hint else "",
+                    "rounded": self.rounded, "hover_close": self.hover_close}
             paint(cr, view, pal, now - self.t0)
             return True
 

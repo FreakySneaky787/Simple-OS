@@ -101,11 +101,14 @@ fail() { echo "ERROR: $*" >&2; failed=1; }
 # Progress for the wizard/progress window: "STAGE: …" and "PROGRESS: <percent>" per operation (new after every "STEP:").
 # apt reports it via status fd 3 ("dlstatus:…:<percent>:…" download 0–40 %, "pmstatus:<package>:<percent>:…"
 # installation 40–100 %), its normal output goes to stderr (log/details). The exit code comes out of the pipe
-# through a file (POSIX sh has no pipefail).
+# through a file (POSIX sh has no pipefail). $APT_FILTER_ARGS: extra options for the filter (Software Updates:
+# "--updates N" -> "Installing updates (5 of 14)" instead of the generic "Installing", #120).
+APT_FILTER_ARGS=
 aptget() {
     _rcf=$(mktemp)
+    # shellcheck disable=SC2086
     { apt-get -y -o DPkg::Lock::Timeout=300 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
-          -o APT::Status-Fd=3 "$@" 3>&1 1>&2; echo $? > "$_rcf"; } | /usr/local/lib/simpleos/progress-filter apt
+          -o APT::Status-Fd=3 "$@" 3>&1 1>&2; echo $? > "$_rcf"; } | /usr/local/lib/simpleos/progress-filter apt $APT_FILTER_ARGS
     _rc=$(cat "$_rcf" 2>/dev/null); rm -f "$_rcf"
     return "${_rc:-1}"
 }
@@ -534,7 +537,8 @@ if [ "$upgrade" -eq 1 ]; then
     # BIOS systems from before 1.0.4: grub-pc did not know its disk and stopped every GRUB update (and with it this
     # repair) – answer that first (/usr/local/lib/simpleos/grub-pc-devices)
     /usr/local/lib/simpleos/grub-pc-devices || echo "GRUB install device could not be set" >&2
-    dpkg --configure -a || fail "an interrupted installation could not be repaired"
+    # dpkg's "Setting up …" lines go to the log only, never into the progress window (#120)
+    dpkg --configure -a >&2 || fail "an interrupted installation could not be repaired"
     apt_get_update || { fail "package lists could not be downloaded"; exit 1; }
     # Check first what is pending: without system and app updates done right away ("UPTODATE: 1", the progress window
     # shows "Already up to date") – before, everything still ran with a progress bar ("Nothing to do").
@@ -580,12 +584,14 @@ if [ "$upgrade" -eq 1 ]; then
         urc=0
         if [ -n "$planned" ]; then
             step "Installing updates"
+            APT_FILTER_ARGS="--updates $(printf '%s\n' "$planned" | grep -c .)"
             if [ "$mode" = full ]; then
                 aptget --no-remove full-upgrade
             else
                 aptget upgrade --with-new-pkgs
             fi
             urc=$?
+            APT_FILTER_ARGS=
         fi
         # Restart marker only after success – otherwise the error message would wrongly say "Restart first"
         if [ $urc -eq 0 ]; then

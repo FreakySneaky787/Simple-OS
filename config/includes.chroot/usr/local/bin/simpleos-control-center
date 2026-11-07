@@ -1968,6 +1968,11 @@ def main(argv):
             box.pack_start(label("Changing the language…"), False, False, 0)
             self.put(box)
             self.show_all_now()
+            # The helper only takes Debian's own spelling (SUPPORTED: "de_DE.UTF-8"). LANG/LC_TIME of an edited or old
+            # /etc/default/locale may read "de_DE.utf8" or "C.UTF-8" – a formats-only change then failed (#116)
+            def known(loc):
+                return next((k for k in self.names if locale_key(k) == locale_key(loc)), "en_US.UTF-8")
+            lang, fmt = known(lang), known(fmt)
             args = ["--locale", lang] + (["--formats", fmt] if locale_key(fmt) != locale_key(lang) else [])
 
             def work():

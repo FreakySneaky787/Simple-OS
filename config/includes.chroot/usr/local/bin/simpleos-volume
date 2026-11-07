@@ -6,8 +6,54 @@
 #   outputs     all output devices (HDMI, USB, Bluetooth) and ports of a device (speakers /
 #               headphones); a click switches and moves running playback along
 #   at the bottom "Advanced Audio Settings" -> pavucontrol
+#   simpleos-volume --panel   the speaker icon of the taskbar (tint2 executor, runs as long as the taskbar; 1.1.1,
+#                             #104): one line of markup per change – volume up/down/off icon, dimmed when muted
+#                             or when there is no sound server. Follows "pactl subscribe", so volume keys, the
+#                             flyout and other apps update it at once. Replaces volumeicon: its left click muted the
+#                             sound, its slider and menu closed again after a slow click. Clicks: tint2rc
+#                             (simpleos-taskbar-select --apply): left/right = this flyout, wheel/middle = simpleos-osd.
+#                             Tests: SIMPLEOS_VOLUME_ONCE=1 prints the line once and ends.
 # Robust like simpleos-wifi: no set -e, exit 0, errors as a notification, details in ~/.cache/simpleos-volume.log.
 # Talks to pipewire-pulse via pactl.
+
+# ---- taskbar icon (before common.sh: it runs for hours and needs nothing of it)
+if [ "${1:-}" = --panel ]; then
+    panel_line() {
+        v= m=no
+        if command -v pactl >/dev/null; then
+            v=$(LC_ALL=C pactl get-sink-volume @DEFAULT_SINK@ 2>/dev/null | sed -n 's/^[^/]*\/ *\([0-9]*\)%.*/\1/p' | head -n 1)
+            LC_ALL=C pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null | grep -q yes && m=yes
+        fi
+        # FontAwesome 4: volume-off U+F026, volume-down U+F027, volume-up U+F028
+        if [ -z "$v" ] || [ "$m" = yes ] || [ "$v" -eq 0 ]; then
+            icon=$(printf '\357\200\246') color=" foreground='#7f849c'"
+        elif [ "$v" -lt 50 ]; then
+            icon=$(printf '\357\200\247') color=
+        else
+            icon=$(printf '\357\200\250') color=
+        fi
+        # the same width for all three, so the taskbar does not jump
+        printf "<span font_desc='FontAwesome 12'%s>%s</span>\n" "$color" "$icon"
+    }
+    if [ "${SIMPLEOS_VOLUME_ONCE:-}" = 1 ]; then panel_line; exit 0; fi
+    last=
+    while kill -0 "$PPID" 2>/dev/null; do
+        line=$(panel_line)
+        [ "$line" != "$last" ] && { printf '%s\n' "$line" || exit 0; last=$line; }
+        if command -v pactl >/dev/null && LC_ALL=C pactl info >/dev/null 2>&1; then
+            # one line per sink/server event; the icon only changes when the state does. Ends when the sound server
+            # restarts (Bluetooth, an update) -> the loop starts it again
+            LC_ALL=C pactl subscribe 2>/dev/null | while read -r ev; do
+                case "$ev" in *" sink "*|*" server "*) ;; *) continue ;; esac
+                kill -0 "$PPID" 2>/dev/null || exit 0
+                line=$(panel_line)
+                [ "$line" != "$last" ] && { printf '%s\n' "$line" || exit 0; last=$line; }
+            done
+        fi
+        sleep 3    # no sound server (yet): look again in a moment
+    done
+    exit 0
+fi
 
 SOS_NAME=simpleos-volume SOS_TITLE=Sound SOS_ICON=audio-volume-high SOS_PROMPT=Sound SOS_CORNER=1
 TAB=$(printf '\t')

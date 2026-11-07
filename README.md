@@ -72,7 +72,7 @@ Thank you for testing! Every report helps, especially from real hardware.
   apps and settings come along?
 - **Your apps from the Software Store** (Flatpak) and Steam games after the upgrade.
 
-Until then, the current release is 1.1 – reports about it are just as welcome.
+Until then, the current release is 1.1.1 – reports about it are just as welcome.
 
 **How to report:**
 
@@ -112,7 +112,7 @@ logo and short form.
 | `./test_installed_vm.sh [--uefi\|--secureboot]` | Boot the installed system from that mode's disk |
 | `./tools/release.sh key` | Once: create the release signing key (private key outside the repo, public key into the image) |
 | `./tools/release.sh version X.Y.Z` | Set the version of the next edition everywhere it is shown (`usr/lib/os-release`, installer branding) |
-| `./tools/release.sh sign` / `publish [--no-iso]` | Sign `output/repo`, publish it with the ISO as GitHub release `v<VERSION>` ("latest") |
+| `./tools/release.sh sign` / `publish` | Sign `output/repo`, publish it with the ISO as GitHub release `v<VERSION>` ("latest"); every release has an ISO (#114) |
 
 Release: test checklist in `TESTING.md`, text for the download page in `RELEASE_NOTES.md` (its `#known-issues`
 section is the target of the installer's "Known issues" button).
@@ -196,7 +196,7 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
 - **`main` is the published edition, pushed with a release.** Between releases nothing new goes to `main` on GitHub,
   so it always matches what installed systems run. The release tags (`v1.0.3` …) always match exactly what was
   published. Release day: `git push`, then build, test, `sign`, `publish`.
-- **`next` is the branch for the next release** – at the moment the bugfix release **1.1.1**, after it the features
+- **`next` is the branch for the next release** – at the moment the bugfix release **1.1.2**, after it the features
   for 1.2. It is pushed as the work goes on; on release day `next` is merged into `main` and released from there.
   Details: [`docs/MAINTAINING.md`](docs/MAINTAINING.md#7-branches).
 - **Website** (freakysneaky787.github.io, its own repository): updated after every release – version, download, roadmap.
