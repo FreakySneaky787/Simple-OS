@@ -18,7 +18,7 @@ Rules that keep it small: no new always-running process without a good reason (t
 on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook.chroot`; anything that mocks can hide
 (night light in 1.0.3!) is run for real once, e.g. in a container with Xvfb; nothing is published untested on hardware.
 
-## 1.1.2 – bugfix release after 1.1.1 (planned Sunday 2026-11-22)
+## 1.1.2 – bugfix release after 1.1.1 (planned Sunday 2026-11-15, moved forward from 11-22)
 
 - **Update window, the last technical lines** (#131): the Flatpak step still shows flatpak's table header and
   "end-of-life" notices, and apt's `pmerror:`/`pmconffile:` lines can slip through; they go to the log only.

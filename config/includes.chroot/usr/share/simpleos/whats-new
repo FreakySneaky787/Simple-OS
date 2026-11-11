@@ -1,5 +1,19 @@
-# Simple OS 1.1.1
+# Simple OS 1.1.2
+## Better menus
+- **The row under the mouse lights up.** In the start menu, the search and the menus of the taskbar, the row you point
+  at is highlighted in your accent color – the same as with the arrow keys.
+- **The best match comes first.** Type "Sound" in the start menu and Sound is at the top.
+- **Settings in the search.** Search for "display settings" (or sound, Wi-Fi, keyboard …) and the right page of the
+  Control Center opens.
+- **The sound menu stays open** while you change the volume, and menus opened from the start menu appear faster.
 ## Fixed
+- **Desktop PCs lock again after a video.** After watching a video, a computer without a battery no longer locked the
+  screen when it turned off.
+- **Do Not Disturb stays on** after signing out and after a restart, until you turn it off.
+- **Clearer update window.** It counts the updates ("Update 3 of 14") without technical lines from apps, and no longer
+  flickers at the end.
+- **Nothing left behind after signing out.** Two small taskbar helpers kept running after signing out.
+## Fixed in 1.1.1
 - **Menus stay open after a slow click.** The desktop and window menus no longer close when you hold the mouse
   button a little longer.
 - **The speaker icon opens the sound menu.** A click on the speaker in the taskbar used to mute the sound; now it
@@ -7,8 +21,8 @@
 - **Notification menus on big screens.** The menu with a notification's buttons now grows with the display scale.
 - **Bigger window buttons.** Minimize, maximize and close are larger and easier to hit; close turns red under the
   pointer.
-- **Updates in plain words.** The update window says "Installing updates (5 of 14)" instead of technical package
-  lines, and a restore point no longer looks stuck at 0 %.
+- **Updates in plain words.** The update window counts the updates instead of showing technical package lines, and
+  a restore point no longer looks stuck at 0 %.
 - **Each software store has its own icon.** The Software Center and the Software Store are easy to tell apart.
 ## New in 1.1
 - **Scale for screens with many pixels.** Control Center → Display → Scale makes text, the taskbar, menus,

@@ -1,10 +1,44 @@
-# Simple OS 1.1.1
+# Simple OS 1.1.2
 
 **SOS – Simple Operating System. Keep it Simple.**
 
 Simple OS is a fast, quiet desktop built on Debian 12 "bookworm". It boots straight into a calm dark desktop
 (Openbox, Catppuccin colors), sets itself up with a short wizard and keeps itself up to date. You don't
 need a terminal.
+
+## What's new in 1.1.2
+
+A bugfix update for 1.1 with better menus. If you run Simple OS 1.0 to 1.1.1, you get it through **Software Updates**
+– no need to reinstall. The first time you sign in afterwards, "What's new" shows the highlights.
+
+### Better menus (issue #137)
+
+- **The row under the mouse is highlighted** in the start menu, the search and the taskbar menus (Wi-Fi, sound,
+  power …) – the same way as the row picked with the arrow keys, now in your accent color instead of a faint gray.
+  Typing still selects the best match; only moving the mouse afterwards moves the highlight.
+- **The best match comes first.** Typing "Sound" in the start menu showed Control Center and PulseAudio first; now
+  the closest match is at the top.
+- **Control Center pages in the search.** "display settings", "sound settings", "Wi-Fi settings" … (also with German
+  words like "bildschirm" or "einstellungen") open that page of the Control Center.
+- **The sound menu stays open** while you turn the volume up or down, mute, or switch the output – before, it closed
+  and opened again after every click.
+- **Menus opened from the start menu appear faster.** When the previous menu was still closing, Simple OS waited a
+  fixed 0.3 seconds; it now checks every 0.05 seconds.
+
+### Fixed
+
+- **Desktop PCs lock again after a video** (issue #134). On computers without a battery, the service that keeps the
+  screen on during a video restarted the screen lock outside your session when the video ended – from then on the
+  screen never locked when it turned off. It now only gives the screen time back.
+- **Do Not Disturb stays on** (issue #135). After signing out and back in, the bell in the taskbar still said "on"
+  while notifications came through again. Do Not Disturb now stays on – also after a restart – until you turn it off.
+- **Clearer update window** (issues #129, #131). The window no longer repeats its heading ("Update 3 of 14" under
+  "Installing updates"), a new step no longer shows the old step's last line, "Finishing up" no longer flickers, and
+  Flatpak's technical lines (table headers, end-of-life notices) and apt's error codes stay in the log.
+- **Nothing left behind after signing out** (issue #130). The taskbar's speaker and Do Not Disturb helpers kept
+  running after signing out, and one more set was added with every sign-in.
+- **Installer: the live session's rights are removed first** (issue #136). If the last installer step failed early,
+  the live user's passwordless administrator rights could stay on the installed system.
 
 ## What's new in 1.1.1
 
