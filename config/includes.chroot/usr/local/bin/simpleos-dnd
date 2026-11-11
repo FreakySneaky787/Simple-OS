@@ -37,6 +37,13 @@ fi
 if [ "${1:-}" = --panel ]; then
     pidf=$PANEL
     echo $$ > "$pidf" 2>/dev/null
+    # #130: end with the session. tint2 starts executors as "sh -c …" in their own process group and does not end them
+    # when the X server goes away (only a reload does); $PPID is that "sh -c", which never ends – the helpers stayed
+    # after signing out, one more set per sign-in. xprop -spy waits on the X connection and ends when it closes: then
+    # the whole group (this script, its loop, pactl/sleep) goes.
+    if [ -n "${DISPLAY:-}" ] && command -v xprop >/dev/null 2>&1; then
+        { xprop -root -spy _SIMPLEOS_PANEL >/dev/null 2>&1; kill 0; } &
+    fi
     if [ -f "$STATE" ]; then
         (
             if command -v dunstctl >/dev/null; then
