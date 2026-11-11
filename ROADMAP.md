@@ -33,6 +33,10 @@ on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook
   through. Do Not Disturb now stays on until you turn it off, also after a restart.
 - **Installer: the live user's rights go first** (#136): if the last installer step failed early, passwordless
   administrator rights of the live session could stay on the installed system.
+- **Better, faster menus** (#137): the row under the mouse is highlighted like the one picked with the arrow keys, in
+  the accent color; typing puts the best match first; "display settings" (and every other Control Center page) can be
+  found in the search; flyouts opened from the start menu no longer wait; the sound menu stays open while you change
+  the volume.
 
 ## 1.2 – feature release after 1.1
 
