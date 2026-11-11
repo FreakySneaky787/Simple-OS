@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Last updated 2026-11-08. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
+Last updated 2026-11-11. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -26,6 +26,13 @@ on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook
   "Installing updates" can show up twice ("Finishing up" ↔ "Installing updates" flicker).
 - **Taskbar helpers after signing out** (#130): the speaker and Do Not Disturb helpers keep running after signing out,
   and one more set is added with every sign-in.
+- **Screen lock on desktop PCs after a video** (#134): on computers without a battery, locking when the screen turns
+  off stopped working as it should after a video had played – the "keep the screen on" service restarted the lock
+  outside the session. It now only gives the screen time back.
+- **Do Not Disturb stays on** (#135): after signing out and back in, the bell still said "on" but notifications came
+  through. Do Not Disturb now stays on until you turn it off, also after a restart.
+- **Installer: the live user's rights go first** (#136): if the last installer step failed early, passwordless
+  administrator rights of the live session could stay on the installed system.
 
 ## 1.2 – feature release after 1.1
 
