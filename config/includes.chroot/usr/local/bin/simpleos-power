@@ -132,8 +132,10 @@ lock_now() {
         [ "$d" -ge 0 ] && [ "$d" -lt "$LOCK_GRACE" ] && return 0     # a lock was started just now
     fi
     [ -n "$LOCK_MARK" ] && date +%s > "$LOCK_MARK" 2>/dev/null
-    # not "loginctl lock-session" as a fallback: xss-lock reacts to that signal itself – an endless loop
-    dm-tool lock
+    # not "loginctl lock-session" as a fallback: xss-lock reacts to that signal itself – an endless loop.
+    # dm-tool finds LightDM through XDG_SEAT_PATH, which only processes of the session have ("Not running inside a
+    # display manager" otherwise – nothing was locked); Simple OS has one seat
+    XDG_SEAT_PATH=${XDG_SEAT_PATH:-/org/freedesktop/DisplayManager/Seat0} dm-tool lock
 }
 
 # Battery protection: Lenovo first (ideapad_acpi), otherwise the kernel standard on the battery
