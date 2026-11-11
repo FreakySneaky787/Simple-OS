@@ -1,5 +1,5 @@
 #!/bin/sh
-# Simple OS – sound flyout (Super+A, launcher "Sound")
+# Simple OS – sound flyout (Super+A, launcher "Sound", taskbar speaker icon) – one Rofi window in script mode (1.1.2)
 # Rofi menu like Windows 11 on the right above the taskbar:
 #   heading     active output and volume ("Speakers · 40%")
 #   volume      "Volume up" / "Volume down" (±10 %, at most 100 %, the menu stays open), "Set volume…" (0–100 %), Mute/Unmute
@@ -138,51 +138,70 @@ switch_output() {
 }
 
 # FontAwesome 4: volume-up U+F028, volume-down U+F027, volume-off U+F026, sliders U+F1DE, check U+F00C,
-# headphones U+F025, cog U+F013
+# headphones U+F025, cog U+F013, arrow-left U+F060
 I_UP='\357\200\250' I_DOWN='\357\200\247' I_OFF='\357\200\246' I_SLIDERS='\357\207\236' I_CHECK='\357\200\214'
-I_PHONES='\357\200\245' I_COG='\357\200\223'
+I_PHONES='\357\200\245' I_COG='\357\200\223' I_BACK='\357\201\240'
 
-while :; do
+# Rofi script mode (1.1.2): Rofi runs "simpleos-volume --rofi" at the start and after every selection, and shows the rows
+# that come back – the window stays open (until 1.1.1 every "Volume up" closed the menu and opened a new one: a flicker
+# and a short wait each time). Row = "text\0info\x1faction<TAB>data"; no rows = Rofi closes.
+vrow() { printf '%s\000info\037%s\n' "$1" "$2"; }
+vhead() { printf '\000prompt\037Sound\n\000markup-rows\037true\n\000no-custom\037true\n\000message\037%s\n' "$1"; }
+main_rows() {
     vol=$(volume); sos_is_num "$vol" || vol=0
     out_list=$(outputs)
     current=$(printf '%s\n' "$out_list" | awk -F'\t' '$4 == 1 { print $3; exit }')
     state="$vol%"; muted && state="Muted"
-    sos_add "$(sos_fa "$I_UP")  Volume up  $(sos_dim "$state")" "up"
-    sos_add "$(sos_fa "$I_DOWN")  Volume down" "down"
-    sos_add "$(sos_fa "$I_SLIDERS")  Set volume…" "level"
-    if muted; then sos_add "$(sos_fa "$I_UP")  Unmute" "mute"; else sos_add "$(sos_fa "$I_OFF")  Mute" "mute"; fi
-    n=$(printf '%s\n' "$out_list" | grep -c .)
-    if [ "$n" -gt 0 ]; then
+    vhead "<b>Sound</b>   $(sos_dim "${current:-No output} · $state")"
+    vrow "$(sos_fa "$I_UP")  Volume up  $(sos_dim "$state")" "up"
+    vrow "$(sos_fa "$I_DOWN")  Volume down" "down"
+    vrow "$(sos_fa "$I_SLIDERS")  Set volume…" "level"
+    if muted; then vrow "$(sos_fa "$I_UP")  Unmute" "mute"; else vrow "$(sos_fa "$I_OFF")  Mute" "mute"; fi
+    if [ -n "$out_list" ]; then
         while IFS="$TAB" read -r sink port label active; do
             [ -n "$sink" ] || continue
             if [ "$active" = 1 ]; then
-                sos_add "$(sos_fa "$I_CHECK")  $(sos_esc "$label")  $(sos_dim "Active")" "noop"
+                vrow "$(sos_fa "$I_CHECK")  $(sos_esc "$label")  $(sos_dim "Active")" "noop"
             else
-                sos_add "$(sos_fa "$I_PHONES")  $(sos_esc "$label")" "output$TAB$sink$TAB$port"
+                vrow "$(sos_fa "$I_PHONES")  $(sos_esc "$label")" "output$TAB$sink$TAB$port"
             fi
         done <<EOF
 $out_list
 EOF
     else
-        sos_add "$(sos_fa "$I_OFF")  No sound output found" "noop"
+        vrow "$(sos_fa "$I_OFF")  No sound output found" "noop"
     fi
-    sos_add "$(sos_fa "$I_COG")  Advanced Audio Settings" "advanced"
-    sos_pick "<b>Sound</b>   $(sos_dim "${current:-No output} · $state")" 420
+    vrow "$(sos_fa "$I_COG")  Advanced Audio Settings" "advanced"
+}
+level_rows() {
+    state="$(volume)%"; muted && state="Muted"
+    vhead "<b>Set volume</b>   $(sos_dim "now $state")"
+    for l in 100 80 60 50 40 30 20 10 0; do vrow "$l%" "set$TAB$l"; done
+    vrow "$(sos_fa "$I_BACK")  Back" "back"
+}
 
+if [ "${1:-}" = --rofi ]; then
+    info=
+    [ "${ROFI_RETV:-0}" = 1 ] && info=${ROFI_INFO:-}
+    action=$(printf '%s' "$info" | cut -f1) arg1=$(printf '%s' "$info" | cut -f2) arg2=$(printf '%s' "$info" | cut -f3)
     case "$action" in
         up)       step_volume 10 ;;
         down)     step_volume -10 ;;
         mute)     pactl set-sink-mute @DEFAULT_SINK@ toggle >&2 2>&1 || sos_notify "Mute could not be changed." critical ;;
-        level)
-            for l in 100 80 60 50 40 30 20 10 0; do sos_add "$l%" "set$TAB$l"; done
-            sos_pick "<b>Set volume</b>   $(sos_dim "now $state")" 300
-            [ "$action" = set ] && sos_is_num "$arg1" && set_volume "$arg1%" ;;
+        level)    level_rows; exit 0 ;;
+        set)      sos_is_num "$arg1" && set_volume "$arg1%" ;;
         output)
-            label=$(printf '%s\n' "$out_list" | awk -F'\t' -v s="$arg1" -v p="$arg2" '$1 == s && $2 == p { print $3; exit }')
+            label=$(outputs | awk -F'\t' -v s="$arg1" -v p="$arg2" '$1 == s && $2 == p { print $3; exit }')
             switch_output "$arg1" "$arg2" "${label:-the selected output}" ;;
-        advanced) advanced ;;
-        noop)     ;;
-        *)        break ;;
+        advanced) advanced ;;    # pavucontrol in the background, no rows -> Rofi closes
     esac
-done
+    main_rows
+    exit 0
+fi
+
+# The flyout itself: one Rofi window in script mode (see above), retries/errors via sos_rofi
+SELF=${SIMPLEOS_VOLUME_SELF:-/usr/local/bin/simpleos-volume}
+sos_rofi -show sound -modi "sound:$SELF --rofi" -i \
+    -theme-str "window { width: 420px; $(sos_position) } mainbox { children: [ message, listview ]; }
+                listview { lines: 12; } element-icon { enabled: false; } textbox { text-color: @fg; }" </dev/null >/dev/null
 exit 0

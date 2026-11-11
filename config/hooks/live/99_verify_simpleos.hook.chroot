@@ -1402,34 +1402,52 @@ for f in $VOL /usr/local/bin/simpleos-display /usr/local/bin/simpleos-screenshot
     check "$f: syntax error (bash)" "bash -n $f"
     check "$f: set -e/-u (aborts silently)" "! grep -qE '^[[:space:]]*set -[a-z]*[eu]' $f"
 done
-hcase "$VOL" "menu" "" "" "-" \
-    '[ "$(row 0 1)" = "Volume up  50%" ] && [ "$(row 0 2)" = "Volume down" ] && [ "$(row 0 3)" = "Set volume…" ] &&
-     [ "$(row 0 4)" = "Mute" ] && [ "$(row 0 5)" = "Built-in Audio  Active" ] && [ "$(row 0 6)" = "HDMI Audio" ] &&
-     [ "$(row 0 7)" = "Advanced Audio Settings" ] && [ $(grep -c . $S/rofi.0) -eq 7 ] &&
-     grep -q "<b>Sound</b>.*Built-in Audio · 50%" $S/rofi.args && ! grep -q "set-" $S/pactl'
-hcase "$VOL" "louder: the menu stays open" "" "" "0 -" \
-    'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 60%" $S/pactl && [ -s $S/rofi.1 ]'
-hcase "$VOL" "louder at 95 %: at most 100 %" "" "VOL=95" "0 -" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 100%" $S/pactl'
-hcase "$VOL" "louder at 150 % (pavucontrol): not quieter" "" "VOL=150" "0 -" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 150%" $S/pactl'
-hcase "$VOL" "quieter" "" "" "1 -" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 40%" $S/pactl'
-hcase "$VOL" "quieter at 5 %: not below 0 %" "" "VOL=5" "1 -" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 0%" $S/pactl'
-hcase "$VOL" "volume 50 %" "" "" "2 3 -" \
-    '[ "$(row 1 1)" = "100%" ] && grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 50%" $S/pactl'
-hcase "$VOL" "mute" "" "" "3 -" 'grep -qx "pactl set-sink-mute @DEFAULT_SINK@ toggle" $S/pactl'
-hcase "$VOL" "muted -> Unmute + Muted" "" "MUTED=1" "-" '[ "$(row 0 4)" = "Unmute" ] && [ "$(row 0 1)" = "Volume up  Muted" ]'
-hcase "$VOL" "switch to HDMI (playback moves along)" "" "" "5 -" \
+# 1.1.2: the flyout is ONE Rofi window in script mode – "simpleos-volume --rofi" answers every selection with new rows,
+# the window stays open (before, every "Volume up" closed the menu and opened a new one)
+hcase "$VOL" "opens Rofi in script mode" "" "" "-" \
+    'grep -q -- "-show sound -modi sound:/usr/local/bin/simpleos-volume --rofi" $S/rofi.args && [ $(grep -c -- "-show sound" $S/rofi.args) -eq 1 ]'
+# vcase TEXT ENV INFO TEST – one call of the script mode (INFO empty = start); rows in $S/rows: "text|info", markup removed
+vcase() {
+    rm -rf "${wt:?}/run" "${S:?}"; mkdir -p "$wt/run" "$S"
+    for m in "$wt/mock/"*; do ln -s "$m" "$wt/run/"; done
+    retv=1; [ -n "$3" ] || retv=0
+    # shellcheck disable=SC2086
+    $ENV -i HOME="$wt/home" WT="$S" PATH="$wt/run:$wt/sys" $2 ROFI_RETV=$retv ROFI_INFO="$3" "$wt/sys/sh" $VOL --rofi >"$S/out" 2>&1
+    tr '\000\037' '|~' < "$S/out" | sed -e "s/<span font_desc='FontAwesome[^']*'>[^<]*<\\/span>//g" -e 's/<[^>]*>//g' -e 's/^ *//' -e 's/|info~/|/' > "$S/rows"
+    check "simpleos-volume --rofi [$1]" "$4"
+}
+vr() { grep -v '^|' "$S/rows" | sed -n "${1}p"; }   # row N (from 1) as "text|info"
+T=$(printf '\t')
+vcase "start: rows" "" "" \
+    '[ "$(vr 1)" = "Volume up  50%|up" ] && [ "$(vr 2)" = "Volume down|down" ] && [ "$(vr 3)" = "Set volume…|level" ] &&
+     [ "$(vr 4)" = "Mute|mute" ] && [ "$(vr 5)" = "Built-in Audio  Active|noop" ] &&
+     [ "$(vr 6)" = "HDMI Audio|output'"$T"'alsa_output.pci.hdmi-stereo'"$T"'hdmi-output-0" ] &&
+     [ "$(vr 7)" = "Advanced Audio Settings|advanced" ] && [ $(grep -vc "^|" $S/rows) -eq 7 ] &&
+     grep -q "^|message~Sound   Built-in Audio · 50%" $S/rows && grep -q "^|markup-rows~true" $S/rows && ! grep -q "set-" $S/pactl'
+vcase "louder: rows come back (the window stays open)" "" "up" \
+    'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 60%" $S/pactl && [ "$(vr 2)" = "Volume down|down" ]'
+vcase "louder at 95 %: at most 100 %" "VOL=95" "up" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 100%" $S/pactl'
+vcase "louder at 150 % (pavucontrol): not quieter" "VOL=150" "up" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 150%" $S/pactl'
+vcase "quieter" "" "down" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 40%" $S/pactl && [ -n "$(vr 1)" ]'
+vcase "quieter at 5 %: not below 0 %" "VOL=5" "down" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 0%" $S/pactl'
+vcase "Set volume…: levels and Back" "" "level" \
+    '[ "$(vr 1)" = "100%|set'"$T"'100" ] && [ "$(vr 10)" = "Back|back" ] && grep -q "^|message~Set volume   now 50%" $S/rows'
+vcase "volume 50 %" "" "set${T}50" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 50%" $S/pactl && [ "$(vr 3)" = "Set volume…|level" ]'
+vcase "Back: the main rows again" "" "back" '[ "$(vr 1)" = "Volume up  50%|up" ] && ! grep -q "set-" $S/pactl'
+vcase "mute" "" "mute" 'grep -qx "pactl set-sink-mute @DEFAULT_SINK@ toggle" $S/pactl'
+vcase "muted -> Unmute + Muted" "MUTED=1" "" '[ "$(vr 4)" = "Unmute|mute" ] && [ "$(vr 1)" = "Volume up  Muted|up" ]'
+vcase "switch to HDMI (playback moves along)" "" "output${T}alsa_output.pci.hdmi-stereo${T}hdmi-output-0" \
     'grep -qx "pactl set-default-sink alsa_output.pci.hdmi-stereo" $S/pactl &&
      grep -qx "pactl move-sink-input 12 alsa_output.pci.hdmi-stereo" $S/pactl &&
      grep -qx "pactl move-sink-input 13 alsa_output.pci.hdmi-stereo" $S/pactl &&
-     grep -q "Sound now plays on HDMI Audio" $S/notify && [ "$(row 1 6)" = "HDMI Audio  Active" ]'
-hcase "$VOL" "headphones plugged in: speakers/headphones selectable" "" "PHONES=1" "5 -" \
-    '[ "$(row 0 5)" = "Built-in Audio – Speakers  Active" ] && [ "$(row 0 6)" = "Built-in Audio – Headphones" ] &&
-     [ "$(row 0 7)" = "HDMI Audio" ] &&
+     grep -q "Sound now plays on HDMI Audio" $S/notify && [ "$(vr 6)" = "HDMI Audio  Active|noop" ]'
+vcase "headphones plugged in: speakers/headphones selectable" "PHONES=1" "output${T}alsa_output.pci.analog-stereo${T}analog-output-headphones" \
+    'grep -q "^Built-in Audio – Speakers  Active|" $S/rows && grep -q "^Built-in Audio – Headphones|" $S/rows && grep -q "^HDMI Audio|" $S/rows &&
      grep -qx "pactl set-sink-port alsa_output.pci.analog-stereo analog-output-headphones" $S/pactl'
-hcase "$VOL" "headphones not plugged in: not in the list" "" "" "-" '! grep -q "Headphones" $S/rofi.0'
-hcase "$VOL" "Advanced Audio Settings -> pavucontrol" "" "" "6" 'waitfor $S/pavucontrol'
+vcase "headphones not plugged in: not in the list" "" "" '! grep -q "Headphones" $S/rows'
+vcase "Advanced Audio Settings -> pavucontrol, no rows (Rofi closes)" "" "advanced" 'waitfor $S/pavucontrol && [ ! -s $S/rows ]'
 hcase "$VOL" "rofi missing -> pavucontrol" "rofi" "" "" 'waitfor $S/pavucontrol && grep -q "could not open" $S/notify'
-hcase "$VOL" "rofi grab error -> new attempt" "" "ROFI=grab" "-" '[ -s $S/rofi.0 ] && [ ! -s $S/notify ]'
+hcase "$VOL" "rofi grab error -> new attempt" "" "ROFI=grab" "-" 'grep -q -- "-show sound" $S/rofi.args && [ ! -s $S/notify ]'
 hcase "$VOL" "pactl missing -> notification" "pactl" "" "" 'grep -q "pactl missing" $S/notify'
 
 # ---- Display (simpleos-display, Super+P, Settings → Display): resolution, refresh rate,
