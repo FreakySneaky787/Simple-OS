@@ -3,6 +3,11 @@
 set -e
 export DEBIAN_FRONTEND=noninteractive
 
+# Leftovers of the live session FIRST: autologin of the live user, its NOPASSWD sudo and its polkit rule (hook 16).
+# Further down "set -e" ends the script at the first error – these rights must never stay in the installed system (an
+# account called "simple" would have root without a password and sign in by itself; #136)
+rm -f /etc/lightdm/lightdm.conf.d/01_autologin.conf /etc/sudoers.d/simple-nopasswd /etc/polkit-1/rules.d/49-simpleos-live.rules
+
 # Remove the installer
 apt-get purge -y calamares calamares-settings-debian
 # Calamares pulled in ~100 packages only it needs (Qt5, KDE Frameworks, kio, WebKit …, ~175 MB) – they would stay
@@ -28,9 +33,6 @@ done
 # at the next login (no live medium any more)
 rm -f /usr/share/applications/simpleos-install.desktop /etc/skel/Desktop/simpleos-install.desktop \
       /home/*/Desktop/simpleos-install.desktop /home/*/Desktop/install-debian.desktop
-
-# Leftovers of the live session: autologin of the live user, its NOPASSWD sudo and its polkit rule (hook 16)
-rm -f /etc/lightdm/lightdm.conf.d/01_autologin.conf /etc/sudoers.d/simple-nopasswd /etc/polkit-1/rules.d/49-simpleos-live.rules
 
 # Update channel of Simple OS (package "simpleos"): hook 98 switches it off in the image if GitHub was not
 # reachable during the build – the installed system needs it to get new Simple OS editions

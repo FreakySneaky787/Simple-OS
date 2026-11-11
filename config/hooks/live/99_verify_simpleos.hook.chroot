@@ -5069,6 +5069,12 @@ check "live: polkit asks the live user for a password (rule missing)" \
       "grep -q 'subject.user == \"simple\" && subject.local && subject.active' $LR && grep -q 'polkit.Result.YES' $LR && [ \"\$(stat -c %a $LR)\" = 644 ]"
 check "simpleos-post-install leaves the live polkit rule on the installed system" \
       "grep -q 'rm -f .*$LR' /usr/local/sbin/simpleos-post-install"
+# #136: before anything that can fail (set -e) – otherwise sudo without a password and autologin for "simple" stayed
+check "simpleos-post-install removes the live user's rights only after commands that can fail" \
+      "awk '/^rm -f .*simple-nopasswd/ { r = NR; exit } END { exit !r }' /usr/local/sbin/simpleos-post-install &&
+       [ \$(grep -n 'simple-nopasswd.*49-simpleos-live.rules' /usr/local/sbin/simpleos-post-install | grep -v ':#' | head -n 1 | cut -d: -f1) -lt \
+         \$(grep -n '^[a-z/]' /usr/local/sbin/simpleos-post-install | grep -v -e ':set ' -e ':export ' -e ':rm -f /etc/lightdm' | head -n 1 | cut -d: -f1) ] &&
+       grep -q '^rm -f .*01_autologin.conf .*simple-nopasswd' /usr/local/sbin/simpleos-post-install"
 check "polkit: rules.d permissions changed (polkitd 0700)" "[ \"\$(stat -c %a /etc/polkit-1/rules.d)\" = 700 ]"
 
 # Installer links (Calamares runs as root): open in the live user's browser, not as root (hook 15)
