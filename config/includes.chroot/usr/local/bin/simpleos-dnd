@@ -10,18 +10,50 @@
 # On:  a short notification "Do Not Disturb is on" (before the pause, so it still appears), then pause notifications
 #      (dunstctl set-paused true); with "--no-effects on" also the compositor picom off (only if it was running).
 # Off: notifications back on (collected ones appear then), picom back on (only if DND had stopped it).
-# State per session in $XDG_RUNTIME_DIR/simpleos-dnd (after a restart DND is off).
+# DND stays on until it is turned off – also after signing out and after a restart (1.1.2, #135): the state is in
+# ~/.config/simpleos/dnd-on, and the taskbar indicator (--panel, started with the taskbar at every sign-in) pauses the
+# new dunst again and stops the window effects again. Before, the state was in $XDG_RUNTIME_DIR, which outlives signing
+# out: the bell said "on" while the new dunst showed every notification. An old state file there is taken over.
 # No set -e, exit 0; details in ~/.cache/simpleos-dnd.log.
 
-STATE=${XDG_RUNTIME_DIR:-${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}}/simpleos-dnd
+RUN=${XDG_RUNTIME_DIR:-${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}}
+STATE=${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/simpleos/dnd-on
 SETTINGS=${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/simpleos/dnd
+PANEL=$RUN/simpleos-dnd.panel
+# State of Simple OS up to 1.1.1 (per session): take it over once
+if [ -f "$RUN/simpleos-dnd" ]; then
+    if [ ! -e "$STATE" ] && mkdir -p "${STATE%/*}" 2>/dev/null; then
+        mv -f "$RUN/simpleos-dnd" "$STATE" 2>/dev/null
+    else
+        rm -f "$RUN/simpleos-dnd"
+    fi
+fi
 
 # Taskbar: before everything else (no log, no library) – runs permanently as long as tint2 lives.
 # No polling every second: the process sleeps and is woken at once by simpleos-dnd (SIGUSR1 after every change); the
 # long nap only lets it notice that tint2 has ended. FontAwesome 4 bell-slash U+F1F6
+# At its start (every sign-in, every taskbar reload): DND on -> pause dunst again (dunst of a new session starts
+# unpaused; a few tries while it starts) and, with "--no-effects on", stop picom again. Both do nothing if already so.
 if [ "${1:-}" = --panel ]; then
-    pidf=$STATE.panel
+    pidf=$PANEL
     echo $$ > "$pidf" 2>/dev/null
+    if [ -f "$STATE" ]; then
+        (
+            if command -v dunstctl >/dev/null; then
+                i=0
+                while [ "$i" -lt 10 ]; do
+                    dunstctl set-paused true >/dev/null 2>&1 && [ "$(dunstctl is-paused 2>/dev/null)" = true ] && break
+                    i=$((i + 1))
+                    sleep 1
+                done
+            fi
+            if grep -qx 'effects=off' "$SETTINGS" 2>/dev/null && command -v simpleos-picom >/dev/null &&
+               simpleos-picom --running; then
+                # only if DND is still on (it may have been turned off in these seconds)
+                simpleos-picom --stop && [ -f "$STATE" ] && printf 'picom=1\n' > "$STATE"
+            fi
+        ) >/dev/null 2>&1 &
+    fi
     trap : USR1
     last=x
     while kill -0 "$PPID" 2>/dev/null; do
@@ -50,7 +82,7 @@ sos_log_init "$@"
 
 active() { [ -f "$STATE" ]; }
 # Wake the taskbar indicator (--panel) so it shows the new state at once
-poke_panel() { [ -r "$STATE.panel" ] && kill -USR1 "$(cat "$STATE.panel")" 2>/dev/null; return 0; }
+poke_panel() { [ -r "$PANEL" ] && kill -USR1 "$(cat "$PANEL")" 2>/dev/null; return 0; }
 effects_off() { grep -qx 'effects=off' "$SETTINGS" 2>/dev/null; }
 dunst_pause() { command -v dunstctl >/dev/null && dunstctl set-paused "$1" >&2 2>&1; }
 
@@ -61,6 +93,7 @@ on() {
     if effects_off && command -v simpleos-picom >/dev/null && simpleos-picom --running; then
         simpleos-picom --stop && picom=1
     fi
+    mkdir -p "${STATE%/*}" 2>/dev/null
     printf 'picom=%s\n' "$picom" > "$STATE"
     poke_panel
     sleep 0.5   # let the notification show, then pause

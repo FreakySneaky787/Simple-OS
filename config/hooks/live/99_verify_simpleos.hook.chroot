@@ -3454,7 +3454,8 @@ printf '#!/bin/sh\necho "simpleos-picom $*" >> "$WT/picom"\n[ "$1" = --running ]
 printf '#!/bin/sh\necho "dunstctl $* notified=$(grep -c "is on" "$WT/notify" 2>/dev/null)" >> "$WT/dunst"\n' > "$wt/mock/dunstctl"
 chmod 0755 "$wt/mock/simpleos-picom" "$wt/mock/dunstctl"
 DND=/usr/local/bin/simpleos-dnd
-DS=$wt/home/.cache/simpleos-dnd
+DS=$wt/home/.config/simpleos/dnd-on    # 1.1.2 (#135): kept over signing out and restarts
+DSP=$wt/home/.cache/simpleos-dnd.panel  # pid of the taskbar indicator (XDG_RUNTIME_DIR, here its fallback)
 DSET=$wt/home/.config/simpleos/dnd
 rm -f "$DS" "$DSET"
 hcase "$DND --on" "on: message, then notifications paused, effects stay (default)" "" "" "" \
@@ -3480,10 +3481,42 @@ rm -f "$DS" "$DSET"
 # Taskbar indicator: one line per change (icon when on, empty when off), ends with the parent process (tint2)
 check "DND taskbar: icon/change/end wrong (woken by SIGUSR1, no polling)" \
       "rm -f $DS; ( HOME=$wt/home XDG_RUNTIME_DIR= timeout 6 $DND --panel > $wt/dndpanel ) & p=\$!;
-       /bin/sleep 1.3; touch $DS; kill -USR1 \$(cat $DS.panel); /bin/sleep 1.5; rm -f $DS; kill -USR1 \$(cat $DS.panel); /bin/sleep 1.5; kill \$p 2>/dev/null; wait \$p 2>/dev/null;
+       /bin/sleep 1.3; touch $DS; kill -USR1 \$(cat $DSP); /bin/sleep 1.5; rm -f $DS; kill -USR1 \$(cat $DSP); /bin/sleep 1.5; kill \$p 2>/dev/null; wait \$p 2>/dev/null;
        [ \"\$(sed -n 1p $wt/dndpanel)\" = '' ] && sed -n 2p $wt/dndpanel | grep -q \"font_desc='FontAwesome 11'\" &&
        [ \"\$(sed -n 3p $wt/dndpanel)\" = '' ] && [ \$(wc -l < $wt/dndpanel) -eq 3 ]"
 rm -f "$wt/dndpanel" "$DS"
+# #135: the state of Simple OS up to 1.1.1 (per session in XDG_RUNTIME_DIR) is taken over
+mkdir -p "$wt/dndrun"; echo picom=0 > "$wt/dndrun/simpleos-dnd"
+check "DND: state of 1.1.1 (XDG_RUNTIME_DIR) not taken over" \
+      "[ \"\$(HOME=$wt/home XDG_RUNTIME_DIR=$wt/dndrun $DND --status 2>/dev/null)\" = on ] && [ ! -e $wt/dndrun/simpleos-dnd ] &&
+       grep -qx picom=0 $DS"
+# #135: a new session (sign-in, restart) with DND on: the indicator pauses the new dunst again and, with
+# "--no-effects on", stops picom again (dunst answers only after its start: a few tries)
+mkdir -p "$wt/dndmock"
+cat > "$wt/dndmock/dunstctl" <<'MOCK'
+#!/bin/sh
+echo "dunstctl $*" >> "$WT/dunst"
+case "$1" in
+    set-paused) [ -e "$WT/dunst-up" ] || { touch "$WT/dunst-up"; exit 1; } ;;   # first try: dunst not there yet
+    is-paused) grep -qx "dunstctl set-paused true" "$WT/dunst" && [ -e "$WT/dunst-up" ] && echo true || echo false ;;
+esac
+exit 0
+MOCK
+printf '#!/bin/sh\necho "simpleos-picom $*" >> "$WT/picom"\n[ "$1" = --running ] && exit ${PICOM_DOWN:-0}\nexit 0\n' > "$wt/dndmock/simpleos-picom"
+chmod 0755 "$wt/dndmock/"*
+echo effects=off > "$DSET"
+rm -rf "$wt/dndS"; mkdir -p "$wt/dndS"
+check "DND taskbar: after signing in with DND on, dunst is not paused again / picom not stopped again (#135)" \
+      "( HOME=$wt/home XDG_RUNTIME_DIR= WT=$wt/dndS PATH=$wt/dndmock:\$PATH timeout 5 $DND --panel > $wt/dndpanel ) & p=\$!;
+       /bin/sleep 3.5; kill \$p 2>/dev/null; wait \$p 2>/dev/null;
+       [ \$(grep -c 'set-paused true' $wt/dndS/dunst) -eq 2 ] && grep -qx 'dunstctl is-paused' $wt/dndS/dunst &&
+       grep -qx 'simpleos-picom --stop' $wt/dndS/picom && grep -qx picom=1 $DS &&
+       sed -n 1p $wt/dndpanel | grep -q \"font_desc='FontAwesome 11'\""
+rm -f "$DS" "$DSET" "$wt/dndpanel"; rm -rf "$wt/dndS"
+check "DND taskbar: with DND off the indicator touches neither dunst nor picom" \
+      "mkdir -p $wt/dndS; ( HOME=$wt/home XDG_RUNTIME_DIR= WT=$wt/dndS PATH=$wt/dndmock:\$PATH timeout 2 $DND --panel >/dev/null ) ;
+       [ ! -e $wt/dndS/dunst ] && [ ! -e $wt/dndS/picom ]"
+rm -rf "$wt/dndS" "$wt/dndmock" "$wt/dndrun"
 # Parent process (otherwise tint2) ends after 1 s -> the indicator ends by itself (no orphaned long-running process)
 sh -c "HOME=$wt/home SIMPLEOS_DND_NAP=1 $DND --panel >/dev/null 2>&1 & echo \$! > $wt/dndpid; /bin/sleep 1"
 /bin/sleep 2.5
