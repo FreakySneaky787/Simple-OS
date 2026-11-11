@@ -142,24 +142,31 @@ Before publishing (Sunday 2026-11-08), with the new ISO (#114: every release has
 
 ## 7. What changed in 1.1.2
 
-Before publishing (Sunday 2026-11-15), with the new ISO:
+Before publishing (Sunday 2026-11-15), with the new ISO (built 2026-11-11 from fe2ed48, sha256 e397b5f9…, verify hook clean):
 
-- [ ] **Menus (#137)** – start menu, search and the Wi-Fi/Sound/Power flyouts: the row under the mouse is highlighted
+- [x] **Menus (#137)** – start menu, search and the Wi-Fi/Sound/Power flyouts: the row under the mouse is highlighted
       in the accent color like the arrow-key row; typing selects the best match ("Sound" first in the start menu);
       "display settings" in the search opens Control Center → Display; the sound menu stays open for Volume up/down,
       Mute, Set volume… (Back) and an output switch; "Advanced Audio Settings" closes it. Another accent color and
       light mode: the highlight follows. VM 2026-11-11 (1.1.1 + new files): all OK.
 - [ ] **Speed on the ThinkPad E16** – start menu → Sound/Wi-Fi flyout and a taskbar click open without a noticeable
       wait (with a real touchpad click; VM: ~0.1 s, start menu → flyout 60–80 ms).
-- [ ] **Screen lock after a video (#134)** – VM without a battery: video (or `gdbus call … Inhibit`), screen off after
+- [x] **Screen lock after a video (#134)** – VM without a battery: video (or `gdbus call … Inhibit`), screen off after
       1 minute → locks once, stays locked without a second lock, unlock OK; `pgrep -a xss-lock` the same process as
       before the video. VM 2026-11-11 with the fix: OK.
-- [ ] **Do Not Disturb (#135)** – on, sign out/in and restart: still on, notifications held; off: they appear.
+- [x] **Do Not Disturb (#135)** – on, sign out/in and restart: still on, notifications held; off: they appear.
       VM 2026-11-11: OK.
-- [ ] **Sign out 3× (#130)** – `pgrep -fc 'panel'` stays at the numbers of one session, `pgrep -c pactl` does not grow.
+- [x] **Sign out 3× (#130)** – `pgrep -fc 'panel'` stays at the numbers of one session, `pgrep -c pactl` does not grow.
+      VM 2026-11-11 (ISO build, after the update): 3 sessions – 7 panel processes and 1 pactl each time.
 - [ ] **Software Updates (#129, #131)** – with a restore point first and a Flatpak app update: no old description
       under the new heading, "Update n of m" without "Installing updates" twice, no table header or "Info:" lines.
-- [ ] **Update 1.1.1 → 1.1.2** (VM installed from the 1.1.1 ISO, Software Updates): menus highlighted in the account's
+- [x] **Update 1.1.1 → 1.1.2** (VM installed from the 1.1.1 ISO, Software Updates): menus highlighted in the account's
       own accent (migration 140), What's new 1.1.2, `VERSION_ID` 1.1.2, 0 failed units.
+      VM 2026-11-11 (local repo of the ISO build): offered "Simple OS 1.1.2" + 3 Debian updates, helper exit 0, What's
+      new 1.1.2 after signing in, migration 140 done, `dpkg --audit` clean, 0 failed units. (This update itself still
+      runs with 1.1.1's progress window – #129/#131 show from the next update on.)
 - [ ] **Fresh install from the 1.1.2 ISO** (BIOS + UEFI) – sections 0–3; afterwards `/etc/sudoers.d/simple-nopasswd`,
       `/etc/polkit-1/rules.d/49-simpleos-live.rules` and `/etc/lightdm/lightdm.conf.d/01_autologin.conf` are gone (#136).
+      UEFI VM 2026-11-11, account named **simple**: no autologin (login screen), `sudo -n` and polkit ask for the
+      password, only `10-installer` in sudoers.d, only the update-refresh polkit rule, 0 failed units, Setup Wizard
+      starts. **Still open: BIOS.**
