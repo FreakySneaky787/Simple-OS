@@ -231,7 +231,7 @@ snapshot() {
 # -> new attempt; no Rofi, Esc or time is up -> revert.
 confirm() {
     try=0
-    while [ "$try" -lt 3 ]; do
+    while [ "$try" -lt 20 ]; do
         try=$((try + 1))
         err=$(mktemp 2>/dev/null) || err=/dev/null
         answer=$(printf 'Keep changes\nRevert\n' | timeout "$TIMEOUT" rofi -dmenu -i -no-custom -format i -p "$SOS_TITLE" \
@@ -241,7 +241,7 @@ confirm() {
         rc=$?
         grab=0; [ "$err" != /dev/null ] && grep -qi grab "$err" && grab=1
         [ "$err" != /dev/null ] && { cat "$err" >&2; rm -f "$err"; }
-        [ "$rc" -ne 0 ] && [ "$grab" = 1 ] && { sleep 0.3; continue; }
+        [ "$rc" -ne 0 ] && [ "$grab" = 1 ] && { sleep 0.05; continue; }
         break
     done
     [ "$answer" = 0 ]          # row 0 = "Keep changes"

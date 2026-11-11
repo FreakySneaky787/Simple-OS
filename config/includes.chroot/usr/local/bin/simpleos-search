@@ -448,13 +448,14 @@ def open_window():
              "element-icon { size: 24px; } entry { placeholder: \"Search apps, files, or calculate\"; }")
     cmd = ["rofi", "-show", "search", "-modi", f"search:{os.path.abspath(sys.argv[0])}", "-show-icons",
            "-i", "-matching", "normal", "-sort", "-sorting-method", "fzf", "-theme-str", theme]
-    for _ in range(6):
+    for _ in range(40):
         proc = subprocess.run(cmd, stderr=subprocess.PIPE, text=True)
         err = proc.stderr.lower()
         if proc.returncode == 0 or not ("grab" in err or "already running" in err or "pidfile" in err):
             break
-        # right after a key press/click X still holds keyboard/mouse, or another Rofi is just closing
-        time.sleep(0.3)
+        # right after a key press/click X still holds keyboard/mouse, or another Rofi is just closing: look again soon
+        # (every 0.05 s, at most about 2 s; a fixed 0.3 s before 1.1.2)
+        time.sleep(0.05)
     else:
         notify("Search could not open. Please try again.", "critical")
     return 0

@@ -73,8 +73,8 @@ sos_rofi_failed() {
     sos_notify "This window could not open. Please try again." critical
     exit 0
 }
-# Rofi with retries: Esc -> empty output, any other error -> sos_rofi_failed. A new attempt (every 0.3 s,
-# up to 6 times) on
+# Rofi with retries: Esc -> empty output, any other error -> sos_rofi_failed. A new attempt (every 0.05 s, for at most
+# about 2 s; until 1.1.1 a fixed 0.3 s – every flyout opened from the start menu waited that long at least once) on
 #   - grab errors: right after a taskbar click the mouse click still holds keyboard/mouse
 #   - "Rofi already running" (lock file): flyouts started by a click in the start menu (Wi-Fi, Sound, Appearance …)
 #     arrive while the start menu Rofi is still closing – Rofi allows only one instance
@@ -84,14 +84,14 @@ sos_rofi() {
     rerr=$(mktemp) || { rm -f "$rin"; sos_rofi_failed; }
     cat > "$rin"
     rc=1 out= try=0
-    while [ "$try" -lt 6 ]; do
+    while [ "$try" -lt 40 ]; do
         try=$((try + 1))
         out=$(rofi "$@" < "$rin" 2>"$rerr"); rc=$?
         [ "$rc" -eq 0 ] && break
         [ -s "$rerr" ] || break                          # Esc: code 1 without a message
         cat "$rerr" >&2
         grep -qiE 'grab|already running|pidfile' "$rerr" || break   # only these are worth another attempt
-        sleep 0.3
+        sleep 0.05
     done
     failed=0
     [ "$rc" -ne 0 ] && grep -qiE 'grab|display|fail|error|cannot|unable' "$rerr" && failed=1
