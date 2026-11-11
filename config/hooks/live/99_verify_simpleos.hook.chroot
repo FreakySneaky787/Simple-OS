@@ -2368,6 +2368,25 @@ check "simpleos-theme: the Openbox theme copy lacks the button images of its sca
        printf 'mode=dark\naccent=mauve\n' > $HS/th/.config/simpleos/theme && thx 100 --openbox-theme &&
        [ \"\$(xw $OBC/close.xbm)\" = 10 ] && [ \"\$(xw $OBC/max.xbm)\" = 10 ]"
 rm -f "$HS/th/.config/simpleos/theme"; thx 100 --openbox-theme
+# 1.1.2: user migration 140 – the hover highlight and the softened accent selection for accounts whose config.rasi was
+# not merged (theme colors in the same places): built from the current skel file the way 1.1.1 shipped it, peach accent
+M140=/usr/share/simpleos/edition/migrations/user/140-menu-highlight
+mkdir -p "$wt/m140/.config/rofi"
+sed -e '/hover-select: true;/d' -e '/^    sort: true;/d' -e '/sorting-method: "fzf";/d' -e '/^ *sel: *#/d' \
+    -e 's/background-color: @sel;/background-color: @bg-alt;/' -e 's/border:           0px 0px 0px 4px;/border:           0px 0px 0px 3px;/' \
+    -e 's/^\( *accent: *\)#89b4fa;/\1#fab387;/' /etc/skel/.config/rofi/config.rasi > "$wt/m140/.config/rofi/config.rasi"
+check "user migration 140: old config.rasi does not get hover/sort/softened accent selection (dark, peach)" \
+      "[ -x $M140 ] && HOME=$wt/m140 $M140 && R=$wt/m140/.config/rofi/config.rasi &&
+       awk '/^configuration \\{/,/^\\}/' \$R | grep -qx '    hover-select: true;' &&
+       awk '/^configuration \\{/,/^\\}/' \$R | grep -qx '    sorting-method: \"fzf\";' &&
+       [ \$(grep -cE '^ *sel: *#fab38759;' \$R) -eq 1 ] && awk '/^element selected.normal/,/^\\}/' \$R | grep -qE '^ *background-color: *@sel;' &&
+       awk '/^element selected.normal/,/^\\}/' \$R | grep -q '0px 0px 0px 4px'"
+cp /etc/skel/.config/rofi/config.rasi "$wt/m140/.config/rofi/config.rasi"
+sed -i -e 's/^\( *accent: *\)#89b4fa;/\1#fe640b;/' -e 's/^\( *bg: *\)#1e1e2e;/\1#eff1f5;/' "$wt/m140/.config/rofi/config.rasi"
+check "user migration 140: merged config.rasi keeps the shipped blue selection instead of the account's accent (light)" \
+      "HOME=$wt/m140 $M140 && HOME=$wt/m140 $M140 && R=$wt/m140/.config/rofi/config.rasi &&
+       [ \$(grep -cE '^ *sel: *#fe640b40;' \$R) -eq 1 ] && [ \$(grep -c 'hover-select' \$R) -eq 1 ]"
+rm -rf "$wt/m140"
 check "user migration 130 (window buttons in the theme copy, #121) missing" \
       "[ -x /usr/share/simpleos/edition/migrations/user/130-window-buttons ] &&
        grep -q 'simpleos-theme --openbox-theme' /usr/share/simpleos/edition/migrations/user/130-window-buttons"
@@ -2802,6 +2821,15 @@ for home in /etc/skel /home/simple; do
     check "Rofi: accent marker missing in $home" "grep -A5 '^element selected.normal' '$c/rofi/config.rasi' | grep -q 'border-color: *@accent;'"
     check "Rofi: typed search text has no own color in $home (Rofi 1.7.3 draws it dark teal)" "awk '/^entry \\{/,/^\\}/' '$c/rofi/config.rasi' | grep -qE '^ *text-color: *@fg;'"
     check "Rofi: accent color for simpleos-theme missing in $home" "grep -qE '^ *accent: *#[0-9a-fA-F]{6};' '$c/rofi/config.rasi'"
+    # 1.1.2: the row under the mouse is selected (same highlight as the arrow keys), in the softened accent; best match first
+    check "Rofi: hovered row not highlighted (hover-select) in $home" \
+          "awk '/^configuration \\{/,/^\\}/' '$c/rofi/config.rasi' | grep -qx '    hover-select: true;'"
+    check "Rofi: best match not first (sort, fzf) in $home" \
+          "awk '/^configuration \\{/,/^\\}/' '$c/rofi/config.rasi' | grep -qx '    sort: true;' &&
+           awk '/^configuration \\{/,/^\\}/' '$c/rofi/config.rasi' | grep -qx '    sorting-method: \"fzf\";'"
+    check "Rofi: selected row not in the softened accent (@sel) in $home" \
+          "grep -qE '^ *sel: *#[0-9a-fA-F]{8};' '$c/rofi/config.rasi' &&
+           awk '/^element selected.normal/,/^\\}/' '$c/rofi/config.rasi' | grep -qE '^ *background-color: *@sel;'"
     # Start menu/search/flyouts: ONE click opens (in configuration { }, so it applies to all Rofi calls);
     # tapping Super (XF86Search) again closes; the desktop (pcmanfm) stays with a double click
     # "!MousePrimary" = accept on RELEASE: on press the app opened its own Rofi flyout, and releasing
@@ -4722,6 +4750,7 @@ tcase "light, running session" "DISPLAY=:0 XSD_RUNNING=1" "--mode light" \
      grep -qx "openbox --reconfigure" $S/power &&
      grep -qx "/usr/share/backgrounds/simpleos/wallpaper-day.png" $S/wallpaper &&
      grep -qE "^ *bg: *#eff1f5;" '"$RASI"' && grep -qE "^ *fg: *#4c4f69;" '"$RASI"' && grep -qE "^ *accent: *#1e66f5;" '"$RASI"' &&
+     grep -qE "^ *sel: *#1e66f540;" '"$RASI"' &&
      grep -qx "taskbar --apply DISPLAY=" $S/taskbar && grep -qx "pkill -USR1 -x tint2" $S/pkill'
 tcase "dark again" "DISPLAY=:0 XSD_RUNNING=1" "--mode dark" \
     'grep -qx "gtk-theme-name=Arc-Dark" '"$G3"' && grep -qx "gtk-application-prefer-dark-theme=0" '"$G3"' &&
@@ -4739,7 +4768,11 @@ tcase "--no-wallpaper" "DISPLAY=:0 XSD_RUNNING=1" "--mode dark --no-wallpaper" '
 theme_home
 tcase "without a screen: files only, no signals" "" "--mode light" \
     'grep -qx "gtk-theme-name=Arc" '"$G3"' && [ ! -e $S/power ] && ! grep -q "HUP\|USR1" $S/pkill 2>/dev/null && [ ! -e $S/xsd ]'
-tcase "accent pink in light mode: Latte shade in Rofi" "DISPLAY=:0 XSD_RUNNING=1" "--accent pink" 'grep -qE "^ *accent: *#ea76cb;" '"$RASI"
+tcase "accent pink in light mode: Latte shade in Rofi" "DISPLAY=:0 XSD_RUNNING=1" "--accent pink" 'grep -qE "^ *accent: *#ea76cb;" '"$RASI"' && grep -qE "^ *sel: *#ea76cb40;" '"$RASI"
+# 1.1.2: a config.rasi from before (no "sel" line) gets it after the accent
+sed -i '/^ *sel: *#/d' "$RASI"
+tcase "accent peach in dark mode, old config.rasi: sel added" "DISPLAY=:0 XSD_RUNNING=1" "--mode dark --accent peach --no-wallpaper" \
+    '[ $(grep -cE "^ *sel: *#fab38759;" '"$RASI"') -eq 1 ] && grep -A1 -E "^ *accent: *#fab387;" '"$RASI"' | grep -qE "^ *sel: *#fab38759;"'
 # The accent must not recolor the live badge "Install Simple OS" (background 8 uses #cba6f7/#f5c2e7 = mauve/pink)
 TRC=$th/.config/tint2/tint2rc
 theme_home
