@@ -3416,6 +3416,20 @@ check "Search: start page without app/system commands or with hidden apps" \
        ! grep -qE 'Hidden Tool|KDE Only|Missing Tool' $S/out && grep -q 'no-custom~false' $S/out"
 srch ROFI_RETV=0 LANG=de_DE.UTF-8
 check "Search: app name not translated (LANG=de)" "grep -q '^Rechner|' $S/out"
+# 1.1.2: every Control Center page is in the search as "… settings" and opens that page ("display settings" -> Display)
+SARG=x srch ROFI_RETV=0
+check "Search: Control Center pages missing (\"Display settings\" -> page display)" \
+      "grep -q '^Display settings|info~cc:display~icon~video-display~meta~.*resolution.*einstellungen' $S/out &&
+       [ \$(grep -c '|info~cc:' $S/out) -eq \$(python3 -c 'import importlib.machinery as m; print(len(m.SourceFileLoader(\"cc\", \"/usr/local/bin/simpleos-control-center\").load_module().PAGES))') ]"
+check "Search: a settings entry names a page the Control Center does not have" \
+      "python3 -c 'import importlib.machinery as m, sys
+cc = {k for k, _t, _i in m.SourceFileLoader(\"cc\", \"/usr/local/bin/simpleos-control-center\").load_module().PAGES}
+se = {k for k, *_ in m.SourceFileLoader(\"se\", \"/usr/local/bin/simpleos-search\").load_module().SETTINGS}
+sys.exit(0 if se == cc else 1)'"
+printf '#!/bin/sh\necho "simpleos-control-center $*" > "$WT/opened"\n' > "$wt/mock/simpleos-control-center"; chmod 0755 "$wt/mock/simpleos-control-center"
+SARG=x srch ROFI_RETV=1 ROFI_INFO=cc:display
+check "Search: \"Display settings\" does not open Control Center → Display" "/bin/sleep 0.3; grep -qx 'simpleos-control-center display' $S/opened"
+rm -f "$wt/mock/simpleos-control-center"
 SARG="42 * 12" srch ROFI_RETV=2
 check "Search: '42 * 12' + Enter does not calculate" "grep -q '^42 \\* 12 = 504|info~calc:504' $S/out && grep -q 'Enter copies the result' $S/out"
 for c in '42*12=|42 * 12 = 504' '2^10|2 ^ 10 = 1024' '3,5*2|3,5 * 2 = 7' '(1+2)/3|(1 + 2) / 3 = 1' '10 % 3|10 % 3 = 1' \

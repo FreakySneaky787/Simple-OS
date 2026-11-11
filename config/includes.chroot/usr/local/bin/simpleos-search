@@ -2,7 +2,8 @@
 """Simple OS – Spotlight search (Super+Space, tap Super, Alt+F2).
 
 One Rofi window (Catppuccin Mocha) for everything:
-  apps and settings        typing filters, Enter starts (also via keywords: "wifi" finds Network)
+  apps and settings        typing filters, Enter starts (also via keywords: "wifi" finds Network); every Control
+                           Center page as "… settings" ("display settings" opens Control Center → Display)
   system commands          Lock, Sleep, Restart, Shut down, Sign out (restart/off/sign out with confirmation)
   calculations             "42 * 12" + Enter -> "42 * 12 = 504", Enter copies the result; also 2^10, 3,5*2,
                            sqrt(2), (1+2)/3, pi – own calculator via the syntax tree, no eval
@@ -40,6 +41,34 @@ SYSTEM = [  # (key, name, icon, keywords incl. German synonyms for German speake
     ("restart", "Restart", "system-reboot", "restart reboot neustart", "Restart now"),
     ("shutdown", "Shut down", "system-shutdown", "shut down shutdown power off poweroff herunterfahren", "Shut down now"),
     ("logout", "Sign out", "system-log-out", "sign out log out logout abmelden", "Sign out now"),
+]
+# Pages of the Control Center (1.1.2): "display settings" opens Control Center → Display, like Windows' search does.
+# (page key of simpleos-control-center, name, icon as in its sidebar, keywords incl. German synonyms)
+SETTINGS = [
+    ("wifi", "Wi-Fi settings", "network-wireless", "wifi wlan wireless network internet netzwerk"),
+    ("bluetooth", "Bluetooth settings", "bluetooth", "bluetooth pair pairing headphones kopfhörer"),
+    ("sound", "Sound settings", "audio-volume-high", "sound audio volume speaker output microphone mikrofon ton lautstärke"),
+    ("display", "Display settings", "video-display",
+     "display screen monitor resolution refresh rate brightness night light scale scaling bildschirm anzeige auflösung "
+     "helligkeit nachtlicht skalierung"),
+    ("appearance", "Appearance settings", "preferences-desktop-theme",
+     "appearance theme dark light mode accent color wallpaper background design aussehen hintergrund"),
+    ("notifications", "Notification settings", "preferences-system-notifications",
+     "notifications do not disturb dnd benachrichtigungen nicht stören"),
+    ("input", "Mouse & touchpad settings", "input-mouse", "mouse touchpad pointer speed tap scrolling maus"),
+    ("keyboard", "Keyboard settings", "input-keyboard", "keyboard layout shortcuts tastatur tastaturlayout"),
+    ("printers", "Printer & scanner settings", "printer", "printer printing scanner scan drucker drucken"),
+    ("power", "Power settings", "battery",
+     "power battery sleep screen off lock charge limit power mode energie akku bildschirmsperre"),
+    ("apps", "Default & startup app settings", "preferences-desktop-default-applications",
+     "apps default applications startup autostart standard programme"),
+    ("datetime", "Date & time settings", "preferences-system-time", "date time clock time zone datum uhrzeit uhr zeitzone"),
+    ("language", "Language & region settings", "preferences-desktop-locale",
+     "language region formats locale sprache region formate"),
+    ("storage", "Storage & backup settings", "drive-harddisk",
+     "storage disk space clean backup restore point speicher festplatte sicherung wiederherstellung"),
+    ("security", "Password & security settings", "security-high", "password security firewall passwort sicherheit"),
+    ("system", "System & update settings", "computer", "system about version updates drivers hardware info über"),
 ]
 
 
@@ -327,6 +356,8 @@ def start_page():
         meta = " ".join(x for x in (e.get("GenericName", ""), e.get("Keywords", "").replace(";", " "),
                                     e.get("Comment", ""), did) if x)
         row(e["Name"], f"app:{path}", e.get("Icon") or "application-x-executable", meta)
+    for key, name, icon, words in SETTINGS:
+        row(name, f"cc:{key}", icon, words + " settings preferences control center einstellungen")
     for key, name, icon, words, _confirm in SYSTEM:
         row(name, f"sys:{key}", icon, words + " system power")
 
@@ -384,6 +415,9 @@ def selected(info, text):
     elif kind == "file":
         if not open_path(value):
             notify("The file could not be opened.", "critical")
+    elif kind == "cc":
+        if not spawn(["simpleos-control-center", value]):
+            notify("The Control Center could not be opened.", "critical")
     elif kind == "calc":
         if shutil.which("xclip"):
             try:
