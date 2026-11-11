@@ -923,6 +923,8 @@ check "helper: --refresh missing or can be mixed" \
 rm -rf "${uw:?}"
 check "helper: --upgrade runs completely with a progress bar even without pending updates" \
       "grep -q 'flatpak remote-ls --updates --system' /usr/local/sbin/simpleos-system-setup && grep -q 'echo \"DONE: Already up to date\"' /usr/local/sbin/simpleos-system-setup"
+check "simpleos-progress: a new STEP keeps the old description (#129)" \
+      "python3 -c \"from importlib.machinery import SourceFileLoader as L; m = L('p', '/usr/local/bin/simpleos-progress').load_module(); st = m.State('x'); [st.feed(l) for l in ('STEP: Creating a restore point', 'STAGE: Finishing up', 'STEP: Installing updates')]; assert st.message == '' and st.title == 'Installing updates'\" 2>/dev/null"
 check "simpleos-progress: the helper's final text DONE: is not taken over" \
       "python3 -c \"from importlib.machinery import SourceFileLoader as L; m = L('p', '/usr/local/bin/simpleos-progress').load_module(); st = m.State('x'); [st.feed(l) for l in ('STEP: Checking for updates', 'UPTODATE: 1', 'DONE: Already up to date')]; assert st.done_text == 'Already up to date' and st.title == 'Checking for updates'\" 2>/dev/null"
 # apt-get update waits for running background updates (apt-daily holds the lists lock after the first boot)
@@ -3539,6 +3541,12 @@ hcase "$DND --no-effects off" "reset the effects option" "" "" "" '[ ! -e '"$DSE
 check "DND: unknown option not rejected (exit 2)" "HOME=$wt/home $DND --bogus >/dev/null 2>&1; [ \$? -eq 2 ]"
 rm -f "$DS" "$DSET"
 # Taskbar indicator: one line per change (icon when on, empty when off), ends with the parent process (tint2)
+# #130: tint2 does not end its executors' process groups when the X server goes away – both indicators end with the
+# session's X connection themselves (xprop -spy, then kill 0)
+for f in /usr/local/bin/simpleos-dnd /usr/local/bin/simpleos-volume; do
+    check "$f --panel: stays after signing out (no watcher on the X connection, #130)" \
+          "awk '/--panel ]; then/,/^fi/' $f | grep -qF '{ xprop -root -spy _SIMPLEOS_PANEL >/dev/null 2>&1; kill 0; } &'"
+done
 check "DND taskbar: icon/change/end wrong (woken by SIGUSR1, no polling)" \
       "rm -f $DS; ( HOME=$wt/home XDG_RUNTIME_DIR= timeout 6 $DND --panel > $wt/dndpanel ) & p=\$!;
        /bin/sleep 1.3; touch $DS; kill -USR1 \$(cat $DSP); /bin/sleep 1.5; rm -f $DS; kill -USR1 \$(cat $DSP); /bin/sleep 1.5; kill \$p 2>/dev/null; wait \$p 2>/dev/null;
@@ -4499,7 +4507,17 @@ check "progress-filter apt: download/installation mapped wrong" \
 # #120: Software Updates in plain words – counted, no package names/versions, the bar never goes back, triggers = Finishing up
 check "progress-filter apt --updates: no plain 'Downloading/Installing updates (n of m)' or 'Finishing up'" \
       "[ \"\$(printf 'dlstatus:3:70:Retrieving file 3 of 4\ndlstatus:4:100:Retrieving file 4 of 4\ndlstatus:4:89:Retrieving file 4 of 4\npmstatus:dpkg-exec:0:Running dpkg\npmstatus:apt:10:Unpacking apt (amd64)\npmstatus:libc6:60:Configuring libc6 (amd64)\npmstatus:man-db:97:Running post-installation trigger man-db\nE: Failure\n' |
-         $PF apt --updates 4 | tr '\n' '|')\" = 'STAGE: Downloading updates (3 of 4)|PROGRESS: 28|STAGE: Downloading updates (4 of 4)|PROGRESS: 40|STAGE: Installing updates (1 of 4)|PROGRESS: 46|STAGE: Installing updates (3 of 4)|PROGRESS: 76|STAGE: Finishing up|PROGRESS: 98|E: Failure|' ]"
+         $PF apt --updates 4 | tr '\n' '|')\" = 'STAGE: Downloading 3 of 4|PROGRESS: 28|STAGE: Downloading 4 of 4|PROGRESS: 40|STAGE: Update 1 of 4|PROGRESS: 46|STAGE: Update 3 of 4|PROGRESS: 76|STAGE: Finishing up|PROGRESS: 98|E: Failure|' ]"
+# #129: a trigger in the middle does not switch to "Finishing up" (it flickered back to "Update n of m"); once reached it stays
+check "progress-filter apt --updates: 'Finishing up' in the middle or not staying" \
+      "[ \"\$(printf 'pmstatus:a:10:Installing a\npmstatus:man-db:30:Running post-installation trigger man-db\npmstatus:b:60:Installing b\npmstatus:c:92:Running post-installation trigger initramfs-tools\npmstatus:c:96:Installed c\n' |
+         $PF apt --updates 3 | grep '^STAGE' | tr '\n' '|')\" = 'STAGE: Update 1 of 3|STAGE: Update 2 of 3|STAGE: Finishing up|' ]"
+# #131: apt's pmerror:/pmconffile: lines and flatpak's table header / end-of-life notices never become the description
+check "progress-filter apt: pmerror/pmconffile lines passed through" \
+      "[ -z \"\$(printf 'pmerror:/var/cache/apt/archives/x.deb:40:trying to overwrite /usr/bin/foo\npmconffile:/etc/x:50:new\n' | $PF apt)\" ]"
+check "progress-filter flatpak: table header or end-of-life notice passed through" \
+      "out=\$(printf 'Looking for updates\nInfo: runtime org.gnome.Platform branch 45 is end-of-life, with reason:\n   The GNOME 45 runtime is no longer supported.\nInfo: applications using this runtime:\n   org.example.App\n\n        ID          Branch     Op     Remote      Download\n 1.\t\torg.gnome.Platform\t46\tu\tflathub\t< 100.0 MB\n 2.\t\torg.example.App\tstable\tu\tflathub\t< 100.0 MB\nUpdating 1/2… 50%%\n' | $PF flatpak) &&
+       [ \"\$(printf '%s\n' \"\$out\" | tr '\n' '|')\" = 'STAGE: Checking for app updates|STAGE: Downloading part 1 of 2|PROGRESS: 25|' ]"
 check "Software Updates: the helper does not hand the number of updates to the apt filter (#120)" \
       "grep -q 'APT_FILTER_ARGS=\"--updates ' $SSU && grep -q 'progress-filter apt \$APT_FILTER_ARGS' $SSU && grep -q 'dpkg --configure -a >&2' $SSU"
 check "progress-filter timeshift: percent/remaining/stage wrong" \

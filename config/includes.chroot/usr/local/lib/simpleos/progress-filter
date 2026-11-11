@@ -19,8 +19,11 @@ flatpak (WITHOUT --noninteractive, otherwise Flatpak prints no progress): overvi
 apt: "dlstatus:…:<percent>:…" -> download share (default 0–40 %), "pmstatus:<package>:<percent>:…" -> installation
   (default 40–100 %), STAGE "Downloading" / "Installing" – plain words, no package names or versions (#120); the bar
   never goes back within a phase (apt's download percentage jumps). --updates N (Software Updates, N = planned
-  packages): "Downloading updates (3 of 14)" from apt's "Retrieving file 3 of 14", "Installing updates (5 of 14)"
-  counted from apt's overall percentage, "Finishing up" for the triggers (initramfs, GRUB, man-db …) at the end.
+  packages; the heading already says "Installing updates", #129): "Downloading 3 of 14" from apt's "Retrieving file 3 of
+  14", "Update 5 of 14" counted from apt's overall percentage, "Finishing up" for the triggers (initramfs, GRUB, man-db …)
+  once the last update is reached – and it stays. pmerror:/pmconffile: lines are swallowed (#131).
+flatpak also: the table header, "Info:" end-of-life blocks and "Looking for updates" (-> "Checking for app updates") never
+  reach the window (#131) – they are in the log.
 timeshift: "12.34% complete (5m 10s remaining)" -> percent + rest; sections in plain language. While Timeshift has no
   measure yet ("0.00% complete (??? remaining)" – the first restore point copies the whole system and can sit there for
   20 minutes, #119) there is NO "PROGRESS: 0" (the window glides instead of standing at 0 %) and never "???"; instead the
@@ -82,6 +85,8 @@ class Filter:
         self.started = time.time()
         self.rsync_logs = os.environ.get("SIMPLEOS_RSYNC_LOGS", RSYNC_LOGS)   # test: another glob
         self.apt_phase, self.apt_max = None, 0.0
+        self.finishing = False    # --updates: "Finishing up" reached (stays)
+        self.fp_info = False      # flatpak: inside an "Info:" block (end-of-life notice and its indented lines)
         it = iter(args)
         for a in it:
             if a == "--updates":
@@ -112,6 +117,22 @@ class Filter:
 
     # ------------------------------------------------------------ flatpak
     def flatpak(self, line):
+        # #131: technical lines never as the description (they stay in the log): the table header, the end-of-life
+        # notices ("Info: runtime … is end-of-life, with reason:" + indented lines, "Info: applications using this
+        # runtime:" + the app IDs) and the column/ref lines
+        if self.fp_info:
+            # the block ends with the first line that is not indented – or with the overview (" 1.\tref …")
+            if (re.match(r"^\s", line) or not line.strip()) and not re.match(r"^\s*\d+\.\t", line):
+                return
+            self.fp_info = False
+        if line.startswith("Info:"):
+            self.fp_info = True
+            return
+        if re.match(r"^\s*ID\s+Branch\b", line) or re.match(r"^\s*ID\s+Arch\b", line):
+            return
+        if re.match(r"^Looking for (app )?updates", line):
+            self.stage("Checking for app updates")
+            return
         m = re.match(r"^\s*(\d+)\.\t", line)
         if m:
             i = int(m.group(1))
@@ -164,21 +185,32 @@ class Filter:
             self.apt_max = p = max(self.apt_max, min(100.0, p))
             lo, hi = self.dl if kind == "dlstatus" else self.inst
             if kind == "dlstatus":
-                text = "Downloading updates" if self.updates else "Downloading"
+                # with --updates the heading already says "Installing updates": the description only counts (#129)
+                text = "Downloading"
                 m = re.match(r"Retrieving file (\d+) of (\d+)", desc)
                 if self.updates and m:
-                    text += f" ({m.group(1)} of {m.group(2)})"
+                    text = f"Downloading {m.group(1)} of {m.group(2)}"
                 self.stage(text)
             elif parts[1] == "dpkg-exec":
                 pass                              # "Running dpkg": the current text stays
-            elif desc.startswith("Running"):      # "Running post-installation trigger …"
-                self.stage("Finishing up")
             elif self.updates:
                 n = min(self.updates, int(p / 100 * self.updates) + 1)
-                self.stage(f"Installing updates ({n} of {self.updates})")
+                if desc.startswith("Running"):    # a trigger: "Finishing up" only once the last update is reached –
+                    if n >= self.updates:         # a trigger in the middle flickered "Finishing up" <-> "Update 3 of 5"
+                        self.finishing = True
+                if self.finishing:
+                    self.stage("Finishing up")
+                else:
+                    self.stage(f"Update {n} of {self.updates}")
+            elif desc.startswith("Running"):      # "Running post-installation trigger …"
+                self.stage("Finishing up")
             else:
                 self.stage("Installing")
             self.pct(lo + (hi - lo) * p / 100)
+            return
+        # pmerror:/pmconffile:/pmhalt … – apt's other status lines: never as the description (#131); the error itself
+        # reaches the log and the notification through apt's stderr
+        if re.match(r"^pm[a-z]+:", line):
             return
         self.passthrough(line)
 
