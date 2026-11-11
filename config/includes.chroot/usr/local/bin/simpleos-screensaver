@@ -6,8 +6,12 @@ Browsers and video players ask the session bus for org.freedesktop.ScreenSaver.I
 only runs with a battery (simpleos-battery). This small service answers instead:
 
   first Inhibit      simpleos-power --suspend   (xset s off -dpms)
-  last UnInhibit /   simpleos-power --apply     (the saved "turn off the screen after" again)
+  last UnInhibit /   simpleos-power --resume    (the saved "turn off the screen after" again)
   the program quits
+
+Only the screen time, never "--apply": this service runs outside the session (systemd user manager), and the xss-lock
+that "--apply" restarted from here ran without the session (no logind session, no VT) – after a video the PC no longer
+locked as it should.
 
 It is started by D-Bus on the first request (/usr/local/share/dbus-1/services/org.freedesktop.ScreenSaver.service) and
 quits 30 s after the last inhibitor is gone – nothing runs while no video plays. With a battery it exits at once
@@ -95,7 +99,7 @@ class Service:
         if self.cookies.pop(cookie, None) is None:
             return
         if not self.cookies:
-            self.power("--apply")
+            self.power("--resume")
         self.schedule_exit()
 
     def vanished(self, sender):
@@ -142,7 +146,7 @@ def main():
         loop.run()
     finally:
         if svc.cookies:       # killed while a video was playing: give the screen blanking back
-            svc.power("--apply")
+            svc.power("--resume")
     return 0
 
 

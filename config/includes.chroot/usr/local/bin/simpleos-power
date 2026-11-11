@@ -5,7 +5,11 @@
 #   simpleos-power --screen-off MIN      turn the screen off after MIN minutes (0 = never), takes effect immediately
 #   simpleos-power --lock on|off|status  lock the screen when it turns off (xss-lock + LightDM), default on
 #   simpleos-power --lock-now            lock now, unless the lock screen is already in front (what xss-lock runs)
-#   simpleos-power --suspend             screen stays on (video playing, see simpleos-screensaver); --apply ends it
+#   simpleos-power --suspend             screen stays on (video playing, see simpleos-screensaver); --resume ends it
+#   simpleos-power --resume              the saved screen time again after a video (simpleos-screensaver). Only the
+#                                        screen: the screensaver service runs outside the session (D-Bus activation,
+#                                        systemd user manager) – an xss-lock it restarted (as --apply does) ran without
+#                                        the session, and after a video the PC no longer locked as it should
 #   simpleos-power --charge-limit on|off|status
 #                                        battery protection: charge only up to ~80 % (Lenovo "Conservation Mode" or
 #                                        charge_control_end_threshold of other laptops), takes effect immediately
@@ -109,9 +113,14 @@ apply_lock() {
 LOCK_MARK=${XDG_RUNTIME_DIR:+$XDG_RUNTIME_DIR/simpleos-lock}
 LOCK_GRACE=4
 lock_now() {
-    vt=${XDG_VTNR:-}
-    if [ -z "$vt" ] && [ -n "${XDG_SESSION_ID:-}" ]; then
-        vt=$(loginctl show-session "$XDG_SESSION_ID" -p VTNr --value 2>/dev/null)
+    vt=${XDG_VTNR:-} sess=${XDG_SESSION_ID:-}
+    # Called from outside the session (a process of the systemd user manager has neither variable): the account's
+    # graphical session, as logind knows it ("Display" of the user)
+    if [ -z "$vt" ] && [ -z "$sess" ]; then
+        sess=$(loginctl show-user "$(id -u)" -p Display --value 2>/dev/null)
+    fi
+    if [ -z "$vt" ] && [ -n "$sess" ]; then
+        vt=$(loginctl show-session "$sess" -p VTNr --value 2>/dev/null)
     fi
     active=$(cat "${SIMPLEOS_TTY_ACTIVE:-/sys/class/tty/tty0/active}" 2>/dev/null)
     case "$vt" in
@@ -213,6 +222,8 @@ case "${1:-}" in
     # with one, xfce4-power-manager does that itself
     --suspend)
         has_battery || { command -v xset >/dev/null && [ -n "${DISPLAY:-}" ] && xset s off -dpms 2>/dev/null; } ;;
+    # The video ended: the saved time again – never xss-lock (see the top). With a battery nothing was changed
+    --resume) has_battery || xset_screen ;;
     --charge-limit)
         case "${2:-}" in
             status) limit_status ;;
@@ -232,6 +243,6 @@ case "${1:-}" in
         if [ -n "$charge_limit" ] && [ "$(limit_status)" != unsupported ] && [ "$(limit_status)" != "$charge_limit" ]; then
             limit_set "$charge_limit"
         fi ;;
-    *) echo "Usage: simpleos-power --get | --screen-off MIN | --lock on|off|status | --lock-now | --suspend | --charge-limit on|off|status | --profile [NAME] | --apply" >&2; exit 2 ;;
+    *) echo "Usage: simpleos-power --get | --screen-off MIN | --lock on|off|status | --lock-now | --suspend | --resume | --charge-limit on|off|status | --profile [NAME] | --apply" >&2; exit 2 ;;
 esac
 exit 0

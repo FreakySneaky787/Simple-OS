@@ -1865,6 +1865,14 @@ pwr pc -- --suspend
 check "simpleos-power --suspend: PC keeps the screen on while a video plays" 'grep -qx "xset s off -dpms" $S/xset'
 pwr lap -- --suspend
 check "simpleos-power --suspend: on a laptop xfce4-power-manager does that (no xset)" '[ ! -e $S/xset ]'
+# --resume (the video ended, simpleos-screensaver): the saved time again – and never xss-lock (1.1.2: the service runs
+# outside the session; the xss-lock that --apply restarted from there ran without a logind session and VT)
+pwr pc SIMPLEOS_LIVE=0 -- --resume
+sleep 0.3
+check "simpleos-power --resume: PC gets the saved screen time back, xss-lock untouched" \
+      'grep -qx "xset s 300 300 +dpms dpms 300 300 300" $S/xset && [ ! -e $S/xss ]'
+pwr lap -- --resume
+check "simpleos-power --resume: on a laptop nothing to do (no xset, no xss-lock)" '[ ! -e $S/xset ] && [ ! -e $S/xss ]'
 pwr pc -- --lock off
 check "simpleos-power --lock off: saved, xss-lock stopped and not started" \
       'grep -qx "lock=off" $wt/home/.config/simpleos/power && grep -q "^pkill .*xss-lock" $S/xss && ! grep -q "^xss-lock" $S/xss'
@@ -1884,6 +1892,24 @@ pwr pc XDG_VTNR=7 SIMPLEOS_TTY_ACTIVE=$wt/tty-active -- --lock-now
 check "simpleos-power --lock-now: login screen already in front (#88) -> no second lock" '[ ! -e $S/power ]'
 pwr pc SIMPLEOS_TTY_ACTIVE=$wt/tty-active -- --lock-now
 check "simpleos-power --lock-now: VT unknown -> locks as before" 'grep -qx "dm-tool lock" $S/power'
+# 1.1.2: called without XDG_VTNR/XDG_SESSION_ID (a process of the systemd user manager): the account's graphical
+# session from logind (show-user … Display) gives the VT
+mkdir -p "$pw/pcsess"; cp "$pw/pc/simpleos-battery" "$pw/pcsess/"
+cat > "$pw/pcsess/loginctl" <<'MOCK'
+#!/bin/sh
+case "$1" in
+    show-user) echo c3 ;;
+    show-session) [ "$2" = c3 ] && echo 7 ;;
+esac
+MOCK
+chmod 0755 "$pw/pcsess/loginctl"
+pwr pcsess SIMPLEOS_TTY_ACTIVE=$wt/tty-active -- --lock-now
+check "simpleos-power --lock-now: without session variables the login screen in front is still seen (#88)" '[ ! -e $S/power ]'
+echo tty7 > "$wt/tty-active"
+pwr pcsess SIMPLEOS_TTY_ACTIVE=$wt/tty-active -- --lock-now
+check "simpleos-power --lock-now: without session variables, desktop in front -> dm-tool lock" 'grep -qx "dm-tool lock" $S/power'
+echo tty8 > "$wt/tty-active"
+rm -rf "$pw/pcsess"
 # #96: a lock that was just started counts – LightDM switches about a second later, in between the next request (power
 # menu "Sleep" -> sleep signal -> xss-lock, LightDM's own Lock signal) still saw the desktop and locked a second time
 mkdir -p "$wt/rt"; rm -f "$wt/rt/simpleos-lock"
@@ -1931,16 +1957,16 @@ time.sleep(0.5)
 assert open(sys.argv[1]).read().split() == ["--suspend"], open(sys.argv[1]).read()
 call("/ScreenSaver", "UnInhibit", (c2,), "(u)")
 time.sleep(0.5)
-assert open(sys.argv[1]).read().split() == ["--suspend", "--apply"], open(sys.argv[1]).read()
+assert open(sys.argv[1]).read().split() == ["--suspend", "--resume"], open(sys.argv[1]).read()
 # a program that dies without UnInhibit
 call("/org/freedesktop/ScreenSaver", "Inhibit", ("chromium", "video"), "(ss)")
 b.close_sync(None)
 PY
 rm -f "$wt/ss.log"
-check "simpleos-screensaver: Inhibit/UnInhibit over D-Bus (suspend at the first, apply after the last, apply when the program quits)" \
+check "simpleos-screensaver: Inhibit/UnInhibit over D-Bus (suspend at the first, resume after the last, resume when the program quits)" \
       "env SSLOG=$wt/ss.log SIMPLEOS_POWER=$wt/ss-power SIMPLEOS_IDLE_EXIT=2 SIMPLEOS_POWER_SUPPLY=$wt/nope DISPLAY=:0 \
          dbus-run-session -- python3 $wt/ss-test.py $wt/ss.log >$wt/ss.out 2>&1; rc=\$?; sleep 1
-       { [ \$rc -eq 0 ] && [ \"\$(tr '\n' ' ' < $wt/ss.log)\" = '--suspend --apply --suspend --apply ' ]; } || { cat $wt/ss.out >&2; false; }"
+       { [ \$rc -eq 0 ] && [ \"\$(tr '\n' ' ' < $wt/ss.log)\" = '--suspend --resume --suspend --resume ' ]; } || { cat $wt/ss.out >&2; false; }"
 check "simpleos-screensaver: answers on a laptop (xfce4-power-manager owns the name)" \
       "env SIMPLEOS_POWER_SUPPLY=$wt/nope PATH=$pw/lap:\$PATH timeout 5 $SSV"
 
