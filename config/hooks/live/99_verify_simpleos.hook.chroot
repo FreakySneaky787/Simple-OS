@@ -1132,7 +1132,8 @@ hcase "$P" "menu" "" "" "-" \
 hcase "$P" "Lock" "" "SIMPLEOS_LIVE=0" "0" 'grep -qx "dm-tool lock" $S/power'
 hcase "$P" "Lock in the live session: hint instead (password unknown)" "" "SIMPLEOS_LIVE=1" "0" '[ ! -s $S/power ] && grep -q "not locked in Live Mode" $S/notify'
 hcase "$P --lock" "Super+L in the live session: hint instead" "" "SIMPLEOS_LIVE=1" "" '[ ! -s $S/power ] && grep -q "not locked in Live Mode" $S/notify'
-hcase "$P" "Sleep locks first" "" "SIMPLEOS_LIVE=0" "1" '[ "$(cat $S/power)" = "dm-tool lock
+# (without XDG_VTNR/XDG_SESSION_ID, as here, --lock-now asks logind for the session first – #134; not a power action)
+hcase "$P" "Sleep locks first" "" "SIMPLEOS_LIVE=0" "1" '[ "$(grep -v "^loginctl show-" $S/power)" = "dm-tool lock
 systemctl suspend" ]'
 hcase "$P" "Sleep in the live session does not lock (password unknown)" "" "SIMPLEOS_LIVE=1" "1" '[ "$(cat $S/power)" = "systemctl suspend" ]'
 hcase "$P" "Restart" "" "" "2" 'grep -qx "systemctl reboot" $S/power'
