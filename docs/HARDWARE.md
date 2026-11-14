@@ -15,7 +15,7 @@ Last updated: 15 November 2026 (Simple OS 1.1.2).
 |---|---|---|---|---|---|---|---|---|---|
 | Lenovo ThinkPad E16 Gen 3 (21TF) – Intel Core 5 210H, Intel graphics, Intel Wi-Fi | UEFI, Secure Boot off | 1.0.7, 1.1, 1.1.1, 1.1.2 | ✅ | ⚠️ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Self-built desktop – AMD Ryzen 5 5600X, NVIDIA GeForce RTX 3050 (8 GB), 16 GB DDR4, Wi-Fi | UEFI, Secure Boot off, next to Windows | 1.1.1 | ✅ | ✅ | ✅ | ✅ | – | ✅ | ✅ |
-| Acer Predator – gaming desktop, Intel Core i7 (13th gen), NVIDIA GeForce RTX 4070 Super, 32 GB RAM | UEFI, Secure Boot off, next to Windows | 1.0.7 | ✅ | ✅ | ✅ | – | ✅ | ✅ | ✅ |
+| Acer Predator – gaming desktop, Intel Core i7 (13th gen), NVIDIA GeForce RTX 4070 Super, 32 GB RAM | UEFI, Secure Boot off, next to Windows | 1.0.7, 1.1.2 | ✅ | ✅ | ✅ | – | ✅ | ✅ | ✅ |
 | Dell OptiPlex 9020 – desktop | legacy BIOS, MBR, next to another system | 1.0.3 | ❌ | – | – | – | – | – | – |
 
 **ThinkPad E16 Gen 3:** in daily use since Simple OS 1.0. Wi-Fi: with one router the 5 GHz connection (a wide 160 MHz
@@ -26,7 +26,7 @@ button has to be held for about a second – the firmware ignores a quick tap.
 
 **Acer Predator (gaming desktop):** installed next to Windows with 1.0.7 – installing, Wi-Fi, sound, suspend and
 an external monitor work. Graphics with 3D (games) and the NVIDIA driver weren't tried yet
-([#105](https://github.com/FreakySneaky787/Simple-OS/issues/105)).
+([#105](https://github.com/FreakySneaky787/Simple-OS/issues/105)). 1.1.2 was checked on it before its release.
 
 **Self-built desktop (Ryzen 5 5600X, RTX 3050):** installed next to Windows with 1.1.1 and tested by a friend of the
 project – everything except games and heavy load works, including the **NVIDIA driver** from Control Center → System &
