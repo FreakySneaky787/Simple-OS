@@ -18,26 +18,6 @@ Rules that keep it small: no new always-running process without a good reason (t
 on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook.chroot`; anything that mocks can hide
 (night light in 1.0.3!) is run for real once, e.g. in a container with Xvfb; nothing is published untested on hardware.
 
-## 1.1.2 – bugfix release after 1.1.1 (planned Sunday 2026-11-15, moved forward from 11-22)
-
-- **Update window, the last technical lines** (#131): the Flatpak step still shows flatpak's table header and
-  "end-of-life" notices, and apt's `pmerror:`/`pmconffile:` lines can slip through; they go to the log only.
-- **Progress window, two small glitches** (#129): after a new step the old description stays for a moment, and
-  "Installing updates" can show up twice ("Finishing up" ↔ "Installing updates" flicker).
-- **Taskbar helpers after signing out** (#130): the speaker and Do Not Disturb helpers keep running after signing out,
-  and one more set is added with every sign-in.
-- **Screen lock on desktop PCs after a video** (#134): on computers without a battery, locking when the screen turns
-  off stopped working as it should after a video had played – the "keep the screen on" service restarted the lock
-  outside the session. It now only gives the screen time back.
-- **Do Not Disturb stays on** (#135): after signing out and back in, the bell still said "on" but notifications came
-  through. Do Not Disturb now stays on until you turn it off, also after a restart.
-- **Installer: the live user's rights go first** (#136): if the last installer step failed early, passwordless
-  administrator rights of the live session could stay on the installed system.
-- **Better, faster menus** (#137): the row under the mouse is highlighted like the one picked with the arrow keys, in
-  the accent color; typing puts the best match first; "display settings" (and every other Control Center page) can be
-  found in the search; flyouts opened from the start menu no longer wait; the sound menu stays open while you change
-  the volume.
-
 ## 1.2 – feature release after 1.1
 
 - **Translations** of Simple OS's own tools (all English today) (#43).
@@ -117,8 +97,9 @@ Moving to it is the one big job of the next year, and it has to be planned, not 
 - **For installed systems:** an in-place `dist-upgrade` from Software Updates is possible but risky (third-party sources,
   Flatpak, NVIDIA DKMS, backups). **Decided (2026-11-03): (a)** a guided "Upgrade to Simple OS 2.0" tool with a restore point and
   checks, after a long beta (#52); (b) a fresh install with a documented migration of the home folder stays only the fallback.
-- **Timeline sketch:** branch + first trixie ISO as a preview in Q1 2027, public beta in Q2, 2.0 when the upgrade
-  tool has been run on several real machines.
+- **Timeline (decided 2026-11-15): Simple OS 2.0 is planned for spring 2027.** First trixie ISO as a preview early
+  in 2027, then a public beta of several weeks; 2.0 only once the upgrade tool has been run on several real machines –
+  if that takes longer, 2.0 waits (Debian LTS covers 1.x until June 2028).
 
 ## 2.x – feature releases after 2.0
 
