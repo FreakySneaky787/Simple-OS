@@ -1,0 +1,35 @@
+#!/bin/sh
+# Simple OS 1.1.2 – menus: the row under the mouse is highlighted like the one picked with the arrow keys, in the softened
+# accent color, and the best match comes first (Rofi: hover-select, fzf sorting). Runs once per account at sign-in,
+# after "edition --user" merged ~/.config/rofi/config.rasi:
+#   merged      the new lines are there, but "sel" still has the shipped blue -> the account's accent (its "accent:" line;
+#               35 % on dark, 25 % on light, as simpleos-theme does)
+#   not merged  (changed in the same places) -> the three settings, the "sel" color and the selected row are added here
+# A new account gets everything from /etc/skel and never runs this. Never fails (exit 0).
+rasi=${XDG_CONFIG_HOME:-$HOME/.config}/rofi/config.rasi
+[ -f "$rasi" ] || exit 0
+accent=$(sed -n 's/^\s*accent:\s*\(#[0-9a-fA-F]\{6\}\);.*/\1/p' "$rasi" | head -n 1)
+[ -n "$accent" ] || exit 0
+if grep -q '^\s*bg:\s*#eff1f5;' "$rasi"; then sel=${accent}40; else sel=${accent}59; fi
+hassel=0
+grep -q '^\s*sel:\s*#' "$rasi" && hassel=1
+tmp=$rasi.simpleos-140.$$
+awk -v sel="$sel" -v hassel="$hassel" '
+    /^configuration *\{/ { inconf = 1 }
+    inconf && /^[ \t]*hover-select:/ { hover = 1 }
+    inconf && /^[ \t]*sort:/ { sort = 1 }
+    inconf && /^[ \t]*sorting-method:/ { method = 1 }
+    inconf && /^\}/ {
+        if (!hover)  print "    hover-select: true;"
+        if (!sort)   print "    sort: true;"
+        if (!method) print "    sorting-method: \"fzf\";"
+        inconf = 0
+    }
+    /^[ \t]*sel:[ \t]*#/ { sub(/#[0-9a-fA-F]+;/, sel ";") }
+    { print }
+    /^[ \t]*accent:[ \t]*#/ && !hassel && !added { print "    sel:       " sel ";"; added = 1 }
+' "$rasi" > "$tmp" 2>/dev/null || { rm -f "$tmp"; exit 0; }
+# the selected row: softened accent instead of the gray area (only inside its own block)
+sed -i '/^element selected\.normal *{/,/^}/{ s/background-color: *@bg-alt;/background-color: @sel;/; s/border: *0px 0px 0px 3px;/border:           0px 0px 0px 4px;/ }' "$tmp" 2>/dev/null
+mv -f "$tmp" "$rasi" 2>/dev/null || rm -f "$tmp"
+exit 0

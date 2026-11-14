@@ -13,6 +13,11 @@ configuration {
        Rofi window while the button was still down – releasing it outside closed it again right away. */
     me-select-entry: "";
     me-accept-entry: "!MousePrimary";
+    /* The row under the mouse is the selected row – the same highlight as with the arrow keys (1.1.2) */
+    hover-select: true;
+    /* Best match first: "Sound" before "Control Center" (whose keywords also contain "sound") */
+    sort: true;
+    sorting-method: "fzf";
     /* Tapping Super again closes the menu (xcape sends XF86Search on a tap, see the Openbox autostart) */
     kb-cancel: "Escape,Control+g,Control+bracketleft,XF86Search";
 }
@@ -29,6 +34,8 @@ configuration {
 
     background-color: transparent;
     text-color:       @fg;
+    /* Selected row: the accent color, softened (alpha 59 = 35 %); simpleos-theme sets it with the accent */
+    sel:              #89b4fa59;
 }
 
 /* Window: soft corners, a fine border instead of a heavy frame; picom draws the shadow */
@@ -103,11 +110,12 @@ element alternate.normal {
     text-color:       @fg;
 }
 
-/* Selection: a subtle area, a narrow accent marker on the left (color via simpleos-theme) */
+/* Selection (mouse and arrow keys alike): the whole row in the softened accent color, a marker on the left in the full
+   accent color (both via simpleos-theme) */
 element selected.normal {
-    background-color: @bg-alt;
+    background-color: @sel;
     text-color:       @fg;
-    border:           0px 0px 0px 3px;
+    border:           0px 0px 0px 4px;
     border-color:     @accent;
 }
 

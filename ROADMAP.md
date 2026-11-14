@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Last updated 2026-11-08 (this copy on the branch `trixie` follows the work on 2.0 "Rigi"). Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
+Last updated 2026-11-15 (this copy on the branch `trixie` follows the work on 2.0 "Rigi"). Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -102,8 +102,9 @@ Moving to it is the one big job of the next year, and it has to be planned, not 
 - **For installed systems:** an in-place `dist-upgrade` from Software Updates is possible but risky (third-party sources,
   Flatpak, NVIDIA DKMS, backups). **Decided (2026-11-03): (a)** a guided "Upgrade to Simple OS 2.0" tool with a restore point and
   checks, after a long beta (#52); (b) a fresh install with a documented migration of the home folder stays only the fallback.
-- **Timeline sketch:** branch + first trixie ISO as a preview in Q1 2027, public beta in Q2, 2.0 when the upgrade
-  tool has been run on several real machines.
+- **Timeline (decided 2026-11-15): Simple OS 2.0 is planned for spring 2027.** First trixie ISO as a preview early
+  in 2027, then a public beta of several weeks; 2.0 only once the upgrade tool has been run on several real machines –
+  if that takes longer, 2.0 waits (Debian LTS covers 1.x until June 2028).
 - **Codename: Rigi** ("REE-gee", the "Queen of the Mountains") – one per big release, Swiss mountains.
   Ideas for 3.0 and later in [docs/CODENAMES.md](docs/CODENAMES.md).
 

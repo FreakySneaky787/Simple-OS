@@ -923,6 +923,8 @@ check "helper: --refresh missing or can be mixed" \
 rm -rf "${uw:?}"
 check "helper: --upgrade runs completely with a progress bar even without pending updates" \
       "grep -q 'flatpak remote-ls --updates --system' /usr/local/sbin/simpleos-system-setup && grep -q 'echo \"DONE: Already up to date\"' /usr/local/sbin/simpleos-system-setup"
+check "simpleos-progress: a new STEP keeps the old description (#129)" \
+      "python3 -c \"from importlib.machinery import SourceFileLoader as L; m = L('p', '/usr/local/bin/simpleos-progress').load_module(); st = m.State('x'); [st.feed(l) for l in ('STEP: Creating a restore point', 'STAGE: Finishing up', 'STEP: Installing updates')]; assert st.message == '' and st.title == 'Installing updates'\" 2>/dev/null"
 check "simpleos-progress: the helper's final text DONE: is not taken over" \
       "python3 -c \"from importlib.machinery import SourceFileLoader as L; m = L('p', '/usr/local/bin/simpleos-progress').load_module(); st = m.State('x'); [st.feed(l) for l in ('STEP: Checking for updates', 'UPTODATE: 1', 'DONE: Already up to date')]; assert st.done_text == 'Already up to date' and st.title == 'Checking for updates'\" 2>/dev/null"
 # apt-get update waits for running background updates (apt-daily holds the lists lock after the first boot)
@@ -1130,7 +1132,8 @@ hcase "$P" "menu" "" "" "-" \
 hcase "$P" "Lock" "" "SIMPLEOS_LIVE=0" "0" 'grep -qx "dm-tool lock" $S/power'
 hcase "$P" "Lock in the live session: hint instead (password unknown)" "" "SIMPLEOS_LIVE=1" "0" '[ ! -s $S/power ] && grep -q "not locked in Live Mode" $S/notify'
 hcase "$P --lock" "Super+L in the live session: hint instead" "" "SIMPLEOS_LIVE=1" "" '[ ! -s $S/power ] && grep -q "not locked in Live Mode" $S/notify'
-hcase "$P" "Sleep locks first" "" "SIMPLEOS_LIVE=0" "1" '[ "$(cat $S/power)" = "dm-tool lock
+# (without XDG_VTNR/XDG_SESSION_ID, as here, --lock-now asks logind for the session first – #134; not a power action)
+hcase "$P" "Sleep locks first" "" "SIMPLEOS_LIVE=0" "1" '[ "$(grep -v "^loginctl show-" $S/power)" = "dm-tool lock
 systemctl suspend" ]'
 hcase "$P" "Sleep in the live session does not lock (password unknown)" "" "SIMPLEOS_LIVE=1" "1" '[ "$(cat $S/power)" = "systemctl suspend" ]'
 hcase "$P" "Restart" "" "" "2" 'grep -qx "systemctl reboot" $S/power'
@@ -1402,34 +1405,52 @@ for f in $VOL /usr/local/bin/simpleos-display /usr/local/bin/simpleos-screenshot
     check "$f: syntax error (bash)" "bash -n $f"
     check "$f: set -e/-u (aborts silently)" "! grep -qE '^[[:space:]]*set -[a-z]*[eu]' $f"
 done
-hcase "$VOL" "menu" "" "" "-" \
-    '[ "$(row 0 1)" = "Volume up  50%" ] && [ "$(row 0 2)" = "Volume down" ] && [ "$(row 0 3)" = "Set volume…" ] &&
-     [ "$(row 0 4)" = "Mute" ] && [ "$(row 0 5)" = "Built-in Audio  Active" ] && [ "$(row 0 6)" = "HDMI Audio" ] &&
-     [ "$(row 0 7)" = "Advanced Audio Settings" ] && [ $(grep -c . $S/rofi.0) -eq 7 ] &&
-     grep -q "<b>Sound</b>.*Built-in Audio · 50%" $S/rofi.args && ! grep -q "set-" $S/pactl'
-hcase "$VOL" "louder: the menu stays open" "" "" "0 -" \
-    'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 60%" $S/pactl && [ -s $S/rofi.1 ]'
-hcase "$VOL" "louder at 95 %: at most 100 %" "" "VOL=95" "0 -" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 100%" $S/pactl'
-hcase "$VOL" "louder at 150 % (pavucontrol): not quieter" "" "VOL=150" "0 -" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 150%" $S/pactl'
-hcase "$VOL" "quieter" "" "" "1 -" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 40%" $S/pactl'
-hcase "$VOL" "quieter at 5 %: not below 0 %" "" "VOL=5" "1 -" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 0%" $S/pactl'
-hcase "$VOL" "volume 50 %" "" "" "2 3 -" \
-    '[ "$(row 1 1)" = "100%" ] && grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 50%" $S/pactl'
-hcase "$VOL" "mute" "" "" "3 -" 'grep -qx "pactl set-sink-mute @DEFAULT_SINK@ toggle" $S/pactl'
-hcase "$VOL" "muted -> Unmute + Muted" "" "MUTED=1" "-" '[ "$(row 0 4)" = "Unmute" ] && [ "$(row 0 1)" = "Volume up  Muted" ]'
-hcase "$VOL" "switch to HDMI (playback moves along)" "" "" "5 -" \
+# 1.1.2: the flyout is ONE Rofi window in script mode – "simpleos-volume --rofi" answers every selection with new rows,
+# the window stays open (before, every "Volume up" closed the menu and opened a new one)
+hcase "$VOL" "opens Rofi in script mode" "" "" "-" \
+    'grep -q -- "-show sound -modi sound:/usr/local/bin/simpleos-volume --rofi" $S/rofi.args && [ $(grep -c -- "-show sound" $S/rofi.args) -eq 1 ]'
+# vcase TEXT ENV INFO TEST – one call of the script mode (INFO empty = start); rows in $S/rows: "text|info", markup removed
+vcase() {
+    rm -rf "${wt:?}/run" "${S:?}"; mkdir -p "$wt/run" "$S"
+    for m in "$wt/mock/"*; do ln -s "$m" "$wt/run/"; done
+    retv=1; [ -n "$3" ] || retv=0
+    # shellcheck disable=SC2086
+    $ENV -i HOME="$wt/home" WT="$S" PATH="$wt/run:$wt/sys" $2 ROFI_RETV=$retv ROFI_INFO="$3" "$wt/sys/sh" $VOL --rofi >"$S/out" 2>&1
+    tr '\000\037' '|~' < "$S/out" | sed -e "s/<span font_desc='FontAwesome[^']*'>[^<]*<\\/span>//g" -e 's/<[^>]*>//g' -e 's/^ *//' -e 's/|info~/|/' > "$S/rows"
+    check "simpleos-volume --rofi [$1]" "$4"
+}
+vr() { grep -v '^|' "$S/rows" | sed -n "${1}p"; }   # row N (from 1) as "text|info"
+T=$(printf '\t')
+vcase "start: rows" "" "" \
+    '[ "$(vr 1)" = "Volume up  50%|up" ] && [ "$(vr 2)" = "Volume down|down" ] && [ "$(vr 3)" = "Set volume…|level" ] &&
+     [ "$(vr 4)" = "Mute|mute" ] && [ "$(vr 5)" = "Built-in Audio  Active|noop" ] &&
+     [ "$(vr 6)" = "HDMI Audio|output'"$T"'alsa_output.pci.hdmi-stereo'"$T"'hdmi-output-0" ] &&
+     [ "$(vr 7)" = "Advanced Audio Settings|advanced" ] && [ $(grep -vc "^|" $S/rows) -eq 7 ] &&
+     grep -q "^|message~Sound   Built-in Audio · 50%" $S/rows && grep -q "^|markup-rows~true" $S/rows && ! grep -q "set-" $S/pactl'
+vcase "louder: rows come back (the window stays open)" "" "up" \
+    'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 60%" $S/pactl && [ "$(vr 2)" = "Volume down|down" ]'
+vcase "louder at 95 %: at most 100 %" "VOL=95" "up" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 100%" $S/pactl'
+vcase "louder at 150 % (pavucontrol): not quieter" "VOL=150" "up" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 150%" $S/pactl'
+vcase "quieter" "" "down" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 40%" $S/pactl && [ -n "$(vr 1)" ]'
+vcase "quieter at 5 %: not below 0 %" "VOL=5" "down" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 0%" $S/pactl'
+vcase "Set volume…: levels and Back" "" "level" \
+    '[ "$(vr 1)" = "100%|set'"$T"'100" ] && [ "$(vr 10)" = "Back|back" ] && grep -q "^|message~Set volume   now 50%" $S/rows'
+vcase "volume 50 %" "" "set${T}50" 'grep -qx "pactl set-sink-volume @DEFAULT_SINK@ 50%" $S/pactl && [ "$(vr 3)" = "Set volume…|level" ]'
+vcase "Back: the main rows again" "" "back" '[ "$(vr 1)" = "Volume up  50%|up" ] && ! grep -q "set-" $S/pactl'
+vcase "mute" "" "mute" 'grep -qx "pactl set-sink-mute @DEFAULT_SINK@ toggle" $S/pactl'
+vcase "muted -> Unmute + Muted" "MUTED=1" "" '[ "$(vr 4)" = "Unmute|mute" ] && [ "$(vr 1)" = "Volume up  Muted|up" ]'
+vcase "switch to HDMI (playback moves along)" "" "output${T}alsa_output.pci.hdmi-stereo${T}hdmi-output-0" \
     'grep -qx "pactl set-default-sink alsa_output.pci.hdmi-stereo" $S/pactl &&
      grep -qx "pactl move-sink-input 12 alsa_output.pci.hdmi-stereo" $S/pactl &&
      grep -qx "pactl move-sink-input 13 alsa_output.pci.hdmi-stereo" $S/pactl &&
-     grep -q "Sound now plays on HDMI Audio" $S/notify && [ "$(row 1 6)" = "HDMI Audio  Active" ]'
-hcase "$VOL" "headphones plugged in: speakers/headphones selectable" "" "PHONES=1" "5 -" \
-    '[ "$(row 0 5)" = "Built-in Audio – Speakers  Active" ] && [ "$(row 0 6)" = "Built-in Audio – Headphones" ] &&
-     [ "$(row 0 7)" = "HDMI Audio" ] &&
+     grep -q "Sound now plays on HDMI Audio" $S/notify && [ "$(vr 6)" = "HDMI Audio  Active|noop" ]'
+vcase "headphones plugged in: speakers/headphones selectable" "PHONES=1" "output${T}alsa_output.pci.analog-stereo${T}analog-output-headphones" \
+    'grep -q "^Built-in Audio – Speakers  Active|" $S/rows && grep -q "^Built-in Audio – Headphones|" $S/rows && grep -q "^HDMI Audio|" $S/rows &&
      grep -qx "pactl set-sink-port alsa_output.pci.analog-stereo analog-output-headphones" $S/pactl'
-hcase "$VOL" "headphones not plugged in: not in the list" "" "" "-" '! grep -q "Headphones" $S/rofi.0'
-hcase "$VOL" "Advanced Audio Settings -> pavucontrol" "" "" "6" 'waitfor $S/pavucontrol'
+vcase "headphones not plugged in: not in the list" "" "" '! grep -q "Headphones" $S/rows'
+vcase "Advanced Audio Settings -> pavucontrol, no rows (Rofi closes)" "" "advanced" 'waitfor $S/pavucontrol && [ ! -s $S/rows ]'
 hcase "$VOL" "rofi missing -> pavucontrol" "rofi" "" "" 'waitfor $S/pavucontrol && grep -q "could not open" $S/notify'
-hcase "$VOL" "rofi grab error -> new attempt" "" "ROFI=grab" "-" '[ -s $S/rofi.0 ] && [ ! -s $S/notify ]'
+hcase "$VOL" "rofi grab error -> new attempt" "" "ROFI=grab" "-" 'grep -q -- "-show sound" $S/rofi.args && [ ! -s $S/notify ]'
 hcase "$VOL" "pactl missing -> notification" "pactl" "" "" 'grep -q "pactl missing" $S/notify'
 
 # ---- Display (simpleos-display, Super+P, Settings → Display): resolution, refresh rate,
@@ -1865,6 +1886,14 @@ pwr pc -- --suspend
 check "simpleos-power --suspend: PC keeps the screen on while a video plays" 'grep -qx "xset s off -dpms" $S/xset'
 pwr lap -- --suspend
 check "simpleos-power --suspend: on a laptop xfce4-power-manager does that (no xset)" '[ ! -e $S/xset ]'
+# --resume (the video ended, simpleos-screensaver): the saved time again – and never xss-lock (1.1.2: the service runs
+# outside the session; the xss-lock that --apply restarted from there ran without a logind session and VT)
+pwr pc SIMPLEOS_LIVE=0 -- --resume
+sleep 0.3
+check "simpleos-power --resume: PC gets the saved screen time back, xss-lock untouched" \
+      'grep -qx "xset s 300 300 +dpms dpms 300 300 300" $S/xset && [ ! -e $S/xss ]'
+pwr lap -- --resume
+check "simpleos-power --resume: on a laptop nothing to do (no xset, no xss-lock)" '[ ! -e $S/xset ] && [ ! -e $S/xss ]'
 pwr pc -- --lock off
 check "simpleos-power --lock off: saved, xss-lock stopped and not started" \
       'grep -qx "lock=off" $wt/home/.config/simpleos/power && grep -q "^pkill .*xss-lock" $S/xss && ! grep -q "^xss-lock" $S/xss'
@@ -1884,6 +1913,24 @@ pwr pc XDG_VTNR=7 SIMPLEOS_TTY_ACTIVE=$wt/tty-active -- --lock-now
 check "simpleos-power --lock-now: login screen already in front (#88) -> no second lock" '[ ! -e $S/power ]'
 pwr pc SIMPLEOS_TTY_ACTIVE=$wt/tty-active -- --lock-now
 check "simpleos-power --lock-now: VT unknown -> locks as before" 'grep -qx "dm-tool lock" $S/power'
+# 1.1.2: called without XDG_VTNR/XDG_SESSION_ID (a process of the systemd user manager): the account's graphical
+# session from logind (show-user … Display) gives the VT
+mkdir -p "$pw/pcsess"; cp "$pw/pc/simpleos-battery" "$pw/pcsess/"
+cat > "$pw/pcsess/loginctl" <<'MOCK'
+#!/bin/sh
+case "$1" in
+    show-user) echo c3 ;;
+    show-session) [ "$2" = c3 ] && echo 7 ;;
+esac
+MOCK
+chmod 0755 "$pw/pcsess/loginctl"
+pwr pcsess SIMPLEOS_TTY_ACTIVE=$wt/tty-active -- --lock-now
+check "simpleos-power --lock-now: without session variables the login screen in front is still seen (#88)" '[ ! -e $S/power ]'
+echo tty7 > "$wt/tty-active"
+pwr pcsess SIMPLEOS_TTY_ACTIVE=$wt/tty-active -- --lock-now
+check "simpleos-power --lock-now: without session variables, desktop in front -> dm-tool lock" 'grep -qx "dm-tool lock" $S/power'
+echo tty8 > "$wt/tty-active"
+rm -rf "$pw/pcsess"
 # #96: a lock that was just started counts – LightDM switches about a second later, in between the next request (power
 # menu "Sleep" -> sleep signal -> xss-lock, LightDM's own Lock signal) still saw the desktop and locked a second time
 mkdir -p "$wt/rt"; rm -f "$wt/rt/simpleos-lock"
@@ -1931,16 +1978,16 @@ time.sleep(0.5)
 assert open(sys.argv[1]).read().split() == ["--suspend"], open(sys.argv[1]).read()
 call("/ScreenSaver", "UnInhibit", (c2,), "(u)")
 time.sleep(0.5)
-assert open(sys.argv[1]).read().split() == ["--suspend", "--apply"], open(sys.argv[1]).read()
+assert open(sys.argv[1]).read().split() == ["--suspend", "--resume"], open(sys.argv[1]).read()
 # a program that dies without UnInhibit
 call("/org/freedesktop/ScreenSaver", "Inhibit", ("chromium", "video"), "(ss)")
 b.close_sync(None)
 PY
 rm -f "$wt/ss.log"
-check "simpleos-screensaver: Inhibit/UnInhibit over D-Bus (suspend at the first, apply after the last, apply when the program quits)" \
+check "simpleos-screensaver: Inhibit/UnInhibit over D-Bus (suspend at the first, resume after the last, resume when the program quits)" \
       "env SSLOG=$wt/ss.log SIMPLEOS_POWER=$wt/ss-power SIMPLEOS_IDLE_EXIT=2 SIMPLEOS_POWER_SUPPLY=$wt/nope DISPLAY=:0 \
          dbus-run-session -- python3 $wt/ss-test.py $wt/ss.log >$wt/ss.out 2>&1; rc=\$?; sleep 1
-       { [ \$rc -eq 0 ] && [ \"\$(tr '\n' ' ' < $wt/ss.log)\" = '--suspend --apply --suspend --apply ' ]; } || { cat $wt/ss.out >&2; false; }"
+       { [ \$rc -eq 0 ] && [ \"\$(tr '\n' ' ' < $wt/ss.log)\" = '--suspend --resume --suspend --resume ' ]; } || { cat $wt/ss.out >&2; false; }"
 check "simpleos-screensaver: answers on a laptop (xfce4-power-manager owns the name)" \
       "env SIMPLEOS_POWER_SUPPLY=$wt/nope PATH=$pw/lap:\$PATH timeout 5 $SSV"
 
@@ -2342,6 +2389,25 @@ check "simpleos-theme: the Openbox theme copy lacks the button images of its sca
        printf 'mode=dark\naccent=mauve\n' > $HS/th/.config/simpleos/theme && thx 100 --openbox-theme &&
        [ \"\$(xw $OBC/close.xbm)\" = 10 ] && [ \"\$(xw $OBC/max.xbm)\" = 10 ]"
 rm -f "$HS/th/.config/simpleos/theme"; thx 100 --openbox-theme
+# 1.1.2: user migration 140 – the hover highlight and the softened accent selection for accounts whose config.rasi was
+# not merged (theme colors in the same places): built from the current skel file the way 1.1.1 shipped it, peach accent
+M140=/usr/share/simpleos/edition/migrations/user/140-menu-highlight
+mkdir -p "$wt/m140/.config/rofi"
+sed -e '/hover-select: true;/d' -e '/^    sort: true;/d' -e '/sorting-method: "fzf";/d' -e '/^ *sel: *#/d' \
+    -e 's/background-color: @sel;/background-color: @bg-alt;/' -e 's/border:           0px 0px 0px 4px;/border:           0px 0px 0px 3px;/' \
+    -e 's/^\( *accent: *\)#89b4fa;/\1#fab387;/' /etc/skel/.config/rofi/config.rasi > "$wt/m140/.config/rofi/config.rasi"
+check "user migration 140: old config.rasi does not get hover/sort/softened accent selection (dark, peach)" \
+      "[ -x $M140 ] && HOME=$wt/m140 $M140 && R=$wt/m140/.config/rofi/config.rasi &&
+       awk '/^configuration \\{/,/^\\}/' \$R | grep -qx '    hover-select: true;' &&
+       awk '/^configuration \\{/,/^\\}/' \$R | grep -qx '    sorting-method: \"fzf\";' &&
+       [ \$(grep -cE '^ *sel: *#fab38759;' \$R) -eq 1 ] && awk '/^element selected.normal/,/^\\}/' \$R | grep -qE '^ *background-color: *@sel;' &&
+       awk '/^element selected.normal/,/^\\}/' \$R | grep -q '0px 0px 0px 4px'"
+cp /etc/skel/.config/rofi/config.rasi "$wt/m140/.config/rofi/config.rasi"
+sed -i -e 's/^\( *accent: *\)#89b4fa;/\1#fe640b;/' -e 's/^\( *bg: *\)#1e1e2e;/\1#eff1f5;/' "$wt/m140/.config/rofi/config.rasi"
+check "user migration 140: merged config.rasi keeps the shipped blue selection instead of the account's accent (light)" \
+      "HOME=$wt/m140 $M140 && HOME=$wt/m140 $M140 && R=$wt/m140/.config/rofi/config.rasi &&
+       [ \$(grep -cE '^ *sel: *#fe640b40;' \$R) -eq 1 ] && [ \$(grep -c 'hover-select' \$R) -eq 1 ]"
+rm -rf "$wt/m140"
 check "user migration 130 (window buttons in the theme copy, #121) missing" \
       "[ -x /usr/share/simpleos/edition/migrations/user/130-window-buttons ] &&
        grep -q 'simpleos-theme --openbox-theme' /usr/share/simpleos/edition/migrations/user/130-window-buttons"
@@ -2799,6 +2865,15 @@ for home in /etc/skel /home/simple; do
     check "Rofi: accent marker missing in $home" "grep -A5 '^element selected.normal' '$c/rofi/config.rasi' | grep -q 'border-color: *@accent;'"
     check "Rofi: typed search text has no own color in $home (Rofi 1.7.3 draws it dark teal)" "awk '/^entry \\{/,/^\\}/' '$c/rofi/config.rasi' | grep -qE '^ *text-color: *@fg;'"
     check "Rofi: accent color for simpleos-theme missing in $home" "grep -qE '^ *accent: *#[0-9a-fA-F]{6};' '$c/rofi/config.rasi'"
+    # 1.1.2: the row under the mouse is selected (same highlight as the arrow keys), in the softened accent; best match first
+    check "Rofi: hovered row not highlighted (hover-select) in $home" \
+          "awk '/^configuration \\{/,/^\\}/' '$c/rofi/config.rasi' | grep -qx '    hover-select: true;'"
+    check "Rofi: best match not first (sort, fzf) in $home" \
+          "awk '/^configuration \\{/,/^\\}/' '$c/rofi/config.rasi' | grep -qx '    sort: true;' &&
+           awk '/^configuration \\{/,/^\\}/' '$c/rofi/config.rasi' | grep -qx '    sorting-method: \"fzf\";'"
+    check "Rofi: selected row not in the softened accent (@sel) in $home" \
+          "grep -qE '^ *sel: *#[0-9a-fA-F]{8};' '$c/rofi/config.rasi' &&
+           awk '/^element selected.normal/,/^\\}/' '$c/rofi/config.rasi' | grep -qE '^ *background-color: *@sel;'"
     # Start menu/search/flyouts: ONE click opens (in configuration { }, so it applies to all Rofi calls);
     # tapping Super (XF86Search) again closes; the desktop (pcmanfm) stays with a double click
     # "!MousePrimary" = accept on RELEASE: on press the app opened its own Rofi flyout, and releasing
@@ -3385,6 +3460,20 @@ check "Search: start page without app/system commands or with hidden apps" \
        ! grep -qE 'Hidden Tool|KDE Only|Missing Tool' $S/out && grep -q 'no-custom~false' $S/out"
 srch ROFI_RETV=0 LANG=de_DE.UTF-8
 check "Search: app name not translated (LANG=de)" "grep -q '^Rechner|' $S/out"
+# 1.1.2: every Control Center page is in the search as "… settings" and opens that page ("display settings" -> Display)
+SARG=x srch ROFI_RETV=0
+check "Search: Control Center pages missing (\"Display settings\" -> page display)" \
+      "grep -q '^Display settings|info~cc:display~icon~video-display~meta~.*resolution.*einstellungen' $S/out &&
+       [ \$(grep -c '|info~cc:' $S/out) -eq \$(python3 -c 'import importlib.machinery as m; print(len(m.SourceFileLoader(\"cc\", \"/usr/local/bin/simpleos-control-center\").load_module().PAGES))') ]"
+check "Search: a settings entry names a page the Control Center does not have" \
+      "python3 -c 'import importlib.machinery as m, sys
+cc = {k for k, _t, _i in m.SourceFileLoader(\"cc\", \"/usr/local/bin/simpleos-control-center\").load_module().PAGES}
+se = {k for k, *_ in m.SourceFileLoader(\"se\", \"/usr/local/bin/simpleos-search\").load_module().SETTINGS}
+sys.exit(0 if se == cc else 1)'"
+printf '#!/bin/sh\necho "simpleos-control-center $*" > "$WT/opened"\n' > "$wt/mock/simpleos-control-center"; chmod 0755 "$wt/mock/simpleos-control-center"
+SARG=x srch ROFI_RETV=1 ROFI_INFO=cc:display
+check "Search: \"Display settings\" does not open Control Center → Display" "/bin/sleep 0.3; grep -qx 'simpleos-control-center display' $S/opened"
+rm -f "$wt/mock/simpleos-control-center"
 SARG="42 * 12" srch ROFI_RETV=2
 check "Search: '42 * 12' + Enter does not calculate" "grep -q '^42 \\* 12 = 504|info~calc:504' $S/out && grep -q 'Enter copies the result' $S/out"
 for c in '42*12=|42 * 12 = 504' '2^10|2 ^ 10 = 1024' '3,5*2|3,5 * 2 = 7' '(1+2)/3|(1 + 2) / 3 = 1' '10 % 3|10 % 3 = 1' \
@@ -3451,7 +3540,8 @@ printf '#!/bin/sh\necho "simpleos-picom $*" >> "$WT/picom"\n[ "$1" = --running ]
 printf '#!/bin/sh\necho "dunstctl $* notified=$(grep -c "is on" "$WT/notify" 2>/dev/null)" >> "$WT/dunst"\n' > "$wt/mock/dunstctl"
 chmod 0755 "$wt/mock/simpleos-picom" "$wt/mock/dunstctl"
 DND=/usr/local/bin/simpleos-dnd
-DS=$wt/home/.cache/simpleos-dnd
+DS=$wt/home/.config/simpleos/dnd-on    # 1.1.2 (#135): kept over signing out and restarts
+DSP=$wt/home/.cache/simpleos-dnd.panel  # pid of the taskbar indicator (XDG_RUNTIME_DIR, here its fallback)
 DSET=$wt/home/.config/simpleos/dnd
 rm -f "$DS" "$DSET"
 hcase "$DND --on" "on: message, then notifications paused, effects stay (default)" "" "" "" \
@@ -3475,12 +3565,50 @@ hcase "$DND --no-effects off" "reset the effects option" "" "" "" '[ ! -e '"$DSE
 check "DND: unknown option not rejected (exit 2)" "HOME=$wt/home $DND --bogus >/dev/null 2>&1; [ \$? -eq 2 ]"
 rm -f "$DS" "$DSET"
 # Taskbar indicator: one line per change (icon when on, empty when off), ends with the parent process (tint2)
+# #130: tint2 does not end its executors' process groups when the X server goes away – both indicators end with the
+# session's X connection themselves (xprop -spy, then kill 0)
+for f in /usr/local/bin/simpleos-dnd /usr/local/bin/simpleos-volume; do
+    check "$f --panel: stays after signing out (no watcher on the X connection, #130)" \
+          "awk '/--panel ]; then/,/^fi/' $f | grep -qF '{ xprop -root -spy _SIMPLEOS_PANEL >/dev/null 2>&1; kill 0; } &'"
+done
 check "DND taskbar: icon/change/end wrong (woken by SIGUSR1, no polling)" \
       "rm -f $DS; ( HOME=$wt/home XDG_RUNTIME_DIR= timeout 6 $DND --panel > $wt/dndpanel ) & p=\$!;
-       /bin/sleep 1.3; touch $DS; kill -USR1 \$(cat $DS.panel); /bin/sleep 1.5; rm -f $DS; kill -USR1 \$(cat $DS.panel); /bin/sleep 1.5; kill \$p 2>/dev/null; wait \$p 2>/dev/null;
+       /bin/sleep 1.3; touch $DS; kill -USR1 \$(cat $DSP); /bin/sleep 1.5; rm -f $DS; kill -USR1 \$(cat $DSP); /bin/sleep 1.5; kill \$p 2>/dev/null; wait \$p 2>/dev/null;
        [ \"\$(sed -n 1p $wt/dndpanel)\" = '' ] && sed -n 2p $wt/dndpanel | grep -q \"font_desc='FontAwesome 11'\" &&
        [ \"\$(sed -n 3p $wt/dndpanel)\" = '' ] && [ \$(wc -l < $wt/dndpanel) -eq 3 ]"
 rm -f "$wt/dndpanel" "$DS"
+# #135: the state of Simple OS up to 1.1.1 (per session in XDG_RUNTIME_DIR) is taken over
+mkdir -p "$wt/dndrun"; echo picom=0 > "$wt/dndrun/simpleos-dnd"
+check "DND: state of 1.1.1 (XDG_RUNTIME_DIR) not taken over" \
+      "[ \"\$(HOME=$wt/home XDG_RUNTIME_DIR=$wt/dndrun $DND --status 2>/dev/null)\" = on ] && [ ! -e $wt/dndrun/simpleos-dnd ] &&
+       grep -qx picom=0 $DS"
+# #135: a new session (sign-in, restart) with DND on: the indicator pauses the new dunst again and, with
+# "--no-effects on", stops picom again (dunst answers only after its start: a few tries)
+mkdir -p "$wt/dndmock"
+cat > "$wt/dndmock/dunstctl" <<'MOCK'
+#!/bin/sh
+echo "dunstctl $*" >> "$WT/dunst"
+case "$1" in
+    set-paused) [ -e "$WT/dunst-up" ] || { touch "$WT/dunst-up"; exit 1; } ;;   # first try: dunst not there yet
+    is-paused) grep -qx "dunstctl set-paused true" "$WT/dunst" && [ -e "$WT/dunst-up" ] && echo true || echo false ;;
+esac
+exit 0
+MOCK
+printf '#!/bin/sh\necho "simpleos-picom $*" >> "$WT/picom"\n[ "$1" = --running ] && exit ${PICOM_DOWN:-0}\nexit 0\n' > "$wt/dndmock/simpleos-picom"
+chmod 0755 "$wt/dndmock/"*
+echo effects=off > "$DSET"
+rm -rf "$wt/dndS"; mkdir -p "$wt/dndS"
+check "DND taskbar: after signing in with DND on, dunst is not paused again / picom not stopped again (#135)" \
+      "( HOME=$wt/home XDG_RUNTIME_DIR= WT=$wt/dndS PATH=$wt/dndmock:\$PATH timeout 5 $DND --panel > $wt/dndpanel ) & p=\$!;
+       /bin/sleep 3.5; kill \$p 2>/dev/null; wait \$p 2>/dev/null;
+       [ \$(grep -c 'set-paused true' $wt/dndS/dunst) -eq 2 ] && grep -qx 'dunstctl is-paused' $wt/dndS/dunst &&
+       grep -qx 'simpleos-picom --stop' $wt/dndS/picom && grep -qx picom=1 $DS &&
+       sed -n 1p $wt/dndpanel | grep -q \"font_desc='FontAwesome 11'\""
+rm -f "$DS" "$DSET" "$wt/dndpanel"; rm -rf "$wt/dndS"
+check "DND taskbar: with DND off the indicator touches neither dunst nor picom" \
+      "mkdir -p $wt/dndS; ( HOME=$wt/home XDG_RUNTIME_DIR= WT=$wt/dndS PATH=$wt/dndmock:\$PATH timeout 2 $DND --panel >/dev/null ) ;
+       [ ! -e $wt/dndS/dunst ] && [ ! -e $wt/dndS/picom ]"
+rm -rf "$wt/dndS" "$wt/dndmock" "$wt/dndrun"
 # Parent process (otherwise tint2) ends after 1 s -> the indicator ends by itself (no orphaned long-running process)
 sh -c "HOME=$wt/home SIMPLEOS_DND_NAP=1 $DND --panel >/dev/null 2>&1 & echo \$! > $wt/dndpid; /bin/sleep 1"
 /bin/sleep 2.5
@@ -4403,7 +4531,17 @@ check "progress-filter apt: download/installation mapped wrong" \
 # #120: Software Updates in plain words – counted, no package names/versions, the bar never goes back, triggers = Finishing up
 check "progress-filter apt --updates: no plain 'Downloading/Installing updates (n of m)' or 'Finishing up'" \
       "[ \"\$(printf 'dlstatus:3:70:Retrieving file 3 of 4\ndlstatus:4:100:Retrieving file 4 of 4\ndlstatus:4:89:Retrieving file 4 of 4\npmstatus:dpkg-exec:0:Running dpkg\npmstatus:apt:10:Unpacking apt (amd64)\npmstatus:libc6:60:Configuring libc6 (amd64)\npmstatus:man-db:97:Running post-installation trigger man-db\nE: Failure\n' |
-         $PF apt --updates 4 | tr '\n' '|')\" = 'STAGE: Downloading updates (3 of 4)|PROGRESS: 28|STAGE: Downloading updates (4 of 4)|PROGRESS: 40|STAGE: Installing updates (1 of 4)|PROGRESS: 46|STAGE: Installing updates (3 of 4)|PROGRESS: 76|STAGE: Finishing up|PROGRESS: 98|E: Failure|' ]"
+         $PF apt --updates 4 | tr '\n' '|')\" = 'STAGE: Downloading 3 of 4|PROGRESS: 28|STAGE: Downloading 4 of 4|PROGRESS: 40|STAGE: Update 1 of 4|PROGRESS: 46|STAGE: Update 3 of 4|PROGRESS: 76|STAGE: Finishing up|PROGRESS: 98|E: Failure|' ]"
+# #129: a trigger in the middle does not switch to "Finishing up" (it flickered back to "Update n of m"); once reached it stays
+check "progress-filter apt --updates: 'Finishing up' in the middle or not staying" \
+      "[ \"\$(printf 'pmstatus:a:10:Installing a\npmstatus:man-db:30:Running post-installation trigger man-db\npmstatus:b:60:Installing b\npmstatus:c:92:Running post-installation trigger initramfs-tools\npmstatus:c:96:Installed c\n' |
+         $PF apt --updates 3 | grep '^STAGE' | tr '\n' '|')\" = 'STAGE: Update 1 of 3|STAGE: Update 2 of 3|STAGE: Finishing up|' ]"
+# #131: apt's pmerror:/pmconffile: lines and flatpak's table header / end-of-life notices never become the description
+check "progress-filter apt: pmerror/pmconffile lines passed through" \
+      "[ -z \"\$(printf 'pmerror:/var/cache/apt/archives/x.deb:40:trying to overwrite /usr/bin/foo\npmconffile:/etc/x:50:new\n' | $PF apt)\" ]"
+check "progress-filter flatpak: table header or end-of-life notice passed through" \
+      "out=\$(printf 'Looking for updates\nInfo: runtime org.gnome.Platform branch 45 is end-of-life, with reason:\n   The GNOME 45 runtime is no longer supported.\nInfo: applications using this runtime:\n   org.example.App\n\n        ID          Branch     Op     Remote      Download\n 1.\t\torg.gnome.Platform\t46\tu\tflathub\t< 100.0 MB\n 2.\t\torg.example.App\tstable\tu\tflathub\t< 100.0 MB\nUpdating 1/2… 50%%\n' | $PF flatpak) &&
+       [ \"\$(printf '%s\n' \"\$out\" | tr '\n' '|')\" = 'STAGE: Checking for app updates|STAGE: Downloading part 1 of 2|PROGRESS: 25|' ]"
 check "Software Updates: the helper does not hand the number of updates to the apt filter (#120)" \
       "grep -q 'APT_FILTER_ARGS=\"--updates ' $SSU && grep -q 'progress-filter apt \$APT_FILTER_ARGS' $SSU && grep -q 'dpkg --configure -a >&2' $SSU"
 check "progress-filter timeshift: percent/remaining/stage wrong" \
@@ -4686,6 +4824,7 @@ tcase "light, running session" "DISPLAY=:0 XSD_RUNNING=1" "--mode light" \
      grep -qx "openbox --reconfigure" $S/power &&
      grep -qx "/usr/share/backgrounds/simpleos/wallpaper-day.png" $S/wallpaper &&
      grep -qE "^ *bg: *#eff1f5;" '"$RASI"' && grep -qE "^ *fg: *#4c4f69;" '"$RASI"' && grep -qE "^ *accent: *#1e66f5;" '"$RASI"' &&
+     grep -qE "^ *sel: *#1e66f540;" '"$RASI"' &&
      grep -qx "taskbar --apply DISPLAY=" $S/taskbar && grep -qx "pkill -USR1 -x tint2" $S/pkill'
 tcase "dark again" "DISPLAY=:0 XSD_RUNNING=1" "--mode dark" \
     'grep -qx "gtk-theme-name=Arc-Dark" '"$G3"' && grep -qx "gtk-application-prefer-dark-theme=0" '"$G3"' &&
@@ -4703,7 +4842,11 @@ tcase "--no-wallpaper" "DISPLAY=:0 XSD_RUNNING=1" "--mode dark --no-wallpaper" '
 theme_home
 tcase "without a screen: files only, no signals" "" "--mode light" \
     'grep -qx "gtk-theme-name=Arc" '"$G3"' && [ ! -e $S/power ] && ! grep -q "HUP\|USR1" $S/pkill 2>/dev/null && [ ! -e $S/xsd ]'
-tcase "accent pink in light mode: Latte shade in Rofi" "DISPLAY=:0 XSD_RUNNING=1" "--accent pink" 'grep -qE "^ *accent: *#ea76cb;" '"$RASI"
+tcase "accent pink in light mode: Latte shade in Rofi" "DISPLAY=:0 XSD_RUNNING=1" "--accent pink" 'grep -qE "^ *accent: *#ea76cb;" '"$RASI"' && grep -qE "^ *sel: *#ea76cb40;" '"$RASI"
+# 1.1.2: a config.rasi from before (no "sel" line) gets it after the accent
+sed -i '/^ *sel: *#/d' "$RASI"
+tcase "accent peach in dark mode, old config.rasi: sel added" "DISPLAY=:0 XSD_RUNNING=1" "--mode dark --accent peach --no-wallpaper" \
+    '[ $(grep -cE "^ *sel: *#fab38759;" '"$RASI"') -eq 1 ] && grep -A1 -E "^ *accent: *#fab387;" '"$RASI"' | grep -qE "^ *sel: *#fab38759;"'
 # The accent must not recolor the live badge "Install Simple OS" (background 8 uses #cba6f7/#f5c2e7 = mauve/pink)
 TRC=$th/.config/tint2/tint2rc
 theme_home
@@ -5033,6 +5176,12 @@ check "live: polkit asks the live user for a password (rule missing)" \
       "grep -q 'subject.user == \"simple\" && subject.local && subject.active' $LR && grep -q 'polkit.Result.YES' $LR && [ \"\$(stat -c %a $LR)\" = 644 ]"
 check "simpleos-post-install leaves the live polkit rule on the installed system" \
       "grep -q 'rm -f .*$LR' /usr/local/sbin/simpleos-post-install"
+# #136: before anything that can fail (set -e) – otherwise sudo without a password and autologin for "simple" stayed
+check "simpleos-post-install removes the live user's rights only after commands that can fail" \
+      "awk '/^rm -f .*simple-nopasswd/ { r = NR; exit } END { exit !r }' /usr/local/sbin/simpleos-post-install &&
+       [ \$(grep -n 'simple-nopasswd.*49-simpleos-live.rules' /usr/local/sbin/simpleos-post-install | grep -v ':#' | head -n 1 | cut -d: -f1) -lt \
+         \$(grep -n '^[a-z/]' /usr/local/sbin/simpleos-post-install | grep -v -e ':set ' -e ':export ' -e ':rm -f /etc/lightdm' | head -n 1 | cut -d: -f1) ] &&
+       grep -q '^rm -f .*01_autologin.conf .*simple-nopasswd' /usr/local/sbin/simpleos-post-install"
 check "polkit: rules.d permissions changed (polkitd 0700)" "[ \"\$(stat -c %a /etc/polkit-1/rules.d)\" = 700 ]"
 
 # Installer links (Calamares runs as root): open in the live user's browser, not as root (hook 15)

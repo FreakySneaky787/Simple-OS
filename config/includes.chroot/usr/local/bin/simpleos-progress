@@ -135,6 +135,9 @@ class State:
                 # new step (e.g. update: restore point -> apt -> Flatpak): its own progress from 0,
                 # until then the bar swings – otherwise it would stand at 100 % and jump back
                 self.pct, self.remaining, self.hint = None, "", None
+                # and its old description ("Finishing up" of the restore point under "Installing updates", #129) –
+                # empty until the step sends its own
+                self.message = ""
             if val and val != "Done" and (key == "TITLE" or not self.fixed):
                 self.title = val
         elif sep and key in ("MESSAGE", "STAGE"):
