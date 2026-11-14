@@ -47,16 +47,18 @@ Already running Simple OS? New versions arrive through **Software Updates** – 
 
 Thank you for testing! Every report helps, especially from real hardware.
 
-**Wanted right now** (1.1 is out):
+**Wanted right now** (1.1.2 is out):
 
-- **Display scaling** on a high-resolution screen: Control Center → Display → Scale (automatic or 100 to 200 %). Is
-  everything sharp and the right size – windows, taskbar, menus, the login screen?
-- **Language & Region:** pick another language or other formats, sign out and in again. Are dates, numbers and the
-  currency right?
-- **Camera:** does the Camera app show your webcam, and can you take a photo?
-- **Starting up:** does your computer start quicker than with 1.0.7? With an encrypted installation: can you type the
-  password, also with a USB keyboard?
-- **Updating from 1.0.7** through Software Updates: does it restart cleanly, and does the "What's new" window show up?
+- **Menus:** point at a row in the start menu, the search or a taskbar menu – does the row under the mouse light up
+  in your accent color? Type "Sound" or "display settings" – is the right entry on top, and does it open the right
+  page? Does the sound menu stay open while you change the volume?
+- **Screen lock on a desktop PC:** play a video, close it, then leave the computer alone. Does the screen turn off and
+  lock as set in Control Center → Power?
+- **Do Not Disturb:** turn it on, restart – is it still on, and do notifications stay quiet until you turn it off?
+- **Updating from 1.1.1** (or older) through Software Updates: does the update window show plain words, does it
+  restart cleanly, and does the "What's new" window show up?
+- **Display scaling** on a high-resolution screen (Control Center → Display → Scale) and **Language & Region**: is
+  everything sharp, the right size and in your formats?
 - **Installing on real hardware**, in **legacy BIOS / MBR** mode as well as **UEFI**, also next to Windows. Do your
   other systems stay in the boot menu?
 
@@ -177,8 +179,8 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
 - **`main` is the published edition, pushed with a release.** Between releases nothing new goes to `main` on GitHub,
   so it always matches what installed systems run. The release tags (`v1.0.3` …) always match exactly what was
   published. Release day: `git push`, then build, test, `sign`, `publish`.
-- **`next` is the branch for the next release** – at the moment the bugfix release **1.1.2**, after it the features
-  for 1.2. It is pushed as the work goes on; on release day `next` is merged into `main` and released from there.
+- **`next` is the branch for the next release** – at the moment the features for **1.2** (and a
+  bugfix release 1.1.3 first, if one is needed). It is pushed as the work goes on; on release day `next` is merged into `main` and released from there.
   Details: [`docs/MAINTAINING.md`](docs/MAINTAINING.md#7-branches).
 - **Website** (freakysneaky787.github.io, its own repository): updated after every release – version, download, roadmap.
 - **Issues and the project board follow the work, not the push:** when something is done and tested without hardware, its issue
