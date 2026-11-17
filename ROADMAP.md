@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Last updated 2026-11-11. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
+Last updated 2026-11-17. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -17,6 +17,15 @@ Last updated 2026-11-11. Released versions are not listed here: they are in `REL
 Rules that keep it small: no new always-running process without a good reason (the image is built without Recommends
 on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook.chroot`; anything that mocks can hide
 (night light in 1.0.3!) is run for real once, e.g. in a container with Xvfb; nothing is published untested on hardware.
+
+## Next releases
+
+| Release | When | Condition |
+|---|---|---|
+| **1.1.3** (bugfix release) | Sunday **22 November 2026** | only if many bug reports come in during the next days; with few reports it is skipped and the fixes go into 1.2 |
+| **1.2** (feature release) | about **23–29 November 2026** | planned and built if nothing big comes in; a serious bug or a larger problem moves it |
+
+Dates are a target, not a promise (see the first paragraph). Nothing is published untested on hardware.
 
 ## 1.2 – feature release after 1.1
 
