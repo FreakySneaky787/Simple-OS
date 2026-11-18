@@ -166,6 +166,11 @@ installed systems use. You don't need to download them yourself.
   (installer or Control Center → Language & Region), but the Control Center, the setup wizard and Simple OS's messages
   stay English until their translations come in 1.2. The keyboard layout can be changed at any time in
   Control Center → Keyboard.
+- **Chromium asks for a keyring password.** If you chose Chromium and start it a few minutes after signing in to a new
+  account, a window "Choose password for new keyring" can appear. Chromium works if you close it; this is fixed in 1.2
+  (issue #148). Firefox is not affected.
+- **Chromium stays English** after you change the system language, while Firefox and LibreOffice follow it. Fixed in 1.2
+  (issue #149).
 - **The network icon's right-click menu** (next to the network display in the taskbar) closes again if you hold the
   mouse button for more than half a second – a limit of that GTK menu, it has no setting. Click quickly, or use the
   network display itself (a click opens the Simple OS network menu).

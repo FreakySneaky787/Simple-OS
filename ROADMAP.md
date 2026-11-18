@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Last updated 2026-11-17. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
+Last updated 2026-11-18. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -41,6 +41,14 @@ Dates are a target, not a promise (see the first paragraph). Nothing is publishe
   Not planned: automatic Windows VMs, CrossOver, our own configs for Windows apps.
 - **Optional Components** in the Setup Wizard (#126): a short list, all off by default – SOS Bridge, Gaming Support
   (Steam, launchers, controllers) and Developer Tools. Simple Health (#127) and Remote Support (#128) are ideas with low priority.
+- **Fixes already collected for 1.2** (from the review of 1.1.2 and a full test installation, 2026-11-18):
+  - Chromium asks for a new keyring password a few minutes after the first sign-in of an account (#148): the keyring
+    daemon that sign-in starts is gone after about 2 minutes. Hook 17 (#32) has to be revisited – the first sign-in must
+    be tested again before it changes.
+  - Chromium stays English after the system language was changed: `chromium-l10n` is never installed (#149).
+  - The search or start menu can take the selection from a resting mouse pointer while typing (#144, unconfirmed).
+  - Small things in one issue (#147): the search calculator with `round(x,2)` and German number formats, the migration
+    list in the README, the free-space check before the first restore point.
 
 ## After 1.2 – bugfixes only, the port starts slowly
 
