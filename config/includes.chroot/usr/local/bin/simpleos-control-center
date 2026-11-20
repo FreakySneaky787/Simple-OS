@@ -916,7 +916,8 @@ def set_default(group, app_id, apps):
 # Autostart entries Simple OS starts or switches off itself (~/.config/openbox/autostart, /etc/skel overrides) – not
 # shown: switching them here would start them twice or break the desktop
 AUTOSTART_OWN = {"blueman.desktop", "calamares-desktop-icon.desktop", "nm-applet.desktop", "spice-vdagent.desktop",
-                 "xdg-user-dirs.desktop", "xfce4-power-manager.desktop", "lxpolkit.desktop"}
+                 "xdg-user-dirs.desktop", "xfce4-power-manager.desktop", "lxpolkit.desktop",
+                 "simpleos-keyring.desktop"}
 
 
 def autostart_dirs():

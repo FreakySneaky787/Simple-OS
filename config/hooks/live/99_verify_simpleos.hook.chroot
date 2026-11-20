@@ -111,6 +111,8 @@ for pkg in systemd-timesyncd python3-xdg libpam-gnome-keyring tumbler gvfs-fuse 
     check "package $pkg not installed (a Recommends the desktop needs)" "dpkg-query -W -f='\${Status}' $pkg 2>/dev/null | grep -q 'install ok installed'"
 done
 check "openbox-xdg-autostart cannot import PyXDG" "python3 -c 'from xdg import BaseDirectory; from xdg.DesktopEntry import DesktopEntry'"
+check "keyring: /etc/xdg/autostart/simpleos-keyring.desktop missing – the login keyring quits 2 minutes after sign-in (#148)" \
+      "grep -qx 'Exec=gnome-keyring-daemon --start --components=pkcs11,secrets' /etc/xdg/autostart/simpleos-keyring.desktop"
 check "systemd-timesyncd not enabled" "systemctl is-enabled systemd-timesyncd >/dev/null 2>&1"
 # What every beginner's tutorial assumes (curl/wget/unzip/ssh), audio profiles of current laptops (libasound2-data only
 # Recommends alsa-ucm-conf), fonts for all writing systems, OpenVPN in the network menu
