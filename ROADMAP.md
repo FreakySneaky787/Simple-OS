@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Last updated 2026-11-18. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
+Last updated 2026-11-21. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -22,8 +22,8 @@ on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook
 
 | Release | When | Condition |
 |---|---|---|
-| **1.1.3** (bugfix release) | Sunday **22 November 2026** | only if many bug reports come in during the next days; with few reports it is skipped and the fixes go into 1.2 |
-| **1.2** (feature release) | about **23–29 November 2026** | planned and built if nothing big comes in; a serious bug or a larger problem moves it. It is better to take about two weeks longer than to publish it half-finished |
+| **1.1.3** (bugfix release) | skipped | no bug reports came in after 1.1.2, so its fixes (#148, #149) go into 1.2. If a serious report comes in before 1.2, a small 1.1.3 with just that fix follows |
+| **1.2** (feature release) | about **mid-December 2026** | everything planned below goes in (decided 2026-11-21); this is about two weeks later than first planned – it is better to take longer than to publish it half-finished |
 
 Dates are a target, not a promise (see the first paragraph). Nothing is published untested on hardware.
 
@@ -46,7 +46,7 @@ Dates are a target, not a promise (see the first paragraph). Nothing is publishe
     daemon that sign-in starts is gone after about 2 minutes. Hook 17 (#32) has to be revisited – the first sign-in must
     be tested again before it changes.
   - Chromium stays English after the system language was changed: `chromium-l10n` is never installed (#149).
-  - The search or start menu can take the selection from a resting mouse pointer while typing (#144, unconfirmed).
+  - The search or start menu can take the selection from a resting mouse pointer while typing (#144, confirmed on a ThinkPad E16).
   - Small things in one issue (#147): the search calculator with `round(x,2)` and German number formats, the migration
     list in the README, the free-space check before the first restore point.
 
