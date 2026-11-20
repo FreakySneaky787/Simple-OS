@@ -17,7 +17,9 @@
 # (findmnt), otherwise "/" (target device = system partition), otherwise timeshift's own mount points
 # /run/timeshift/*/backup. If a path returns an error or a total size of 0 bytes, the next one is tried; if
 # all are unusable, the space counts as "not measurable" and there is NO space warning (timeshift decides).
-# Minimum free: 5 GB before the first point (full copy of the system), 1 GB before further ones (changes only).
+# Minimum free before the first point (full copy of the system): the space the system really uses on "/" without
+# /home and /swapfile (timeshift leaves both out) plus 10 % (#147) – 5 GB when that cannot be measured (or counting /home takes
+# longer than 10 s); 1 GB before further ones (changes only).
 # First-time setup: if timeshift has no (valid) target device, /etc/timeshift/timeshift.json is created minimally
 # or completed: RSYNC mode on the partition of "/" (UUID via findmnt; with LUKS also the UUID of the
 # encrypted container), no schedules, home folders excluded (/home/*/**, /root/**) – otherwise
@@ -32,7 +34,8 @@
 #      5 no target device (system partition cannot be determined/not available), 6 not enough space.
 # Tests: SIMPLEOS_BACKUP_ROOT replaces "/" for the state file, timeshift.json and snapshot folder; its bin/
 # comes first in PATH (dummies for timeshift/findmnt/lsblk/blkid). Only then SIMPLEOS_FAKE_DISK applies too
-# ("path=total:free;…", path missing = error when querying) instead of shutil.disk_usage. pkexec clears the environment.
+# ("path=total:free;…", path missing = error when querying) instead of shutil.disk_usage, and SIMPLEOS_FAKE_USED
+# (bytes the system uses, unset = not measurable) instead of df/du. pkexec clears the environment.
 set -u
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ROOT=${SIMPLEOS_BACKUP_ROOT:-}
@@ -43,7 +46,7 @@ SNAPDIR=$ROOT/timeshift/snapshots
 KEEP_UPDATE=3
 UPDATE_COMMENT="Before system update"
 CONF=$ROOT/etc/timeshift/timeshift.json
-MIN_FIRST=5000000000   # 5 GB before the first point (full copy)
+MIN_FIRST=5000000000   # 5 GB before the first point (full copy) when the system's size cannot be measured
 MIN_NEXT=1000000000    # 1 GB before further points (rsync hard links: only changed files take space)
 TSOUT=$(mktemp) || exit 1
 trap 'rm -f "$TSOUT" "$TSOUT.rc"' EXIT
@@ -133,9 +136,33 @@ except Exception: print("")' "$CONF" 2>/dev/null)
     fi
     for d in /run/timeshift/*/backup /run/timeshift/backup; do [ -d "$d" ] && echo "$d"; done
 }
+# Bytes the first point needs: what the system uses on "/" without /home and /swapfile, plus 10 %; MIN_FIRST when
+# that cannot be measured
+first_need() {
+    if [ -n "$ROOT" ]; then
+        used=${SIMPLEOS_FAKE_USED:-}; skip=0
+    else
+        used=$(python3 -c 'import os; s = os.statvfs("/"); print((s.f_blocks - s.f_bfree) * s.f_frsize)' 2>/dev/null)
+        skip=0
+        # /home on the same file system as "/" (also a Btrfs subvolume of it: same UUID, other device number) is in
+        # the used space but not in the restore point
+        fs_root=$(findmnt -n -o UUID --target / 2>/dev/null)
+        if [ -d /home ] && [ -n "$fs_root" ] && [ "$fs_root" = "$(findmnt -n -o UUID --target /home 2>/dev/null)" ]; then
+            skip=$(timeout 10 du -sx -B1 /home 2>/dev/null) && skip=${skip%%[[:space:]]*} || skip=
+        fi
+        if [ -f /swapfile ] && [ -n "$skip" ]; then
+            swap=$(stat -c %s /swapfile 2>/dev/null) && skip=$((skip + swap))
+        fi
+    fi
+    case $used$skip in ''|*[!0-9]*) echo "$MIN_FIRST"; return ;; esac
+    [ -n "$used" ] && [ -n "$skip" ] || { echo "$MIN_FIRST"; return; }
+    sys=$((used - skip)); [ "$sys" -gt 0 ] || sys=0
+    need=$((sys + sys / 10)); [ "$need" -ge "$MIN_NEXT" ] || need=$MIN_NEXT
+    echo "$need"
+}
 # Space at the target: "FREE: n" "NEED: n" "PATH: p" (FREE empty = not measurable). Exit 0 enough/unknown, 6 too little
 space_report() {
-    if [ -n "$(list | head -n 1)" ]; then need=$MIN_NEXT; else need=$MIN_FIRST; fi
+    if [ -n "$(list | head -n 1)" ]; then need=$MIN_NEXT; else need=$(first_need); fi
     target_paths | FAKE=$( [ -n "$ROOT" ] && printf '%s' "${SIMPLEOS_FAKE_DISK:-}" ) python3 -c '
 import os, shutil, sys
 fake = os.environ.get("FAKE", "")

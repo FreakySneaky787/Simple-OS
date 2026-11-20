@@ -3470,6 +3470,15 @@ done
 # "1,000" is one thousand outside decimal-comma languages, "3,5" stays 3.5; German keeps the decimal comma
 check "Calculator: '1,000+5' in English" "[ \"\$(env -u LC_ALL -u LC_NUMERIC LANG=en_US.UTF-8 python3 $SR --calc '1,000+5')\" = '1,000 + 5 = 1005' ]"
 check "Calculator: '1,000+5' in German (decimal comma)" "[ \"\$(env -u LC_ALL -u LC_NUMERIC LANG=de_DE.UTF-8 python3 $SR --calc '1,000+5')\" = '1,000 + 5 = 6' ]"
+# #147: commas between function arguments, German thousands dots, the result with a decimal comma in German
+for c in 'en_US|round(3.14159,2)|round(3.14159,2) = 3.14' 'en_US|max(1,2)|max(1,2) = 2' 'en_US|min(4, 2)|min(4, 2) = 2' \
+         'en_US|3,5*2|3,5 * 2 = 7' 'en_US|round(1234,-2)|round(1234, -2) = 1200' \
+         'de_DE|1.234,5+1|1.234,5 + 1 = 1235,5' 'de_DE|1.000+1|1.000 + 1 = 1001' 'de_DE|round(3,14159; 2)|round(3,14159; 2) = 3,14' \
+         'de_DE|round(3,14159, 2)|round(3,14159, 2) = 3,14' 'de_DE|round(3.14159,2)|round(3.14159,2) = 3,14' \
+         'de_DE|round(2,5)|round(2,5) = 3' 'de_DE|max(1,2)|max(1,2) = 2' 'de_DE|1.5+1|1.5 + 1 = 2,5' 'de_DE|0.125*8|0.125 * 8 = 1'; do
+    l=${c%%|*}; r=${c#*|}; e=${r%%|*}; want=${r#*|}
+    check "Calculator ($l): '$e' does not give '$want'" "[ \"\$(env -u LC_ALL -u LC_NUMERIC LANG=$l.UTF-8 python3 $SR --calc '$e')\" = '$want' ]"
+done
 check "Calculator: division by zero without an understandable message" "python3 $SR --calc '1/0' | grep -q \"can't divide by zero\""
 for c in '9^999*9^999*9^999*9^999*9^999' '((9^999)^999)^999'; do
     check "Calculator: '$c' crashes or calculates forever instead of 'too large'" "timeout 5 python3 $SR --calc '$c' | grep -q 'the number is too large'"
@@ -4269,6 +4278,13 @@ cp "$bt/ts.list" "$bt/ts.list.keep"; : > "$bt/ts.list"
 check "Space: the first point does not need 5 GB" \
       "out=\$(env SIMPLEOS_FAKE_DISK='/=600000000000:3000000000' $SPACE 2>/dev/null); [ \$? -eq 6 ] && printf '%s\n' \"\$out\" | grep -qx 'NEED: 5000000000'"
 check "Space: 6 GB not enough for the first point" "env SIMPLEOS_FAKE_DISK='/=600000000000:6000000000' $SPACE >/dev/null 2>&1"
+# #147: the first point needs what the system really uses (+10 %), at least 1 GB; 5 GB only when not measurable
+check "Space: first point not sized from the system (8 GB used -> 8.8 GB)" \
+      "out=\$(env SIMPLEOS_FAKE_USED=8000000000 SIMPLEOS_FAKE_DISK='/=600000000000:6000000000' $SPACE 2>/dev/null); [ \$? -eq 6 ] && printf '%s\n' \"\$out\" | grep -qx 'NEED: 8800000000'"
+check "Space: a small system's first point needs less than 1 GB" \
+      "out=\$(env SIMPLEOS_FAKE_USED=300000000 SIMPLEOS_FAKE_DISK='/=600000000000:3000000000' $SPACE 2>/dev/null) && printf '%s\n' \"\$out\" | grep -qx 'NEED: 1000000000'"
+check "Space: unmeasurable system size -> not 5 GB" \
+      "out=\$(env SIMPLEOS_FAKE_USED=x SIMPLEOS_FAKE_DISK='/=600000000000:3000000000' $SPACE 2>/dev/null); [ \$? -eq 6 ] && printf '%s\n' \"\$out\" | grep -qx 'NEED: 5000000000'"
 mv "$bt/ts.list.keep" "$bt/ts.list"
 check "Space: live session not rejected" "env SIMPLEOS_BACKUP_ROOT=$bt BT=$bt SIMPLEOS_LIVE=1 $BH --space >/dev/null 2>&1; [ \$? -eq 4 ]"
 for c in 'livecd|4' 'nodevice|5' 'space|6' 'other|1'; do
