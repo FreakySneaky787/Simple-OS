@@ -131,19 +131,19 @@ printf '#!/bin/sh\ngrep -qx "$2" "$LT/known"\n' > "$LT/bin/apt-cache"
 chmod 0755 "$LT/bin/apt-cache"
 printf '%s\n' hunspell-de-de firefox-esr-l10n-de libreoffice-l10n-de hunspell-fr firefox-esr-l10n-fr libreoffice-l10n-fr \
     hunspell-pt-br firefox-esr-l10n-pt-br libreoffice-l10n-pt-br libreoffice-l10n-pt hunspell-en-us hunspell-en-gb firefox-esr-l10n-en-gb \
-    libreoffice-l10n-en-gb libreoffice-l10n-en-us firefox-esr-l10n-zh-cn libreoffice-l10n-zh-cn > "$LT/known"
+    libreoffice-l10n-en-gb libreoffice-l10n-en-us firefox-esr-l10n-zh-cn libreoffice-l10n-zh-cn chromium-l10n > "$LT/known"
 awk '/^sys_locale\(\)/ { p = 1 } p { print } /^language_install\(\)/ { q = 1 } q && /^}/ { exit }' /usr/local/sbin/simpleos-system-setup > "$LT/lang.sh"
 cat > "$LT/run.sh" <<'LSH'
 step() { :; }
-installed() { case "$1" in firefox-esr|libreoffice-common) return 0 ;; esac; return 1; }
+installed() { case "$1" in firefox-esr|libreoffice-common|chromium) return 0 ;; esac; return 1; }
 . "$LT/lang.sh"
 echo "LANG=$1" > "$LT/locale"
 SIMPLEOS_LOCALE_FILE=$LT/locale lang_pkgs | tr '\n' ' '
 LSH
-for t in 'de_DE.UTF-8|hunspell-de-de firefox-esr-l10n-de libreoffice-l10n-de ' 'fr_CA.UTF-8|hunspell-fr firefox-esr-l10n-fr libreoffice-l10n-fr ' \
-         'pt_BR.UTF-8|hunspell-pt-br firefox-esr-l10n-pt-br libreoffice-l10n-pt-br ' 'pt_PT.UTF-8|libreoffice-l10n-pt ' \
-         'en_US.UTF-8|hunspell-en-us ' 'en_GB.UTF-8|hunspell-en-gb firefox-esr-l10n-en-gb libreoffice-l10n-en-gb ' 'en_IE.UTF-8|hunspell-en-us ' \
-         'zh_CN.UTF-8|firefox-esr-l10n-zh-cn libreoffice-l10n-zh-cn fonts-noto-cjk ' 'ja_JP.UTF-8|fonts-noto-cjk ' 'C.UTF-8|' ; do
+for t in 'de_DE.UTF-8|hunspell-de-de firefox-esr-l10n-de libreoffice-l10n-de chromium-l10n ' 'fr_CA.UTF-8|hunspell-fr firefox-esr-l10n-fr libreoffice-l10n-fr chromium-l10n ' \
+         'pt_BR.UTF-8|hunspell-pt-br firefox-esr-l10n-pt-br libreoffice-l10n-pt-br chromium-l10n ' 'pt_PT.UTF-8|libreoffice-l10n-pt chromium-l10n ' \
+         'en_US.UTF-8|hunspell-en-us ' 'en_GB.UTF-8|hunspell-en-gb firefox-esr-l10n-en-gb libreoffice-l10n-en-gb chromium-l10n ' 'en_IE.UTF-8|hunspell-en-us chromium-l10n ' \
+         'zh_CN.UTF-8|firefox-esr-l10n-zh-cn libreoffice-l10n-zh-cn chromium-l10n fonts-noto-cjk ' 'ja_JP.UTF-8|chromium-l10n fonts-noto-cjk ' 'C.UTF-8|' ; do
     lt_loc=${t%%|*} lt_want=${t#*|}
     lt_got=$(LT=$LT PATH="$LT/bin:$PATH" sh "$LT/run.sh" "$lt_loc" 2>&1)
     check "language packs for $lt_loc: got [$lt_got] instead of [$lt_want]" "[ '$lt_got' = '$lt_want' ]"

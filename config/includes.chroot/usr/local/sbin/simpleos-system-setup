@@ -440,7 +440,8 @@ install_edition_pkgs() {
 # Language packs for the system language (/etc/default/locale, chosen in the installer). The image is built in English
 # without them: Firefox and LibreOffice would stay English for every other language, and there would be no
 # dictionary for spell checking. Installed: the dictionary (hunspell), Firefox/LibreOffice in the language (only if
-# those are installed) and, for Chinese/Japanese/Korean, the Noto CJK font. Nothing for plain English (en_US).
+# those are installed), Chromium's chromium-l10n (all languages in one package) and, for Chinese/Japanese/Korean,
+# the Noto CJK font. Nothing for plain English (en_US).
 # Debian names the packages <prefix>-<language>-<country> (hunspell-de-de, firefox-esr-l10n-pt-br) or <prefix>-<language>.
 sys_locale() {
     _l=$(sed -n 's/^LANG=//p' "${SIMPLEOS_LOCALE_FILE:-/etc/default/locale}" 2>/dev/null | head -n 1 | tr -d "\"'")
@@ -465,6 +466,8 @@ lang_pkgs() {  # missing language packages of this system, one per line
         if [ "$_lg-$_cc" != en-us ]; then
             installed firefox-esr && lang_pick firefox-esr-l10n "$_lg" "$_cc"
             installed libreoffice-common && lang_pick libreoffice-l10n "$_lg" "$_cc"
+            # Chromium has one package for every language; without it Chromium stays English (#149)
+            installed chromium && apt-cache show chromium-l10n >/dev/null 2>&1 && echo chromium-l10n
         fi
         case "$_lg" in zh|ja|ko) echo fonts-noto-cjk ;; esac
     } | while read -r _p; do
