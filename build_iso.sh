@@ -46,6 +46,14 @@ if [[ $CONFIG_ONLY == 1 ]]; then
 else
     STEPS="$PREPARE && lb clean --purge && ../tools/lb_config.sh && { lb build 2>&1 | tee build.log; exit \${PIPESTATUS[0]}; }"
 fi
+# A git worktree (e.g. ~/simple-os-next): its .git is only a pointer to the main repository's .git. Without that
+# directory in the container, tools/managed_history.py finds no history – the edition package would know only the
+# current version of every /etc/skel and /etc file, and updates would treat older unchanged copies as changed by the
+# user (no new menu entries …). Mount it read-only at the same path.
+if [[ -f .git ]]; then
+    common=$(git -c safe.directory='*' rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)
+    [[ -n "$common" && -d "$common" ]] && RUN_OPTS+=(--security-opt label=disable -v "$common:$common:ro")
+fi
 $CONTAINER_CMD run --rm "${RUN_OPTS[@]}" -v "$PWD":/project:Z -w /project/build "$IMAGE" bash -euc "$STEPS"
 
 if [[ $CONFIG_ONLY == 1 ]]; then
