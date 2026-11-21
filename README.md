@@ -461,6 +461,10 @@ the lb default files, the generated graphics and the fastfetch package.
   stored in the laptop), others via `charge_control_end_threshold` (80/100, start below it if needed, or 0).
   No password needed thanks to `/etc/udev/rules.d/60-simpleos-charge-limit.rules` (group sudo); your choice is
   stored in `~/.config/simpleos/power` and set again at login (without your own choice the laptop is left alone).
+- AppArmor (`apparmor`, `15-system`, #48, 1.2): loads the profiles that Debian packages bring themselves at boot
+  (CUPS and its PDF backend, man, dhclient enforced; LibreOffice in complain mode = only logged). Debian's kernel has
+  the module on anyway – before 1.2 no profile was ever loaded. No `apparmor-profiles(-extra)`: untested confinement.
+  Check: `sudo aa-status`, denials: `journalctl -k | grep DENIED` (cupsd's "net_admin" at start is harmless).
 - Firewall (ufw, `15-system`, hook 12): on from the first boot – incoming blocked, outgoing open; mDNS
   (printer discovery), UPnP and DHCP pass through ufw's default rules (`/etc/ufw/before*.rules`). `ENABLED=yes` in
   `/etc/ufw/ufw.conf` instead of `ufw enable` (does not work in the chroot). Switch: Control Center → Password &

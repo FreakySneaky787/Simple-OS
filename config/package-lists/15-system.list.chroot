@@ -1,6 +1,12 @@
 # Simple OS – protection and maintenance in the background (settings: hook 12_system_services, Control Center)
 # Firewall: incoming all closed, outgoing open; printer discovery (mDNS) and UPnP are allowed by ufw's default rules
 ufw
+# AppArmor (#48): Debian's kernel has the security module on, but without these tools no profile was ever loaded.
+# It loads the profiles packages bring themselves (CUPS, man, dhclient, LibreOffice – the latter in complain mode,
+# i.e. only logged). Tested in 1.2 with printing (cupsd + cups-pdf enforced), LibreOffice, Firefox, Flatpak apps
+# (Bottles, VSCodium), the keyring: nothing blocked except cupsd's harmless "net_admin" at start. No extra profile
+# sets (apparmor-profiles) on purpose: they would confine apps we never tested with them. A one-shot at boot, no daemon.
+apparmor
 # When memory is full, end the largest program instead of the computer freezing for minutes
 earlyoom
 # Power profiles (Power saver / Balanced / Performance, Control Center → Power); thermald keeps Intel CPUs cool

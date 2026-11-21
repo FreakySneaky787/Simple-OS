@@ -3701,6 +3701,12 @@ assert ('users', 'Users', 'system-users') in c.PAGES and c.ALIASES['accounts'] =
 check "Password & Security: password still changed in a terminal" "! grep -q '\"kitty\", \"--title\", \"Change password\"' /usr/local/bin/simpleos-control-center"
 rm -rf "${ue:?}"
 check "accountsservice missing (account pictures on the login screen, #68)" "dpkg -s accountsservice >/dev/null 2>&1"
+# #48: AppArmor loads the profiles of the installed packages at boot (the kernel module alone loaded none)
+check "AppArmor: package missing or its boot service not enabled" \
+      "dpkg -s apparmor >/dev/null 2>&1 && [ -x /sbin/apparmor_parser ] && systemctl is-enabled apparmor.service >/dev/null 2>&1"
+check "AppArmor: a profile in /etc/apparmor.d does not compile (it would not load at boot)" \
+      "for f in /etc/apparmor.d/*; do [ -f \"\$f\" ] || continue; /sbin/apparmor_parser -Q -K \"\$f\" >/dev/null 2>&1 || { echo \"\$f\" >&2; exit 1; }; done"
+check "AppArmor: extra profile sets installed (untested confinement)" "! dpkg -s apparmor-profiles >/dev/null 2>&1 && ! dpkg -s apparmor-profiles-extra >/dev/null 2>&1"
 POL=/usr/share/polkit-1/actions/org.simpleos.power-tools.policy
 check "Polkit: power tools invalid" "python3 -c 'import sys, xml.dom.minidom as m; m.parse(sys.argv[1])' $POL 2>/dev/null"
 check "Polkit: actions wrong (governor still there / backup, cleaner without a password)" \
