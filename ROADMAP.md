@@ -23,7 +23,7 @@ on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook
 | Release | When | Condition |
 |---|---|---|
 | **1.1.3** (bugfix release) | skipped | no bug reports came in after 1.1.2, so its fixes (#148, #149) go into 1.2. If a serious report comes in before 1.2, a small 1.1.3 with just that fix follows |
-| **1.2** (feature release) | about **mid-December 2026** | everything planned below goes in (decided 2026-11-21); this is about two weeks later than first planned – it is better to take longer than to publish it half-finished |
+| **1.2** (feature release) | **this week or next week** (last week of November / first week of December 2026) | everything planned below is implemented (2026-11-21); what is left is the test ISO, the hardware check and the release itself – nothing is published untested |
 
 Dates are a target, not a promise (see the first paragraph). Nothing is published untested on hardware.
 
