@@ -4395,6 +4395,18 @@ check "APT: configuration/pinning broken (PackageKit would abort silently)" \
       "! apt-cache policy 2>&1 >/dev/null | grep -qE '^(E|W):' && apt-config dump >/dev/null 2>&1"
 check "AppStream: appstreamcli missing" "command -v appstreamcli >/dev/null"
 # Live tuning: overlay 85 % of RAM, Flatpak reserve 100 MB (live only; existing value replaced, not duplicated)
+# #124: report for the automatic boot test (tools/qemu-test.sh) – only live + QEMU/KVM, never on real hardware or an
+# installed system; it waits for the desktop and lists failed units on the serial port
+BTR=/usr/local/lib/simpleos/boot-test-report BTS=/etc/systemd/system/simpleos-boot-test.service
+check "Boot test: report script or service missing / not enabled" \
+      "[ -x $BTR ] && sh -n $BTR && [ -L /etc/systemd/system/graphical.target.wants/simpleos-boot-test.service ] &&
+       grep -qx 'ConditionKernelCommandLine=boot=live' $BTS && grep -qx 'ConditionVirtualization=|qemu' $BTS &&
+       grep -qx 'ConditionVirtualization=|kvm' $BTS && grep -qx 'Type=simple' $BTS"
+bt_out=$(mktemp)
+check "Boot test: no desktop not reported as a timeout" \
+      "env SIMPLEOS_BOOT_TEST_TTY=$bt_out SIMPLEOS_BOOT_TEST_WAIT=0 $BTR && grep -q '^SIMPLEOS-BOOT-TEST: timeout openbox tint2 pcmanfm' $bt_out"
+rm -f "$bt_out"; bt_out=/nonexistent/tty
+check "Boot test: fails without a serial port" "env SIMPLEOS_BOOT_TEST_TTY=$bt_out $BTR"
 LT=/usr/local/sbin/simpleos-live-tune
 check "simpleos-live-tune: missing/syntax error or service not active (only boot=live)" \
       "[ -x $LT ] && sh -n $LT && grep -qx 'ConditionKernelCommandLine=boot=live' /etc/systemd/system/simpleos-live-tune.service &&

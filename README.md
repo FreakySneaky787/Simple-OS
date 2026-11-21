@@ -96,6 +96,7 @@ logo and short form.
 | `./build_iso.sh` | Build the ISO → `output/Simple-OS.iso` + `.sha256` + `Simple-OS.packages.txt` (needs `sudo`, log in `build/build.log`) |
 | `./build_iso.sh --config-only` | Only generate the live-build configuration in `build/config` (no `sudo`) |
 | `./test_vm.sh [--uefi\|--secureboot]` | Boot the ISO in QEMU and install it: BIOS (`output/disk.qcow2`), UEFI, or UEFI with Secure Boot and Microsoft keys (OVMF, `output/disk-<mode>.qcow2`, NVRAM in `output/ovmf-vars-<mode>.fd`) |
+| `./tools/qemu-test.sh [ISO] [--bios\|--uefi]` | Automatic boot test (#124): starts the ISO headless, BIOS and UEFI, and waits for the live session to report a running desktop without failed services (`output/qemu-test/`, needed by `release.sh publish`) |
 | `./test_installed_vm.sh [--uefi\|--secureboot]` | Boot the installed system from that mode's disk |
 | `./tools/release.sh key` | Once: create the release signing key (private key outside the repo, public key into the image) |
 | `./tools/release.sh version X.Y.Z` | Set the version of the next edition everywhere it is shown (`usr/lib/os-release`, installer branding) |
@@ -208,6 +209,7 @@ simple-os/
 │   ├── build_rofi.sh     Debian's rofi with our patches in rofi/ (#144), cached in build/downloads/rofi
 │   ├── managed_history.py  every git version of the managed files (edition tool: "unchanged?")
 │   ├── release.sh        signing key, sign output/repo, GitHub release
+│   ├── qemu-test.sh      automatic boot test of the ISO in QEMU, BIOS + UEFI (#124; before publish)
 │   └── gen_branding.py   generates wallpapers, logos, Calamares and Plymouth graphics, the ISO boot menu image
 ├── config/               source of the live-build configuration (own files only)
 │   ├── package-lists/    10-base, 12-userdirs, 15-system, 20-desktop, 30-apps, 40-hardware, 45-printing, 50-installer, 55-bootloader

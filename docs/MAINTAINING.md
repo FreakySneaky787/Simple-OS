@@ -36,8 +36,11 @@ The details are in [TESTING.md](../TESTING.md) (checklist) and the README sectio
    needed: the package version carries the build time (`X.Y.Z+YYYYMMDDHHMMSS`), so machines installed from an earlier
    test build still get the published build. Careful: `./build_iso.sh --config-only` also rebuilds `output/repo` –
    never run it between the final build and `publish`.
-6. **Test:** TESTING.md – at least a fresh VM install (BIOS and UEFI) and an **update from the previous release**
-   through Software Updates (a VM installed from the old ISO).
+6. **Test:** first `./tools/qemu-test.sh` (#124): it boots the new ISO headless in QEMU, BIOS and UEFI, presses
+   Enter in the boot menu and waits for the live session's report on the serial port – the desktop runs and no system
+   service failed (about 2–3 minutes per mode, screenshots in `output/qemu-test/`). `publish` refuses an ISO without
+   a passed test of both modes. Then TESTING.md – at least a fresh VM install (BIOS and UEFI) and an **update from the
+   previous release** through Software Updates (a VM installed from the old ISO).
 7. **Publish:** `./tools/release.sh sign && ./tools/release.sh publish` (asks for the key's passphrase). **Every
    release comes with a new ISO** (#114): `publish` marks the release as "latest", and README and website send new
    users to the latest release for the ISO – one without an ISO would leave them without a download. `--no-iso` is
