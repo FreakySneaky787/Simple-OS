@@ -17,8 +17,8 @@ So if nothing happens here for a while, installed systems stay safe until Debian
 
 ## 2. Releasing an edition (1.0.x, 1.x)
 
-The details are in [TESTING.md](../TESTING.md) (checklist) and the README section
-[Updates to new Simple OS editions](../README.md#updates-to-new-simple-os-editions). In short:
+The details are in [TESTING.md](../TESTING.md) (checklist) and the developer overview, section
+[Updates to new Simple OS editions](DEVELOPING.md#updates-to-new-simple-os-editions). In short:
 
 1. **Plan:** a milestone per release on GitHub (e.g. "1.0.7"), the date in [ROADMAP.md](../ROADMAP.md) and on the
    website's roadmap page. Cadence: bugfix every 2–3 weeks, feature release every 2–3 months (ROADMAP "How we release"); 1.2 is the last feature release of 1.x, after it only bugfixes (ROADMAP "After 1.2").
