@@ -4,14 +4,16 @@
 #   simpleos-admin-open FILE     text editor (mousepad) with administrator rights
 # Graphical password prompt via pkexec (lxpolkit). pkexec clears the environment -> DISPLAY/XAUTHORITY are
 # passed with env; dbus-run-session gives the root program its own session bus (otherwise error messages).
-note() { notify-send -u critical -c x-simpleos -i dialog-error "Administrator" "$1" 2>/dev/null; exit 0; }
+# Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
+if [ -r /usr/local/lib/simpleos/i18n.sh ]; then . /usr/local/lib/simpleos/i18n.sh; else _t() { printf '%s' "$1"; }; fi
+note() { notify-send -u critical -c x-simpleos -i dialog-error "$(_t 'Administrator')" "$1" 2>/dev/null; exit 0; }
 target=${1:-}
 [ -n "$target" ] || { echo "Usage: simpleos-admin-open FOLDER|FILE" >&2; exit 2; }
 case "$target" in file://*) target=${target#file://} ;; esac
-[ -e "$target" ] || note "\"$target\" does not exist."
+[ -e "$target" ] || note "$(printf "$(_t '\"%s\" does not exist.')" "$target")"
 if [ -d "$target" ]; then app=thunar; else app=mousepad; fi
-command -v "$app" >/dev/null || note "$app is not installed."
-command -v pkexec >/dev/null || note "Administrator access is not available (pkexec missing)."
+command -v "$app" >/dev/null || note "$(printf "$(_t '%s is not installed.')" "$app")"
+command -v pkexec >/dev/null || note "$(_t 'Administrator access is not available (pkexec missing).')"
 bus=
 command -v dbus-run-session >/dev/null && bus=dbus-run-session
 # shellcheck disable=SC2086
@@ -21,7 +23,7 @@ rc=$?
 # 126 = password prompt cancelled, 127 = not authorized
 case "$rc" in
     0|126) ;;
-    127) note "You are not allowed to open this as administrator." ;;
-    *)   note "\"$target\" could not be opened as administrator." ;;
+    127) note "$(_t 'You are not allowed to open this as administrator.')" ;;
+    *)   note "$(printf "$(_t '\"%s\" could not be opened as administrator.')" "$target")" ;;
 esac
 exit 0

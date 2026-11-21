@@ -38,17 +38,17 @@ advanced() {
     for tool in arandr lxrandr; do
         command -v "$tool" >/dev/null && { "$tool" >/dev/null 2>&1 & exit 0; }
     done
-    sos_notify "The advanced display settings are not installed." critical
+    sos_notify "$(_t 'The advanced display settings are not installed.')" critical
     exit 0
 }
 sos_rofi_failed() {
-    sos_notify "The display menu could not open. Opening the advanced display settings instead."
+    sos_notify "$(_t 'The display menu could not open. Opening the advanced display settings instead.')"
     advanced
 }
 
 case "${1:-}" in
     --restore|--best|--watch|--hotplug) command -v xrandr >/dev/null || exit 0 ;;
-    *) command -v xrandr >/dev/null || { sos_notify "Display settings are not available (xrandr missing)." critical; exit 0; } ;;
+    *) command -v xrandr >/dev/null || { sos_notify "$(_t 'Display settings are not available (xrandr missing).')" critical; exit 0; } ;;
 esac
 
 # ---- Read xrandr. Q = output of "xrandr --query" (once per menu round)
@@ -104,12 +104,12 @@ rate_choices() {
 pretty() {
     n=${1##*-}; sos_is_num "$n" || n=
     case "$1" in
-        eDP*|LVDS*|DSI*)            echo "Built-in display" ;;
+        eDP*|LVDS*|DSI*)            _t "Built-in display" ;;
         HDMI*)                      echo "HDMI${n:+ $n}" ;;
         DP*|DisplayPort*)           echo "DisplayPort${n:+ $n}" ;;
         DVI*)                       echo "DVI${n:+ $n}" ;;
         VGA*)                       echo "VGA${n:+ $n}" ;;
-        Virtual*|qxl*|default|XWAYLAND*) echo "Screen${n:+ $n}" ;;
+        Virtual*|qxl*|default|XWAYLAND*) echo "$(_t Screen)${n:+ $n}" ;;
         *)                          echo "$1" ;;
     esac
 }
@@ -173,7 +173,7 @@ hotplug() {
     if [ -n "$fresh" ]; then
         names=
         for o in $fresh; do names="${names:+$names, }$(pretty "$o")"; done
-        sos_notify "Display connected: $names. The desktop now extends onto it – Super+P changes that." low
+        sos_notify "$(printf "$(_t 'Display connected: %s. The desktop now extends onto it – Super+P changes that.')" "$names")" low
     fi
 }
 scale_refresh() { [ -x /usr/local/bin/simpleos-scale ] && /usr/local/bin/simpleos-scale --refresh >/dev/null 2>&1; }
@@ -234,8 +234,8 @@ confirm() {
     while [ "$try" -lt 20 ]; do
         try=$((try + 1))
         err=$(mktemp 2>/dev/null) || err=/dev/null
-        answer=$(printf 'Keep changes\nRevert\n' | timeout "$TIMEOUT" rofi -dmenu -i -no-custom -format i -p "$SOS_TITLE" \
-            -mesg "<b>Keep these display settings?</b>   Reverting in $TIMEOUT seconds…" -markup \
+        answer=$(printf '%s\n%s\n' "$(_t 'Keep changes')" "$(_t 'Revert')" | timeout "$TIMEOUT" rofi -dmenu -i -no-custom -format i -p "$SOS_TITLE" \
+            -mesg "<b>$(_t 'Keep these display settings?')</b>   $(printf "$(_t 'Reverting in %s seconds…')" "$TIMEOUT")" -markup \
             -theme-str 'window { width: 420px; location: center; anchor: center; } mainbox { children: [ message, listview ]; }
                         listview { lines: 2; } element-icon { enabled: false; }' 2>"$err")
         rc=$?
@@ -252,17 +252,17 @@ apply() {
     sos_log "apply: $1 (previous: $prev)"
     # shellcheck disable=SC2086
     if ! xrandr $1 >&2 2>&1; then
-        sos_notify "This display setting is not supported." critical
+        sos_notify "$(_t 'This display setting is not supported.')" critical
         return
     fi
     if confirm; then
         query
         mkdir -p "${SAVED%/*}" 2>/dev/null && snapshot > "$SAVED" 2>/dev/null && echo >> "$SAVED"
-        sos_notify "Display settings saved." low
+        sos_notify "$(_t 'Display settings saved.')" low
     else
         # shellcheck disable=SC2086
         xrandr $prev >&2 2>&1 || sos_log "revert failed"
-        sos_notify "Display settings restored." low
+        sos_notify "$(_t 'Display settings restored.')" low
     fi
     scale_refresh
 }
@@ -275,30 +275,30 @@ I_LEFT='\357\201\240' I_COG='\357\200\223' I_STAR='\357\200\205' I_OFF='\357\200
 pick_resolution() {
     cur=$(cur_mode "$1")
     for m in $(modes "$1"); do
-        if [ "$m" = "$cur" ]; then sos_add "$(sos_fa "$I_CHECK")  $m  $(sos_dim "Current")" "noop"
+        if [ "$m" = "$cur" ]; then sos_add "$(sos_fa "$I_CHECK")  $m  $(sos_dim "$(_t 'Current')")" "noop"
         else sos_add "      $m" "set$TAB$m"; fi
     done
-    sos_pick "<b>Resolution</b>   $(sos_dim "$(pretty "$1")")" 360
+    sos_pick "<b>$(_t 'Resolution')</b>   $(sos_dim "$(pretty "$1")")" 360
     [ "$action" = set ] && apply "--output $1 --mode $arg1"
 }
 pick_rate() {
     cur=$(cur_mode "$1") rate=$(cur_rate "$1")
-    [ -n "$cur" ] || { sos_notify "This display is off."; return; }
+    [ -n "$cur" ] || { sos_notify "$(_t 'This display is off.')"; return; }
     # shellcheck disable=SC2046 # the rates as separate arguments
     for r in $(rate_choices "$rate" $(rates "$1" "$cur")); do
-        if [ "$r" = "$rate" ]; then sos_add "$(sos_fa "$I_CHECK")  $(hz "$r")  $(sos_dim "Current")" "noop"
+        if [ "$r" = "$rate" ]; then sos_add "$(sos_fa "$I_CHECK")  $(hz "$r")  $(sos_dim "$(_t 'Current')")" "noop"
         else sos_add "      $(hz "$r")" "set$TAB$r"; fi
     done
-    sos_pick "<b>Refresh rate</b>   $(sos_dim "$(pretty "$1") · $cur")" 360
+    sos_pick "<b>$(_t 'Refresh rate')</b>   $(sos_dim "$(pretty "$1") · $cur")" 360
     [ "$action" = set ] && apply "--output $1 --mode $cur --rate $arg1"
 }
 # Submenu of a screen (only with several)
 screen_menu() {
-    sos_add "$(sos_fa "$I_RES")  Resolution  $(sos_dim "$(cur_mode "$1")")" "res"
-    sos_add "$(sos_fa "$I_RATE")  Refresh rate  $(sos_dim "$(cur_hz "$1")")" "rate"
-    is_primary "$1" || sos_add "$(sos_fa "$I_STAR")  Make main display" "primary"
-    if is_on "$1"; then sos_add "$(sos_fa "$I_OFF")  Turn off" "off"
-    else sos_add "$(sos_fa "$I_SCREEN")  Turn on" "on"; fi
+    sos_add "$(sos_fa "$I_RES")  $(_t 'Resolution')  $(sos_dim "$(cur_mode "$1")")" "res"
+    sos_add "$(sos_fa "$I_RATE")  $(_t 'Refresh rate')  $(sos_dim "$(cur_hz "$1")")" "rate"
+    is_primary "$1" || sos_add "$(sos_fa "$I_STAR")  $(_t 'Make main display')" "primary"
+    if is_on "$1"; then sos_add "$(sos_fa "$I_OFF")  $(_t 'Turn off')" "off"
+    else sos_add "$(sos_fa "$I_SCREEN")  $(_t 'Turn on')" "on"; fi
     sos_pick "<b>$(sos_esc "$(pretty "$1")")</b>" 360
     case "$action" in
         res)     pick_resolution "$1" ;;
@@ -345,31 +345,31 @@ while :; do
     outs=$(connected)
     n=$(printf '%s\n' "$outs" | grep -c .)
     if [ "$n" -eq 0 ]; then
-        sos_notify "No display found." critical
+        sos_notify "$(_t 'No display found.')" critical
         exit 0
     fi
     main=$(for o in $outs; do is_primary "$o" && echo "$o"; done | head -n 1)
     [ -n "$main" ] || main=$(for o in $outs; do is_on "$o" && echo "$o"; done | head -n 1)
     [ -n "$main" ] || main=$(printf '%s\n' "$outs" | head -n 1)
     if [ "$n" -eq 1 ]; then
-        sos_add "$(sos_fa "$I_RES")  Resolution  $(sos_dim "$(cur_mode "$main")")" "res$TAB$main"
-        sos_add "$(sos_fa "$I_RATE")  Refresh rate  $(sos_dim "$(cur_hz "$main")")" "rate$TAB$main"
-        head="<b>Display</b>   $(sos_dim "$(pretty "$main") · $(cur_mode "$main")")"
+        sos_add "$(sos_fa "$I_RES")  $(_t 'Resolution')  $(sos_dim "$(cur_mode "$main")")" "res$TAB$main"
+        sos_add "$(sos_fa "$I_RATE")  $(_t 'Refresh rate')  $(sos_dim "$(cur_hz "$main")")" "rate$TAB$main"
+        head="<b>$(_t 'Display')</b>   $(sos_dim "$(pretty "$main") · $(cur_mode "$main")")"
     else
         for o in $outs; do
-            if is_on "$o"; then state="$(cur_mode "$o") · $(cur_hz "$o")"; else state="Off"; fi
-            is_primary "$o" && state="$state · Main"
+            if is_on "$o"; then state="$(cur_mode "$o") · $(cur_hz "$o")"; else state=$(_t Off); fi
+            is_primary "$o" && state="$state · $(_t Main)"
             sos_add "$(sos_fa "$I_SCREEN")  $(sos_esc "$(pretty "$o")")  $(sos_dim "$state")" "screen$TAB$o"
         done
-        sos_add "$(sos_fa "$I_DUP")  Duplicate" "layout${TAB}dup"
-        sos_add "$(sos_fa "$I_RIGHT")  Extend right" "layout${TAB}right"
-        sos_add "$(sos_fa "$I_LEFT")  Extend left" "layout${TAB}left"
+        sos_add "$(sos_fa "$I_DUP")  $(_t 'Duplicate')" "layout${TAB}dup"
+        sos_add "$(sos_fa "$I_RIGHT")  $(_t 'Extend right')" "layout${TAB}right"
+        sos_add "$(sos_fa "$I_LEFT")  $(_t 'Extend left')" "layout${TAB}left"
         for o in $outs; do
-            sos_add "$(sos_fa "$I_SCREEN")  Only $(sos_esc "$(pretty "$o")")" "only$TAB$o"
+            sos_add "$(sos_fa "$I_SCREEN")  $(printf "$(_t 'Only %s')" "$(sos_esc "$(pretty "$o")")")" "only$TAB$o"
         done
-        head="<b>Display</b>   $(sos_dim "$n displays")"
+        head="<b>$(_t 'Display')</b>   $(sos_dim "$(printf "$(_t '%s displays')" "$n")")"
     fi
-    sos_add "$(sos_fa "$I_COG")  Advanced Display Settings" "advanced"
+    sos_add "$(sos_fa "$I_COG")  $(_t 'Advanced Display Settings')" "advanced"
     sos_pick "$head" 440
 
     case "$action" in

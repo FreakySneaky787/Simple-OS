@@ -31,13 +31,13 @@ signal_word() {
 }
 details() {
     if [ -x "$NETINFO" ]; then exec "$NETINFO"; fi
-    sos_notify "Network details are not available on this system."
+    sos_notify "$(_t 'Network details are not available on this system.')"
     exit 0
 }
 # Rofi does not work: graphical editor, otherwise a notification with the most important network data
 sos_rofi_failed() {
     if command -v nm-connection-editor >/dev/null; then
-        sos_notify "The network menu could not open. Opening the network settings window instead."
+        sos_notify "$(_t 'The network menu could not open. Opening the network settings window instead.')"
         exec nm-connection-editor
     fi
     summary=
@@ -47,7 +47,7 @@ $summary}" critical
     exit 0
 }
 
-command -v nmcli >/dev/null || { sos_notify "Network management is not installed (NetworkManager missing)." critical; exit 0; }
+command -v nmcli >/dev/null || { sos_notify "$(_t 'Network management is not installed (NetworkManager missing).')" critical; exit 0; }
 # nmcli prints states and "enabled"/"disabled" in the system language ("verbunden", "aktiviert" …) and this script compares
 # them with the English words. C.UTF-8 = English messages, but UTF-8 stays (an SSID with an umlaut would be escaped in "C")
 nmcli() { LC_ALL=C.UTF-8 command nmcli "$@"; }
@@ -95,19 +95,19 @@ while :; do
     if [ -n "$wifi_up" ]; then
         sos_add "$(sos_fa "$I_CHECK")  Connected: $(sos_esc "$current")" "active${TAB}wifi${TAB}$current"
     elif [ -n "$eth_up$route_dev" ]; then
-        sos_add "$(sos_fa "$I_CHECK")  Connected: Ethernet" "active${TAB}ethernet${TAB}Ethernet"
+        sos_add "$(sos_fa "$I_CHECK")  $(_t 'Connected: Ethernet')" "active${TAB}ethernet${TAB}Ethernet"
     elif [ -n "$wifi" ] && [ "$radio" = on ]; then
-        sos_add "$(sos_fa "$I_OFF")  Not connected" "rescan"
+        sos_add "$(sos_fa "$I_OFF")  $(_t 'Not connected')" "rescan"
     elif [ -n "$eth" ]; then
-        sos_add "$(sos_fa "$I_OFF")  Ethernet  $(sos_dim "Cable unplugged")" "eth-connect"
+        sos_add "$(sos_fa "$I_OFF")  Ethernet  $(sos_dim "$(_t 'Cable unplugged')")" "eth-connect"
     else
-        sos_add "$(sos_fa "$I_OFF")  No network adapter" "none"
+        sos_add "$(sos_fa "$I_OFF")  $(_t 'No network adapter')" "none"
     fi
 
     # ---- Below: available Wi-Fi networks (without the active one), strongest first; without a Wi-Fi device (no module/
     # driver, VM, switched off) only a hint – a click on it opens the menu again
     others=0
-    [ -n "$wifi" ] || sos_add "$(sos_fa "$I_WIFI")  Wi-Fi Hardware: $(sos_dim "Not found / Disabled")" "info"
+    [ -n "$wifi" ] || sos_add "$(sos_fa "$I_WIFI")  Wi-Fi Hardware: $(sos_dim "$(_t 'Not found / Disabled')")" "info"
     if [ -n "$wifi" ] && [ "$radio" = on ]; then
         rows_nets=$(printf '%s\n' "$nets" | while IFS="$TAB" read -r ssid signal security used; do
             [ -n "$ssid" ] && [ "$used" != 1 ] || continue
@@ -122,32 +122,32 @@ while :; do
         done <<EOF
 $rows_nets
 EOF
-        [ "$others" -gt 0 ] || sos_add "$(sos_fa "$I_SEARCH")  Search again" "rescan"
+        [ "$others" -gt 0 ] || sos_add "$(sos_fa "$I_SEARCH")  $(_t 'Search again')" "rescan"
     fi
 
     # ---- At the bottom: actions
     if [ -n "$wifi" ]; then
-        if [ "$radio" = on ]; then sos_add "$(sos_fa "$I_POWER")  Turn off Wi-Fi" "wifi-off"
-        else                       sos_add "$(sos_fa "$I_POWER")  Turn on Wi-Fi" "wifi-on"; fi
+        if [ "$radio" = on ]; then sos_add "$(sos_fa "$I_POWER")  $(_t 'Turn off Wi-Fi')" "wifi-off"
+        else                       sos_add "$(sos_fa "$I_POWER")  $(_t 'Turn on Wi-Fi')" "wifi-on"; fi
     fi
-    sos_add "$(sos_fa "$I_INFO")  Network Details" "details"
+    sos_add "$(sos_fa "$I_INFO")  $(_t 'Network Details')" "details"
 
-    mesg="<b>Select network</b>"
-    [ -n "$wifi" ] && [ "$radio" = off ] && mesg="$mesg  $(sos_dim "Wi-Fi is off")"
+    mesg="<b>$(_t 'Select network')</b>"
+    [ -n "$wifi" ] && [ "$radio" = off ] && mesg="$mesg  $(sos_dim "$(_t 'Wi-Fi is off')")"
     sos_pick "$mesg"
 
     case "$action" in
         active)
-            sos_add "$(sos_fa "$I_UNLINK")  Disconnect" "disconnect"
-            sos_add "$(sos_fa "$I_INFO")  Network Details" "details"
-            sos_add "$(sos_fa "$I_BACK")  Back" "back"
+            sos_add "$(sos_fa "$I_UNLINK")  $(_t 'Disconnect')" "disconnect"
+            sos_add "$(sos_fa "$I_INFO")  $(_t 'Network Details')" "details"
+            sos_add "$(sos_fa "$I_BACK")  $(_t 'Back')" "back"
             kind=$arg1 name=$arg2
             sos_pick "<b>$(sos_esc "$name")</b>  Connected"
             case "$action" in
                 disconnect)
                     dev=$wifi_up; [ "$kind" = ethernet ] && dev=${eth_up:-$route_dev}
-                    if nmcli device disconnect "$dev" >&2 2>&1; then sos_notify "Disconnected from $name."
-                    else sos_notify "Could not disconnect from $name. Please try again." critical; fi
+                    if nmcli device disconnect "$dev" >&2 2>&1; then sos_notify "$(printf "$(_t 'Disconnected from %s.')" "$name")"
+                    else sos_notify "$(printf "$(_t 'Could not disconnect from %s. Please try again.')" "$name")" critical; fi
                     exit 0 ;;
                 details) details ;;
                 back) continue ;;
@@ -156,12 +156,12 @@ EOF
         connect) ssid=$arg1 security=$arg2; break ;;
         info) continue ;;
         rescan) nmcli device wifi rescan >&2 2>&1; sleep 2; continue ;;
-        wifi-off) nmcli radio wifi off >&2 2>&1; sos_notify "Wi-Fi is off."; exit 0 ;;
-        wifi-on) nmcli radio wifi on >&2 2>&1; sos_notify "Wi-Fi is on. Looking for networks …"; sleep 3; continue ;;
+        wifi-off) nmcli radio wifi off >&2 2>&1; sos_notify "$(_t 'Wi-Fi is off.')"; exit 0 ;;
+        wifi-on) nmcli radio wifi on >&2 2>&1; sos_notify "$(_t 'Wi-Fi is on. Looking for networks …')"; sleep 3; continue ;;
         eth-connect)
-            sos_notify "Connecting …"
-            if nmcli --wait 20 device connect "$eth" >&2 2>&1; then sos_notify "You're online (Ethernet)."
-            else sos_notify "Could not connect. Check that the network cable is plugged in at both ends." critical; fi
+            sos_notify "$(_t 'Connecting …')"
+            if nmcli --wait 20 device connect "$eth" >&2 2>&1; then sos_notify "$(_t "You're online (Ethernet).")"
+            else sos_notify "$(_t 'Could not connect. Check that the network cable is plugged in at both ends.')" critical; fi
             exit 0 ;;
         details) details ;;
         *) exit 0 ;;
@@ -172,20 +172,20 @@ done
 # ---- Connect: saved profile without a password, otherwise the password via Rofi
 if nmcli -t -f NAME connection show 2>/dev/null | grep -qxF "$ssid" &&
    nmcli --wait 20 connection up id "$ssid" >&2 2>&1; then
-    sos_notify "Connected to $ssid."; exit 0
+    sos_notify "$(printf "$(_t 'Connected to %s.')" "$ssid")"; exit 0
 fi
 had_profile=$(nmcli -t -f NAME connection show 2>/dev/null | grep -cxF "$ssid" || true)
 
 set -- device wifi connect "$ssid" ifname "$wifi"
 ask=
 if [ "$security" != open ]; then
-    pw=$(sos_rofi -dmenu -password -p "Password" -mesg "<b>$(sos_esc "$ssid")</b>  Enter the password" -markup \
+    pw=$(sos_rofi -dmenu -password -p "$(_t 'Password')" -mesg "<b>$(sos_esc "$ssid")</b>  Enter the password" -markup \
         -theme-str 'window { width: 480px; } listview { lines: 0; }' </dev/null)
     [ -n "$pw" ] || exit 0
     ask=--ask    # nmcli asks for the password and reads it from stdin – never on the command line (visible in ps)
 fi
 
-sos_notify "Connecting to $ssid …"
+sos_notify "$(printf "$(_t 'Connecting to %s …')" "$ssid")"
 # Saved profile (the password just did not work): delete it, the connection below creates a new one with the new
 # password – "device wifi connect" would otherwise create a second profile next to it or keep trying the old password
 if [ "${had_profile:-0}" != 0 ] && [ -n "${pw:-}" ]; then
@@ -193,15 +193,15 @@ if [ "${had_profile:-0}" != 0 ] && [ -n "${pw:-}" ]; then
     had_profile=0
 fi
 if err=$(printf '%s\n' "${pw:-}" | nmcli $ask --wait 30 "$@" 2>&1 >/dev/null); then
-    sos_notify "Connected to $ssid."
+    sos_notify "$(printf "$(_t 'Connected to %s.')" "$ssid")"
     exit 0
 fi
 sos_log "connect failed: $err"
 # Failed (usually a wrong password): delete the newly created profile again
 [ "${had_profile:-0}" = 0 ] && nmcli connection delete id "$ssid" >&2 2>&1
 if [ "$security" != open ]; then
-    sos_notify "Could not connect to $ssid. The password may be wrong – click the network display and try again." critical
+    sos_notify "$(printf "$(_t 'Could not connect to %s. The password may be wrong – click the network display and try again.')" "$ssid")" critical
 else
-    sos_notify "Could not connect to $ssid. Move closer to the router and try again." critical
+    sos_notify "$(printf "$(_t 'Could not connect to %s. Move closer to the router and try again.')" "$ssid")" critical
 fi
 exit 0

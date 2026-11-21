@@ -23,15 +23,15 @@ sos_log_init "$@"
 
 advanced() {
     if command -v blueman-manager >/dev/null; then blueman-manager >/dev/null 2>&1 & exit 0; fi
-    sos_notify "The Bluetooth settings are not installed." critical
+    sos_notify "$(_t 'The Bluetooth settings are not installed.')" critical
     exit 0
 }
 sos_rofi_failed() {
-    sos_notify "The Bluetooth menu could not open. Opening the Bluetooth settings instead."
+    sos_notify "$(_t 'The Bluetooth menu could not open. Opening the Bluetooth settings instead.')"
     advanced
 }
 
-command -v bluetoothctl >/dev/null || { sos_notify "Bluetooth is not available (bluez missing)." critical; exit 0; }
+command -v bluetoothctl >/dev/null || { sos_notify "$(_t 'Bluetooth is not available (bluez missing).')" critical; exit 0; }
 command -v rofi >/dev/null || { sos_log "rofi missing"; sos_rofi_failed; }
 
 bt() { timeout "${BT_TIMEOUT:-15}" bluetoothctl "$@" 2>&1; }
@@ -48,20 +48,20 @@ info_field() { bt info "$1" | sed -n "s/^[[:space:]]*$2: //p" | head -n 1; }
 # " · Battery 80 %" if the device reports its battery (headphones via PipeWire need bluetoothd --experimental)
 battery() {
     _b=$(info_field "$1" "Battery Percentage" | sed -n 's/^0x[0-9A-Fa-f]* (\([0-9]*\))$/\1/p')
-    [ -n "$_b" ] && printf ' · Battery %s %%' "$_b"
+    [ -n "$_b" ] && printf "$(_t ' · Battery %s %%')" "$_b"
 }
 # Device type in plain language from the bluez icon
 kind() {
     case "$(info_field "$1" Icon)" in
-        audio-headset|audio-headphones) echo "Headphones" ;;
-        audio-card|audio-speakers)      echo "Speaker" ;;
-        input-mouse)                    echo "Mouse" ;;
-        input-keyboard)                 echo "Keyboard" ;;
-        input-gaming)                   echo "Gamepad" ;;
-        input-tablet)                   echo "Tablet" ;;
-        phone)                          echo "Phone" ;;
-        computer)                       echo "Computer" ;;
-        *)                              echo "Device" ;;
+        audio-headset|audio-headphones) _t "Headphones" ;;
+        audio-card|audio-speakers)      _t "Speaker" ;;
+        input-mouse)                    _t "Mouse" ;;
+        input-keyboard)                 _t "Keyboard" ;;
+        input-gaming)                   _t "Gamepad" ;;
+        input-tablet)                   _t "Tablet" ;;
+        phone)                          _t "Phone" ;;
+        computer)                       _t "Computer" ;;
+        *)                              _t "Device" ;;
     esac
 }
 power_on() {
@@ -69,12 +69,12 @@ power_on() {
     # Blocked by the radio switch (rfkill) -> unblock and try again
     command -v rfkill >/dev/null && rfkill unblock bluetooth >&2 2>&1 && sleep 1
     bt power on | grep -qiE 'succeeded|already' && return 0
-    sos_notify "Bluetooth could not be turned on." critical
+    sos_notify "$(_t 'Bluetooth could not be turned on.')" critical
     return 1
 }
 connect() {
-    if bt connect "$1" | grep -qi 'successful'; then sos_notify "Connected to $2." low
-    else sos_notify "Could not connect to $2. Make sure it is turned on and nearby." critical; fi
+    if bt connect "$1" | grep -qi 'successful'; then sos_notify "$(printf "$(_t 'Connected to %s.')" "$2")" low
+    else sos_notify "$(printf "$(_t 'Could not connect to %s. Make sure it is turned on and nearby.')" "$2")" critical; fi
 }
 # Pairing through BlueZ itself (Device1.Pair): the default agent – blueman-applet – shows the PIN, passkey and
 # confirmation dialogs that keyboards and phones need. A one-shot "bluetoothctl pair" has nobody to answer them.
@@ -90,15 +90,15 @@ agent_pair() {
     return 1
 }
 pair_new() {
-    sos_notify "Pairing with $2…" low
+    sos_notify "$(printf "$(_t 'Pairing with %s…')" "$2")" low
     if command -v busctl >/dev/null && pgrep -x blueman-applet >/dev/null 2>&1; then
-        sos_notify "If $2 asks for a code, a window with the code or a field for it opens." low
+        sos_notify "$(printf "$(_t 'If %s asks for a code, a window with the code or a field for it opens.')" "$2")" low
         if ! agent_pair "$1"; then
-            sos_notify "Could not pair with $2. Put it in pairing mode and try again." critical
+            sos_notify "$(printf "$(_t 'Could not pair with %s. Put it in pairing mode and try again.')" "$2")" critical
             return
         fi
     elif ! BT_TIMEOUT=40 bt pair "$1" | grep -qiE 'successful|AlreadyExists'; then
-        sos_notify "Could not pair with $2. Put it in pairing mode and try again." critical
+        sos_notify "$(printf "$(_t 'Could not pair with %s. Put it in pairing mode and try again.')" "$2")" critical
         return
     fi
     bt trust "$1" >&2
@@ -106,7 +106,7 @@ pair_new() {
 }
 # Search: SCAN seconds, then all known devices with a name that are not paired yet
 scan_menu() {
-    sos_notify "Searching for devices. Put your device in pairing mode…" low
+    sos_notify "$(_t 'Searching for devices. Put your device in pairing mode…')" low
     BT_TIMEOUT=$((SCAN + 5)) bt --timeout "$SCAN" scan on >&2
     paired=$(devices Paired | cut -f1)
     found=0
@@ -120,9 +120,9 @@ scan_menu() {
     done <<EOF
 $(devices)
 EOF
-    [ "$found" = 1 ] || sos_add "$(sos_fa "$I_SEARCH")  Nothing found – search again" "rescan"
-    sos_add "$(sos_fa "$I_BACK")  Back" "back"
-    sos_pick "<b>Add device</b>   $(sos_dim "Click a device to pair")" 420
+    [ "$found" = 1 ] || sos_add "$(sos_fa "$I_SEARCH")  $(_t 'Nothing found – search again')" "rescan"
+    sos_add "$(sos_fa "$I_BACK")  $(_t 'Back')" "back"
+    sos_pick "<b>$(_t 'Add device')</b>   $(sos_dim "$(_t 'Click a device to pair')")" 420
     case "$action" in
         pair)   pair_new "$arg1" "$arg2" ;;
         rescan) scan_menu ;;
@@ -130,18 +130,18 @@ EOF
 }
 device_menu() {
     conn=$(info_field "$1" Connected)
-    if [ "$conn" = yes ]; then sos_add "$(sos_fa "$I_UNLINK")  Disconnect" "disconnect"
-    else sos_add "$(sos_fa "$I_LINK")  Connect" "connect"; fi
-    sos_add "$(sos_fa "$I_TRASH")  Remove device" "remove"
-    sos_add "$(sos_fa "$I_BACK")  Back" "back"
+    if [ "$conn" = yes ]; then sos_add "$(sos_fa "$I_UNLINK")  $(_t 'Disconnect')" "disconnect"
+    else sos_add "$(sos_fa "$I_LINK")  $(_t 'Connect')" "connect"; fi
+    sos_add "$(sos_fa "$I_TRASH")  $(_t 'Remove device')" "remove"
+    sos_add "$(sos_fa "$I_BACK")  $(_t 'Back')" "back"
     sos_pick "<b>$(sos_esc "$2")</b>   $(sos_dim "$(kind "$1")")" 360
     case "$action" in
         connect)    connect "$1" "$2" ;;
         # bluetoothctl: "Successful disconnected"; otherwise (device does not respond, timeout) report it honestly
-        disconnect) if bt disconnect "$1" | grep -qi 'successful'; then sos_notify "Disconnected from $2." low
-                    else sos_notify "Could not disconnect from $2. Please try again." critical; fi ;;
-        remove)     if bt remove "$1" | grep -qi 'removed'; then sos_notify "$2 was removed." low
-                    else sos_notify "$2 could not be removed." critical; fi ;;
+        disconnect) if bt disconnect "$1" | grep -qi 'successful'; then sos_notify "$(printf "$(_t 'Disconnected from %s.')" "$2")" low
+                    else sos_notify "$(printf "$(_t 'Could not disconnect from %s. Please try again.')" "$2")" critical; fi ;;
+        remove)     if bt remove "$1" | grep -qi 'removed'; then sos_notify "$(printf "$(_t '%s was removed.')" "$2")" low
+                    else sos_notify "$(printf "$(_t '%s could not be removed.')" "$2")" critical; fi ;;
     esac
 }
 
@@ -151,30 +151,30 @@ I_BT='\357\212\223' I_POWER='\357\200\221' I_SEARCH='\357\200\202' I_COG='\357\2
 I_UNLINK='\357\204\247' I_TRASH='\357\207\270' I_BACK='\357\201\240' I_CHECK='\357\200\214'
 
 if ! has_adapter; then
-    sos_notify "No Bluetooth adapter found. Virtual machines and many desktop PCs have none – a USB Bluetooth stick adds it."
+    sos_notify "$(_t 'No Bluetooth adapter found. Virtual machines and many desktop PCs have none – a USB Bluetooth stick adds it.')"
     exit 0
 fi
 while :; do
     if powered; then
-        sos_add "$(sos_fa "$I_POWER")  Turn off Bluetooth" "off"
+        sos_add "$(sos_fa "$I_POWER")  $(_t 'Turn off Bluetooth')" "off"
         while IFS="$TAB" read -r mac name; do
             [ -n "$mac" ] || continue
             if [ "$(info_field "$mac" Connected)" = yes ]; then
-                sos_add "$(sos_fa "$I_CHECK")  $(sos_esc "$name")  $(sos_dim "$(kind "$mac") · Connected$(battery "$mac")")" "device$TAB$mac$TAB$name"
+                sos_add "$(sos_fa "$I_CHECK")  $(sos_esc "$name")  $(sos_dim "$(kind "$mac") · $(_t 'Connected')$(battery "$mac")")" "device$TAB$mac$TAB$name"
             else
                 sos_add "$(sos_fa "$I_BT")  $(sos_esc "$name")  $(sos_dim "$(kind "$mac")")" "device$TAB$mac$TAB$name"
             fi
         done <<EOF
 $(devices Paired)
 EOF
-        sos_add "$(sos_fa "$I_SEARCH")  Add device…" "scan"
-        state=On
+        sos_add "$(sos_fa "$I_SEARCH")  $(_t 'Add device…')" "scan"
+        state=$(_t On)
     else
-        sos_add "$(sos_fa "$I_POWER")  Turn on Bluetooth" "on"
-        state=Off
+        sos_add "$(sos_fa "$I_POWER")  $(_t 'Turn on Bluetooth')" "on"
+        state=$(_t Off)
     fi
-    sos_add "$(sos_fa "$I_COG")  More Bluetooth settings" "advanced"
-    sos_pick "<b>Bluetooth</b>   $(sos_dim "$state")" 420
+    sos_add "$(sos_fa "$I_COG")  $(_t 'More Bluetooth settings')" "advanced"
+    sos_pick "<b>$(_t 'Bluetooth')</b>   $(sos_dim "$state")" 420
     case "$action" in
         on)       power_on ;;
         off)      bt power off >&2 ;;

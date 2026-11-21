@@ -49,7 +49,7 @@ apply() {
     # Same state as last time -> do nothing (the daemon checks every 5 minutes)
     [ "${1:-}" != force ] && [ "$(cat "$RUN/simpleos-nightlight.state" 2>/dev/null)" = "$want" ] && return 0
     if ! command -v gammastep >/dev/null; then
-        [ "$want" = off ] || sos_notify "Night light is not installed (gammastep missing)." critical
+        [ "$want" = off ] || sos_notify "$(_t 'Night light is not installed (gammastep missing).')" critical
         return 0
     fi
     # -m randr: without it gammastep 2.0.9 (Debian 12) tries Wayland first, prints "Could not connect to wayland display"
@@ -62,7 +62,7 @@ apply() {
         [ -n "$out" ] && printf '%s\n' "$out" >&2
         case "$out" in *"Error:"*|*"error:"*) rc=1 ;; esac
         [ "$rc" -eq 0 ] || {
-        sos_notify "Night light is not supported by this display. Virtual machines often can't change screen colors." critical
+        sos_notify "$(_t "Night light is not supported by this display. Virtual machines often can't change screen colors.")" critical
         mode=off; save
         return 0
         }
@@ -75,10 +75,10 @@ apply() {
 announce() {
     [ "$applied" = 1 ] || return 0
     case "$mode" in
-        on)   sos_notify "Night light is on – warmer colors ($temp K)." low ;;
-        off)  sos_notify "Night light is off." low ;;
+        on)   sos_notify "$(printf "$(_t 'Night light is on – warmer colors (%s K).')" "$temp")" low ;;
+        off)  sos_notify "$(_t 'Night light is off.')" low ;;
         auto) if wanted; then now="on now"; else now="off right now"; fi
-              sos_notify "Night light is automatic – warmer colors from 20:00 to 07:00 ($now)." low ;;
+              sos_notify "$(printf "$(_t 'Night light is automatic – warmer colors from 20:00 to 07:00 (%s).')" "$now")" low ;;
     esac
 }
 
@@ -117,17 +117,17 @@ esac
 
 # ---- Menu. FontAwesome 4: moon U+F186, sun U+F185, clock U+F017, fire U+F06D, check U+F00C
 I_MOON='\357\206\206' I_SUN='\357\206\205' I_CLOCK='\357\200\227' I_FIRE='\357\201\255' I_CHECK='\357\200\214'
-mark() { [ "$1" = "$2" ] && sos_dim "Current"; }
+mark() { [ "$1" = "$2" ] && sos_dim "$(_t 'Current')"; }
 while :; do
-    if wanted; then now="On"; else now="Off"; fi
-    sos_add "$(sos_fa "$I_MOON")  Turn on  $(mark on "$mode")" "on"
-    sos_add "$(sos_fa "$I_SUN")  Turn off  $(mark off "$mode")" "off"
-    sos_add "$(sos_fa "$I_CLOCK")  Automatic (20:00–07:00)  $(mark auto "$mode")" "auto"
+    if wanted; then now=$(_t On); else now=$(_t Off); fi
+    sos_add "$(sos_fa "$I_MOON")  $(_t 'Turn on')  $(mark on "$mode")" "on"
+    sos_add "$(sos_fa "$I_SUN")  $(_t 'Turn off')  $(mark off "$mode")" "off"
+    sos_add "$(sos_fa "$I_CLOCK")  $(_t 'Automatic (20:00–07:00)')  $(mark auto "$mode")" "auto"
     for t in 3500 4000 4500 5000; do
-        case $t in 3500) w="Very warm" ;; 4000) w="Warm" ;; 4500) w="Mild" ;; 5000) w="Slight" ;; esac
+        case $t in 3500) w=$(_t 'Very warm') ;; 4000) w=$(_t Warm) ;; 4500) w=$(_t Mild) ;; 5000) w=$(_t Slight) ;; esac
         sos_add "$(sos_fa "$I_FIRE")  $w ($t K)  $(mark "$t" "$temp")" "temp$TAB$t"
     done
-    sos_pick "<b>Night light</b>   $(sos_dim "$now · $temp K")" 380
+    sos_pick "<b>$(_t 'Night light')</b>   $(sos_dim "$now · $temp K")" 380
     case "$action" in
         on|off|auto) mode=$action; save; apply force; couple; announce ;;
         temp)        temp=$arg1; save; apply force ;;

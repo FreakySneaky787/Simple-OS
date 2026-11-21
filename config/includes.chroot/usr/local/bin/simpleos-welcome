@@ -21,7 +21,7 @@ export NO_PROXY="localhost,127.0.0.1,::1${NO_PROXY:+,$NO_PROXY}"
 export no_proxy="localhost,127.0.0.1,::1${no_proxy:+,$no_proxy}"
 unset BROWSER
 
-[ -r "$PAGE" ] || { sos_notify "The welcome page is missing ($PAGE)." critical; exit 0; }
+[ -r "$PAGE" ] || { sos_notify "$(printf "$(_t 'The welcome page is missing (%s).')" "$PAGE")" critical; exit 0; }
 
 if [ -x "$VIEWER" ] && command -v python3 >/dev/null; then
     python3 "$VIEWER" "$PAGE"
@@ -31,5 +31,5 @@ if [ -x "$VIEWER" ] && command -v python3 >/dev/null; then
 fi
 if command -v firefox-esr >/dev/null; then exec firefox-esr --new-window "file://$PAGE"; fi
 if command -v chromium >/dev/null; then exec chromium --app="file://$PAGE"; fi
-sos_notify "The welcome page could not open. You can find it at $PAGE" critical
+sos_notify "$(printf "$(_t 'The welcome page could not open. You can find it at %s')" "$PAGE")" critical
 exit 0

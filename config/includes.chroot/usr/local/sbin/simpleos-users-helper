@@ -24,6 +24,8 @@
 # SIMPLEOS_USERS_CALLER, commands are printed ("RUN: …") instead of run; SIMPLEOS_USERS_SIGNED_IN lists signed-in users.
 set -u
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
+if [ -r /usr/local/lib/simpleos/i18n.sh ]; then . /usr/local/lib/simpleos/i18n.sh; else _t() { printf '%s' "$1"; }; fi
 TEST=${SIMPLEOS_USERS_TEST:-}
 ETC=/etc
 [ -n "$TEST" ] && ETC=${SIMPLEOS_USERS_ETC:?}
@@ -33,12 +35,12 @@ AUTOLOGIN_CONF=$ETC/lightdm/lightdm.conf.d/50-simpleos-autologin.conf
 ACCOUNT_GROUPS="cdrom floppy audio dip video plugdev netdev bluetooth lpadmin scanner"
 
 die() { echo "ERROR: $1" >&2; exit "${2:-1}"; }
-usage() { die "Usage: --create USER NAME admin|standard | --delete USER keep|remove | --name USER NAME | --password USER | --admin USER on|off | --picture USER FILE|none | --autologin USER|off" 2; }
+usage() { die "$(_t 'Usage: --create USER NAME admin|standard | --delete USER keep|remove | --name USER NAME | --password USER | --admin USER on|off | --picture USER FILE|none | --autologin USER|off')" 2; }
 run() { if [ -n "$TEST" ]; then echo "RUN: $*"; else "$@"; fi; }
 
-[ "$(id -u)" -eq 0 ] || [ -n "$TEST" ] || die "must run as root (pkexec)"
+[ "$(id -u)" -eq 0 ] || [ -n "$TEST" ] || die "$(_t 'must run as root (pkexec)')"
 if [ -z "$TEST" ] && [ -x /usr/local/bin/simpleos-live ] && /usr/local/bin/simpleos-live --check; then
-    die "user accounts can only be changed on an installed system" 4
+    die "$(_t 'user accounts can only be changed on an installed system')" 4
 fi
 
 defs() { awk -v k="$1" '$1 == k { print $2; exit }' "$ETC/login.defs" 2>/dev/null; }
@@ -82,17 +84,22 @@ valid_name() {
     return 0
 }
 read_password() {
-    IFS= read -r pw || [ -n "${pw:-}" ] || die "no password given" 2
-    [ -n "$pw" ] || die "the password is empty" 2
-    printf '%s' "$pw" | LC_ALL=C grep -q '[[:cntrl:]]' && die "the password has control characters" 2
+    IFS= read -r pw || [ -n "${pw:-}" ] || die "$(_t 'no password given')" 2
+    [ -n "$pw" ] || die "$(_t 'the password is empty')" 2
+    printf '%s' "$pw" | LC_ALL=C grep -q '[[:cntrl:]]' && die "$(_t 'the password has control characters')" 2
     return 0
 }
 set_password() {   # USER (password in $pw)
     if [ -n "$TEST" ]; then echo "RUN: chpasswd ($1)"; return 0; fi
     printf '%s:%s\n' "$1" "$pw" | chpasswd
 }
-need_person() { valid_user "$1" && human "$1" || die "$1 is not a person's account on this computer" 2; }
-not_self() { [ "$1" != "$(caller)" ] || die "you can't $2 your own account here" 3; }
+need_person() { valid_user "$1" && human "$1" || die "$(printf "$(_t "%s is not a person's account on this computer")" "$1")" 2; }
+# not_self USER delete|demote
+not_self() {
+    [ "$1" != "$(caller)" ] && return 0
+    if [ "$2" = delete ]; then die "$(_t "you can't delete your own account here")" 3
+    else die "$(_t "you can't make your own account a standard user here")" 3; fi
+}
 
 # AccountsService: the object of an account (empty if the service is not there)
 as_user() {
@@ -127,13 +134,13 @@ case "$action" in
     --create)
         [ $# -eq 2 ] || usage
         name=$1 kind=$2
-        valid_user "$user" || die "the user name may only have small letters, digits, - and _ and must start with a letter" 2
-        valid_name "$name" || die "the full name is empty, too long or has : , =" 2
+        valid_user "$user" || die "$(_t 'the user name may only have small letters, digits, - and _ and must start with a letter')" 2
+        valid_name "$name" || die "$(_t 'the full name is empty, too long or has : , =')" 2
         case "$kind" in admin|standard) ;; *) usage ;; esac
-        exists "$user" && die "the user name $user is taken already" 6
+        exists "$user" && die "$(printf "$(_t 'the user name %s is taken already')" "$user")" 6
         read_password
-        run adduser --quiet --disabled-password --comment "$name" "$user" || die "the account could not be created"
-        set_password "$user" || { run deluser --quiet --remove-home "$user"; die "the password could not be set"; }
+        run adduser --quiet --disabled-password --comment "$name" "$user" || die "$(_t 'the account could not be created')"
+        set_password "$user" || { run deluser --quiet --remove-home "$user"; die "$(_t 'the password could not be set')"; }
         for g in $ACCOUNT_GROUPS; do
             awk -F: -v g="$g" '$1 == g { f = 1 } END { exit !f }' "$ETC/group" && run adduser --quiet "$user" "$g"
         done
@@ -144,35 +151,35 @@ case "$action" in
         need_person "$user"
         case "$1" in keep|remove) ;; *) usage ;; esac
         not_self "$user" delete
-        last_admin "$user" && die "$user is the last administrator" 3
-        signed_in "$user" && die "$user is signed in – sign them out first" 5
+        last_admin "$user" && die "$(printf "$(_t '%s is the last administrator')" "$user")" 3
+        signed_in "$user" && die "$(printf "$(_t '%s is signed in – sign them out first')" "$user")" 5
         [ "$(autologin_user)" = "$user" ] && set_autologin off
         if [ "$1" = remove ]; then run deluser --quiet --remove-home "$user"; else run deluser --quiet "$user"; fi ||
-            die "the account could not be deleted"
+            die "$(_t 'the account could not be deleted')"
         # AccountsService's files of the account (picture, settings) – it forgets the account by itself
         run rm -f "/var/lib/AccountsService/users/$user" "/var/lib/AccountsService/icons/$user"
         exit 0 ;;
     --name)
         [ $# -eq 1 ] || usage
         need_person "$user"
-        valid_name "$1" || die "the full name is empty, too long or has : , =" 2
-        run chfn -f "$1" "$user" || die "the name could not be changed"
+        valid_name "$1" || die "$(_t 'the full name is empty, too long or has : , =')" 2
+        run chfn -f "$1" "$user" || die "$(_t 'the name could not be changed')"
         exit 0 ;;
     --password)
         [ $# -eq 0 ] || usage
         need_person "$user"
         read_password
-        set_password "$user" || die "the password could not be changed"
+        set_password "$user" || die "$(_t 'the password could not be changed')"
         exit 0 ;;
     --admin)
         [ $# -eq 1 ] || usage
         need_person "$user"
         case "$1" in
-            on)  is_admin "$user" || run adduser --quiet "$user" sudo || die "could not make $user an administrator" ;;
+            on)  is_admin "$user" || run adduser --quiet "$user" sudo || die "$(printf "$(_t 'could not make %s an administrator')" "$user")" ;;
             off) is_admin "$user" || exit 0
-                 not_self "$user" "make a standard user of"
-                 last_admin "$user" && die "$user is the last administrator" 3
-                 run deluser --quiet "$user" sudo || die "could not make $user a standard user" ;;
+                 not_self "$user" demote
+                 last_admin "$user" && die "$(printf "$(_t '%s is the last administrator')" "$user")" 3
+                 run deluser --quiet "$user" sudo || die "$(printf "$(_t 'could not make %s a standard user')" "$user")" ;;
             *)   usage ;;
         esac
         exit 0 ;;
@@ -181,17 +188,17 @@ case "$action" in
         need_person "$user"
         file=$1
         if [ "$file" != none ]; then
-            [ -f "$file" ] && [ -r "$file" ] || die "the picture can't be read" 2
-            [ "$(stat -c %s "$file")" -le 5000000 ] || die "the picture is bigger than 5 MB" 2
+            [ -f "$file" ] && [ -r "$file" ] || die "$(_t "the picture can't be read")" 2
+            [ "$(stat -c %s "$file")" -le 5000000 ] || die "$(_t 'the picture is bigger than 5 MB')" 2
             magic=$(od -An -tx1 -N4 "$file" | tr -d ' \n')
-            case "$magic" in 89504e47|ffd8ff*) ;; *) die "the picture is not a PNG or JPEG file" 2 ;; esac
+            case "$magic" in 89504e47|ffd8ff*) ;; *) die "$(_t 'the picture is not a PNG or JPEG file')" 2 ;; esac
         fi
         if [ -n "$TEST" ]; then echo "RUN: picture $user $file"; exit 0; fi
         # A copy only root can change: the file the user picked could be swapped while AccountsService reads it
         copy=
         if [ "$file" != none ]; then
-            copy=$(mktemp /run/simpleos-picture.XXXXXX) || die "no temporary file"
-            cp "$file" "$copy" && chmod 0644 "$copy" || { rm -f "$copy"; die "the picture can't be read"; }
+            copy=$(mktemp /run/simpleos-picture.XXXXXX) || die "$(_t 'no temporary file')"
+            cp "$file" "$copy" && chmod 0644 "$copy" || { rm -f "$copy"; die "$(_t "the picture can't be read")"; }
         fi
         obj=$(as_user "$user")
         if [ -n "$obj" ] && busctl call org.freedesktop.Accounts "$obj" org.freedesktop.Accounts.User SetIconFile s "${copy:-}" >/dev/null 2>&1; then
@@ -211,7 +218,7 @@ case "$action" in
     --autologin)
         [ $# -eq 0 ] || usage
         if [ "$user" != off ]; then need_person "$user"; fi
-        set_autologin "$user" || die "automatic sign-in could not be changed"
+        set_autologin "$user" || die "$(_t 'automatic sign-in could not be changed')"
         exit 0 ;;
     *) usage ;;
 esac

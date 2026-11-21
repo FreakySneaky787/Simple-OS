@@ -6,12 +6,14 @@
 # same time (xclip, image/png) and reports "Screenshot saved & copied" with a preview.
 # Its own script because Openbox expands neither ~ nor $(date) in <command>.
 # Errors (maim missing, no screen, folder not writable) as a notification instead of a silent end.
+# Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
+if [ -r /usr/local/lib/simpleos/i18n.sh ]; then . /usr/local/lib/simpleos/i18n.sh; else _t() { printf '%s' "$1"; }; fi
 dir="${HOME:-/tmp}/Pictures/Screenshots"
 mkdir -p "$dir" 2>/dev/null || dir=/tmp
 file="$dir/Screenshot_$(date +%Y-%m-%d_%H-%M-%S).png"
-fail() { notify-send -u critical -c x-simpleos -i dialog-error "Screenshot" "$1" 2>/dev/null; exit 0; }
+fail() { notify-send -u critical -c x-simpleos -i dialog-error "$(_t Screenshot)" "$1" 2>/dev/null; exit 0; }
 
-command -v maim >/dev/null || fail "Screenshots are not available (maim is missing)."
+command -v maim >/dev/null || fail "$(_t 'Screenshots are not available (maim is missing).')"
 case "${1:-}" in
     --area)
         err=$(maim --select --hidecursor "$file" 2>&1 >/dev/null)
@@ -19,12 +21,12 @@ case "${1:-}" in
             rm -f "$file" 2>/dev/null
             # Selection cancelled (Esc, right-click): no error message
             printf '%s' "$err" | grep -qi 'cancel' && exit 0
-            fail "The screenshot could not be saved."
+            fail "$(_t 'The screenshot could not be saved.')"
         fi ;;
     *)
-        maim --hidecursor "$file" 2>/dev/null || fail "The screenshot could not be saved." ;;
+        maim --hidecursor "$file" 2>/dev/null || fail "$(_t 'The screenshot could not be saved.')" ;;
 esac
-[ -s "$file" ] || fail "The screenshot could not be saved."
+[ -s "$file" ] || fail "$(_t 'The screenshot could not be saved.')"
 
 copied=0
 if command -v xclip >/dev/null; then
@@ -32,8 +34,8 @@ if command -v xclip >/dev/null; then
     xclip -selection clipboard -t image/png -i "$file" >/dev/null 2>&1 </dev/null && copied=1
 fi
 if [ "$copied" = 1 ]; then
-    notify-send -c x-simpleos -i "$file" "Screenshot saved & copied" "$file" 2>/dev/null
+    notify-send -c x-simpleos -i "$file" "$(_t 'Screenshot saved & copied')" "$file" 2>/dev/null
 else
-    notify-send -c x-simpleos -i "$file" "Screenshot saved" "$file" 2>/dev/null
+    notify-send -c x-simpleos -i "$file" "$(_t 'Screenshot saved')" "$file" 2>/dev/null
 fi
 exit 0

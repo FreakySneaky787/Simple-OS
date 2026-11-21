@@ -11,12 +11,12 @@ LIB=/usr/local/lib/simpleos/common.sh
 sos_log_init "$@"
 
 sos_rofi_failed() {
-    sos_notify "Super: apps · Super+Enter: terminal · Super+B: browser · Super+E: files · Super+X: power menu"
+    sos_notify "$(_t 'Super: apps · Super+Enter: terminal · Super+B: browser · Super+E: files · Super+X: power menu')"
     exit 0
 }
 
-sos_rofi -dmenu -i -no-custom -markup-rows -p "Filter" \
-    -mesg "<b>Simple OS – Keyboard shortcuts</b>   ·   type to filter   ·   Esc to close" -markup \
+sos_rofi -dmenu -i -no-custom -markup-rows -p "$(_t 'Filter')" \
+    -mesg "<b>$(_t 'Simple OS – Keyboard shortcuts')</b>   ·   $(_t 'type to filter')   ·   $(_t 'Esc to close')" -markup \
     -theme-str 'window { width: 760px; location: center; anchor: center; } listview { lines: 18; }
                 element-icon { enabled: false; } element-text { font: "JetBrains Mono 10"; }' \
     >/dev/null <<'LIST'

@@ -12,9 +12,11 @@
 #     of an installation that stops right after it started
 #   - shutting down, sleep (also closing the laptop lid) and the idle screen are blocked (systemd-inhibit);
 #     the power button and the power menu ask first (simpleos-powermenu)
-note() { notify-send -c x-simpleos -i system-os-installer "Install Simple OS" "$1" 2>/dev/null; }
+# Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
+if [ -r /usr/local/lib/simpleos/i18n.sh ]; then . /usr/local/lib/simpleos/i18n.sh; else _t() { printf '%s' "$1"; }; fi
+note() { notify-send -c x-simpleos -i system-os-installer "$(_t 'Install Simple OS')" "$1" 2>/dev/null; }
 if [ -x /usr/local/bin/simpleos-live ] && ! /usr/local/bin/simpleos-live --check; then
-    note "Simple OS is already installed on this computer."
+    note "$(_t 'Simple OS is already installed on this computer.')"
     exit 0
 fi
 # "exec 9>" on a file that cannot be written would end dash -> check first. Children inherit fd 9, so the lock
@@ -23,12 +25,12 @@ lock=${XDG_RUNTIME_DIR:-/tmp}/simpleos-install.lock
 if command -v flock >/dev/null && touch "$lock" 2>/dev/null && [ -w "$lock" ]; then
     exec 9>"$lock"
     if ! flock -n 9; then
-        note "The installer is already open."
+        note "$(_t 'The installer is already open.')"
         exit 0
     fi
 fi
 if pgrep -x calamares >/dev/null 2>&1; then
-    note "The installer is already open."
+    note "$(_t 'The installer is already open.')"
     exit 0
 fi
 
@@ -43,7 +45,8 @@ busy=$(findmnt -rn -o SOURCE,TARGET 2>/dev/null | while read -r src target; do
     echo "${name:-${src#/dev/}}"
 done)
 if [ -n "$busy" ]; then
-    note "A drive of this computer is still in use: $(printf '%s' "$busy" | sed ':a;N;$!ba;s/\n/, /g'). Close the windows that show its files, then start the installer again."
+    drives=$(printf '%s' "$busy" | sed ':a;N;$!ba;s/\n/, /g')
+    note "$(printf "$(_t 'A drive of this computer is still in use: %s. Close the windows that show its files, then start the installer again.')" "$drives")"
     exit 0
 fi
 
@@ -58,5 +61,5 @@ run() {
 }
 if command -v install-debian >/dev/null; then run install-debian; exit 0; fi
 if command -v calamares >/dev/null && command -v pkexec >/dev/null; then run pkexec calamares; exit 0; fi
-note "The installer is missing on this system."
+note "$(_t 'The installer is missing on this system.')"
 exit 0

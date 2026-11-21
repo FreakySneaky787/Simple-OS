@@ -16,6 +16,8 @@
 #               (simpleos-taskbar-select) light/dark, tint2 reloads via SIGUSR1
 #          Window borders and the right-click menu stay Mocha (Openbox theme SimpleOS).
 # --accent colors Rofi, the taskbar (tint2) and window borders/menus (Openbox theme).
+# Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
+if [ -r /usr/local/lib/simpleos/i18n.sh ]; then . /usr/local/lib/simpleos/i18n.sh; else _t() { printf '%s' "$1"; }; fi
 set -e
 
 STATE="$HOME/.config/simpleos/theme"
@@ -66,7 +68,7 @@ while [ $# -gt 0 ]; do
             [ -x "$rofi" ] || rofi=rofi
             choice=$(printf '%s\n' "Dark mode" "Light mode" "Accent: blue" "Accent: mauve" "Accent: pink" \
                          "Accent: green" "Accent: peach" "Accent: teal" |
-                SOS_NAME=simpleos-theme SOS_TITLE=Appearance "$rofi" -dmenu -i -no-custom -p "Appearance" -mesg "Current: $mode mode, $accent accent" \
+                SOS_NAME=simpleos-theme SOS_TITLE=Appearance "$rofi" -dmenu -i -no-custom -p "$(_t 'Appearance')" -mesg "Current: $mode mode, $accent accent" \
                     -theme-str 'window { width: 360px; } listview { lines: 8; } element-icon { enabled: false; }' || true)
             case "$choice" in
                 "Dark mode")  mode=dark ;;

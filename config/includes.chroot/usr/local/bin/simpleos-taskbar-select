@@ -9,6 +9,8 @@
 # and everything else stays), then tint2 reloads the file via SIGUSR1 in the running process (no restart).
 # Display scale (simpleos-scale, #41): scale_relative_to_dpi from simpleos-scale --tint2-ref – tint2 then scales sizes
 # and fonts itself; the line is added to an older tint2rc that does not have it yet.
+# Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
+if [ -r /usr/local/lib/simpleos/i18n.sh ]; then . /usr/local/lib/simpleos/i18n.sh; else _t() { printf '%s' "$1"; }; fi
 set -e
 
 STATE="$HOME/.config/simpleos/taskbar"
@@ -230,7 +232,7 @@ rofi_cmd=/usr/local/lib/simpleos/rofi-retry
 export SOS_NAME=simpleos-taskbar-select SOS_TITLE=Taskbar
 pick() {  # $1 = title, rest = entries; the current value is marked with ●
     title=$1; shift
-    printf '%s\n' "$@" | "$rofi_cmd" -dmenu -i -no-custom -p "Taskbar" -mesg "<b>$title</b>" -markup \
+    printf '%s\n' "$@" | "$rofi_cmd" -dmenu -i -no-custom -p "$(_t 'Taskbar')" -mesg "<b>$title</b>" -markup \
         -theme-str 'window { width: 460px; } listview { lines: 7; } element-icon { enabled: false; }' || true
 }
 mark() { if [ "$1" = "$2" ]; then echo "●  $3"; else echo "○  $3"; fi; }

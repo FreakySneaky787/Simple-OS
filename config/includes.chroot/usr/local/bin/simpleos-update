@@ -43,7 +43,7 @@ HELPER=/usr/local/sbin/simpleos-system-setup
 sos_log_init "$@"
 
 sos_rofi_failed() {
-    sos_notify "The update window could not open. Please try again from Menu → Tools → Software Updates." critical
+    sos_notify "$(_t 'The update window could not open. Please try again from Menu → Tools → Software Updates.')" critical
     exit 0
 }
 is_live() { grep -qw 'boot=live' /proc/cmdline 2>/dev/null; }
@@ -78,7 +78,7 @@ if ! mkdir "$LOCK" 2>/dev/null; then
     # take over an orphaned lock (process gone)
     pid=$(cat "$LOCK/pid" 2>/dev/null)
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-        [ "${1:-}" = --check ] || sos_notify "Updates are already being checked or installed."
+        [ "${1:-}" = --check ] || sos_notify "$(_t 'Updates are already being checked or installed.')"
         exit 0
     fi
     rm -rf "$LOCK"; mkdir "$LOCK" 2>/dev/null || exit 0
@@ -147,11 +147,11 @@ offer_restart() {  # $1 text
     # Release the lock first: the notification can stay open for a long time, Software Updates should still open
     rm -rf "$LOCK"; trap - EXIT
     sos_ask "Updates installed" "$1" "Restart…" || return 0
-    sos_add "$(sos_fa '\357\200\241')  Restart now" "restart"
-    sos_add "$(sos_fa '\357\200\215')  Later" "later"
-    sos_pick "<b>Restart now?</b>${SOS_NL}$(sos_dim "Save your work first – open windows will close.")" 440
+    sos_add "$(sos_fa '\357\200\241')  $(_t 'Restart now')" "restart"
+    sos_add "$(sos_fa '\357\200\215')  $(_t 'Later')" "later"
+    sos_pick "<b>$(_t 'Restart now?')</b>${SOS_NL}$(sos_dim "$(_t 'Save your work first – open windows will close.')")" 440
     [ "$action" = restart ] || return 0
-    systemctl reboot >&2 2>&1 || loginctl reboot >&2 2>&1 || sos_notify "Please restart your computer to finish the update."
+    systemctl reboot >&2 2>&1 || loginctl reboot >&2 2>&1 || sos_notify "$(_t 'Please restart your computer to finish the update.')"
 }
 # Package lists downloaded within the last 30 minutes?
 lists_fresh() {
@@ -165,7 +165,7 @@ lists_fresh() {
 
 install_updates() {
     if [ ! -x "$HELPER" ] || ! command -v pkexec >/dev/null; then
-        sos_notify "Updates cannot be installed on this system (update helper missing)." critical
+        sos_notify "$(_t 'Updates cannot be installed on this system (update helper missing).')" critical
         return 0
     fi
     # Remember the devices with a firmware update BEFORE installing: fwupd no longer lists a scheduled UEFI capsule
@@ -189,7 +189,7 @@ install_updates() {
             --icon-name system-software-update --pid $$ 2>>"$SOS_LOG" &
         ppid=$!
     else
-        sos_notify "Installing updates … You can keep working. Don't turn off the computer."
+        sos_notify "$(_t "Installing updates … You can keep working. Don't turn off the computer.")"
     fi
     pkexec "$HELPER" --upgrade >"$out" 2>"$err"
     rc=$?
@@ -213,7 +213,7 @@ install_updates() {
             held=$(printf '%s\n' "$log" | sed -n 's/^HELD: *\([0-9][0-9]*\)$/\1/p' | head -n 1)
             if [ -n "$held" ]; then
                 if [ "$held" -eq 1 ]; then n="1 update"; else n="$held updates"; fi
-                sos_notify "$n could not be installed automatically: they would remove other software. Details: ~/.cache/simpleos-update.log" critical
+                sos_notify "$(printf "$(_t '%s could not be installed automatically: they would remove other software. Details: ~/.cache/simpleos-update.log')" "$n")" critical
             fi
             restart="Your computer needs a restart to finish the update. Restart when it suits you."
             [ -n "$edition" ] && restart="Simple OS $edition is installed. Your computer needs a restart to finish the update. Restart when it suits you."
@@ -226,15 +226,15 @@ install_updates() {
             if [ -e "$REBOOT_FLAG" ]; then
                 offer_restart "$restart"
             elif [ -n "$edition" ]; then
-                sos_notify "Simple OS $edition is installed. Sign out and back in to see everything that is new."
+                sos_notify "$(printf "$(_t 'Simple OS %s is installed. Sign out and back in to see everything that is new.')" "$edition")"
             elif [ -n "$fwnote$held" ]; then
                 :
             elif printf '%s\n' "$log" | grep -qx 'UPTODATE: 1'; then
-                sos_notify "Your system is up to date – there was nothing to install."
+                sos_notify "$(_t 'Your system is up to date – there was nothing to install.')"
             else
-                sos_notify "Your system is up to date."
+                sos_notify "$(_t 'Your system is up to date.')"
             fi ;;
-        126|127) sos_notify "No password entered – nothing was changed." ;;
+        126|127) sos_notify "$(_t 'No password entered – nothing was changed.')" ;;
         *)  # the cause instead of always "internet": space, network, otherwise the log
             case "$log" in
                 *"NOSPACE: "*)   # checked before installing (#91): "NOSPACE: <path> <needed MB> <free MB>"
@@ -246,11 +246,11 @@ install_updates() {
                         command -v simpleos-cleaner >/dev/null && simpleos-cleaner >/dev/null 2>&1 &
                     fi ;;
                 *"No space left"*|*"not enough free space"*|*"min-free-space"*|*"You don't have enough free space"*)
-                    sos_notify "Some updates could not be installed: not enough free disk space. Free up space with the Storage Cleaner and try again." critical ;;
+                    sos_notify "$(_t 'Some updates could not be installed: not enough free disk space. Free up space with the Storage Cleaner and try again.')" critical ;;
                 *"Temporary failure resolving"*|*"Could not resolve"*|*"Failed to fetch"*|*"Could not connect"*|*"Network is unreachable"*)
-                    sos_notify "Some updates could not be installed: no internet connection. Check your network and try again from Menu → Tools → Software Updates." critical ;;
+                    sos_notify "$(_t 'Some updates could not be installed: no internet connection. Check your network and try again from Menu → Tools → Software Updates.')" critical ;;
                 *"Could not get lock"*|*"Unable to acquire"*|*"is locked by another process"*)
-                    sos_notify "Some updates could not be installed: another installation was still running. Try again in a few minutes." critical ;;
+                    sos_notify "$(_t 'Some updates could not be installed: another installation was still running. Try again in a few minutes.')" critical ;;
                 *)  # send the first apt/dpkg error line along instead of only pointing to the log; if a restart is
                     # pending (new kernel), often only a restart helps
                     reason=$(printf '%s\n' "$log" | sed -n 's/^E: //p; s/^dpkg: error[^:]*: //p; s/^error: //p' | head -n 1 | cut -c1-140)
@@ -269,7 +269,7 @@ refresh_lists() {
         sos_log "refresh: helper/pkexec missing"
         return 1
     fi
-    sos_notify "Checking for updates…" low
+    sos_notify "$(_t 'Checking for updates…')" low
     pkexec "$HELPER" --refresh >>"$SOS_LOG" 2>&1
     rc=$?
     sos_log "refresh exit $rc"
@@ -293,10 +293,10 @@ fi
 
 # ---- Window
 if is_live; then
-    sos_notify "Updates can be installed after Simple OS is installed on your computer."
+    sos_notify "$(_t 'Updates can be installed after Simple OS is installed on your computer.')"
     exit 0
 fi
-command -v apt-get >/dev/null || { sos_notify "Updates are not available on this system (apt missing)." critical; exit 0; }
+command -v apt-get >/dev/null || { sos_notify "$(_t 'Updates are not available on this system (apt missing).')" critical; exit 0; }
 firmware_check
 
 # Check by itself first (lists older than 30 minutes), then the result right away – one call for everything
@@ -307,9 +307,9 @@ count=$(printf '%s\n' "$pkgs" | grep -c . || true)
 sos_is_num "$count" || count=0
 if [ "$count" -eq 0 ]; then
     if [ "$online" = 1 ]; then
-        sos_notify "Your system is up to date."
+        sos_notify "$(_t 'Your system is up to date.')"
     else
-        sos_notify "Updates could not be checked right now – are you connected to the internet? Details: ~/.cache/simpleos-update.log" critical
+        sos_notify "$(_t 'Updates could not be checked right now – are you connected to the internet? Details: ~/.cache/simpleos-update.log')" critical
     fi
     exit 0
 fi
@@ -318,9 +318,9 @@ fi
 names=$(printf '%s\n' "$pkgs" | head -n 4 | awk 'NR > 1 { printf ", " } { printf "%s", $0 }')
 [ "$count" -gt 4 ] && names="$names, …"
 if [ "$count" -eq 1 ]; then head="1 update available"; else head="$count updates available"; fi
-[ "$online" = 1 ] || head="$head $(sos_dim "(could not check online – last known state)")"
-sos_add "$(sos_fa '\357\200\231')  Install now" "install"
-sos_add "$(sos_fa '\357\200\215')  Not now" "close"
+[ "$online" = 1 ] || head="$head $(sos_dim "$(_t '(could not check online – last known state)')")"
+sos_add "$(sos_fa '\357\200\231')  $(_t 'Install now')" "install"
+sos_add "$(sos_fa '\357\200\215')  $(_t 'Not now')" "close"
 sos_pick "<b>$head</b>${SOS_NL}$(sos_esc "$names")" 480
 [ "$action" = install ] && install_updates
 exit 0

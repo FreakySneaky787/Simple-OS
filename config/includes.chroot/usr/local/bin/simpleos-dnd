@@ -94,9 +94,9 @@ effects_off() { grep -qx 'effects=off' "$SETTINGS" 2>/dev/null; }
 dunst_pause() { command -v dunstctl >/dev/null && dunstctl set-paused "$1" >&2 2>&1; }
 
 on() {
-    active && { sos_notify "Do Not Disturb is already on." low; return; }
+    active && { sos_notify "$(_t 'Do Not Disturb is already on.')" low; return; }
     picom=0
-    sos_notify "Do Not Disturb is on – notifications are paused until you turn it off." low
+    sos_notify "$(_t 'Do Not Disturb is on – notifications are paused until you turn it off.')" low
     if effects_off && command -v simpleos-picom >/dev/null && simpleos-picom --running; then
         simpleos-picom --stop && picom=1
     fi
@@ -108,14 +108,14 @@ on() {
     sos_log "on: picom=$picom"
 }
 off() {
-    active || { sos_notify "Do Not Disturb is already off." low; return; }
+    active || { sos_notify "$(_t 'Do Not Disturb is already off.')" low; return; }
     picom=0
     . "$STATE" 2>/dev/null
     rm -f "$STATE"
     poke_panel
     dunst_pause false
     [ "$picom" = 1 ] && command -v simpleos-picom >/dev/null && simpleos-picom --start
-    sos_notify "Do Not Disturb is off – notifications are back." low
+    sos_notify "$(_t 'Do Not Disturb is off – notifications are back.')" low
     sos_log "off: picom=$picom"
 }
 effects() {

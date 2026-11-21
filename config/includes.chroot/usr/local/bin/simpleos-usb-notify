@@ -26,7 +26,7 @@ name=${label:-${drive:-USB drive}}
 open_files() {
     if command -v thunar >/dev/null; then exec thunar "$1"; fi
     if command -v xdg-open >/dev/null; then exec xdg-open "$1"; fi
-    sos_notify "Your files are in $1"
+    sos_notify "$(printf "$(_t 'Your files are in %s')" "$1")"
     exit 0
 }
 
@@ -39,7 +39,7 @@ eject() {
         dev=$(findmnt -n -o SOURCE --target "$1" 2>/dev/null)
         [ -n "$dev" ] && udisksctl unmount -b "$dev" >&2 2>&1 && { udisksctl power-off -b "$dev" >&2 2>&1; return 0; }
     fi
-    sos_notify "\"$name\" is still in use. Close all files and windows from it, then try again." critical
+    sos_notify "$(printf "$(_t '\"%s\" is still in use. Close all files and windows from it, then try again.')" "$name")" critical
 }
 
 # Drives this script announced as ready (one name per line): only those get "can be removed safely" later
@@ -79,7 +79,7 @@ case "$event" in
         grep -qxF "$name" "$SEEN" 2>/dev/null || { sos_log "ignored: $name unmounted (not announced)"; exit 0; }
         seen=$(grep -vxF "$name" "$SEEN" 2>/dev/null)
         printf '%s\n' "$seen" | grep . > "$SEEN" 2>/dev/null
-        sos_notify "\"$name\" can now be removed safely." ;;
+        sos_notify "$(printf "$(_t '\"%s\" can now be removed safely.')" "$name")" ;;
     job_failed)
         sos_notify "\"$name\" could not be opened. It may be damaged or use a format Simple OS can't read." critical ;;
 esac
