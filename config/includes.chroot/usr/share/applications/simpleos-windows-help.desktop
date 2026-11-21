@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Windows Programs on Simple OS
+Comment=What runs with SOS Bridge (Bottles, Wine), what doesn't, and good alternatives
+Exec=/usr/local/bin/simpleos-windows-app --help-page
+Icon=com.usebottles.bottles
+Categories=System;Documentation;
+Keywords=windows;exe;msi;wine;bottles;sos bridge;proton;steam play;

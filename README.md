@@ -266,12 +266,18 @@ the lb default files, the generated graphics and the fastfetch package.
 ### User tools
 
 - `simpleos-welcome-wizard` – setup on first login (internet/Wi-Fi, browser, dark/light, accent color, office,
-  gaming, Software Store). Run it again: Menu → Help → Setup Wizard. Done marker:
+  optional components, Software Store). Run it again: Menu → Help → Setup Wizard. Done marker:
   `~/.config/simpleos/wizard-done` (not set if an installation failed).
   - Browser Chromium/Mullvad → Firefox ESR is removed completely afterwards (only once the new browser is installed).
-  - Office: LibreOffice (apt), ONLYOFFICE (Flathub) or Minimal. Gaming: Ultimate (i386 + Steam, Lutris, MangoHud) or none.
-    With an NVIDIA driver from Debian, Gaming also installs its 32-bit libraries: `nvidia-driver-libs:i386`, or
-    `nvidia-tesla-470-driver-libs:i386` for the legacy driver 470 (Kepler) – chosen by the installed package.
+  - Office: LibreOffice (apt), ONLYOFFICE (Flathub) or Minimal.
+  - Step 6 "Extras" (#126, 1.2): optional components, **all off by default**, each with a switch and its download
+    size – **SOS Bridge** (Bottles from Flathub for Windows programs, #85), **Gaming Support** (i386 + Steam, Lutris,
+    MangoHud, game controllers via `steam-devices`) and **Developer Tools** (Git, `build-essential`, `python3-pip`,
+    `python3-venv`, the code editor VSCodium from Flathub). Offline the switches are off with a hint. One that fails
+    is no error screen: the helper reports `OPTIONAL-FAILED: <name>` and exits with 3, the wizard says it can be
+    added later (Software Center, same names). With an NVIDIA driver from Debian, Gaming Support also installs its
+    32-bit libraries: `nvidia-driver-libs:i386`, or `nvidia-tesla-470-driver-libs:i386` for the legacy driver 470
+    (Kepler) – chosen by the installed package.
   - Menu entries for the office apps (Openbox → Apps) come from `/usr/local/lib/simpleos/office-menu`, as the
     user, into `~/.config/openbox/menu.xml` only: after the marker `<!-- simpleos-office: … -->` one block per app,
     for exactly what is installed (also from the Software Center or a terminal; removed apps lose their entries).
@@ -542,6 +548,12 @@ the lb default files, the generated graphics and the fastfetch package.
   The verify hook simulates all click paths (cable, Wi-Fi, offline, missing GUI tools) under dash.
   Additionally `nm-applet` in the tray (left click = Wi-Fi list).
 - `simpleos-setup` – short name for the Setup Wizard (`simpleos-welcome-wizard`).
+- `simpleos-windows-app` – Windows programs (#85): a double-click on a `.exe`/`.msi` (and the right-click action "Run
+  with SOS Bridge") opens it in Bottles; without Bottles a small window explains honestly what works and offers to
+  install **SOS Bridge** (Bottles from Flathub, space and Flathub checked first, progress window). `--help-page` opens
+  `/usr/share/simpleos/windows-programs.html` (Menu → Help → Windows Programs) in the welcome window: what usually
+  works, what doesn't (Microsoft 365, current Adobe apps, kernel anti-cheat) with alternatives, Steam's "Steam Play
+  for all other titles" switch. SOS Bridge is only the name of the bundle, not a Windows layer of our own.
 - Welcome page `usr/share/simpleos/welcome.html` (offline, calm cards, Catppuccin Mocha, Inter): `simpleos-welcome`
   opens it in its own WebKit window – never in the default browser (`$BROWSER`, `xdg-open`), because hardened
   browsers like the Mullvad Browser (Flatpak) cannot see `/usr/share` and a VPN can block localhost. No proxy,

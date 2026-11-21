@@ -1,7 +1,17 @@
 #!/bin/sh
 # Simple OS – system changes of the Setup Wizard (runs as root, called via pkexec with a GUI password dialog)
 #   pkexec simpleos-system-setup [--browser firefox|chromium|mullvad] [--purge-firefox]
-#                                [--office libreoffice|onlyoffice|none] [--gaming]
+#                                [--office libreoffice|onlyoffice|none] [--gaming] [--bridge] [--devtools]
+#                                    the wizard's choices; --gaming, --bridge and --devtools are the optional
+#                                    components of the wizard's page "Extras" (#126) and the Software Center:
+#                                      --gaming    Gaming Support: Steam, Lutris, MangoHud, 32-bit drivers, game
+#                                                  controllers (steam-devices)
+#                                      --bridge    SOS Bridge (#85): Bottles from Flathub for Windows programs
+#                                      --devtools  Developer Tools: Git, build-essential, Python pip/venv, the code
+#                                                  editor VSCodium from Flathub
+#                                    An optional component that fails is reported with "OPTIONAL-FAILED: <name>";
+#                                    if nothing else failed, the exit code is 3 (the wizard says what is missing and
+#                                    that it can be added later, instead of an error screen)
 #   pkexec simpleos-system-setup --upgrade   system update (simpleos-update): download package lists, install all
 #                                    updates without removing packages; then Flatpak apps (system), finally
 #                                    firmware/BIOS from LVFS (fwupd; not in VMs). Before that a restore point,
@@ -38,7 +48,7 @@ set -u
 export DEBIAN_FRONTEND=noninteractive
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-usage() { echo "Usage: $0 [--browser firefox|chromium|mullvad] [--purge-firefox] [--office libreoffice|onlyoffice|none] [--gaming] | --repos | --upgrade | --refresh | --language | --locale LOCALE [--formats LOCALE] | --firewall on|off | --drivers PACKAGE…" >&2; exit 2; }
+usage() { echo "Usage: $0 [--browser firefox|chromium|mullvad] [--purge-firefox] [--office libreoffice|onlyoffice|none] [--gaming] [--bridge] [--devtools] | --repos | --upgrade | --refresh | --language | --locale LOCALE [--formats LOCALE] | --firewall on|off | --drivers PACKAGE…" >&2; exit 2; }
 # The only packages --drivers may install (the same list as ALLOWED in simpleos-drivers)
 # Kernel/headers/firmware come from bookworm-backports via pinning (/etc/apt/preferences.d/simpleos-backports.pref)
 DRIVER_PACKAGES="firmware-linux-nonfree firmware-misc-nonfree firmware-intel-graphics firmware-amd-graphics
@@ -47,7 +57,7 @@ nvidia-tesla-470-driver linux-image-amd64 linux-headers-amd64 intel-microcode am
 
 [ "$(id -u)" -eq 0 ] || [ "${SIMPLEOS_SETUP_DRYRUN:-}" = 1 ] || { echo "simpleos-system-setup: must run as root (pkexec)" >&2; exit 1; }
 
-browser= purge_firefox=0 office=none gaming=0 repos_only=0 upgrade=0 refresh=0 language=0 drivers=0 firewall=
+browser= purge_firefox=0 office=none gaming=0 bridge=0 devtools=0 repos_only=0 upgrade=0 refresh=0 language=0 drivers=0 firewall=
 locale= formats=
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -56,6 +66,8 @@ while [ $# -gt 0 ]; do
         --purge-firefox) purge_firefox=1 ;;
         --office)        [ $# -ge 2 ] || usage; office=$2; shift ;;
         --gaming)        gaming=1 ;;
+        --bridge)        bridge=1 ;;
+        --devtools)      devtools=1 ;;
         --repos)         repos_only=1 ;;
         --upgrade)       upgrade=1 ;;
         --refresh)       refresh=1 ;;
@@ -80,7 +92,8 @@ utf8_locale() {
 [ -z "$locale" ] || utf8_locale "$locale" || usage
 [ -z "$formats" ] || utf8_locale "$formats" || usage
 # Allowed combinations in ONE place: at most one action (--repos, --upgrade, --refresh, --firewall,
-# --drivers, --locale), and never together with wizard options (--browser, --purge-firefox, --office, --gaming).
+# --drivers, --locale), and never together with wizard options (--browser, --purge-firefox, --office, --gaming,
+# --bridge, --devtools).
 # Before, every section checked itself via a string ("$browser$gaming…" = "000") – after adding
 # --refresh a count of zeros no longer matched, and every --upgrade ended as an "invalid call" (exit 2).
 actions=0
@@ -88,15 +101,23 @@ for a in "$repos_only" "$upgrade" "$refresh" "$language" "$drivers"; do [ "$a" =
 [ -n "$firewall" ] && actions=$((actions + 1))
 [ -n "$locale" ] && actions=$((actions + 1))
 wizard=0
-if [ -n "$browser" ] || [ "$purge_firefox" = 1 ] || [ "$office" != none ] || [ "$gaming" = 1 ]; then wizard=1; fi
+if [ -n "$browser" ] || [ "$purge_firefox" = 1 ] || [ "$office" != none ] || [ "$gaming" = 1 ] || [ "$bridge" = 1 ] ||
+   [ "$devtools" = 1 ]; then wizard=1; fi
 [ "$actions" -le 1 ] || usage
 [ "$actions" -eq 0 ] || [ "$wizard" -eq 0 ] || usage
 # Test (verify hook): only check the arguments; pkexec clears the environment
 [ "${SIMPLEOS_SETUP_ARGCHECK:-}" = 1 ] && { echo "ARGS: ok"; exit 0; }
 
 failed=0
+optional_failed=
 step() { echo "STEP: $*"; }
 fail() { echo "ERROR: $*" >&2; failed=1; }
+# An optional component (#126) did not work: say which, but no error screen in the wizard (exit 3 at the end)
+optional_fail() {
+    echo "ERROR: $2" >&2
+    echo "OPTIONAL-FAILED: $1"
+    case ", $optional_failed, " in *", $1, "*) ;; *) optional_failed="$optional_failed${optional_failed:+, }$1" ;; esac
+}
 # Wait instead of aborting if another apt process is running right now
 # Progress for the wizard/progress window: "STAGE: …" and "PROGRESS: <percent>" per operation (new after every "STEP:").
 # apt reports it via status fd 3 ("dlstatus:…:<percent>:…" download 0–40 %, "pmstatus:<package>:<percent>:…"
@@ -718,7 +739,7 @@ if [ "$gaming" -eq 1 ]; then
         updated=0
     fi
     if ! apt_update; then
-        fail "Gaming package: package lists (32-bit) could not be downloaded – check the internet connection"
+        optional_fail "Gaming Support" "Gaming package: package lists (32-bit) could not be downloaded – check the internet connection"
     else
         # Accept the license in the background beforehand (choosing "Ultimate Gaming" in the wizard is the consent).
         # bookworm does not ask during installation (Steam shows the license graphically on first start),
@@ -738,18 +759,50 @@ if [ "$gaming" -eq 1 ]; then
             nvidia="nvidia-driver-libs:i386"
         fi
         step "Installing Steam, Lutris and MangoHud (this can take a while)"
-        # 32-bit graphics drivers explicitly: Steam and many games are 32-bit
-        aptget install steam-installer steam-libs-i386 lutris mangohud gamemode \
+        # 32-bit graphics drivers explicitly: Steam and many games are 32-bit. steam-devices: udev rules so game
+        # controllers (Steam Controller, Xbox/PlayStation pads over USB/Bluetooth, Steam Deck) work without root (#126)
+        aptget install steam-installer steam-libs-i386 steam-devices lutris mangohud gamemode \
             libgl1-mesa-dri:i386 libgl1:i386 mesa-vulkan-drivers mesa-vulkan-drivers:i386 $nvidia \
-            || fail "Gaming package could not be installed completely"
+            || optional_fail "Gaming Support" "Gaming package could not be installed completely"
+    fi
+fi
+
+# ------------------------------------------------- SOS Bridge (#85, #126)
+# Bottles from Flathub (system-wide); the double-click on .exe/.msi (simpleos-windows-app) then opens it there
+BOTTLES=com.usebottles.bottles
+if [ "$bridge" -eq 1 ] && ! flatpak info --system "$BOTTLES" >/dev/null 2>&1; then
+    # ~700 MB download; with the GNOME runtime not there yet ~2 GB on disk
+    need=600
+    flatpak list --system --runtime --columns=application 2>/dev/null | grep -qx org.gnome.Platform || need=2000
+    step "Installing SOS Bridge (Bottles – about 700 MB download)"
+    flatpak_install "$BOTTLES" "$need" || optional_fail "SOS Bridge" "SOS Bridge (Bottles) could not be installed"
+fi
+
+# ---------------------------------------------------- Developer Tools (#126)
+CODE_EDITOR=com.vscodium.codium
+if [ "$devtools" -eq 1 ]; then
+    missing=
+    for p in git build-essential python3-pip python3-venv; do installed "$p" || missing="$missing $p"; done
+    if [ -n "$missing" ]; then
+        apt_update
+        step "Installing developer tools (Git, compilers, Python)"
+        # shellcheck disable=SC2086
+        aptget install $missing || optional_fail "Developer Tools" "developer packages could not be installed:$missing"
+    fi
+    if ! flatpak info --system "$CODE_EDITOR" >/dev/null 2>&1; then
+        step "Installing the code editor VSCodium"
+        flatpak_install "$CODE_EDITOR" 1500 || optional_fail "Developer Tools" "the code editor VSCodium could not be installed"
     fi
 fi
 
 # Firefox/LibreOffice just installed (or already there) in the language of the system
 language_install
 
-if [ "$failed" -eq 0 ]; then
+if [ "$failed" -eq 0 ] && [ -z "$optional_failed" ]; then
     step "Done"
+elif [ "$failed" -eq 0 ]; then
+    step "Done – not installed: $optional_failed"
+    exit 3
 else
     step "Finished with errors"
 fi

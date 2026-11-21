@@ -54,4 +54,15 @@
     <other-files/>
     <text-files/>
   </action>
+  <action>
+    <icon>com.usebottles.bottles</icon>
+    <name>Run with SOS Bridge</name>
+    <name xml:lang="de">Mit SOS Bridge ausführen</name>
+    <unique-id>simpleos-windows-app</unique-id>
+    <command>/usr/local/bin/simpleos-windows-app %f</command>
+    <description>Run this Windows program with Bottles (offers to install SOS Bridge the first time)</description>
+    <range>1</range>
+    <patterns>*.exe;*.EXE;*.msi;*.MSI</patterns>
+    <other-files/>
+  </action>
 </actions>

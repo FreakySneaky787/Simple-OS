@@ -253,10 +253,48 @@ check "polkit action: XML invalid" "python3 -c 'import sys, xml.dom.minidom as m
 check "polkit action does not point to the helper" "grep -q '>/usr/local/sbin/simpleos-system-setup<' $POLICY"
 check "helper: shell syntax error" "sh -n /usr/local/sbin/simpleos-system-setup"
 check "helper does not reject invalid options" "! /usr/local/sbin/simpleos-system-setup --office evil >/dev/null 2>&1"
-for fn in page_network refresh_network connect_wifi page_office page_gaming page_progress system_changes; do
+for fn in page_network refresh_network connect_wifi page_office page_components page_progress system_changes; do
     check "wizard: $fn missing" "grep -q 'def $fn(' /usr/local/bin/simpleos-welcome-wizard"
 done
 check "wizard does not use the helper via pkexec" "grep -q '\"pkexec\", HELPER' /usr/local/bin/simpleos-welcome-wizard"
+# #126: optional components – all off by default, one helper call, a failed extra is no error screen (exit 3)
+WIZC="import importlib.machinery as m; w = m.SourceFileLoader('w', '/usr/local/bin/simpleos-welcome-wizard').load_module()"
+check "wizard: optional components not SOS Bridge, Gaming Support, Developer Tools with their helper arguments" \
+      "env SIMPLEOS_WIZARD_DRYRUN=1 python3 -c \"$WIZC; assert [(k, n, a) for k, n, _d, _s, a in w.COMPONENTS] == [('bridge', 'SOS Bridge', '--bridge'), ('gaming', 'Gaming Support', '--gaming'), ('devtools', 'Developer Tools', '--devtools')]; assert w.STEPS[w.EXTRAS_PAGE] == 'Extras' and len(w.STEPS) == 7\" 2>/dev/null"
+check "wizard: a component is preselected" "grep -q 'self.components = {key: False for key, \*_ in COMPONENTS}' /usr/local/bin/simpleos-welcome-wizard"
+check "wizard: a failed optional component ends in the error screen (helper exit 3)" \
+      "grep -q 'if code == 3:' /usr/local/bin/simpleos-welcome-wizard && grep -q 'OPTIONAL-FAILED: ' /usr/local/bin/simpleos-welcome-wizard"
+check "helper: optional components not reported or not exit 3" \
+      "grep -q '^optional_fail() {' /usr/local/sbin/simpleos-system-setup && grep -q 'echo \"OPTIONAL-FAILED: \$1\"' /usr/local/sbin/simpleos-system-setup &&
+       grep -q 'optional_fail \"SOS Bridge\"' /usr/local/sbin/simpleos-system-setup && grep -q 'optional_fail \"Developer Tools\"' /usr/local/sbin/simpleos-system-setup &&
+       grep -q 'optional_fail \"Gaming Support\"' /usr/local/sbin/simpleos-system-setup && grep -q '^    exit 3\$' /usr/local/sbin/simpleos-system-setup"
+check "helper: Gaming Support without game controllers (steam-devices)" "grep -q 'aptget install steam-installer steam-libs-i386 steam-devices' /usr/local/sbin/simpleos-system-setup"
+# #85: .exe/.msi -> SOS Bridge (simpleos-windows-app), the help page, the right-click action
+WA=/usr/local/bin/simpleos-windows-app
+wexe=$(mktemp --suffix=.exe)
+check "Windows programs: tool missing or Python error" "[ -x $WA ] && python3 -m py_compile $WA 2>/dev/null; rm -rf /usr/local/bin/__pycache__; [ -x $WA ]"
+check "Windows programs: Bottles installed -> not opened there" "[ \"\$(SIMPLEOS_WA_INSTALLED=1 python3 $WA --decide $wexe)\" = open ]"
+check "Windows programs: Bottles missing -> SOS Bridge not offered" "[ \"\$(SIMPLEOS_WA_INSTALLED=0 python3 $WA --decide $wexe)\" = offer ]"
+check "Windows programs: missing file not reported" "SIMPLEOS_WA_INSTALLED=1 python3 $WA --decide /nonexistent.exe | grep -q '^error:'"
+check "Windows programs: does not hand the file to Bottles as a file URI" \
+      "SIMPLEOS_WA_INSTALLED=1 SIMPLEOS_WA_DRYRUN=1 python3 $WA $wexe | grep -qx \"DRYRUN: open file://$wexe in com.usebottles.bottles\""
+check "Windows programs: too little space in Live mode not explained" \
+      "SIMPLEOS_WA_FREE_MB=100 python3 -c \"import importlib.machinery as m; a = m.SourceFileLoader('a', '$WA').load_module(); a.is_live = lambda: True; t = a.space_problem(); assert t and 'Live mode' in t, t\""
+rm -f "$wexe"
+for t in application/x-ms-dos-executable application/x-msi application/x-msdownload; do
+    check "Windows programs: $t does not open SOS Bridge (archive manager?)" \
+          "env -i HOME=/nonexistent XDG_DATA_DIRS=/usr/local/share:/usr/share XDG_CONFIG_DIRS=/etc/xdg xdg-mime query default $t | grep -qx simpleos-windows-app.desktop"
+done
+check "Windows programs: launcher without the .exe/.msi types" \
+      "grep -q '^MimeType=application/x-ms-dos-executable;.*application/x-msi;' /usr/share/applications/simpleos-windows-app.desktop && grep -qx 'NoDisplay=true' /usr/share/applications/simpleos-windows-app.desktop"
+check "Windows programs: help page missing or not in the Help menu / search" \
+      "[ -f /usr/share/simpleos/windows-programs.html ] && grep -q '<title>Windows programs on Simple OS</title>' /usr/share/simpleos/windows-programs.html &&
+       grep -q 'simpleos-windows-app --help-page' /etc/skel/.config/openbox/menu.xml && grep -q '^Exec=/usr/local/bin/simpleos-windows-app --help-page' /usr/share/applications/simpleos-windows-help.desktop"
+check "Windows programs: help page promises that everything runs" "! grep -qiE 'all windows programs|every windows program' /usr/share/simpleos/windows-programs.html"
+check "welcome-viewer: bare page name not looked up in /usr/share/simpleos or no own title" \
+      "grep -q 'if \"/\" not in page:' /usr/local/lib/simpleos/welcome-viewer && grep -q 'def window_title(path):' /usr/local/lib/simpleos/welcome-viewer"
+check "Thunar: right-click 'Run with SOS Bridge' missing" \
+      "grep -q '<command>/usr/local/bin/simpleos-windows-app %f</command>' /etc/skel/.config/Thunar/uca.xml && grep -q '<patterns>\*.exe;\*.EXE;\*.msi;\*.MSI</patterns>' /etc/skel/.config/Thunar/uca.xml"
 for home in /etc/skel /home/simple; do
     check "office marker missing in the menu in $home" "grep -q '<!-- simpleos-office:' '$home/.config/openbox/menu.xml'"
 done
@@ -1040,13 +1078,15 @@ check "helper: --upgrade can be mixed with other actions" "! /usr/local/sbin/sim
 # wrong combination check once rejected EVERY update as an invalid call (exit 2)
 for a in "--upgrade" "--refresh" "--repos" "--firewall on" "--firewall off" "--drivers intel-microcode nvidia-driver" \
          "--browser chromium --purge-firefox" "--browser mullvad --office onlyoffice --gaming" "--office libreoffice" "--gaming" \
+         "--bridge" "--devtools" "--gaming --bridge --devtools" \
          "--locale de_CH.UTF-8" "--locale en_US.UTF-8 --formats de_DE.UTF-8" "--locale sr_RS@latin"; do
     check "helper: valid call '$a' rejected" \
           "SIMPLEOS_SETUP_ARGCHECK=1 /usr/local/sbin/simpleos-system-setup $a 2>/dev/null | grep -qx 'ARGS: ok'"
 done
 for a in "--upgrade --refresh" "--repos --upgrade" "--refresh --browser mullvad" "--upgrade --office libreoffice" "--drivers" \
          "--locale" "--locale de_DE" "--locale xx_XX.UTF-8" "--locale ../de_DE.UTF-8" "--formats de_DE.UTF-8" \
-         "--locale de_CH.UTF-8 --upgrade" "--locale de_CH.UTF-8 --formats de_DE" "--locale de_CH.UTF-8 --gaming"; do
+         "--locale de_CH.UTF-8 --upgrade" "--locale de_CH.UTF-8 --formats de_DE" "--locale de_CH.UTF-8 --gaming" \
+         "--upgrade --bridge" "--devtools --firewall on" "--refresh --devtools"; do
     check "helper: invalid call '$a' accepted" "! SIMPLEOS_SETUP_ARGCHECK=1 /usr/local/sbin/simpleos-system-setup $a >/dev/null 2>&1"
 done
 check "simpleos-update does not call the helper with --upgrade" "grep -q 'pkexec \"\$HELPER\" --upgrade' /usr/local/bin/simpleos-update"
@@ -2726,6 +2766,8 @@ for k in ('steam', 'libreoffice', 'discord', 'spotify', 'vlc'):
 assert s.status(by['discord']) == 'installed' and s.status(by['spotify']) == 'available'
 assert s.status(by['libreoffice']) == 'installed' and s.status(by['steam']) == 'available'
 assert s.install_cmd(by['steam']) == ['pkexec', '/usr/local/sbin/simpleos-system-setup', '--gaming']
+assert s.install_cmd(by['devtools']) == ['pkexec', '/usr/local/sbin/simpleos-system-setup', '--devtools']
+assert by['steam'][1] == 'Gaming Support' and by['bottles'][1] == 'SOS Bridge' and by['devtools'][1] == 'Developer Tools'
 assert s.install_cmd(by['libreoffice']) == ['pkexec', '/usr/local/sbin/simpleos-system-setup', '--office', 'libreoffice']
 assert s.install_cmd(by['spotify']) == ['flatpak', 'install', '--system', '-y', 'flathub', 'com.spotify.Client']
 assert s.remove_cmd(by['discord'])[:2] == ['flatpak', 'uninstall'] and s.remove_cmd(by['steam']) is None
@@ -2787,7 +2829,7 @@ if command -v broadwayd >/dev/null && command -v dbus-run-session >/dev/null; th
     wait "$bwpid" 2>/dev/null || true
     check "Software Center: closed during an installation -> installation stopped halfway or program never ends (#83, exit $rc)" \
           "[ $rc -eq 0 ] && [ -e $S/sc-finished ] && grep -q -- '--gaming' $S/pkexec &&
-           grep -q 'Installing Steam continues in the background' $S/notify && grep -q 'Steam is installed' $S/notify"
+           grep -q 'Installing Gaming Support continues in the background' $S/notify && grep -q 'Gaming Support is installed' $S/notify"
     rm -rf "$wt/scmock"
 else
     check "broadwayd/dbus-run-session missing (libgtk-3-bin) – GUI self-test not possible" "false"

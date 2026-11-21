@@ -1,0 +1,315 @@
+#!/usr/bin/env python3
+"""Simple OS – Windows programs (.exe / .msi) with SOS Bridge (#85).
+
+People coming from Windows double-click a downloaded .exe – before 1.2 the archive manager opened it. Now:
+  - SOS Bridge (Bottles from Flathub) installed -> the file opens in Bottles, which asks for the bottle to run it in;
+  - not installed -> a small window explains it honestly ("many programs work, some don't") and offers to install
+    SOS Bridge (system-wide Flatpak; Flatpak's polkit rule allows it for administrators without a password), with
+    the progress window simpleos-progress, then opens the file. "What works?" opens the help page.
+SOS Bridge is only the name of this bundle (Bottles + Wine + this double-click + the help page), not our own
+Windows layer. Also: right-click "Run with SOS Bridge" (Thunar), the Setup Wizard's page "Extras" (#126).
+
+  simpleos-windows-app FILE        double-click / right-click
+  simpleos-windows-app --help-page open "Windows programs on Simple OS"
+  simpleos-windows-app --status    "bottles: installed|missing" (tests)
+Tests: SIMPLEOS_WA_INSTALLED=0/1 (Bottles there?), SIMPLEOS_WA_FREE_MB, SIMPLEOS_WA_NET=0/1,
+SIMPLEOS_WA_DRYRUN=1 (print what would be started instead of starting it; no window with --decide).
+  simpleos-windows-app --decide FILE   print the decision without a window: "open", "offer" or "error: …" (tests)
+"""
+import os
+import subprocess
+import sys
+import tempfile
+import threading
+import urllib.request
+from pathlib import Path
+
+APP = "com.usebottles.bottles"
+EXPORTS = "/var/lib/flatpak/exports/share/applications"
+HELP_PAGE = "windows-programs.html"
+VIEWER = "/usr/local/lib/simpleos/welcome-viewer"
+PROGRESS = "/usr/local/bin/simpleos-progress"
+FP_PROGRESS = "/usr/local/lib/simpleos/flatpak-progress"
+LOG = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "simpleos-windows-app.log"
+NEED_FULL = 2000   # MB: Bottles + GNOME runtime (+ GL extensions)
+NEED_APP = 400     # MB: runtime already there
+DOWNLOAD = "about 700 MB"
+DRYRUN = os.environ.get("SIMPLEOS_WA_DRYRUN") == "1"
+
+
+def log(text):
+    try:
+        LOG.parent.mkdir(parents=True, exist_ok=True)
+        with LOG.open("a") as f:
+            f.write(text.rstrip() + "\n")
+    except OSError:
+        pass
+
+
+def bottles_installed():
+    forced = os.environ.get("SIMPLEOS_WA_INSTALLED")
+    if forced in ("0", "1"):
+        return forced == "1"
+    try:
+        return subprocess.run(["flatpak", "info", APP], capture_output=True, timeout=20).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def runtime_installed():
+    try:
+        out = subprocess.run(["flatpak", "list", "--system", "--runtime", "--columns=application"],
+                             capture_output=True, text=True, timeout=20).stdout.split()
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return "org.gnome.Platform" in out
+
+
+def free_mb():
+    forced = os.environ.get("SIMPLEOS_WA_FREE_MB")
+    if forced and forced.isdigit():
+        return int(forced)
+    for path in ("/var/lib/flatpak", "/var/lib", "/"):
+        try:
+            st = os.statvfs(path)
+            return st.f_bavail * st.f_frsize // 1_000_000
+        except OSError:
+            continue
+    return None
+
+
+def flathub_reachable():
+    forced = os.environ.get("SIMPLEOS_WA_NET")
+    if forced in ("0", "1"):
+        return forced == "1"
+    try:
+        urllib.request.urlopen("https://dl.flathub.org/repo/summary.idx", timeout=15)
+        return True
+    except Exception as err:  # noqa: BLE001 – any failure means "not reachable"
+        log(f"flathub: {err}")
+        return False
+
+
+def is_live():
+    try:
+        return subprocess.run(["/usr/local/bin/simpleos-live", "--check"], timeout=5).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def space_problem():
+    """Text if there is not enough space for SOS Bridge, else None"""
+    need = NEED_APP if runtime_installed() else NEED_FULL
+    free = free_mb()
+    if free is None or free >= need:
+        return None
+    if is_live():
+        return (f"In Live mode, apps are kept in memory – only {free} MB are free, SOS Bridge needs about {need} MB. "
+                "Install Simple OS first (icon on the desktop).")
+    return (f"Not enough free disk space for SOS Bridge: {free} MB free, about {need} MB needed. "
+            "Free up space with the Storage Cleaner.")
+
+
+def decide(path):
+    """'open' (Bottles there), 'offer' (ask to install) or 'error: …'"""
+    if not path or not os.path.isfile(path):
+        return "error: the file does not exist"
+    if bottles_installed():
+        return "open"
+    return "offer"
+
+
+def open_in_bottles(path):
+    """Bottles' own launcher handles the file (it asks for the bottle); started detached"""
+    uri = Path(path).resolve().as_uri()
+    if DRYRUN:
+        print(f"DRYRUN: open {uri} in {APP}", flush=True)
+        return True
+    try:
+        import gi
+        gi.require_version("Gio", "2.0")
+        from gi.repository import Gio
+        info = Gio.DesktopAppInfo.new(f"{APP}.desktop")
+        if info is None and os.path.isfile(f"{EXPORTS}/{APP}.desktop"):
+            info = Gio.DesktopAppInfo.new_from_filename(f"{EXPORTS}/{APP}.desktop")
+        if info is not None:
+            return info.launch_uris([uri], None)
+    except Exception as err:  # noqa: BLE001
+        log(f"launch via desktop file: {err}")
+    try:
+        subprocess.Popen(["flatpak", "run", "--file-forwarding", APP, "@@u", uri, "@@u"], start_new_session=True,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except OSError as err:
+        log(f"flatpak run: {err}")
+        return False
+
+
+def open_help():
+    if DRYRUN:
+        print(f"DRYRUN: help {HELP_PAGE}", flush=True)
+        return
+    subprocess.Popen([VIEWER, HELP_PAGE], start_new_session=True)
+
+
+def install():
+    """Install Bottles with the progress window. (ok, message)"""
+    if DRYRUN:
+        print("DRYRUN: flatpak install --system -y flathub " + APP, flush=True)
+        return True, ""
+    fd, feed = tempfile.mkstemp(prefix="simpleos-wa-")
+    os.close(fd)
+    window = None
+    if os.access(PROGRESS, os.X_OK):
+        window = subprocess.Popen([PROGRESS, "--follow", feed, "--title", "Installing SOS Bridge",
+                                   "--done", "SOS Bridge installed",
+                                   "--hint", f"One time only · {DOWNLOAD} from Flathub", "--app", "SOS Bridge",
+                                   "--icon-name", APP, "--pid", str(os.getpid())])
+    with open(feed, "a") as f:
+        f.write("STEP: Installing SOS Bridge (Bottles)\n")
+    filt = FP_PROGRESS if os.access(FP_PROGRESS, os.X_OK) else "cat"
+    with open(feed, "a") as out:
+        fp = subprocess.Popen(["flatpak", "install", "--system", "-y", "flathub", APP], stdin=subprocess.DEVNULL,
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        flt = subprocess.Popen([filt], stdin=fp.stdout, stdout=subprocess.PIPE, text=True)
+        fp.stdout.close()
+        text = []
+        for line in flt.stdout:
+            out.write(line)
+            out.flush()
+            text.append(line)
+            log(line)
+        rc = fp.wait()
+        flt.wait()
+        out.write(f"EXIT: {rc}\n")
+    if window:
+        try:
+            window.wait(timeout=600)
+        except subprocess.TimeoutExpired:
+            pass
+    os.unlink(feed)
+    if rc == 0 and bottles_installed():
+        return True, ""
+    joined = "".join(text)
+    if any(k in joined for k in ("min-free-space", "No space left", "not enough space", "Not enough space")):
+        return False, "Not enough free space to install SOS Bridge."
+    if any(k in joined for k in ("Could not resolve", "Could not connect", "Timeout was reached",
+                                 "Network is unreachable", "Failed to connect")):
+        return False, "Flathub can't be reached. Check your internet connection and try again."
+    if "Not authorized" in joined or "not allowed" in joined:
+        return False, "Installing apps needs an administrator's password."
+    return False, f"SOS Bridge could not be installed. Details: {LOG}"
+
+
+# ------------------------------------------------------------------ Window
+def ask(path):
+    import gi
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import GLib, Gtk
+    Gtk.Settings.get_default().set_property("gtk-application-prefer-dark-theme", True)
+
+    name = os.path.basename(path)
+    dialog = Gtk.Dialog(title="Windows program")
+    dialog.set_default_size(520, -1)
+    dialog.set_position(Gtk.WindowPosition.CENTER)
+    dialog.set_icon_name(APP)
+    box = dialog.get_content_area()
+    box.set_spacing(10)
+    for side in ("start", "end", "top", "bottom"):
+        getattr(box, f"set_margin_{side}")(18)
+    title = Gtk.Label(xalign=0, wrap=True)
+    title.set_markup(f"<b><big>{GLib.markup_escape_text(name)} is a Windows program</big></b>")
+    box.pack_start(title, False, False, 0)
+    body = Gtk.Label(xalign=0, wrap=True, max_width_chars=60, label=(
+        "Simple OS can try to run it with SOS Bridge – the free app Bottles with Wine, no Windows needed. "
+        "Many Windows programs work, some don't (for example Microsoft 365, current Adobe apps and games with "
+        "anti-cheat)."))
+    box.pack_start(body, False, False, 0)
+    note = Gtk.Label(xalign=0, wrap=True, max_width_chars=60,
+                     label=f"Additional download required: SOS Bridge comes once from Flathub ({DOWNLOAD}). "
+                           "You can also install it later in the Software Center.")
+    note.get_style_context().add_class("dim-label")
+    box.pack_start(note, False, False, 0)
+    status = Gtk.Label(xalign=0, wrap=True, max_width_chars=60)
+    box.pack_start(status, False, False, 0)
+
+    help_btn = dialog.add_button("What works?", 1)
+    dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+    install_btn = dialog.add_button("Install SOS Bridge", Gtk.ResponseType.OK)
+    install_btn.get_style_context().add_class("suggested-action")
+    install_btn.grab_default()
+    dialog.show_all()
+    result = {"opened": False, "busy": False}
+
+    def finished(ok, message):
+        result["busy"] = False
+        if ok:
+            result["opened"] = open_in_bottles(path)
+            dialog.response(Gtk.ResponseType.CLOSE)
+            return False
+        status.set_markup(f"<b>{GLib.markup_escape_text(message)}</b>")
+        for b in (install_btn, help_btn):
+            b.set_sensitive(True)
+        install_btn.set_label("Try again")
+        return False
+
+    def worker():
+        problem = space_problem()
+        if problem:
+            GLib.idle_add(finished, False, problem)
+            return
+        if not flathub_reachable():
+            GLib.idle_add(finished, False, "Flathub can't be reached. Check your internet connection and try again.")
+            return
+        GLib.idle_add(finished, *install())
+
+    def on_response(_d, response):
+        if response == 1:
+            open_help()
+            return
+        if response == Gtk.ResponseType.OK:
+            result["busy"] = True
+            install_btn.set_sensitive(False)
+            help_btn.set_sensitive(False)
+            status.set_text("Installing SOS Bridge – this takes a few minutes …")
+            threading.Thread(target=worker, daemon=True).start()
+            return
+        if not result["busy"]:   # the window's X during the installation: keep it (it opens the file at the end)
+            Gtk.main_quit()
+
+    dialog.connect("response", on_response)
+    dialog.connect("delete-event", lambda *_: result["busy"])
+    Gtk.main()
+    return 0 if result["opened"] else 1
+
+
+def main(argv):
+    if len(argv) > 1 and argv[1] == "--help-page":
+        open_help()
+        return 0
+    if len(argv) > 1 and argv[1] == "--status":
+        print("bottles: " + ("installed" if bottles_installed() else "missing"))
+        return 0
+    if len(argv) > 2 and argv[1] == "--decide":
+        print(decide(argv[2]))
+        return 0
+    args = [a for a in argv[1:] if not a.startswith("--")]
+    if not args:
+        print(__doc__.strip().splitlines()[0])
+        return 2
+    path = args[0]
+    if path.startswith("file://"):
+        from urllib.parse import unquote, urlparse
+        path = unquote(urlparse(path).path)
+    what = decide(path)
+    log(f"{path}: {what}")
+    if what == "open":
+        return 0 if open_in_bottles(path) else 1
+    if what.startswith("error"):
+        subprocess.call(["notify-send", "-i", "dialog-warning", "Windows program", what[7:].capitalize()])
+        return 1
+    return ask(path)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

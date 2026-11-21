@@ -9,7 +9,8 @@ Why not xdg-open/$BROWSER: hardened privacy browsers (Mullvad Browser as a Flatp
   - stores nothing (ephemeral profile), JavaScript is off (the page needs none),
   - opens external links (https:, mailto:) in the default browser – that is what it is for.
 
-  welcome-viewer [PAGE]      open the window (exit 0 after closing)
+  welcome-viewer [PAGE]      open the window (exit 0 after closing); PAGE: a page in /usr/share/simpleos, e.g.
+                             windows-programs.html (#85) – its <title> becomes the window title
   welcome-viewer --probe     check without a screen whether window and page are available (exit 0/3);
                              also reports "live banner: on|off"
 Live session (simpleos-live --check): at the very top a mauve banner "You are running Simple OS in Live Mode!" with
@@ -33,7 +34,10 @@ os.environ.setdefault("WEBKIT_DISABLE_COMPOSITING_MODE", "1")
 os.environ.setdefault("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
 
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
-page = os.path.realpath(args[0] if args else DEFAULT_PAGE)
+page = args[0] if args else DEFAULT_PAGE
+if "/" not in page:            # a bare name ("windows-programs.html") is a page of /usr/share/simpleos
+    page = os.path.join(PAGE_DIR, page)
+page = os.path.realpath(page)
 
 try:
     import gi
@@ -136,6 +140,22 @@ def on_decide_policy(_view, decision, decision_type):
     return True
 
 
+def window_title(path):
+    """The welcome page: "Welcome to Simple OS"; other pages (help, #85): their <title>"""
+    if path == DEFAULT_PAGE:
+        return "Welcome to Simple OS"
+    try:
+        import html
+        import re
+        with open(path, encoding="utf-8") as f:
+            m = re.search(r"<title>(.*?)</title>", f.read(4096), re.S)
+        if m and m.group(1).strip():
+            return html.unescape(m.group(1).strip())
+    except OSError:
+        pass
+    return "Simple OS"
+
+
 def main():
     settings = Gtk.Settings.get_default()
     settings.set_property("gtk-application-prefer-dark-theme", True)
@@ -151,7 +171,7 @@ def main():
     view.connect("decide-policy", on_decide_policy)
     view.connect("context-menu", lambda *_: True)  # no "Reload/Inspect" menu
 
-    window = Gtk.Window(title="Welcome to Simple OS")
+    window = Gtk.Window(title=window_title(page))
     # 900x760 is taller than a 1366x768 laptop screen (minus taskbar and title bar): fit the window to the screen
     width, height = 900, 760
     try:
@@ -164,7 +184,8 @@ def main():
     window.set_default_size(max(width, 480), max(height, 360))
     window.set_position(Gtk.WindowPosition.CENTER)
     window.set_icon_name("user-home")
-    banner = live_banner()
+    # The live banner ("Install Simple OS Now") belongs to the welcome page, not to help pages like windows-programs.html
+    banner = live_banner() if page == DEFAULT_PAGE else None
     if banner:
         layout = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         layout.pack_start(banner, False, False, 0)

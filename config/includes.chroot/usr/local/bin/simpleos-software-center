@@ -4,8 +4,8 @@
 Install, open and remove selected programs with a click – without a terminal, without apt/flatpak commands:
   Flatpak (Flathub)   system-wide; Flatpak's polkit rule allows that for members of the sudo group without a password,
                       otherwise lxpolkit asks graphically
-  system packages     only via fixed actions of "pkexec simpleos-system-setup" (Steam = --gaming,
-                      LibreOffice = --office libreoffice) – graphical password prompt, no free package names
+  system packages     only via fixed actions of "pkexec simpleos-system-setup" (Gaming Support = --gaming,
+                      Developer Tools = --devtools, LibreOffice = --office libreoffice) – graphical password prompt, no free package names
 Search and categories at the top, "More apps" below: Bazaar (simpleos-software) and GNOME Software (all Flathub
 and Debian programs). Installations run in the background with a progress display; errors in plain language.
 Runs only once (Gtk.Application): a second start brings the window back. Closed during an installation, the window
@@ -33,8 +33,10 @@ LOW_SPACE_MB = 3000
 #   source flatpak: identifier = Flathub ID
 #   source system:  identifier = "helper arguments|package for detection|start command"
 CATALOG = [
-    ("steam", "Steam", "Play thousands of games (with Lutris and MangoHud)", "Games", "steam", "system",
-     "--gaming|steam-installer|steam"),
+    # The optional components of the Setup Wizard (#126) under the same names: Gaming Support, SOS Bridge (#85),
+    # Developer Tools
+    ("steam", "Gaming Support", "Steam, Lutris, MangoHud and game controllers – thousands of games", "Games", "steam",
+     "system", "--gaming|steam-installer|steam"),
     ("libreoffice", "LibreOffice", "Documents, spreadsheets and presentations", "Office", "libreoffice-startcenter",
      "system", "--office libreoffice|libreoffice-writer|libreoffice"),
     ("discord", "Discord", "Voice, video and text chat", "Internet", "com.discordapp.Discord", "flatpak",
@@ -60,7 +62,10 @@ CATALOG = [
      "flatpak", "com.heroicgameslauncher.hgl"),
     ("prism", "Prism Launcher", "Minecraft launcher", "Games", "org.prismlauncher.PrismLauncher", "flatpak",
      "org.prismlauncher.PrismLauncher"),
-    ("bottles", "Bottles", "Run Windows programs", "Games", "com.usebottles.bottles", "flatpak", "com.usebottles.bottles"),
+    ("bottles", "SOS Bridge", "Run many Windows programs (Bottles and Wine) – double-click a .exe", "Utilities",
+     "com.usebottles.bottles", "flatpak", "com.usebottles.bottles"),
+    ("devtools", "Developer Tools", "Git, compilers, Python tools and the VSCodium code editor", "Development",
+     "com.vscodium.codium", "system", "--devtools|build-essential|flatpak run com.vscodium.codium"),
     ("vscode", "Visual Studio Code", "Code editor", "Development", "com.visualstudio.code", "flatpak",
      "com.visualstudio.code"),
     ("bitwarden", "Bitwarden", "Password manager", "Utilities", "com.bitwarden.desktop", "flatpak",
@@ -210,7 +215,7 @@ def main(argv):
             self.set_position(Gtk.WindowPosition.CENTER)
             self.connect("delete-event", self.on_close)
             self.busy = None        # key of the running installation
-            self.busy_text = ""     # "Installing Steam"
+            self.busy_text = ""     # "Installing Gaming Support"
             self.category = "All"
             self.states = {}
             self.flatpaks = {}      # App-ID -> "system" | "user"

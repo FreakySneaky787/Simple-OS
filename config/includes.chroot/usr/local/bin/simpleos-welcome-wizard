@@ -6,8 +6,11 @@
                                        and not if ~/.config/simpleos/wizard-done exists
 
 Changes go through the existing tools: simpleos-theme, simpleos-browser-select --set,
-simpleos-software. Installations/removals (browser, office, gaming, Firefox cleanup) are bundled into
+simpleos-software. Installations/removals (browser, office, optional components, Firefox cleanup) are bundled into
 a single call of "pkexec simpleos-system-setup" – one graphical password dialog, no terminal.
+Step "Extras" (#126): optional components, all off by default – SOS Bridge (Bottles for Windows programs, #85),
+Gaming Support, Developer Tools; without internet they wait for later (Software Center). One that fails does not
+end in an error screen: the helper exits with 3 and the wizard says what can be added later.
 Step "Internet": choose Wi-Fi and enter the password (nmcli, like simpleos-wifi) – before software is downloaded.
 It is skipped when the computer is already online at the start (cable, known Wi-Fi).
 Test helpers: SIMPLEOS_WIZARD_PAGE=<0-6> (start page), SIMPLEOS_WIZARD_DRYRUN=1.
@@ -61,15 +64,22 @@ OFFICE = [
      "org.onlyoffice.desktopeditors.desktop"),
     ("none", "Minimal", "No office suite. You can install one later from the Software Store.", None),
 ]
-GAMING = [
-    ("ultimate", "Ultimate Gaming", "Steam, Lutris and MangoHud with 32-bit support. GameMode is already built in."),
-    ("none", "No gaming", "Keep the system lean. You can still get games from the Software Store."),
+# Optional components (#126): (key, name, description, download, helper argument). All off by default; plain words,
+# no package names. The Software Center offers the same bundles under the same names.
+COMPONENTS = [
+    ("bridge", "SOS Bridge", "Run many Windows programs with Bottles and Wine – no Windows needed.",
+     "about 700 MB download", "--bridge"),
+    ("gaming", "Gaming Support", "Steam, Lutris and MangoHud with 32-bit support and game controllers. "
+     "GameMode is already built in.", "about 1 GB download", "--gaming"),
+    ("devtools", "Developer Tools", "Git, compilers, Python tools and the code editor VSCodium.",
+     "about 800 MB download", "--devtools"),
 ]
 FIREFOX_ID = "firefox-esr.desktop"
 HELPER = "/usr/local/sbin/simpleos-system-setup"
 OFFICE_MENU = "/usr/local/lib/simpleos/office-menu"
-STEPS = ["Welcome", "Internet", "Browser", "Appearance", "Office", "Gaming", "Apps"]
+STEPS = ["Welcome", "Internet", "Browser", "Appearance", "Office", "Extras", "Apps"]
 NETWORK_PAGE = STEPS.index("Internet")
+EXTRAS_PAGE = STEPS.index("Extras")
 
 CSS = """
 window.simpleos { background-color: #1e1e2e; }
@@ -183,6 +193,16 @@ def current_office():
 
 def gaming_installed():
     return is_installed("steam.desktop") or Path("/usr/games/steam").exists()
+
+
+def component_installed(key):
+    if key == "gaming":
+        return gaming_installed()
+    if key == "bridge":
+        return is_installed("com.usebottles.bottles.desktop")
+    if key == "devtools":
+        return bool(shutil.which("gcc")) and is_installed("com.vscodium.codium.desktop")
+    return False
 
 
 def run(cmd, wait=True):
@@ -364,7 +384,8 @@ class Wizard(Gtk.Window):
         self.mode = theme["mode"] if theme["mode"] in ("dark", "light") else "dark"
         self.accent = theme["accent"] if theme["accent"] in dict(ACCENTS) else "blue"
         self.office = current_office()
-        self.gaming = "ultimate" if gaming_installed() else "none"
+        self.components = {key: False for key, *_ in COMPONENTS}   # what to add (#126) – never preselected
+        self.online = True
         self.open_store = False
         self.busy = False
 
@@ -389,7 +410,7 @@ class Wizard(Gtk.Window):
         self.stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.SLIDE_LEFT_RIGHT,
                                transition_duration=220)
         for page in (self.page_welcome(), self.page_network(), self.page_browser(), self.page_appearance(),
-                     self.page_office(), self.page_gaming(), self.page_apps()):
+                     self.page_office(), self.page_components(), self.page_apps()):
             self.stack.add(page)
         self.progress_page = self.page_progress()  # not in STEPS: only after "Finish"
         self.stack.add(self.progress_page)
@@ -743,21 +764,68 @@ class Wizard(Gtk.Window):
         box.pack_start(self.dim("Already installed office apps are not removed."), False, False, 0)
         return box
 
-    def page_gaming(self):
-        box = self.page_box("Gaming",
-                            "Turn Simple OS into a gaming machine or keep it lean.")
-
-        def status(key):
-            if key != "ultimate":
-                return ""
-            return "installed" if gaming_installed() else "about 1 GB download"
-        box.pack_start(self.option_card(GAMING, self.gaming, lambda k: setattr(self, "gaming", k), status),
-                       False, False, 0)
-        box.pack_start(self.dim("By choosing Ultimate Gaming you accept the Steam license agreement "
-                                "(store.steampowered.com/subscriber_agreement).\n"
-                                "Start games with \"gamemoderun %command%\" or \"mangohud %command%\" "
-                                "in the Steam launch options."), False, False, 0)
+    def page_components(self):
+        box = self.page_box("Optional components",
+                            "Add extras now or later in the Software Center. Nothing is installed unless you turn it on.")
+        card = self.card()
+        self.component_switches = {}
+        for key, name, desc, size, _arg in COMPONENTS:
+            row = Gtk.Box(spacing=16)
+            text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            done = component_installed(key)
+            n = Gtk.Label(label=f"{name}   ·   {'installed' if done else size}", xalign=0)
+            n.get_style_context().add_class("option-name")
+            text.pack_start(n, False, False, 0)
+            text.pack_start(self.dim(desc), False, False, 0)
+            row.pack_start(text, True, True, 0)
+            switch = Gtk.Switch(valign=Gtk.Align.CENTER, active=done, sensitive=not done)
+            switch.connect("notify::active", self.on_component, key)
+            row.pack_end(switch, False, False, 0)
+            self.component_switches[key] = switch
+            card.pack_start(row, False, False, 4)
+        box.pack_start(card, False, False, 0)
+        self.components_note = self.dim("")
+        self.components_note.set_max_width_chars(90)   # wrap inside the fixed 760 px window instead of widening it
+        box.pack_start(self.components_note, False, False, 0)
+        links = Gtk.Box(spacing=12)
+        help_link = Gtk.LinkButton(uri="https://usebottles.com", label="What runs with SOS Bridge?",
+                                   halign=Gtk.Align.START)
+        help_link.connect("activate-link", lambda *_: run(["simpleos-windows-app", "--help-page"], wait=False) or True)
+        links.pack_start(help_link, False, False, 0)
+        box.pack_start(links, False, False, 0)
+        box.pack_start(self.dim("Gaming Support: by turning it on you accept the Steam license agreement "
+                                "(store.steampowered.com/subscriber_agreement)."), False, False, 0)
+        self.update_components_note()
         return box
+
+    def on_component(self, switch, _param, key):
+        if switch.get_sensitive():         # an installed component's switch is only shown, not chosen
+            self.components[key] = switch.get_active()
+        self.update_components_note()
+
+    def update_components_note(self):
+        if not self.online:
+            text = ("You're offline – connect to the internet (step 2) to add these now, "
+                    "or add them later in the Software Center.")
+        else:
+            chosen = [name for key, name, *_ in COMPONENTS if self.components.get(key)]
+            if not chosen:
+                text = "Nothing selected – you can add these later in the Software Center."
+            else:
+                text = f"Selected: {', '.join(chosen)} – additional downloads, installed at the end of the setup."
+        self.components_note.set_text(text)
+
+    def components_checked(self, state):
+        """Online? Without internet the switches wait for later (a download would only fail)."""
+        self.online = bool(state.get("kind")) or DRYRUN
+        for key, switch in self.component_switches.items():
+            if not component_installed(key):
+                switch.set_sensitive(self.online)
+                if not self.online:
+                    switch.set_active(False)
+                    self.components[key] = False
+        self.update_components_note()
+        return False
 
     def page_progress(self):
         box = self.page_box("Installing your software",
@@ -820,6 +888,9 @@ class Wizard(Gtk.Window):
         self.next_btn.set_label("Finish" if self.page == len(STEPS) - 1 else "Next")
         if self.page == NETWORK_PAGE:
             self.refresh_network()
+        if self.page == EXTRAS_PAGE:
+            threading.Thread(target=lambda: GLib.idle_add(self.components_checked, network_state()),
+                             daemon=True).start()
 
     def on_next(self, _btn):
         if (self.page == NETWORK_PAGE and self.net_password.get_visible() and self.net_password.get_text()
@@ -887,8 +958,9 @@ class Wizard(Gtk.Window):
         office_id = dict((k, d) for k, _n, _s, d in OFFICE)[self.office]
         if office_id and not is_installed(office_id):
             args += ["--office", self.office]
-        if self.gaming == "ultimate" and not gaming_installed():
-            args += ["--gaming"]
+        for key, _name, _desc, _size, arg in COMPONENTS:
+            if self.components.get(key) and not component_installed(key):
+                args.append(arg)
         return args
 
     def finish(self):
@@ -968,6 +1040,17 @@ class Wizard(Gtk.Window):
             return False
         self.bar.hide()
         self.stage_label.set_text("")
+        if code == 3:   # only optional components failed (#126): everything else is set up
+            missing = [line[17:].strip() for line in self.helper_log if line.startswith("OPTIONAL-FAILED: ")]
+            names = ", ".join(dict.fromkeys(missing)) or "an optional component"
+            self.status_label.set_text(f"Everything is set up – except {names}: it could not be installed "
+                                       "(no internet or not enough space?). You can add it later in the Software Center.")
+            self.back_btn.set_sensitive(False)
+            self.skip_btn.set_sensitive(False)
+            self.next_btn.set_label("Close")
+            self.next_btn.disconnect_by_func(self.on_next)
+            self.next_btn.connect("clicked", lambda _b: self.apply_user_settings())
+            return False
         if code != 0:
             self.status_label.set_text(failure_text(self.helper_log))
             self.back_btn.set_sensitive(False)
