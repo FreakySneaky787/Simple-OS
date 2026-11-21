@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Sound
+Name[de]=Ton
 Comment=Volume and sound output (speakers, headphones, HDMI)
+Comment[de]=Lautstärke und Tonausgabe (Lautsprecher, Kopfhörer, HDMI)
 Exec=/usr/local/bin/simpleos-volume
 Icon=audio-volume-high
 Categories=Settings;AudioVideo;Audio;

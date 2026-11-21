@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Install Simple OS
+Name[de]=Simple OS installieren
 Comment=Install Simple OS on this computer – your files on the stick stay untouched
+Comment[de]=Simple OS auf diesem Computer installieren – deine Dateien auf dem Stick bleiben unberührt
 Exec=/usr/local/bin/simpleos-install
 Icon=system-os-installer
 Terminal=false

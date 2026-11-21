@@ -43,6 +43,37 @@ if "/" not in page:            # a bare name ("windows-programs.html") is a page
     page = os.path.join(PAGE_DIR, page)
 page = os.path.realpath(page)
 
+
+def system_languages():
+    """['de_DE', 'de', …] from LANGUAGE/LC_ALL/LC_MESSAGES/LANG (the first one that is set)"""
+    for var in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):
+        value = os.environ.get(var, "")
+        if value:
+            out = []
+            for item in value.split(":"):
+                code = item.split(".")[0].split("@")[0]
+                for c in (code, code.split("_")[0]):
+                    if c and c not in out:
+                        out.append(c)
+            return out
+    return []
+
+
+def localized(path):
+    """welcome.html -> welcome.de.html in a German system, when that page exists (#43); English otherwise"""
+    base, ext = os.path.splitext(path)
+    for code in system_languages():
+        if code in ("C", "POSIX", "en") or code.startswith("en_"):
+            return path
+        candidate = f"{base}.{code}{ext}"
+        if os.path.isfile(candidate):
+            return candidate
+    return path
+
+
+WELCOME = page == DEFAULT_PAGE   # the live banner and the window title belong to the welcome page
+page = localized(page)
+
 try:
     import gi
     gi.require_version("Gtk", "3.0")
@@ -146,7 +177,7 @@ def on_decide_policy(_view, decision, decision_type):
 
 def window_title(path):
     """The welcome page: "Welcome to Simple OS"; other pages (help, #85): their <title>"""
-    if path == DEFAULT_PAGE:
+    if WELCOME:
         return _("Welcome to Simple OS")
     try:
         import html
@@ -189,7 +220,7 @@ def main():
     window.set_position(Gtk.WindowPosition.CENTER)
     window.set_icon_name("user-home")
     # The live banner ("Install Simple OS Now") belongs to the welcome page, not to help pages like windows-programs.html
-    banner = live_banner() if page == DEFAULT_PAGE else None
+    banner = live_banner() if WELCOME else None
     if banner:
         layout = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         layout.pack_start(banner, False, False, 0)

@@ -15,11 +15,59 @@ sos_rofi_failed() {
     exit 0
 }
 
-sos_rofi -dmenu -i -no-custom -markup-rows -p "$(_t 'Filter')" \
-    -mesg "<b>$(_t 'Simple OS – Keyboard shortcuts')</b>   ·   $(_t 'type to filter')   ·   $(_t 'Esc to close')" -markup \
-    -theme-str 'window { width: 760px; location: center; anchor: center; } listview { lines: 18; }
-                element-icon { enabled: false; } element-text { font: "JetBrains Mono 10"; }' \
-    >/dev/null <<'LIST'
+# The list in the system language (#43): German or English
+shortcuts() {
+    case "${SOS_LANG:-}" in
+        de*) cat <<'LIST'
+<b>── Apps ─────────────────────────────────────────────────</b>
+Super / Super+Leertaste     Suche – Apps, Dateien, Rechnungen (42*12), Ein/Aus
+Super+Enter                 Terminal
+Super+B                     Webbrowser
+Super+E                     Dateien
+Super+H / Super+Shift+?     Diese Übersicht
+<b>── Fenster ──────────────────────────────────────────────</b>
+Super+Q / Alt+F4            Die aktive App schließen
+Alt+Tab / Alt+Shift+Tab     Zwischen Fenstern wechseln
+Super+D                     Desktop anzeigen
+Super+Links / Super+Rechts  Fenster an die linke / rechte Hälfte (noch einmal: nächster Bildschirm)
+Super+Hoch / Super+Runter   Maximieren / wiederherstellen oder minimieren
+Super+Alt+Pfeiltasten       Fenster in ein Viertel des Bildschirms
+Alt+Leertaste               Fenstermenü (maximieren, verschieben …)
+Alt+Esc                     Fenster nach hinten schicken
+Doppelklick                 auf Titelleiste Maximieren / wiederherstellen
+Alt+Ziehen mit links        Fenster verschieben
+Alt+Ziehen mit rechts       Fenstergröße ändern
+<b>── Arbeitsflächen ───────────────────────────────────────</b>
+Super+F1 … Super+F4         Zu Arbeitsfläche 1–4 wechseln
+Strg+Alt+Links/Rechts       Vorherige / nächste Arbeitsfläche
+Shift+Alt+Links/Rechts      Fenster auf die vorherige / nächste Arbeitsfläche
+<b>── System ───────────────────────────────────────────────</b>
+Super+L                     Bildschirm sperren
+Super+X                     Ein/Aus-Menü – sperren, Energie sparen, neu starten, herunterfahren, abmelden
+Super+N                     Netzwerkinfo – LAN-IP, Gateway, VPN, öffentliche IP
+Super+I                     Einstellungen – alle Einstellungen in einem Fenster
+Strg+Shift+Esc              Task-Manager – CPU/RAM sehen, hängende Apps beenden
+Super+V                     Verlauf der Zwischenablage – etwas früher Kopiertes wählen
+Super+A                     Ton – Lautstärke, Lautsprecher / Kopfhörer / HDMI
+Super+P                     Bildschirm – Auflösung, Bildwiederholrate, duplizieren / erweitern
+Druck                       Bildschirmfoto – gespeichert unter Pictures/Screenshots und kopiert
+Shift+Druck                 Bildschirmfoto eines Bereichs – mit der Maus aufziehen
+Lautstärketasten            Lauter / leiser / stumm
+Medientasten                Abspielen / Pause, nächster, vorheriger (Browser, Spotify …)
+USB-Stick eingesteckt       Nachricht mit Öffnen / Sicher entfernen
+Update-Nachricht            Anklicken, um Updates zu installieren (fragt nach deinem Passwort)
+<b>── Maus ─────────────────────────────────────────────────</b>
+Rechtsklick auf Desktop     Simple-OS-Menü (Apps, Einstellungen, Werkzeuge, Hilfe, Ein/Aus)
+Leiste: linker Knopf        Apps
+Leiste: Netzwerkanzeige     Netzwerk-Menü – WLAN, Kabel, Details
+Leiste:                     roter Knopf (rechts) Ein/Aus-Menü
+Leiste: Uhr                 Kalender des Monats (noch einmal klicken zum Schließen)
+Software-Aktualisierung     Im Menü unter Werkzeuge: Updates suchen und installieren
+Einstellungen → Aussehen    Taskleiste: verschieben oder anders gestalten
+Dateien: Rechtsklick        Als Hintergrundbild setzen, In Zwischenablage kopieren, Als Administrator öffnen, Hier entpacken
+LIST
+            ;;
+        *) cat <<'LIST'
 <b>── Apps ─────────────────────────────────────────────────</b>
 Super (tap) / Super+Space   Search – apps, files, calculations (42*12), power options
 Super+Enter                 Terminal
@@ -67,4 +115,13 @@ Tools → Software Updates    Check for and install updates
 Control Center → Appearance Taskbar: move or restyle it
 Files: right-click          Set as Wallpaper, Copy to Clipboard, Open as Administrator, Extract Here
 LIST
+            ;;
+    esac
+}
+
+shortcuts | sos_rofi -dmenu -i -no-custom -markup-rows -p "$(_t 'Filter')" \
+    -mesg "<b>$(_t 'Simple OS – Keyboard shortcuts')</b>   ·   $(_t 'type to filter')   ·   $(_t 'Esc to close')" -markup \
+    -theme-str 'window { width: 760px; location: center; anchor: center; } listview { lines: 18; }
+                element-icon { enabled: false; } element-text { font: "JetBrains Mono 10"; }' \
+    >/dev/null
 exit 0

@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Night Light
+Name[de]=Nachtlicht
 Comment=Warmer screen colors in the evening
+Comment[de]=Wärmere Bildschirmfarben am Abend
 Exec=/usr/local/bin/simpleos-nightlight
 Icon=weather-clear-night
 Categories=Settings;

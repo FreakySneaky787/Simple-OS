@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Keyboard Layout
+Name[de]=Tastaturlayout
 Comment=Choose your keyboard layout (German, Swiss, US …)
+Comment[de]=Dein Tastaturlayout wählen (Deutsch, Schweiz, US …)
 Exec=/usr/local/bin/simpleos-keyboard-setup
 Icon=input-keyboard
 Categories=Settings;HardwareSettings;

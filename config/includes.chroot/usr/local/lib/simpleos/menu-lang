@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+"""Simple OS – the Openbox right-click menu in the system language (#43).
+
+  menu-lang [MENU]   translate every label="…" of MENU (default ~/.config/openbox/menu.xml) into
+                     menu-simpleos.xml next to it (gettext domain "simpleos"; English or no translation: the same text)
+
+The account's own menu.xml stays English: updates merge it with the shipped /etc/skel copy line by line (edition
+--user), and translated lines would count as the user's changes. rc.xml loads menu-simpleos.xml before menu.xml:
+Openbox keeps the first definition of each menu id, so the translated one wins – and if this file is missing,
+Openbox simply shows the English menu.
+Runs at every sign-in before Openbox starts (/etc/X11/Xsession.d/83simpleos-menu-lang) and from office-menu when it
+changed the menu during a session. Never fails (exit 0). The menu texts are listed in config/i18n/extra.txt.
+"""
+import gettext
+import html
+import os
+import re
+import sys
+
+_ = gettext.translation("simpleos", fallback=True).gettext
+LABEL = re.compile(r'label="([^"]*)"')
+
+
+def translate(text):
+    def one(m):
+        shown = _(html.unescape(m.group(1)))
+        return 'label="' + html.escape(shown, quote=True) + '"'
+    return LABEL.sub(one, text)
+
+
+def main(argv):
+    config = os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+    menu = argv[1] if len(argv) > 1 else os.path.join(config, "openbox", "menu.xml")
+    out = os.path.join(os.path.dirname(menu), "menu-simpleos.xml")
+    try:
+        with open(menu, encoding="utf-8") as f:
+            text = translate(f.read())
+        tmp = f"{out}.tmp.{os.getpid()}"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp, out)
+    except OSError as err:
+        print(f"menu-lang: {err}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

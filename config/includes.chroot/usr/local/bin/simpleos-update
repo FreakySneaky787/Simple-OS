@@ -140,13 +140,13 @@ firmware_check() {
     still=$(firmware | grep -Fxf "$FW_MARK")
     rm -f "$FW_MARK"
     [ -n "$still" ] || return 0
-    sos_notify "The firmware update ($(printf '%s' "$still" | head -n 1)) was not applied during the restart. Keep the charger plugged in and try again from Menu → Tools → Software Updates. Details: ~/.cache/simpleos-update.log" critical
+    sos_notify "$(printf "$(_t 'The firmware update (%s) was not applied during the restart. Keep the charger plugged in and try again from Menu → Tools → Software Updates. Details: ~/.cache/simpleos-update.log')" "$(printf '%s' "$still" | head -n 1)")" critical
 }
 # Offer a restart: notification with "Restart…"; a click asks first – never restart right away
 offer_restart() {  # $1 text
     # Release the lock first: the notification can stay open for a long time, Software Updates should still open
     rm -rf "$LOCK"; trap - EXIT
-    sos_ask "Updates installed" "$1" "Restart…" || return 0
+    sos_ask "$(_t 'Updates installed')" "$1" "$(_t 'Restart…')" || return 0
     sos_add "$(sos_fa '\357\200\241')  $(_t 'Restart now')" "restart"
     sos_add "$(sos_fa '\357\200\215')  $(_t 'Later')" "later"
     sos_pick "<b>$(_t 'Restart now?')</b>${SOS_NL}$(sos_dim "$(_t 'Save your work first – open windows will close.')")" 440
@@ -184,8 +184,8 @@ install_updates() {
     PROGRESS=/usr/local/bin/simpleos-progress
     ppid=
     if [ -x "$PROGRESS" ] && [ "$out" != /dev/null ]; then
-        "$PROGRESS" --follow "$out" --done "Updates installed" \
-            --hint "You can keep working – don't turn off the computer" --app Updates \
+        "$PROGRESS" --follow "$out" --done "$(_t 'Updates installed')" \
+            --hint "$(_t "You can keep working – don't turn off the computer")" --app "$(_t Updates)" \
             --icon-name system-software-update --pid $$ 2>>"$SOS_LOG" &
         ppid=$!
     else
@@ -204,21 +204,24 @@ install_updates() {
         0)  fwnote=
             case "$log" in
                 *"FIRMWARE: needs-power"*)
-                    fwnote="A firmware update (BIOS) is waiting: plug in the charger, then open Software Updates again." ;;
+                    fwnote=$(_t 'A firmware update (BIOS) is waiting: plug in the charger, then open Software Updates again.') ;;
                 *"FIRMWARE: failed"*)
-                    fwnote="The firmware update could not be installed. Details: ~/.cache/simpleos-update.log" ;;
+                    fwnote=$(_t 'The firmware update could not be installed. Details: ~/.cache/simpleos-update.log') ;;
             esac
             [ -n "$fwnote" ] && sos_notify "$fwnote" critical
             # Updates that would only work by removing other software – never skip them silently
             held=$(printf '%s\n' "$log" | sed -n 's/^HELD: *\([0-9][0-9]*\)$/\1/p' | head -n 1)
             if [ -n "$held" ]; then
-                if [ "$held" -eq 1 ]; then n="1 update"; else n="$held updates"; fi
-                sos_notify "$(printf "$(_t '%s could not be installed automatically: they would remove other software. Details: ~/.cache/simpleos-update.log')" "$n")" critical
+                if [ "$held" -eq 1 ]; then
+                    sos_notify "$(_t '1 update could not be installed automatically: it would remove other software. Details: ~/.cache/simpleos-update.log')" critical
+                else
+                    sos_notify "$(printf "$(_t '%s updates could not be installed automatically: they would remove other software. Details: ~/.cache/simpleos-update.log')" "$held")" critical
+                fi
             fi
-            restart="Your computer needs a restart to finish the update. Restart when it suits you."
-            [ -n "$edition" ] && restart="Simple OS $edition is installed. Your computer needs a restart to finish the update. Restart when it suits you."
+            restart=$(_t 'Your computer needs a restart to finish the update. Restart when it suits you.')
+            [ -n "$edition" ] && restart=$(printf "$(_t 'Simple OS %s is installed. Your computer needs a restart to finish the update. Restart when it suits you.')" "$edition")
             if printf '%s\n' "$log" | grep -qx 'FIRMWARE: installed'; then
-                restart="Your computer needs a restart to finish the update. Firmware is installed during the restart – keep the charger plugged in."
+                restart=$(_t 'Your computer needs a restart to finish the update. Firmware is installed during the restart – keep the charger plugged in.')
                 # Remember the devices: if they are still pending after the restart, applying them did not work
                 [ -n "$fw_before" ] && mkdir -p "${FW_MARK%/*}" 2>/dev/null &&
                     printf '%s\n' "$fw_before" > "$FW_MARK" 2>/dev/null
@@ -240,9 +243,12 @@ install_updates() {
                 *"NOSPACE: "*)   # checked before installing (#91): "NOSPACE: <path> <needed MB> <free MB>"
                     # shellcheck disable=SC2046
                     set -- $(printf '%s\n' "$log" | sed -n 's/^NOSPACE: //p' | head -n 1)
-                    where=
-                    [ "${1:-}" = /boot ] && where=" on the boot partition"
-                    if sos_ask "$SOS_TITLE" "Not enough free disk space for the updates$where: about ${2:-?} MB are needed, ${3:-?} MB are free. Nothing was changed. Free up space with the Storage Cleaner, then try again." "Open Storage Cleaner"; then
+                    if [ "${1:-}" = /boot ]; then
+                        text=$(printf "$(_t 'Not enough free disk space for the updates on the boot partition: about %s MB are needed, %s MB are free. Nothing was changed. Free up space with the Storage Cleaner, then try again.')" "${2:-?}" "${3:-?}")
+                    else
+                        text=$(printf "$(_t 'Not enough free disk space for the updates: about %s MB are needed, %s MB are free. Nothing was changed. Free up space with the Storage Cleaner, then try again.')" "${2:-?}" "${3:-?}")
+                    fi
+                    if sos_ask "$SOS_TITLE" "$text" "$(_t 'Open Storage Cleaner')"; then
                         command -v simpleos-cleaner >/dev/null && simpleos-cleaner >/dev/null 2>&1 &
                     fi ;;
                 *"No space left"*|*"not enough free space"*|*"min-free-space"*|*"You don't have enough free space"*)
@@ -256,8 +262,13 @@ install_updates() {
                     reason=$(printf '%s\n' "$log" | sed -n 's/^E: //p; s/^dpkg: error[^:]*: //p; s/^error: //p' | head -n 1 | cut -c1-140)
                     reason=$(sos_esc "$reason")
                     hint=
-                    [ -e "$REBOOT_FLAG" ] && hint=" Restart your computer first, then try again."
-                    sos_notify "Some updates could not be installed${reason:+: $reason}.$hint Details: ~/.cache/simpleos-update.log" critical ;;
+                    [ -e "$REBOOT_FLAG" ] && hint=" $(_t 'Restart your computer first, then try again.')"
+                    if [ -n "$reason" ]; then
+                        msg=$(printf "$(_t 'Some updates could not be installed: %s.')" "$reason")
+                    else
+                        msg=$(_t 'Some updates could not be installed.')
+                    fi
+                    sos_notify "$msg$hint $(_t 'Details: ~/.cache/simpleos-update.log')" critical ;;
             esac ;;
     esac
 }
@@ -284,10 +295,11 @@ if [ "${1:-}" = --check ]; then
     count=$(pending | grep -c . || true)
     sos_is_num "$count" || count=0
     [ "$count" -gt 0 ] || exit 0
-    if [ "$count" -eq 1 ]; then text="1 update is ready to install."; else text="$count updates are ready to install."; fi
+    if [ "$count" -eq 1 ]; then text=$(_t '1 update is ready to install.')
+    else text=$(printf "$(_t '%s updates are ready to install.')" "$count"); fi
     # Release the lock before waiting: the notification can stay open for a long time, the menu should still work
     rm -rf "$LOCK"; trap - EXIT
-    sos_ask "Updates available" "$text Click to install." "Install" || exit 0
+    sos_ask "$(_t 'Updates available')" "$text $(_t 'Click to install.')" "$(_t Install)" || exit 0
     exec /usr/local/bin/simpleos-update
 fi
 

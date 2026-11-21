@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Camera
+Name[de]=Kamera
 Comment=See your webcam and take photos – saved to Pictures/Camera
+Comment[de]=Deine Webcam sehen und Fotos machen – gespeichert unter Pictures/Camera
 Exec=/usr/local/bin/simpleos-camera
 Icon=accessories-camera
 Categories=AudioVideo;Video;

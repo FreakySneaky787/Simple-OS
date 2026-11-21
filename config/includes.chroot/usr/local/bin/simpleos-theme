@@ -66,14 +66,16 @@ while [ $# -gt 0 ]; do
             # rofi-retry: grab error -> new attempt, rofi missing/does not start -> notification instead of a silent end
             rofi=/usr/local/lib/simpleos/rofi-retry
             [ -x "$rofi" ] || rofi=rofi
-            choice=$(printf '%s\n' "Dark mode" "Light mode" "Accent: blue" "Accent: mauve" "Accent: pink" \
-                         "Accent: green" "Accent: peach" "Accent: teal" |
-                SOS_NAME=simpleos-theme SOS_TITLE=Appearance "$rofi" -dmenu -i -no-custom -p "$(_t 'Appearance')" -mesg "Current: $mode mode, $accent accent" \
+            # the number of the row (-format i), not its text: the rows are translated (#43)
+            choice=$(printf '%s\n' "$(_t 'Dark mode')" "$(_t 'Light mode')" "$(_t 'Accent: blue')" "$(_t 'Accent: mauve')" \
+                         "$(_t 'Accent: pink')" "$(_t 'Accent: green')" "$(_t 'Accent: peach')" "$(_t 'Accent: teal')" |
+                SOS_NAME=simpleos-theme SOS_TITLE=Appearance "$rofi" -dmenu -i -no-custom -format i -p "$(_t 'Appearance')" \
+                    -mesg "$(printf "$(_t 'Current: %s mode, %s accent')" "$mode" "$accent")" \
                     -theme-str 'window { width: 360px; } listview { lines: 8; } element-icon { enabled: false; }' || true)
             case "$choice" in
-                "Dark mode")  mode=dark ;;
-                "Light mode") mode=light ;;
-                "Accent: "*)  accent=${choice#Accent: } ;;
+                0) mode=dark ;;
+                1) mode=light ;;
+                2) accent=blue ;; 3) accent=mauve ;; 4) accent=pink ;; 5) accent=green ;; 6) accent=peach ;; 7) accent=teal ;;
                 *) exit 0 ;;
             esac
             shift ;;

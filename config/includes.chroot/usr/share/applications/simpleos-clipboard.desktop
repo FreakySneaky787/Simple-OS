@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Clipboard History
+Name[de]=Verlauf der Zwischenablage
 Comment=Paste something you copied earlier (Super+V)
+Comment[de]=Etwas einfügen, das du früher kopiert hast (Super+V)
 Exec=/usr/local/bin/simpleos-clipboard
 Icon=edit-paste
 Categories=Utility;

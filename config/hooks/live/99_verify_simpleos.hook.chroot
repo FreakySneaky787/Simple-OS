@@ -509,7 +509,7 @@ check "simpleos-theme does not pull the taskbar along (Match theme)" "grep -q 's
 check "keyboard shortcut overview without groups" "grep -q -- '-markup-rows' /usr/local/bin/simpleos-help"
 # Monospace list: every description starts in column 29 (#80: "Software Updates" / "Files: right-click" were off)
 check "keyboard shortcut overview: a row is out of line" "python3 -c 'import sys; t = open(sys.argv[1]).read()
-rows = [l for l in t.split(\"<<\\x27LIST\\x27\\n\", 1)[1].split(\"\\nLIST\\n\", 1)[0].splitlines() if not l.startswith(\"<b>\")]
+rows = [l for part in t.split(\"<<\\x27LIST\\x27\\n\")[1:] for l in part.split(\"\\nLIST\\n\", 1)[0].splitlines() if not l.startswith(\"<b>\")]
 bad = [l for l in rows if not (len(l) > 28 and l[27] == \" \" and l[28] != \" \")]
 print(bad) if bad else None; sys.exit(1 if bad or len(rows) < 20 else 0)' /usr/local/bin/simpleos-help"
 # Since 1.0.5 there is no "System" menu or Control Center page (Tools, System & Updates, Storage & Backups …)
@@ -767,7 +767,7 @@ done
 # "You're online" + Next, the Wi-Fi list only after "Use a different network"; offline = list with numbered steps,
 # no "Disconnect" in the wizard. The same dummies, call the functions without a screen.
 WIZ=/usr/local/bin/simpleos-welcome-wizard
-check "wizard: step Internet missing" "grep -q 'STEPS = \[\"Welcome\", \"Internet\"' $WIZ"
+check "wizard: step Internet missing" "grep -q 'STEPS = \[N_(\"Welcome\"), N_(\"Internet\")' $WIZ"
 check "wizard: 'You're all set' without a list" "! grep -q \"You're all set\" $WIZ"
 WZ="import importlib.machinery as m; w = m.SourceFileLoader('w', '$WIZ').load_module()"
 mkdir -p "$wt/py" && ln -s "$(command -v python3)" "$wt/py/python3"   # only python3, no real nmcli
@@ -870,6 +870,7 @@ check "helper: the update could remove packages (upgrade --with-new-pkgs, full-u
 uw=$(mktemp -d)
 sed -n '/^REBOOT_PKGS=/p;/^mark_reboot() {/,/^}/p;/^sim_pkgs() /p;/^step() /p;/^upgrade_mode() {/,/^}/p;/^report_held() {/,/^}/p;/^upgrade_sim() {/,/^}/p;/^install_drivers() {/,/^}/p;/^SPACE_[A-Z_]*=/p;/^apt_need_mb() {/,/^}/p;/^free_mb() /p;/^is_mb() /p;/^space_ok() {/,/^}/p;/^space_still_ok() {/,/^}/p' \
     /usr/local/sbin/simpleos-system-setup > "$uw/fn.sh"
+echo '_t() { printf "%s" "$1"; }   # translations (#43): English in the test' >> "$uw/fn.sh"
 cat > "$uw/apt-get" <<'MOCK'
 #!/bin/sh
 case "$*" in -s*) [ "$APTSIM" = none ] && exit 0 ;; esac
@@ -962,7 +963,7 @@ check "helper: --refresh missing or can be mixed" \
       "grep -q -- '--refresh)' /usr/local/sbin/simpleos-system-setup && ! /usr/local/sbin/simpleos-system-setup --refresh --gaming >/dev/null 2>&1"
 rm -rf "${uw:?}"
 check "helper: --upgrade runs completely with a progress bar even without pending updates" \
-      "grep -q 'flatpak remote-ls --updates --system' /usr/local/sbin/simpleos-system-setup && grep -q 'echo \"DONE: Already up to date\"' /usr/local/sbin/simpleos-system-setup"
+      "grep -q 'flatpak remote-ls --updates --system' /usr/local/sbin/simpleos-system-setup && grep -qF 'echo \"DONE: \$(_t '\\''Already up to date'\\'')\"' /usr/local/sbin/simpleos-system-setup"
 check "simpleos-progress: a new STEP keeps the old description (#129)" \
       "python3 -c \"from importlib.machinery import SourceFileLoader as L; m = L('p', '/usr/local/bin/simpleos-progress').load_module(); st = m.State('x'); [st.feed(l) for l in ('STEP: Creating a restore point', 'STAGE: Finishing up', 'STEP: Installing updates')]; assert st.message == '' and st.title == 'Installing updates'\" 2>/dev/null"
 check "simpleos-progress: the helper's final text DONE: is not taken over" \
@@ -972,6 +973,7 @@ check "simpleos-progress: the helper's final text DONE: is not taken over" \
 aw=$(mktemp -d)
 mkdir -p "$aw/bin"
 sed -n '/^apt_busy() {/,/^}/p;/^apt_wait() {/,/^}/p;/^apt_get_update() {/,/^}/p;/^SOS_SOURCE=/p;/^apt_update_once() {/,/^}/p' /usr/local/sbin/simpleos-system-setup > "$aw/fn.sh"
+echo '_t() { printf "%s" "$1"; }   # translations (#43): English in the test' >> "$aw/fn.sh"
 printf '#!/bin/sh\nn=$(cat $T/sc 2>/dev/null || echo 0); echo $((n+1)) > $T/sc; [ "$n" -lt "${BUSY:-0}" ]\n' > "$aw/bin/systemctl"
 printf '#!/bin/sh\nexit 1\n' > "$aw/bin/systemd-detect-virt"   # an installed system, not the installer's chroot
 printf '#!/bin/sh\nexit 1\n' > "$aw/bin/pgrep"
@@ -1339,7 +1341,7 @@ hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "without thunar -
     'grep -qx "xdg-open /media/simple/STICK" $S/opened'
 hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "without a file manager -> notification" "thunar xdg-open" "NOTIFY_ACTION=yes USER=simple" "" \
     'grep -q "Your files are in /media/simple/STICK" $S/notify'
-hcase "$USB device_unmounted None STICK Kingston" "safely remove" "" "" "" 'grep -q "\"STICK\" can now be removed safely" $S/notify'
+hcase "$USB device_unmounted None STICK Kingston" "safely remove" "" "" "" 'grep -q "“STICK” can now be removed safely" $S/notify'
 hcase "$USB job_failed None STICK Kingston" "error" "" "" "" 'grep -q "could not be opened" $S/notify'
 hcase "$USB device_added None STICK Kingston" "other events silent" "" "" "" '[ ! -s $S/notify ]'
 # The installer's own mounts (Calamares: /tmp/calamares-root-…) are no USB drive – no "ready"/"Safely remove" during the
@@ -2090,6 +2092,7 @@ check "Control Center: the firewall switch does not use the helper" "grep -q '\"
 fw=$(mktemp -d)
 mkdir -p "$fw/bin"
 sed -n '/^FWUPD_OPTS=/p;/^fw_pending() {/,/^}/p;/^fw_update() {/,/^}/p' $SSU > "$fw/fn.sh"
+echo '_t() { printf "%s" "$1"; }   # translations (#43): English in the test' >> "$fw/fn.sh"
 cat > "$fw/bin/fwupdmgr" <<'MOCK'
 #!/bin/sh
 echo "fwupdmgr $*" >> "$R/calls"
@@ -2572,7 +2575,7 @@ assert len(set(keys)) == len(keys) and all(v in keys for v in c.ALIASES.values()
 rm -rf "$ap"
 # #75: two apps for a type and nothing chosen (LibreOffice + ONLYOFFICE) -> "Choose an app…" instead of an empty field
 check "Control Center → Apps: empty choice field with two office suites (#75)" \
-      "grep -qF 'combo.prepend(CHOOSE, \"Choose an app…\")' $CC && grep -qF 'if not app_id or app_id == CHOOSE:' $CC"
+      "grep -qF 'combo.prepend(CHOOSE, _(\"Choose an app…\"))' $CC && grep -qF 'if not app_id or app_id == CHOOSE:' $CC"
 printf 'VERSION_ID="9.9.9"\n' > "$wt/osr"
 check "Control Center: Simple OS version not read" "ccpy SIMPLEOS_OS_RELEASE=$wt/osr python3 -c \"$CCL; assert c.os_version() == '9.9.9'\""
 # Callers that open a page by name: every name must be a page or an alias (otherwise the window opens on Wi-Fi)
@@ -3701,6 +3704,34 @@ assert ('users', 'Users', 'system-users') in c.PAGES and c.ALIASES['accounts'] =
 check "Password & Security: password still changed in a terminal" "! grep -q '\"kitty\", \"--title\", \"Change password\"' /usr/local/bin/simpleos-control-center"
 rm -rf "${ue:?}"
 check "accountsservice missing (account pictures on the login screen, #68)" "dpkg -s accountsservice >/dev/null 2>&1"
+# #43: Simple OS's own texts in German (tools/i18n.py build -> simpleos.mo); English systems keep the English text
+MO=/usr/share/locale/de/LC_MESSAGES/simpleos.mo
+check "Translations: German catalog missing or not readable" \
+      "[ -s $MO ] && python3 -c 'import gettext; t = gettext.translation(\"simpleos\", languages=[\"de\"]); assert t.gettext(\"Software Center\") == \"Software-Center\" and t.gettext(\"Users\") == \"Benutzer\"'"
+check "Translations: Python tools translate through gettext (wizard, Control Center, Software Center)" \
+      "env -i LANGUAGE=de PATH=/usr/bin:/bin python3 -c \"import importlib.machinery as m; c = m.SourceFileLoader('c', '/usr/local/bin/simpleos-control-center').load_module(); assert ('users', 'Benutzer', 'system-users') in c.PAGES, c.PAGES\" 2>/dev/null"
+check "Translations: an English system shows translated texts" \
+      "env -i LANGUAGE=en LANG=en_US.UTF-8 PATH=/usr/bin:/bin python3 -c \"import importlib.machinery as m; c = m.SourceFileLoader('c', '/usr/local/bin/simpleos-control-center').load_module(); assert ('users', 'Users', 'system-users') in c.PAGES\" 2>/dev/null"
+check "Translations: i18n.sh missing or _t changes English text" \
+      "[ \"\$(env -i PATH=/usr/bin:/bin LANG=en_US.UTF-8 sh -c '. /usr/local/lib/simpleos/i18n.sh; _t \"Backups\"')\" = Backups ] && command -v gettext >/dev/null"
+check "Translations: a shell tool uses _t without i18n.sh or common.sh" \
+      "for f in \$(grep -l '\\\$(_t ' /usr/local/bin/* /usr/local/sbin/* 2>/dev/null); do head -1 \$f | grep -q python && continue; grep -q 'common.sh\\|i18n.sh' \$f || { echo \$f >&2; exit 1; }; done"
+check "Translations: an own launcher without a German name (Name[de])" \
+      "for f in /usr/share/applications/simpleos-*.desktop; do grep -q '^Name\\[de\\]=' \$f || { echo \$f >&2; exit 1; }; done"
+mlt=$(mktemp -d)
+printf '<openbox_menu>\n  <menu id="root-menu" label="Simple OS">\n    <item label="Files"/>\n    <item label="What&apos;s New"/>\n  </menu>\n</openbox_menu>\n' > "$mlt/menu.xml"
+check "Translations: the Openbox menu is not translated (menu-lang)" \
+      "env -i LANGUAGE=de PATH=/usr/bin:/bin /usr/local/lib/simpleos/menu-lang $mlt/menu.xml && grep -q 'label=\"Dateien\"' $mlt/menu-simpleos.xml &&
+       grep -q 'label=\"Neuigkeiten\"' $mlt/menu-simpleos.xml && python3 -c 'import sys, xml.dom.minidom as m; m.parse(sys.argv[1])' $mlt/menu-simpleos.xml"
+rm -rf "${mlt:?}"
+for home in /etc/skel /home/simple; do
+    check "Translations: rc.xml does not load the translated menu first in $home" \
+          "awk '/<file>menu-simpleos.xml<\\/file>/{a=NR} /<file>menu.xml<\\/file>/{b=NR} END{exit !(a && b && a < b)}' '$home/.config/openbox/rc.xml'"
+done
+check "Translations: German welcome/Windows help pages missing or not chosen" \
+      "[ -s /usr/share/simpleos/welcome.de.html ] && [ -s /usr/share/simpleos/windows-programs.de.html ] &&
+       grep -q 'def localized(path):' /usr/local/lib/simpleos/welcome-viewer && grep -q '<html lang=\"de\">' /usr/share/simpleos/welcome.de.html"
+check "Translations: polkit asks in English only" "[ \$(grep -l 'message xml:lang=\"de\"' /usr/share/polkit-1/actions/org.simpleos.*.policy | wc -l) -eq \$(ls /usr/share/polkit-1/actions/org.simpleos.*.policy | wc -l) ]"
 # #48: AppArmor loads the profiles of the installed packages at boot (the kernel module alone loaded none)
 check "AppArmor: package missing or its boot service not enabled" \
       "dpkg -s apparmor >/dev/null 2>&1 && [ -x /sbin/apparmor_parser ] && systemctl is-enabled apparmor.service >/dev/null 2>&1"
@@ -5337,6 +5368,7 @@ check "helper: new packages of an edition not installed after the upgrade" \
 # A failing Simple OS source (GitHub) must not stop Debian's updates; any other error still counts
 ew=$(mktemp -d)
 sed -n '/^SOS_SOURCE=/p;/^apt_update_once() {/,/^}/p' /usr/local/sbin/simpleos-system-setup > "$ew/fn.sh"
+echo '_t() { printf "%s" "$1"; }   # translations (#43): English in the test' >> "$ew/fn.sh"
 printf 'URIs: https://github.com/x/y/releases/latest/download/\n' > "$ew/src"
 cat > "$ew/apt-get" <<'MOCK'
 #!/bin/sh
@@ -5355,6 +5387,7 @@ rm -rf "${ew:?}"
 et=$(mktemp -d)
 sed -n '/^KEPT=/p;/^log() /p;/^sha() /p;/^install_file() {/,/^}/p;/^merge_file() {/,/^}/p;/^save_base() {/,/^}/p;/^sync_files() {/,/^}/p;/^run_migrations() {/,/^}/p' \
     /usr/local/lib/simpleos/edition > "$et/fn.sh"
+echo '_t() { printf "%s" "$1"; }   # translations (#43): English in the test' >> "$et/fn.sh"
 mkdir -p "$et/src" "$et/dst" "$et/old" "$et/mig"
 for n in same mine gone new pre; do echo "v2 $n" > "$et/src/$n"; done
 echo "v1 same" > "$et/dst/same"; echo "my own" > "$et/dst/mine"; echo "pre" > "$et/dst/pre"; echo "pre" > "$et/old/pre"

@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Welcome to Simple OS
+Name[de]=Willkommen bei Simple OS
 Comment=Documentation and first steps
+Comment[de]=Anleitung und erste Schritte
 Exec=simpleos-welcome
 Icon=help-about
 Categories=System;Documentation;

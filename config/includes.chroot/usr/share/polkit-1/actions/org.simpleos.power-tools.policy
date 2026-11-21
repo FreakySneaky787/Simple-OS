@@ -10,7 +10,9 @@
   <vendor>Simple OS</vendor>
   <action id="org.simpleos.backup">
     <description>Create, restore and delete system restore points</description>
+    <description xml:lang="de">Wiederherstellungspunkte des Systems erstellen, zurückspielen und löschen</description>
     <message>Simple OS needs your password to manage restore points.</message>
+    <message xml:lang="de">Simple OS braucht dein Passwort, um Wiederherstellungspunkte zu verwalten.</message>
     <icon_name>document-save</icon_name>
     <defaults>
       <allow_any>auth_admin</allow_any>
@@ -21,7 +23,9 @@
   </action>
   <action id="org.simpleos.cleaner">
     <description>Remove cached packages, unused software and old system logs</description>
+    <description xml:lang="de">Zwischengespeicherte Pakete, nicht genutzte Software und alte Systemprotokolle entfernen</description>
     <message>Simple OS needs your password to free up disk space.</message>
+    <message xml:lang="de">Simple OS braucht dein Passwort, um Speicherplatz freizugeben.</message>
     <icon_name>user-trash-full</icon_name>
     <defaults>
       <allow_any>auth_admin</allow_any>
@@ -32,7 +36,9 @@
   </action>
   <action id="org.simpleos.taskmanager">
     <description>End a process of another user</description>
+    <description xml:lang="de">Einen Prozess eines anderen Benutzers beenden</description>
     <message>The Task Manager needs your password to end a system process.</message>
+    <message xml:lang="de">Der Task-Manager braucht dein Passwort, um einen Systemprozess zu beenden.</message>
     <icon_name>utilities-system-monitor</icon_name>
     <defaults>
       <allow_any>auth_admin</allow_any>
@@ -43,7 +49,9 @@
   </action>
   <action id="org.simpleos.report">
     <description>Read the system log for a problem report</description>
+    <description xml:lang="de">Das Systemprotokoll für einen Problembericht lesen</description>
     <message>Simple OS needs your password to add the system log to your problem report.</message>
+    <message xml:lang="de">Simple OS braucht dein Passwort, um das Systemprotokoll zu deinem Problembericht hinzuzufügen.</message>
     <icon_name>dialog-warning</icon_name>
     <defaults>
       <allow_any>auth_admin</allow_any>

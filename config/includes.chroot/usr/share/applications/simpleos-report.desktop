@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Report a Problem
+Name[de]=Problem melden
 Comment=Save details about this computer and open the bug report page
+Comment[de]=Angaben zu diesem Computer speichern und die Seite für Fehlermeldungen öffnen
 Exec=/usr/local/bin/simpleos-report
 Icon=dialog-warning
 Categories=System;

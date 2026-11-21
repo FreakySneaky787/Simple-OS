@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Wi-Fi
+Name[de]=WLAN
 Comment=Connect to a wireless network
+Comment[de]=Mit einem Funknetzwerk verbinden
 Exec=/usr/local/bin/simpleos-wifi
 Icon=network-wireless
 Categories=Settings;Network;

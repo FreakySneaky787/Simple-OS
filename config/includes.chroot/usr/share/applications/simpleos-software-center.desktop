@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Software Center
+Name[de]=Software-Center
 Comment=Install apps like Steam, Discord, Spotify and LibreOffice with one click
+Comment[de]=Apps wie Steam, Discord, Spotify und LibreOffice mit einem Klick installieren
 Exec=/usr/local/bin/simpleos-software-center
 Icon=system-software-install
 Categories=System;PackageManager;

@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Display
+Name[de]=Bildschirm
 Comment=Resolution, refresh rate, duplicate or extend screens
+Comment[de]=Auflösung, Bildwiederholrate, Bildschirme duplizieren oder erweitern
 Exec=/usr/local/bin/simpleos-display
 Icon=video-display
 Categories=Settings;HardwareSettings;

@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Storage Cleaner
+Name[de]=Speicherbereinigung
 Comment=Free up disk space and see what uses it
+Comment[de]=Speicherplatz freigeben und sehen, was ihn belegt
 Exec=/usr/local/bin/simpleos-cleaner
 Icon=user-trash-full
 Categories=System;

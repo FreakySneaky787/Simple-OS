@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Backups
+Name[de]=Sicherungen
 Comment=Create and restore system restore points
+Comment[de]=Wiederherstellungspunkte des Systems erstellen und zurückspielen
 Exec=/usr/local/bin/simpleos-backup
 Icon=deja-dup
 Categories=System;

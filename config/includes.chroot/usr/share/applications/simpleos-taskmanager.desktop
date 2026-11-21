@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Task Manager
+Name[de]=Task-Manager
 Comment=See running programs and end the ones that hang
+Comment[de]=Laufende Programme sehen und hängende beenden
 Exec=/usr/local/bin/simpleos-taskmanager
 Icon=utilities-system-monitor
 Categories=System;Monitor;

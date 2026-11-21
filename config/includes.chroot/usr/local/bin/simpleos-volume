@@ -158,7 +158,7 @@ main_rows() {
     vol=$(volume); sos_is_num "$vol" || vol=0
     out_list=$(outputs)
     current=$(printf '%s\n' "$out_list" | awk -F'\t' '$4 == 1 { print $3; exit }')
-    state="$vol%"; muted && state="Muted"
+    state="$vol%"; muted && state=$(_t Muted)
     vhead "<b>Sound</b>   $(sos_dim "${current:-No output} · $state")"
     vrow "$(sos_fa "$I_UP")  Volume up  $(sos_dim "$state")" "up"
     vrow "$(sos_fa "$I_DOWN")  $(_t 'Volume down')" "down"
@@ -181,7 +181,7 @@ EOF
     vrow "$(sos_fa "$I_COG")  $(_t 'Advanced Audio Settings')" "advanced"
 }
 level_rows() {
-    state="$(volume)%"; muted && state="Muted"
+    state="$(volume)%"; muted && state=$(_t Muted)
     vhead "<b>Set volume</b>   $(sos_dim "$(printf "$(_t 'now %s')" "$state")")"
     for l in 100 80 60 50 40 30 20 10 0; do vrow "$l%" "set$TAB$l"; done
     vrow "$(sos_fa "$I_BACK")  $(_t 'Back')" "back"

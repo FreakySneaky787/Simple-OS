@@ -27,7 +27,7 @@ sos_log_init
 I_CHECK='\357\200\214' I_OFF='\357\204\247' I_WIFI='\357\207\253' I_LOCK='\357\200\243'
 I_POWER='\357\200\221' I_INFO='\357\201\232' I_BACK='\357\201\240' I_UNLINK='\357\200\215' I_SEARCH='\357\200\202'
 signal_word() {
-    if [ "${1:-0}" -ge 70 ]; then echo "Strong"; elif [ "${1:-0}" -ge 40 ]; then echo "Good"; else echo "Weak"; fi
+    if [ "${1:-0}" -ge 70 ]; then _t Strong; elif [ "${1:-0}" -ge 40 ]; then _t Good; else _t Weak; fi
 }
 details() {
     if [ -x "$NETINFO" ]; then exec "$NETINFO"; fi
@@ -93,7 +93,7 @@ while :; do
 
     # ---- First row: active network
     if [ -n "$wifi_up" ]; then
-        sos_add "$(sos_fa "$I_CHECK")  Connected: $(sos_esc "$current")" "active${TAB}wifi${TAB}$current"
+        sos_add "$(sos_fa "$I_CHECK")  $(printf "$(_t 'Connected: %s')" "$(sos_esc "$current")")" "active${TAB}wifi${TAB}$current"
     elif [ -n "$eth_up$route_dev" ]; then
         sos_add "$(sos_fa "$I_CHECK")  $(_t 'Connected: Ethernet')" "active${TAB}ethernet${TAB}Ethernet"
     elif [ -n "$wifi" ] && [ "$radio" = on ]; then
@@ -107,7 +107,7 @@ while :; do
     # ---- Below: available Wi-Fi networks (without the active one), strongest first; without a Wi-Fi device (no module/
     # driver, VM, switched off) only a hint – a click on it opens the menu again
     others=0
-    [ -n "$wifi" ] || sos_add "$(sos_fa "$I_WIFI")  Wi-Fi Hardware: $(sos_dim "$(_t 'Not found / Disabled')")" "info"
+    [ -n "$wifi" ] || sos_add "$(sos_fa "$I_WIFI")  $(_t 'Wi-Fi Hardware:') $(sos_dim "$(_t 'Not found / Disabled')")" "info"
     if [ -n "$wifi" ] && [ "$radio" = on ]; then
         rows_nets=$(printf '%s\n' "$nets" | while IFS="$TAB" read -r ssid signal security used; do
             [ -n "$ssid" ] && [ "$used" != 1 ] || continue
@@ -142,7 +142,7 @@ EOF
             sos_add "$(sos_fa "$I_INFO")  $(_t 'Network Details')" "details"
             sos_add "$(sos_fa "$I_BACK")  $(_t 'Back')" "back"
             kind=$arg1 name=$arg2
-            sos_pick "<b>$(sos_esc "$name")</b>  Connected"
+            sos_pick "<b>$(sos_esc "$name")</b>  $(_t Connected)"
             case "$action" in
                 disconnect)
                     dev=$wifi_up; [ "$kind" = ethernet ] && dev=${eth_up:-$route_dev}
@@ -179,7 +179,7 @@ had_profile=$(nmcli -t -f NAME connection show 2>/dev/null | grep -cxF "$ssid" |
 set -- device wifi connect "$ssid" ifname "$wifi"
 ask=
 if [ "$security" != open ]; then
-    pw=$(sos_rofi -dmenu -password -p "$(_t 'Password')" -mesg "<b>$(sos_esc "$ssid")</b>  Enter the password" -markup \
+    pw=$(sos_rofi -dmenu -password -p "$(_t 'Password')" -mesg "<b>$(sos_esc "$ssid")</b>  $(_t 'Enter the password')" -markup \
         -theme-str 'window { width: 480px; } listview { lines: 0; }' </dev/null)
     [ -n "$pw" ] || exit 0
     ask=--ask    # nmcli asks for the password and reads it from stdin – never on the command line (visible in ps)

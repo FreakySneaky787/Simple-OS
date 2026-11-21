@@ -39,7 +39,7 @@ eject() {
         dev=$(findmnt -n -o SOURCE --target "$1" 2>/dev/null)
         [ -n "$dev" ] && udisksctl unmount -b "$dev" >&2 2>&1 && { udisksctl power-off -b "$dev" >&2 2>&1; return 0; }
     fi
-    sos_notify "$(printf "$(_t '\"%s\" is still in use. Close all files and windows from it, then try again.')" "$name")" critical
+    sos_notify "$(printf "$(_t '“%s” is still in use. Close all files and windows from it, then try again.')" "$name")" critical
 }
 
 # Drives this script announced as ready (one name per line): only those get "can be removed safely" later
@@ -79,8 +79,8 @@ case "$event" in
         grep -qxF "$name" "$SEEN" 2>/dev/null || { sos_log "ignored: $name unmounted (not announced)"; exit 0; }
         seen=$(grep -vxF "$name" "$SEEN" 2>/dev/null)
         printf '%s\n' "$seen" | grep . > "$SEEN" 2>/dev/null
-        sos_notify "$(printf "$(_t '\"%s\" can now be removed safely.')" "$name")" ;;
+        sos_notify "$(printf "$(_t '“%s” can now be removed safely.')" "$name")" ;;
     job_failed)
-        sos_notify "\"$name\" could not be opened. It may be damaged or use a format Simple OS can't read." critical ;;
+        sos_notify "$(printf "$(_t "“%s” could not be opened. It may be damaged or use a format Simple OS can't read.")" "$name")" critical ;;
 esac
 exit 0

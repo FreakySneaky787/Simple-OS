@@ -25,6 +25,26 @@ import gettext
 _ = gettext.translation("simpleos", fallback=True).gettext
 
 NOTES = Path(os.environ.get("SIMPLEOS_WHATS_NEW", "/usr/share/simpleos/whats-new"))
+
+
+def localized_notes(path):
+    """whats-new.de next to whats-new in a German system (#43); the English file otherwise"""
+    for var in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):
+        value = os.environ.get(var, "")
+        if value:
+            for item in value.split(":"):
+                code = item.split(".")[0].split("@")[0]
+                if code in ("C", "POSIX") or code.startswith("en"):
+                    return path
+                for c in (code, code.split("_")[0]):
+                    candidate = path.with_name(f"{path.name}.{c}")
+                    if c and candidate.is_file():
+                        return candidate
+            return path
+    return path
+
+
+NOTES = localized_notes(NOTES)
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "simpleos"
 STATE = CONFIG / "whats-new"
 WIZARD_DONE = CONFIG / "wizard-done"

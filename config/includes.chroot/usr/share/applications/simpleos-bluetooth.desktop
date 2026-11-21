@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Bluetooth
+Name[de]=Bluetooth
 Comment=Connect headphones, mice and gamepads
+Comment[de]=Kopfhörer, Mäuse und Gamepads verbinden
 Exec=/usr/local/bin/simpleos-bluetooth
 Icon=bluetooth
 Categories=Settings;HardwareSettings;

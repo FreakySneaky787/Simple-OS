@@ -26,3 +26,45 @@ Taskbar
 Updates
 USB drive
 Welcome
+#   /usr/local/lib/simpleos/menu-lang   the Openbox right-click menu (label="…" of /etc/skel/.config/openbox/menu.xml)
+Simple OS
+Install Simple OS
+Search (Super+Space)
+Files
+Web Browser (Super+B)
+Software Center
+Terminal
+Apps
+PDF Viewer
+Text Editor
+Calculator
+Media Player
+Image Viewer
+Camera
+Settings
+All Settings (Super+I)
+Wi-Fi & Network
+Bluetooth
+Sound
+Display
+Appearance & Wallpaper
+Keyboard
+Printers & Scanners
+Default & Startup Apps
+Night Light
+Do Not Disturb (on/off)
+Tools
+Software Updates
+Task Manager (Ctrl+Shift+Esc)
+Backups
+Storage Cleaner
+Disks & USB Sticks
+Network Info (Super+N)
+Help
+Welcome to Simple OS
+What's New
+Keyboard Shortcuts (Super+H)
+Setup Wizard
+Windows Programs
+Report a Problem
+Power (Super+X)

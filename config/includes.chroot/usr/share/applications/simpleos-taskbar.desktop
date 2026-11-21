@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Taskbar & Panel
+Name[de]=Taskleiste
 Comment=Position, layout and look of the taskbar
+Comment[de]=Position, Aufbau und Aussehen der Taskleiste
 Exec=simpleos-taskbar-select
 Icon=preferences-desktop
 Categories=Settings;DesktopSettings;
