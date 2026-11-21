@@ -234,7 +234,7 @@ def ask(path):
     box.pack_start(status, False, False, 0)
 
     help_btn = dialog.add_button("What works?", 1)
-    dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+    cancel_btn = dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
     install_btn = dialog.add_button("Install SOS Bridge", Gtk.ResponseType.OK)
     install_btn.get_style_context().add_class("suggested-action")
     install_btn.grab_default()
@@ -248,7 +248,7 @@ def ask(path):
             dialog.response(Gtk.ResponseType.CLOSE)
             return False
         status.set_markup(f"<b>{GLib.markup_escape_text(message)}</b>")
-        for b in (install_btn, help_btn):
+        for b in (install_btn, help_btn, cancel_btn):
             b.set_sensitive(True)
         install_btn.set_label("Try again")
         return False
@@ -269,8 +269,8 @@ def ask(path):
             return
         if response == Gtk.ResponseType.OK:
             result["busy"] = True
-            install_btn.set_sensitive(False)
-            help_btn.set_sensitive(False)
+            for b in (install_btn, help_btn, cancel_btn):   # Flatpak can't be stopped halfway from here
+                b.set_sensitive(False)
             status.set_text("Installing SOS Bridge – this takes a few minutes …")
             threading.Thread(target=worker, daemon=True).start()
             return
