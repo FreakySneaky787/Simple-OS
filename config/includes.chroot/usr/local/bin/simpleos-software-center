@@ -372,7 +372,7 @@ def main(argv):
                     self.progress.set_text(state["label"])
                 elif line.startswith("PROGRESS: "):
                     # "PROGRESS: <percent> [<rest>]": rest = time left from the download speed (progress-filter)
-                    num, _, rest = line[10:].partition(" ")
+                    num, _sep, rest = line[10:].partition(" ")
                     try:
                         pct = max(0, min(100, int(float(num))))
                     except ValueError:

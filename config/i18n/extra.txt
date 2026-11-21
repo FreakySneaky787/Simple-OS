@@ -1,0 +1,3 @@
+# Simple OS – texts for translation that are not in a Python or shell tool (tools/i18n.py extract reads this file).
+# One text per line, exactly as it appears in its file. Used by:
+#   /usr/local/lib/simpleos/menu-lang   the Openbox menu (label="…" of ~/.config/openbox/menu.xml)

@@ -21,12 +21,16 @@ import os
 import subprocess
 import sys
 import threading
+import gettext
+
+# Translations (#43): the system language from /usr/share/locale/<lang>/LC_MESSAGES/simpleos.mo, else English
+_ = gettext.translation("simpleos", fallback=True).gettext
 
 DRYRUN = os.environ.get("SIMPLEOS_RESTART_DRYRUN") == "1"
 MOUNTS = os.environ.get("SIMPLEOS_MOUNTS", "/proc/self/mounts")
-TITLE = "Simple OS is installed"
-TEXT = ("Remove the USB stick (or take out the disc) now.\n\n"
-        "Then click “Restart now” – the computer starts your new Simple OS.")
+TITLE = _("Simple OS is installed")
+TEXT = (_("Remove the USB stick (or take out the disc) now.\n\n"
+        "Then click “Restart now” – the computer starts your new Simple OS."))
 
 
 def mounts():
@@ -133,7 +137,7 @@ def ask():
     body.set_xalign(0)
     body.set_line_wrap(True)
     body.set_max_width_chars(48)
-    button = Gtk.Button(label="Restart now")
+    button = Gtk.Button(label=_("Restart now"))
     button.get_style_context().add_class("suggested-action")
     button.set_halign(Gtk.Align.END)
     button.connect("clicked", lambda *_: Gtk.main_quit())

@@ -23,6 +23,10 @@ import tempfile
 import threading
 import urllib.request
 from pathlib import Path
+import gettext
+
+# Translations (#43): the system language from /usr/share/locale/<lang>/LC_MESSAGES/simpleos.mo, else English
+_ = gettext.translation("simpleos", fallback=True).gettext
 
 APP = "com.usebottles.bottles"
 EXPORTS = "/var/lib/flatpak/exports/share/applications"
@@ -33,7 +37,7 @@ FP_PROGRESS = "/usr/local/lib/simpleos/flatpak-progress"
 LOG = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "simpleos-windows-app.log"
 NEED_FULL = 2000   # MB: Bottles + GNOME runtime (+ GL extensions)
 NEED_APP = 400     # MB: runtime already there
-DOWNLOAD = "about 700 MB"
+DOWNLOAD = _("about 700 MB")
 DRYRUN = os.environ.get("SIMPLEOS_WA_DRYRUN") == "1"
 
 
@@ -104,10 +108,10 @@ def space_problem():
     if free is None or free >= need:
         return None
     if is_live():
-        return (f"In Live mode, apps are kept in memory – only {free} MB are free, SOS Bridge needs about {need} MB. "
-                "Install Simple OS first (icon on the desktop).")
-    return (f"Not enough free disk space for SOS Bridge: {free} MB free, about {need} MB needed. "
-            "Free up space with the Storage Cleaner.")
+        return (_('In Live mode, apps are kept in memory – only {free} MB are free, SOS Bridge needs about '
+                  '{need} MB. Install Simple OS first (icon on the desktop).').format(free=free, need=need))
+    return (_('Not enough free disk space for SOS Bridge: {free} MB free, about {need} MB needed. Free up '
+              'space with the Storage Cleaner.').format(free=free, need=need))
 
 
 def decide(path):
@@ -161,12 +165,13 @@ def install():
     os.close(fd)
     window = None
     if os.access(PROGRESS, os.X_OK):
-        window = subprocess.Popen([PROGRESS, "--follow", feed, "--title", "Installing SOS Bridge",
-                                   "--done", "SOS Bridge installed",
-                                   "--hint", f"One time only · {DOWNLOAD} from Flathub", "--app", "SOS Bridge",
+        window = subprocess.Popen([PROGRESS, "--follow", feed, "--title", _("Installing SOS Bridge"),
+                                   "--done", _("SOS Bridge installed"),
+                                   "--hint", _("One time only · {size} from Flathub").format(size=DOWNLOAD),
+                                   "--app", "SOS Bridge",
                                    "--icon-name", APP, "--pid", str(os.getpid())])
     with open(feed, "a") as f:
-        f.write("STEP: Installing SOS Bridge (Bottles)\n")
+        f.write("STEP: " + _("Installing SOS Bridge (Bottles)") + "\n")
     filt = FP_PROGRESS if os.access(FP_PROGRESS, os.X_OK) else "cat"
     with open(feed, "a") as out:
         fp = subprocess.Popen(["flatpak", "install", "--system", "-y", "flathub", APP], stdin=subprocess.DEVNULL,
@@ -192,13 +197,13 @@ def install():
         return True, ""
     joined = "".join(text)
     if any(k in joined for k in ("min-free-space", "No space left", "not enough space", "Not enough space")):
-        return False, "Not enough free space to install SOS Bridge."
+        return False, _("Not enough free space to install SOS Bridge.")
     if any(k in joined for k in ("Could not resolve", "Could not connect", "Timeout was reached",
                                  "Network is unreachable", "Failed to connect")):
-        return False, "Flathub can't be reached. Check your internet connection and try again."
+        return False, _("Flathub can't be reached. Check your internet connection and try again.")
     if "Not authorized" in joined or "not allowed" in joined:
-        return False, "Installing apps needs an administrator's password."
-    return False, f"SOS Bridge could not be installed. Details: {LOG}"
+        return False, _("Installing apps needs an administrator's password.")
+    return False, _('SOS Bridge could not be installed. Details: {LOG}').format(LOG=LOG)
 
 
 # ------------------------------------------------------------------ Window
@@ -209,7 +214,7 @@ def ask(path):
     Gtk.Settings.get_default().set_property("gtk-application-prefer-dark-theme", True)
 
     name = os.path.basename(path)
-    dialog = Gtk.Dialog(title="Windows program")
+    dialog = Gtk.Dialog(title=_("Windows program"))
     dialog.set_default_size(520, -1)
     dialog.set_position(Gtk.WindowPosition.CENTER)
     dialog.set_icon_name(APP)
@@ -218,24 +223,24 @@ def ask(path):
     for side in ("start", "end", "top", "bottom"):
         getattr(box, f"set_margin_{side}")(18)
     title = Gtk.Label(xalign=0, wrap=True)
-    title.set_markup(f"<b><big>{GLib.markup_escape_text(name)} is a Windows program</big></b>")
+    title.set_markup(_('<b><big>{program} is a Windows program</big></b>').format(program=GLib.markup_escape_text(name)))
     box.pack_start(title, False, False, 0)
     body = Gtk.Label(xalign=0, wrap=True, max_width_chars=60, label=(
-        "Simple OS can try to run it with SOS Bridge – the free app Bottles with Wine, no Windows needed. "
+        _("Simple OS can try to run it with SOS Bridge – the free app Bottles with Wine, no Windows needed. "
         "Many Windows programs work, some don't (for example Microsoft 365, current Adobe apps and games with "
-        "anti-cheat)."))
+        "anti-cheat).")))
     box.pack_start(body, False, False, 0)
     note = Gtk.Label(xalign=0, wrap=True, max_width_chars=60,
-                     label=f"Additional download required: SOS Bridge comes once from Flathub ({DOWNLOAD}). "
-                           "You can also install it later in the Software Center.")
+                     label=_('Additional download required: SOS Bridge comes once from Flathub ({DOWNLOAD}). You can also '
+                             'install it later in the Software Center.').format(DOWNLOAD=DOWNLOAD))
     note.get_style_context().add_class("dim-label")
     box.pack_start(note, False, False, 0)
     status = Gtk.Label(xalign=0, wrap=True, max_width_chars=60)
     box.pack_start(status, False, False, 0)
 
-    help_btn = dialog.add_button("What works?", 1)
-    cancel_btn = dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
-    install_btn = dialog.add_button("Install SOS Bridge", Gtk.ResponseType.OK)
+    help_btn = dialog.add_button(_("What works?"), 1)
+    cancel_btn = dialog.add_button(_("Cancel"), Gtk.ResponseType.CANCEL)
+    install_btn = dialog.add_button(_("Install SOS Bridge"), Gtk.ResponseType.OK)
     install_btn.get_style_context().add_class("suggested-action")
     install_btn.grab_default()
     dialog.show_all()
@@ -250,7 +255,7 @@ def ask(path):
         status.set_markup(f"<b>{GLib.markup_escape_text(message)}</b>")
         for b in (install_btn, help_btn, cancel_btn):
             b.set_sensitive(True)
-        install_btn.set_label("Try again")
+        install_btn.set_label(_("Try again"))
         return False
 
     def worker():
@@ -259,7 +264,7 @@ def ask(path):
             GLib.idle_add(finished, False, problem)
             return
         if not flathub_reachable():
-            GLib.idle_add(finished, False, "Flathub can't be reached. Check your internet connection and try again.")
+            GLib.idle_add(finished, False, _("Flathub can't be reached. Check your internet connection and try again."))
             return
         GLib.idle_add(finished, *install())
 
@@ -271,7 +276,7 @@ def ask(path):
             result["busy"] = True
             for b in (install_btn, help_btn, cancel_btn):   # Flatpak can't be stopped halfway from here
                 b.set_sensitive(False)
-            status.set_text("Installing SOS Bridge – this takes a few minutes …")
+            status.set_text(_("Installing SOS Bridge – this takes a few minutes …"))
             threading.Thread(target=worker, daemon=True).start()
             return
         if not result["busy"]:   # the window's X during the installation: keep it (it opens the file at the end)
@@ -306,7 +311,8 @@ def main(argv):
     if what == "open":
         return 0 if open_in_bottles(path) else 1
     if what.startswith("error"):
-        subprocess.call(["notify-send", "-i", "dialog-warning", "Windows program", what[7:].capitalize()])
+        subprocess.call(["notify-send", "-i", "dialog-warning", _("Windows program"),
+                         _("The file does not exist.")])
         return 1
     return ask(path)
 

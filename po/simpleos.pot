@@ -1,0 +1,697 @@
+# Simple OS – translations of Simple OS's own tools (#43). Edit the msgstr lines; after changing the tools
+# run ./tools/i18n.py extract (new texts appear here empty) and ./tools/i18n.py check.
+msgid ""
+msgstr ""
+"Project-Id-Version: Simple OS\n"
+"Report-Msgid-Bugs-To: https://github.com/FreakySneaky787/Simple-OS/issues\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: usr/local/bin/simpleos-calendar:102
+msgid "Calendar"
+msgstr ""
+
+#: usr/local/bin/simpleos-calendar:136
+msgid "Today"
+msgstr ""
+
+#: usr/local/bin/simpleos-calendar:143
+msgid "Date & Time settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-clipboard:30
+msgid "Clipboard"
+msgstr ""
+
+#: usr/local/bin/simpleos-clipboard:95
+msgid "Nothing copied yet. Copy some text and press Super+V again."
+msgstr ""
+
+#: usr/local/bin/simpleos-clipboard:97
+msgid "Clear history"
+msgstr ""
+
+#: usr/local/bin/simpleos-clipboard:100
+msgid "The clipboard history could not open (rofi missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-clipboard:114
+msgid "Clipboard history cleared."
+msgstr ""
+
+#: usr/local/bin/simpleos-clipboard:119
+msgid "The text could not be copied (xclip missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-clipboard:180
+msgid "The clipboard history ran into a problem: {e}"
+msgstr ""
+
+#: usr/local/bin/simpleos-progress:105 usr/local/bin/simpleos-progress:558
+msgid "Working"
+msgstr ""
+
+#: usr/local/bin/simpleos-progress:380
+msgid " · {remaining} left"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:60
+msgid "Preinstalled. Stable and privacy-friendly."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:61
+msgid "Open-source base of Chrome. Installed from Debian (about 100 MB)."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:62
+msgid "Built for privacy. Installed from Flathub."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:68
+msgid "Blue"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:68
+msgid "Green"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:68
+msgid "Mauve"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:68
+msgid "Pink"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:69
+msgid "Peach"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:69
+msgid "Teal"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:72
+msgid "The classic: Writer, Calc, Impress and Draw. Installed from Debian."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:74
+msgid "Modern alternative, very compatible with Microsoft Office. Installed from Flathub."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:76
+msgid "Minimal"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:76
+msgid "No office suite. You can install one later from the Software Store."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:81
+msgid "Run many Windows programs with Bottles and Wine – no Windows needed."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:82
+msgid "about 700 MB download"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:83
+msgid "Gaming Support"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:83
+msgid "Steam, Lutris and MangoHud with 32-bit support and game controllers. GameMode is already built in."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:84
+msgid "about 1 GB download"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:85
+msgid "Developer Tools"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:85
+msgid "Git, compilers, Python tools and the code editor VSCodium."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:86
+msgid "about 800 MB download"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:92
+msgid "Appearance"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:92 usr/local/bin/simpleos-welcome-wizard:708
+msgid "Apps"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:92
+msgid "Browser"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:92
+msgid "Extras"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:92
+msgid "Internet"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:92
+msgid "Office"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:92
+msgid "Welcome"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:136
+msgid "{model} ({threads} threads)"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:140
+msgid "{threads} threads"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:156
+msgid "{free:.0f} GiB free of {total:.0f} GiB"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:161
+msgid "System"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:162
+msgid "Computer"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:163
+msgid "Kernel"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:164
+msgid "Processor"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:165
+msgid "Memory"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:166
+msgid "Storage"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:312
+msgid "You're online – connected to {network}"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:314
+msgid "You're online – connected with a network cable"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:316
+msgid "Not connected yet"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:317
+msgid " · needs password"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:317
+msgid " · open"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:317
+msgid "Connected"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:322
+msgid "Click Next to continue."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:323
+msgid "Use a different network"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:325
+msgid "This computer has no Wi-Fi. Plug in a network cable – it connects by itself."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:326
+msgid "Check again"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:328
+msgid "Wi-Fi is turned off. Click \"Turn on Wi-Fi\" to see the networks around you."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:329
+msgid "Turn on Wi-Fi"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:331
+msgid "No Wi-Fi networks found nearby. Move closer to your router and click \"Search again\"."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:332 usr/local/bin/simpleos-welcome-wizard:335 usr/local/bin/simpleos-welcome-wizard:339 usr/local/bin/simpleos-welcome-wizard:544
+msgid "Search again"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:334
+msgid "To switch, click another network, type its password if it needs one, then click Connect."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:337
+msgid "1. Click your Wi-Fi network.   2. Type its password (often on a sticker on your router).   3. Click Connect."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:345
+msgid "Good signal"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:345
+msgid "Strong signal"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:345
+msgid "Weak signal"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:358 usr/local/bin/simpleos-welcome-wizard:366 usr/local/bin/simpleos-welcome-wizard:372
+msgid "Connected to {ssid}. You're online."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:377
+msgid "That didn't work. The password may be wrong – please check it and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:379
+msgid "That didn't work. The saved password may be wrong – please type the password and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:380
+msgid "That didn't work. Move closer to your router and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:386
+msgid "Simple OS Setup"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:435
+msgid "Skip setup"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:436
+msgid "Keep the defaults and don't show this again"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:439 usr/local/bin/simpleos-welcome-wizard:902
+msgid "Next"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:443
+msgid "Back"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:461
+msgid "You're already online"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:494 usr/local/lib/simpleos/welcome-viewer:150
+msgid "Welcome to Simple OS"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:495
+msgid "Let's set up a few things. This takes less than a minute."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:514
+msgid "Connect to the internet"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:515
+msgid "The next steps download your browser and apps, so Simple OS needs the internet once."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:517 usr/local/bin/simpleos-welcome-wizard:565
+msgid "Checking your connection ..."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:535
+msgid "Wi-Fi password"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:537
+msgid "Show the password"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:541
+msgid "Connect"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:550
+msgid "Not now? Just click Next. Later, click the network display in the taskbar (bottom right) to connect."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:620
+msgid "Password for “{ssid}”:"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:636
+msgid "Please type the password for \"{ssid}\", then click Connect."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:640
+msgid "Connecting to {ssid} ..."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:654
+msgid " Click Next to continue."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:676
+msgid "Turning on Wi-Fi ..."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:681
+msgid "Choose your web browser"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:682
+msgid "Links and Super+B open this browser. Missing browsers are installed for you."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:687 usr/local/bin/simpleos-welcome-wizard:774 usr/local/bin/simpleos-welcome-wizard:789
+msgid "installed"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:687 usr/local/bin/simpleos-welcome-wizard:774
+msgid "will be installed"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:701
+msgid "You can change this later in Control Center → Apps."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:705
+msgid "Make it yours"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:706
+msgid "Pick a style for your apps and an accent color for menus, panel and windows."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:712
+msgid "Dark"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:713
+msgid "Light"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:720
+msgid "The panel, menus and terminal always stay dark."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:722
+msgid "Accent color"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:767
+msgid "Office suite"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:768
+msgid "Documents, spreadsheets and presentations. Pick one or keep the system minimal."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:777
+msgid "Already installed office apps are not removed."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:781
+msgid "Optional components"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:782
+msgid "Add extras now or later in the Software Center. Nothing is installed unless you turn it on."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:804
+msgid "What runs with SOS Bridge?"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:809
+msgid "Gaming Support: by turning it on you accept the Steam license agreement (store.steampowered.com/subscriber_agreement)."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:821
+msgid "You're offline – connect to the internet (step 2) to add these now, or add them later in the Software Center."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:826
+msgid "Nothing selected – you can add these later in the Software Center."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:828
+msgid "Selected: {components} – additional downloads, installed at the end of the setup."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:845
+msgid "Installing your software"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:846
+msgid "You will be asked for your password once. Please keep this window open."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:851 usr/local/bin/simpleos-welcome-wizard:897
+msgid "Starting ..."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:867
+msgid "Details"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:874
+msgid "Get more apps"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:875
+msgid "The Software Store (Bazaar) gives you thousands of apps from Flathub."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:879
+msgid "Open the Software Store after setup"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:882
+msgid "The store is downloaded once on first use (several hundred MB)."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:889
+msgid ""
+"GNOME Software is also in the menu and works right away.\n"
+"Run this wizard again any time from Menu → Help → Setup Wizard."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:902 usr/local/bin/simpleos-welcome-wizard:1053
+msgid "Finish"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:936
+msgid "Firefox ESR will be removed completely to free up space."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:996
+msgid "Waiting for your password ..."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1036
+msgid " · about {rest} left"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1051
+msgid "No password entered – nothing was installed or removed. Click Finish to try again or Back to change your choices."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1060
+msgid "an optional component"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1061
+msgid "Everything is set up – except {names}: it could not be installed (no internet or not enough space?). You can add it later in the Software Center."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1065 usr/local/bin/simpleos-welcome-wizard:1073 usr/local/bin/simpleos-whats-new:171
+msgid "Close"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1101
+msgid " · about {minutes} min left"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1101
+msgid " · less than a minute left"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1107
+msgid " Run the wizard again from Menu → Help → Setup Wizard."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1110
+msgid "Some software could not be installed: not enough free space. In Live mode, apps are kept in memory – install Simple OS first."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1114
+msgid "Some software could not be installed: no internet connection. Check your network."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1115
+msgid "Some software could not be installed (details below)."
+msgstr ""
+
+#: usr/local/bin/simpleos-whats-new:127
+msgid "What's new in Simple OS"
+msgstr ""
+
+#: usr/local/bin/simpleos-whats-new:138
+msgid ""
+"<span size='x-large' weight='bold'>What's new in Simple OS {version}</span>\n"
+"<span alpha='70%'>Your computer was updated. Here is what changed for you.</span>"
+msgstr ""
+
+#: usr/local/bin/simpleos-whats-new:147
+msgid "No notes for this version. The release notes on the project page list every change."
+msgstr ""
+
+#: usr/local/bin/simpleos-whats-new:167
+msgid "Show this after updates"
+msgstr ""
+
+#: usr/local/bin/simpleos-whats-new:175
+msgid "All changes"
+msgstr ""
+
+#: usr/local/bin/simpleos-whats-new:176
+msgid "The full release notes on the project page"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:40
+msgid "about 700 MB"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:111
+msgid "In Live mode, apps are kept in memory – only {free} MB are free, SOS Bridge needs about {need} MB. Install Simple OS first (icon on the desktop)."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:113
+msgid "Not enough free disk space for SOS Bridge: {free} MB free, about {need} MB needed. Free up space with the Storage Cleaner."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:168
+msgid "Installing SOS Bridge"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:169
+msgid "SOS Bridge installed"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:170
+msgid "One time only · {size} from Flathub"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:174
+msgid "Installing SOS Bridge (Bottles)"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:200
+msgid "Not enough free space to install SOS Bridge."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:203 usr/local/bin/simpleos-windows-app:267
+msgid "Flathub can't be reached. Check your internet connection and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:205
+msgid "Installing apps needs an administrator's password."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:206
+msgid "SOS Bridge could not be installed. Details: {LOG}"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:217 usr/local/bin/simpleos-windows-app:314
+msgid "Windows program"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:226
+msgid "<b><big>{program} is a Windows program</big></b>"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:229
+msgid "Simple OS can try to run it with SOS Bridge – the free app Bottles with Wine, no Windows needed. Many Windows programs work, some don't (for example Microsoft 365, current Adobe apps and games with anti-cheat)."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:234
+msgid "Additional download required: SOS Bridge comes once from Flathub ({DOWNLOAD}). You can also install it later in the Software Center."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:241
+msgid "What works?"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:242
+msgid "Cancel"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:243
+msgid "Install SOS Bridge"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:258
+msgid "Try again"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:279
+msgid "Installing SOS Bridge – this takes a few minutes …"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:315
+msgid "The file does not exist."
+msgstr ""
+
+#: usr/local/sbin/simpleos-installer-restart:31
+msgid "Simple OS is installed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-installer-restart:32
+msgid ""
+"Remove the USB stick (or take out the disc) now.\n"
+"\n"
+"Then click “Restart now” – the computer starts your new Simple OS."
+msgstr ""
+
+#: usr/local/sbin/simpleos-installer-restart:140
+msgid "Restart now"
+msgstr ""
+
+#: usr/local/lib/simpleos/welcome-viewer:59
+msgid "You are running Simple OS in Live Mode! Try out everything safely or install it to your system."
+msgstr ""
+
+#: usr/local/lib/simpleos/welcome-viewer:60
+msgid "Install Simple OS Now"
+msgstr ""
+
+#: usr/local/lib/simpleos/welcome-viewer:99
+msgid "Live Mode"
+msgstr ""
+
+#: usr/local/lib/simpleos/welcome-viewer:160
+msgid "Simple OS"
+msgstr ""
+

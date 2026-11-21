@@ -4625,8 +4625,8 @@ check "progress-filter flatpak: speed/remaining time or weight for (partial) wro
        [ \"\$(printf '%s\n' \"\$out\" | grep '^PROGRESS' | tr '\n' '|')\" = 'PROGRESS: 14|PROGRESS: 52|' ] &&
        printf '%s\n' \"\$out\" | grep -qx 'STAGE: Downloading part 2 of 2 · 82 kB/s' && ! printf '%s\n' \"\$out\" | grep -q '1.7 kB/s'"
 check "Wizard/Software Center: PROGRESS with remaining text not readable (the bar would stand still)" \
-      "grep -q 'num, _, rest = line\[10:\].partition' /usr/local/bin/simpleos-welcome-wizard &&
-       grep -q 'num, _, rest = line\[10:\].partition' /usr/local/bin/simpleos-software-center"
+      "grep -q 'num, _sep, rest = line\[10:\].partition' /usr/local/bin/simpleos-welcome-wizard &&
+       grep -q 'num, _sep, rest = line\[10:\].partition' /usr/local/bin/simpleos-software-center"
 check "progress-filter apt: download/installation mapped wrong" \
       "[ \"\$(printf 'dlstatus:1:50:x\npmstatus:sl:50:y\nE: Failure\n' | $PF apt | tr '\n' '|')\" = 'STAGE: Downloading|PROGRESS: 20|STAGE: Installing|PROGRESS: 70|E: Failure|' ] &&
        [ \"\$(printf 'dlstatus:1:100:x\n' | $PF apt --dl 5 40 | grep PROGRESS)\" = 'PROGRESS: 40' ]"

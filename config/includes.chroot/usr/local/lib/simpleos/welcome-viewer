@@ -20,6 +20,10 @@ Exit 3 = WebKit/GTK not available or no screen -> simpleos-welcome takes the nex
 import os
 import subprocess
 import sys
+import gettext
+
+# Translations (#43): the system language from /usr/share/locale/<lang>/LC_MESSAGES/simpleos.mo, else English
+_ = gettext.translation("simpleos", fallback=True).gettext
 
 PAGE_DIR = "/usr/share/simpleos"
 DEFAULT_PAGE = PAGE_DIR + "/welcome.html"
@@ -52,8 +56,8 @@ if not os.path.isfile(page) or not page.startswith(PAGE_DIR + "/"):
     print(f"welcome-viewer: page not found: {page}", file=sys.stderr)
     sys.exit(UNAVAILABLE)
 
-LIVE_TEXT = "You are running Simple OS in Live Mode! Try out everything safely or install it to your system."
-INSTALL_LABEL = "Install Simple OS Now"
+LIVE_TEXT = _("You are running Simple OS in Live Mode! Try out everything safely or install it to your system.")
+INSTALL_LABEL = _("Install Simple OS Now")
 BANNER_CSS = b"""
 .live-banner { background-color: #cba6f7; padding: 14px 20px; }
 .live-banner label { color: #1e1e2e; }
@@ -92,7 +96,7 @@ def live_banner():
     box = Gtk.Box(spacing=18)
     box.get_style_context().add_class("live-banner")
     texts = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, valign=Gtk.Align.CENTER)
-    title = Gtk.Label(label="Live Mode", xalign=0)
+    title = Gtk.Label(label=_("Live Mode"), xalign=0)
     title.get_style_context().add_class("live-title")
     text = Gtk.Label(label=LIVE_TEXT, xalign=0, wrap=True)
     texts.pack_start(title, False, False, 0)
@@ -143,7 +147,7 @@ def on_decide_policy(_view, decision, decision_type):
 def window_title(path):
     """The welcome page: "Welcome to Simple OS"; other pages (help, #85): their <title>"""
     if path == DEFAULT_PAGE:
-        return "Welcome to Simple OS"
+        return _("Welcome to Simple OS")
     try:
         import html
         import re
@@ -153,7 +157,7 @@ def window_title(path):
             return html.unescape(m.group(1).strip())
     except OSError:
         pass
-    return "Simple OS"
+    return _("Simple OS")
 
 
 def main():

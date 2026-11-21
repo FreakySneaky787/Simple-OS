@@ -40,6 +40,10 @@ lb config \
 # Generate the branding graphics (Calamares, wallpaper, wizard logo, Plymouth, ISO boot menu) in the Catppuccin look
 python3 "$TOOLS/gen_branding.py" config/includes.chroot config/bootloaders/isolinux
 
+# Translations of Simple OS's own tools (#43): po/<lang>.po -> usr/share/locale/<lang>/LC_MESSAGES/simpleos.mo (in the
+# image and, through includes.chroot, in the edition package). Untranslated texts simply stay English.
+python3 "$TOOLS/i18n.py" build config/includes.chroot
+
 # fastfetch: not in bookworm/-backports -> the official upstream .deb (version + SHA256 fixed).
 # Cached in build/downloads so not every build downloads it again.
 FASTFETCH_VERSION=2.69.0

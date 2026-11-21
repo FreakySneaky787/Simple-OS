@@ -24,6 +24,15 @@ import sys
 import threading
 import time
 from pathlib import Path
+import gettext
+
+# Translations (#43): the system language from /usr/share/locale/<lang>/LC_MESSAGES/simpleos.mo, else English
+_ = gettext.translation("simpleos", fallback=True).gettext
+
+
+def N_(text):
+    """marks a text for translation (tools/i18n.py) that is translated later, where it is shown"""
+    return text
 
 CONFIG_DIR = Path.home() / ".config/simpleos"
 FLAG = CONFIG_DIR / "wizard-done"
@@ -48,36 +57,42 @@ gi.require_version("GdkPixbuf", "2.0")
 from gi.repository import Gdk, GdkPixbuf, GLib, Gtk  # noqa: E402
 
 BROWSERS = [
-    ("firefox-esr.desktop", "Firefox ESR", "Preinstalled. Stable and privacy-friendly."),
-    ("chromium.desktop", "Chromium", "Open-source base of Chrome. Installed from Debian (about 100 MB)."),
-    ("net.mullvad.MullvadBrowser.desktop", "Mullvad Browser", "Built for privacy. Installed from Flathub."),
+    ("firefox-esr.desktop", "Firefox ESR", _("Preinstalled. Stable and privacy-friendly.")),
+    ("chromium.desktop", "Chromium", _("Open-source base of Chrome. Installed from Debian (about 100 MB).")),
+    ("net.mullvad.MullvadBrowser.desktop", "Mullvad Browser", _("Built for privacy. Installed from Flathub.")),
 ]
 ACCENTS = [
     ("blue", "#89b4fa"), ("mauve", "#cba6f7"), ("pink", "#f5c2e7"),
     ("green", "#a6e3a1"), ("peach", "#fab387"), ("teal", "#94e2d5"),
 ]
+ACCENT_NAMES = {"blue": N_("Blue"), "mauve": N_("Mauve"), "pink": N_("Pink"), "green": N_("Green"),
+                "peach": N_("Peach"), "teal": N_("Teal")}
 # Office: (key, name, description, desktop ID for detection)
 OFFICE = [
-    ("libreoffice", "LibreOffice", "The classic: Writer, Calc, Impress and Draw. Installed from Debian.",
+    ("libreoffice", "LibreOffice", _("The classic: Writer, Calc, Impress and Draw. Installed from Debian."),
      "libreoffice-writer.desktop"),
-    ("onlyoffice", "ONLYOFFICE", "Modern alternative, very compatible with Microsoft Office. Installed from Flathub.",
+    ("onlyoffice", "ONLYOFFICE", _("Modern alternative, very compatible with Microsoft Office. Installed from Flathub."),
      "org.onlyoffice.desktopeditors.desktop"),
-    ("none", "Minimal", "No office suite. You can install one later from the Software Store.", None),
+    ("none", _("Minimal"), _("No office suite. You can install one later from the Software Store."), None),
 ]
 # Optional components (#126): (key, name, description, download, helper argument). All off by default; plain words,
 # no package names. The Software Center offers the same bundles under the same names.
 COMPONENTS = [
-    ("bridge", "SOS Bridge", "Run many Windows programs with Bottles and Wine – no Windows needed.",
-     "about 700 MB download", "--bridge"),
-    ("gaming", "Gaming Support", "Steam, Lutris and MangoHud with 32-bit support and game controllers. "
-     "GameMode is already built in.", "about 1 GB download", "--gaming"),
-    ("devtools", "Developer Tools", "Git, compilers, Python tools and the code editor VSCodium.",
-     "about 800 MB download", "--devtools"),
+    ("bridge", "SOS Bridge", _("Run many Windows programs with Bottles and Wine – no Windows needed."),
+     _("about 700 MB download"), "--bridge"),
+    ("gaming", _("Gaming Support"), _("Steam, Lutris and MangoHud with 32-bit support and game controllers. "
+     "GameMode is already built in."), _("about 1 GB download"), "--gaming"),
+    ("devtools", _("Developer Tools"), _("Git, compilers, Python tools and the code editor VSCodium."),
+     _("about 800 MB download"), "--devtools"),
 ]
 FIREFOX_ID = "firefox-esr.desktop"
 HELPER = "/usr/local/sbin/simpleos-system-setup"
 OFFICE_MENU = "/usr/local/lib/simpleos/office-menu"
-STEPS = ["Welcome", "Internet", "Browser", "Appearance", "Office", "Extras", "Apps"]
+# Step names stay English in STEPS (the code finds pages by them); shown translated: _(name)
+# Wrapped labels never wider than the fixed 760 px window – without a limit GTK asks for a label's full width in one
+# line, and a longer translation (German) made the window grow
+WRAP_CHARS = 70
+STEPS = [N_("Welcome"), N_("Internet"), N_("Browser"), N_("Appearance"), N_("Office"), N_("Extras"), N_("Apps")]
 NETWORK_PAGE = STEPS.index("Internet")
 EXTRAS_PAGE = STEPS.index("Extras")
 
@@ -121,10 +136,11 @@ def read_cpu():
     try:
         for line in Path("/proc/cpuinfo").read_text().splitlines():
             if line.startswith("model name"):
-                return f"{' '.join(line.split(':', 1)[1].split())} ({os.cpu_count()} threads)"
+                return _('{model} ({threads} threads)').format(model=' '.join(line.split(':', 1)[1].split()),
+                                                         threads=os.cpu_count())
     except OSError:
         pass
-    return f"{os.cpu_count()} threads"
+    return _('{threads} threads').format(threads=os.cpu_count())
 
 
 def read_memory():
@@ -140,17 +156,17 @@ def read_memory():
 def read_disk():
     usage = shutil.disk_usage("/")
     gib = 1024 ** 3
-    return f"{usage.free / gib:.0f} GiB free of {usage.total / gib:.0f} GiB"
+    return _('{free:.0f} GiB free of {total:.0f} GiB').format(free=usage.free / gib, total=usage.total / gib)
 
 
 def system_info():
     return [
-        ("System", read_os_name()),
-        ("Computer", socket.gethostname()),
-        ("Kernel", platform.release()),
-        ("Processor", read_cpu()),
-        ("Memory", read_memory()),
-        ("Storage", read_disk()),
+        (_("System"), read_os_name()),
+        (_("Computer"), socket.gethostname()),
+        (_("Kernel"), platform.release()),
+        (_("Processor"), read_cpu()),
+        (_("Memory"), read_memory()),
+        (_("Storage"), read_disk()),
     ]
 
 
@@ -296,40 +312,40 @@ def network_view(state, nets, other_network=False):
     current = next((n[0] for n in nets if n[3]), "")
     kind = state.get("kind")
     if kind == "wifi":
-        status = f"You're online – connected to {current or state.get('name') or 'Wi-Fi'}"
+        status = _("You're online – connected to {network}").format(network=current or state.get('name') or 'Wi-Fi')
     elif kind == "ethernet":
-        status = "You're online – connected with a network cable"
+        status = _("You're online – connected with a network cable")
     else:
-        status = "Not connected yet"
-    rows = [(ssid, "Connected" if in_use else signal_word(signal) + (" · needs password" if secured else " · open"),
+        status = _("Not connected yet")
+    rows = [(ssid, _("Connected") if in_use else signal_word(signal) + (_(" · needs password") if secured else _(" · open")),
              secured, in_use)
             for ssid, signal, secured, in_use in nets]
     show_list = has_wifi and radio and (not kind or other_network)
     if kind and not show_list:
-        hint = "Click Next to continue."
-        action = "Use a different network" if has_wifi and radio else None
+        hint = _("Click Next to continue.")
+        action = _("Use a different network") if has_wifi and radio else None
     elif not has_wifi:
-        hint = "This computer has no Wi-Fi. Plug in a network cable – it connects by itself."
-        action = "Check again"
+        hint = _("This computer has no Wi-Fi. Plug in a network cable – it connects by itself.")
+        action = _("Check again")
     elif not radio:
-        hint = "Wi-Fi is turned off. Click \"Turn on Wi-Fi\" to see the networks around you."
-        action = "Turn on Wi-Fi"
+        hint = _("Wi-Fi is turned off. Click \"Turn on Wi-Fi\" to see the networks around you.")
+        action = _("Turn on Wi-Fi")
     elif not rows:
-        hint = "No Wi-Fi networks found nearby. Move closer to your router and click \"Search again\"."
-        action = "Search again"
+        hint = _("No Wi-Fi networks found nearby. Move closer to your router and click \"Search again\".")
+        action = _("Search again")
     elif kind:
-        hint = "To switch, click another network, type its password if it needs one, then click Connect."
-        action = "Search again"
+        hint = _("To switch, click another network, type its password if it needs one, then click Connect.")
+        action = _("Search again")
     else:
-        hint = ("1. Click your Wi-Fi network.   2. Type its password (often on a sticker on your router).   "
-                "3. Click Connect.")
-        action = "Search again"
+        hint = (_("1. Click your Wi-Fi network.   2. Type its password (often on a sticker on your router).   "
+                "3. Click Connect."))
+        action = _("Search again")
     return {"status": status, "online": bool(kind), "hint": hint, "show_list": show_list,
             "rows": rows, "action": action}
 
 
 def signal_word(signal):
-    return "Strong signal" if signal >= 70 else "Good signal" if signal >= 40 else "Weak signal"
+    return _("Strong signal") if signal >= 70 else _("Good signal") if signal >= 40 else _("Weak signal")
 
 
 def saved_networks():
@@ -342,7 +358,7 @@ def connect_wifi(dev, ssid, password, secured=False):
     (otherwise NetworkManager would keep trying the old, wrong one)."""
     if DRYRUN:
         print(f"DRYRUN: nmcli device wifi connect {ssid} ifname {dev}", flush=True)
-        return True, f"Connected to {ssid}. You're online."
+        return True, _("Connected to {ssid}. You're online.").format(ssid=ssid)
     saved = ssid in saved_networks()
     if saved and password:
         # a new password for a saved network: delete the old profile, the connection below creates a new one
@@ -350,27 +366,27 @@ def connect_wifi(dev, ssid, password, secured=False):
         nmcli("connection", "delete", "id", ssid)
         saved = False
     if saved and nmcli("--wait", "20", "connection", "up", "id", ssid, timeout=40).returncode == 0:
-        return True, f"Connected to {ssid}. You're online."
+        return True, _("Connected to {ssid}. You're online.").format(ssid=ssid)
     cmd = ["--wait", "30", "device", "wifi", "connect", ssid, "ifname", dev]
     if password:
         cmd = ["--ask", *cmd]    # nmcli asks for the password and reads it from stdin
     result = nmcli(*cmd, timeout=60, input=f"{password}\n" if password else None)
     if result.returncode == 0:
-        return True, f"Connected to {ssid}. You're online."
+        return True, _("Connected to {ssid}. You're online.").format(ssid=ssid)
     print(f"simpleos-welcome-wizard: connect {ssid}: {result.stderr.strip()}", file=sys.stderr)
     if not saved:  # do not leave a failed, newly created profile behind
         nmcli("connection", "delete", "id", ssid)
     if password:
-        return False, "That didn't work. The password may be wrong – please check it and try again."
+        return False, _("That didn't work. The password may be wrong – please check it and try again.")
     if saved and secured:
-        return False, "That didn't work. The saved password may be wrong – please type the password and try again."
-    return False, "That didn't work. Move closer to your router and try again."
+        return False, _("That didn't work. The saved password may be wrong – please type the password and try again.")
+    return False, _("That didn't work. Move closer to your router and try again.")
 
 
 # ------------------------------------------------------------------ Window
 class Wizard(Gtk.Window):
     def __init__(self):
-        super().__init__(title="Simple OS Setup")
+        super().__init__(title=_("Simple OS Setup"))
         self.set_default_size(760, 540)
         self.set_resizable(False)
         self.set_position(Gtk.WindowPosition.CENTER)
@@ -401,7 +417,7 @@ class Wizard(Gtk.Window):
         steps = Gtk.Box(spacing=20, halign=Gtk.Align.CENTER, margin_top=18, margin_bottom=6)
         self.step_labels = []
         for i, name in enumerate(STEPS):
-            label = Gtk.Label(label=f"{i + 1}  {name}")
+            label = Gtk.Label(label=f"{i + 1}  {_(name)}")
             label.get_style_context().add_class("step")
             steps.pack_start(label, False, False, 0)
             self.step_labels.append(label)
@@ -419,15 +435,15 @@ class Wizard(Gtk.Window):
         # Footer
         footer = Gtk.Box(spacing=8)
         footer.get_style_context().add_class("footer")
-        self.skip_btn = Gtk.Button(label="Skip setup")
-        self.skip_btn.set_tooltip_text("Keep the defaults and don't show this again")
+        self.skip_btn = Gtk.Button(label=_("Skip setup"))
+        self.skip_btn.set_tooltip_text(_("Keep the defaults and don't show this again"))
         self.skip_btn.connect("clicked", self.on_skip)
         footer.pack_start(self.skip_btn, False, False, 0)
-        self.next_btn = Gtk.Button(label="Next")
+        self.next_btn = Gtk.Button(label=_("Next"))
         self.next_btn.get_style_context().add_class("suggested-action")
         self.next_btn.connect("clicked", self.on_next)
         footer.pack_end(self.next_btn, False, False, 0)
-        self.back_btn = Gtk.Button(label="Back")
+        self.back_btn = Gtk.Button(label=_("Back"))
         self.back_btn.connect("clicked", self.on_back)
         footer.pack_end(self.back_btn, False, False, 0)
         root.pack_end(footer, False, False, 0)
@@ -444,8 +460,8 @@ class Wizard(Gtk.Window):
         """Already online (cable, known Wi-Fi)? Then nobody needs the Internet step."""
         if state.get("kind") and self.page != NETWORK_PAGE:
             self.skip_network = True
-            self.step_labels[NETWORK_PAGE].set_text(f"{NETWORK_PAGE + 1}  {STEPS[NETWORK_PAGE]} \u2714")
-            self.step_labels[NETWORK_PAGE].set_tooltip_text("You're already online")
+            self.step_labels[NETWORK_PAGE].set_text(f"{NETWORK_PAGE + 1}  {_(STEPS[NETWORK_PAGE])} \u2714")
+            self.step_labels[NETWORK_PAGE].set_tooltip_text(_("You're already online"))
         return False
 
     # ------------------------------------------------------------ Helpers
@@ -458,7 +474,7 @@ class Wizard(Gtk.Window):
                       margin_start=48, margin_end=48, margin_top=18, margin_bottom=18)
         t = Gtk.Label(label=title, xalign=0)
         t.get_style_context().add_class("title")
-        s = Gtk.Label(label=subtitle, xalign=0, wrap=True)
+        s = Gtk.Label(label=subtitle, xalign=0, wrap=True, max_width_chars=WRAP_CHARS)
         s.get_style_context().add_class("subtitle")
         box.pack_start(t, False, False, 0)
         box.pack_start(s, False, False, 0)
@@ -472,14 +488,14 @@ class Wizard(Gtk.Window):
 
     @staticmethod
     def dim(text):
-        label = Gtk.Label(label=text, xalign=0, wrap=True)
+        label = Gtk.Label(label=text, xalign=0, wrap=True, max_width_chars=WRAP_CHARS)
         label.get_style_context().add_class("dim")
         return label
 
     # ------------------------------------------------------------ Pages
     def page_welcome(self):
-        box = self.page_box("Welcome to Simple OS",
-                            "Let's set up a few things. This takes less than a minute.")
+        box = self.page_box(_("Welcome to Simple OS"),
+                            _("Let's set up a few things. This takes less than a minute."))
         logo_path = Path("/usr/share/simpleos/logo.png")
         if logo_path.exists():
             pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(str(logo_path), 72, 72)
@@ -498,10 +514,10 @@ class Wizard(Gtk.Window):
         return box
 
     def page_network(self):
-        box = self.page_box("Connect to the internet",
-                            "The next steps download your browser and apps, so Simple OS needs the internet once.")
+        box = self.page_box(_("Connect to the internet"),
+                            _("The next steps download your browser and apps, so Simple OS needs the internet once."))
         card = self.card()
-        self.net_status = Gtk.Label(label="Checking your connection ...", xalign=0, wrap=True)
+        self.net_status = Gtk.Label(label=_("Checking your connection ..."), xalign=0, wrap=True, max_width_chars=WRAP_CHARS)
         self.net_status.get_style_context().add_class("option-name")
         card.pack_start(self.net_status, False, False, 0)
         self.net_hint = self.dim("")
@@ -519,23 +535,23 @@ class Wizard(Gtk.Window):
         self.net_password_label = Gtk.Label(xalign=0)
         card.pack_start(self.net_password_label, False, False, 0)
         row = Gtk.Box(spacing=8)
-        self.net_password = Gtk.Entry(visibility=False, placeholder_text="Wi-Fi password", hexpand=True)
+        self.net_password = Gtk.Entry(visibility=False, placeholder_text=_("Wi-Fi password"), hexpand=True)
         self.net_password.set_icon_from_icon_name(Gtk.EntryIconPosition.SECONDARY, "view-reveal-symbolic")
-        self.net_password.set_icon_tooltip_text(Gtk.EntryIconPosition.SECONDARY, "Show the password")
+        self.net_password.set_icon_tooltip_text(Gtk.EntryIconPosition.SECONDARY, _("Show the password"))
         self.net_password.connect("icon-press", lambda e, *_: e.set_visibility(not e.get_visibility()))
         self.net_password.connect("activate", self.on_network_connect)
         row.pack_start(self.net_password, True, True, 0)
-        self.net_connect_btn = Gtk.Button(label="Connect")
+        self.net_connect_btn = Gtk.Button(label=_("Connect"))
         self.net_connect_btn.connect("clicked", self.on_network_connect)
         row.pack_start(self.net_connect_btn, False, False, 0)
-        self.net_action_btn = Gtk.Button(label="Search again")  # also: "Turn on Wi-Fi", "Check again", ...
+        self.net_action_btn = Gtk.Button(label=_("Search again"))  # also: "Turn on Wi-Fi", "Check again", ...
         self.net_action_btn.connect("clicked", self.on_network_action)
         row.pack_end(self.net_action_btn, False, False, 0)
         card.pack_start(row, False, False, 0)
         self.net_card = card
         box.pack_start(card, True, True, 0)
-        self.net_later = self.dim("Not now? Just click Next. Later, click the network display in the taskbar "
-                                  "(bottom right) to connect.")
+        self.net_later = self.dim(_("Not now? Just click Next. Later, click the network display in the taskbar "
+                                  "(bottom right) to connect."))
         box.pack_start(self.net_later, False, False, 0)
         self.net_state = {}
         self.net_busy = False
@@ -549,7 +565,7 @@ class Wizard(Gtk.Window):
         if self.net_busy:
             return
         self.net_busy = True
-        self.net_status.set_text("Checking your connection ...")
+        self.net_status.set_text(_("Checking your connection ..."))
         self.net_action_btn.set_sensitive(False)
         self.net_connect_btn.set_sensitive(False)
 
@@ -604,7 +620,7 @@ class Wizard(Gtk.Window):
         self.net_password.set_visible(ask)
         self.net_password.set_visibility(False)
         self.net_password.set_text("")
-        self.net_password_label.set_text(f"Password for \u201c{ssid}\u201d:" if ask else "")
+        self.net_password_label.set_text(_('Password for “{ssid}”:').format(ssid=ssid) if ask else "")
         self.net_password_label.set_visible(ask)
         self.net_connect_btn.set_sensitive(bool(row) and not in_use and not self.net_busy)
         if ask:
@@ -620,11 +636,11 @@ class Wizard(Gtk.Window):
         dev = self.net_state["wifi"]
         password = self.net_password.get_text() if secured else ""
         if secured and not password and ssid not in saved_networks():
-            self.net_hint.set_text(f"Please type the password for \"{ssid}\", then click Connect.")
+            self.net_hint.set_text(_('Please type the password for "{ssid}", then click Connect.').format(ssid=ssid))
             self.net_password.grab_focus()
             return
         work = lambda: connect_wifi(dev, ssid, password, secured)  # noqa: E731
-        self.net_status.set_text(f"Connecting to {ssid} ...")
+        self.net_status.set_text(_('Connecting to {ssid} ...').format(ssid=ssid))
         self.net_busy = True
         self.net_connect_btn.set_sensitive(False)
         self.net_action_btn.set_sensitive(False)
@@ -638,7 +654,7 @@ class Wizard(Gtk.Window):
         self.net_busy = False
         then_next, self.net_then_next = self.net_then_next, False
         if ok:
-            self.net_message = message + " Click Next to continue."  # show_network shows it after reloading
+            self.net_message = message + _(" Click Next to continue.")  # show_network shows it after reloading
             self.net_other = False
             if then_next and self.page == NETWORK_PAGE:
                 self.go_to(NETWORK_PAGE + 1)
@@ -660,18 +676,18 @@ class Wizard(Gtk.Window):
             if not DRYRUN:
                 nmcli("radio", "wifi", "on")
             GLib.timeout_add_seconds(3, lambda: self.refresh_network(rescan="yes") and False)
-            self.net_status.set_text("Turning on Wi-Fi ...")
+            self.net_status.set_text(_("Turning on Wi-Fi ..."))
             return
         self.refresh_network(rescan="yes")
 
     def page_browser(self):
-        box = self.page_box("Choose your web browser",
-                            "Links and Super+B open this browser. Missing browsers are installed for you.")
+        box = self.page_box(_("Choose your web browser"),
+                            _("Links and Super+B open this browser. Missing browsers are installed for you."))
         self.firefox_note = self.dim("")  # before the radios: their "toggled" updates the hint
         card = self.card()
         group = None
         for desktop_id, name, desc in BROWSERS:
-            status = "installed" if is_installed(desktop_id) else "will be installed"
+            status = _("installed") if is_installed(desktop_id) else _("will be installed")
             radio = Gtk.RadioButton.new_from_widget(group)
             group = group or radio
             text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
@@ -685,28 +701,28 @@ class Wizard(Gtk.Window):
             card.pack_start(radio, False, False, 2)
         box.pack_start(card, False, False, 0)
         box.pack_start(self.firefox_note, False, False, 0)
-        box.pack_start(self.dim("You can change this later in Control Center → Apps."), False, False, 0)
+        box.pack_start(self.dim(_("You can change this later in Control Center → Apps.")), False, False, 0)
         return box
 
     def page_appearance(self):
-        box = self.page_box("Make it yours",
-                            "Pick a style for your apps and an accent color for menus, panel and windows.")
+        box = self.page_box(_("Make it yours"),
+                            _("Pick a style for your apps and an accent color for menus, panel and windows."))
         card = self.card()
-        mode_label = Gtk.Label(label="Apps", xalign=0)
+        mode_label = Gtk.Label(label=_("Apps"), xalign=0)
         mode_label.get_style_context().add_class("option-name")
         card.pack_start(mode_label, False, False, 0)
         modes = Gtk.Box(spacing=24)
-        dark = Gtk.RadioButton.new_with_label(None, "Dark")
-        light = Gtk.RadioButton.new_with_label_from_widget(dark, "Light")
+        dark = Gtk.RadioButton.new_with_label(None, _("Dark"))
+        light = Gtk.RadioButton.new_with_label_from_widget(dark, _("Light"))
         (light if self.mode == "light" else dark).set_active(True)
         dark.connect("toggled", self.on_mode, "dark")
         light.connect("toggled", self.on_mode, "light")
         modes.pack_start(dark, False, False, 0)
         modes.pack_start(light, False, False, 0)
         card.pack_start(modes, False, False, 0)
-        card.pack_start(self.dim("The panel, menus and terminal always stay dark."), False, False, 0)
+        card.pack_start(self.dim(_("The panel, menus and terminal always stay dark.")), False, False, 0)
 
-        accent_label = Gtk.Label(label="Accent color", xalign=0, margin_top=8)
+        accent_label = Gtk.Label(label=_("Accent color"), xalign=0, margin_top=8)
         accent_label.get_style_context().add_class("option-name")
         card.pack_start(accent_label, False, False, 0)
         swatches = Gtk.Box(spacing=12)
@@ -716,11 +732,11 @@ class Wizard(Gtk.Window):
             f".simpleos .swatch-{n} {{ background-color: {h}; }}" for n, h in ACCENTS).encode())
         Gtk.StyleContext.add_provider_for_screen(
             Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
-        for name, _ in ACCENTS:
+        for name, _hex in ACCENTS:
             swatch = Gtk.RadioButton.new_from_widget(group)
             group = group or swatch
             swatch.set_mode(False)  # draw as a button, without the radio circle
-            swatch.set_tooltip_text(name.capitalize())
+            swatch.set_tooltip_text(_(ACCENT_NAMES[name]))
             ctx = swatch.get_style_context()
             ctx.add_class("swatch")
             ctx.add_class(f"swatch-{name}")
@@ -751,29 +767,29 @@ class Wizard(Gtk.Window):
         return card
 
     def page_office(self):
-        box = self.page_box("Office suite",
-                            "Documents, spreadsheets and presentations. Pick one or keep the system minimal.")
+        box = self.page_box(_("Office suite"),
+                            _("Documents, spreadsheets and presentations. Pick one or keep the system minimal."))
 
         def status(key):
             desktop_id = dict((k, d) for k, _n, _s, d in OFFICE)[key]
             if not desktop_id:
                 return ""
-            return "installed" if is_installed(desktop_id) else "will be installed"
+            return _("installed") if is_installed(desktop_id) else _("will be installed")
         box.pack_start(self.option_card(OFFICE, self.office, lambda k: setattr(self, "office", k), status),
                        False, False, 0)
-        box.pack_start(self.dim("Already installed office apps are not removed."), False, False, 0)
+        box.pack_start(self.dim(_("Already installed office apps are not removed.")), False, False, 0)
         return box
 
     def page_components(self):
-        box = self.page_box("Optional components",
-                            "Add extras now or later in the Software Center. Nothing is installed unless you turn it on.")
+        box = self.page_box(_("Optional components"),
+                            _("Add extras now or later in the Software Center. Nothing is installed unless you turn it on."))
         card = self.card()
         self.component_switches = {}
         for key, name, desc, size, _arg in COMPONENTS:
             row = Gtk.Box(spacing=16)
             text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
             done = component_installed(key)
-            n = Gtk.Label(label=f"{name}   ·   {'installed' if done else size}", xalign=0)
+            n = Gtk.Label(label=f"{name}   ·   {_('installed') if done else size}", xalign=0)
             n.get_style_context().add_class("option-name")
             text.pack_start(n, False, False, 0)
             text.pack_start(self.dim(desc), False, False, 0)
@@ -785,16 +801,16 @@ class Wizard(Gtk.Window):
             card.pack_start(row, False, False, 4)
         box.pack_start(card, False, False, 0)
         self.components_note = self.dim("")
-        self.components_note.set_max_width_chars(90)   # wrap inside the fixed 760 px window instead of widening it
+        self.components_note.set_max_width_chars(WRAP_CHARS)   # wrap inside the fixed 760 px window instead of widening it
         box.pack_start(self.components_note, False, False, 0)
         links = Gtk.Box(spacing=12)
-        help_link = Gtk.LinkButton(uri="https://usebottles.com", label="What runs with SOS Bridge?",
+        help_link = Gtk.LinkButton(uri="https://usebottles.com", label=_("What runs with SOS Bridge?"),
                                    halign=Gtk.Align.START)
         help_link.connect("activate-link", lambda *_: run(["simpleos-windows-app", "--help-page"], wait=False) or True)
         links.pack_start(help_link, False, False, 0)
         box.pack_start(links, False, False, 0)
-        box.pack_start(self.dim("Gaming Support: by turning it on you accept the Steam license agreement "
-                                "(store.steampowered.com/subscriber_agreement)."), False, False, 0)
+        box.pack_start(self.dim(_("Gaming Support: by turning it on you accept the Steam license agreement "
+                                "(store.steampowered.com/subscriber_agreement).")), False, False, 0)
         self.update_components_note()
         return box
 
@@ -805,14 +821,15 @@ class Wizard(Gtk.Window):
 
     def update_components_note(self):
         if not self.online:
-            text = ("You're offline – connect to the internet (step 2) to add these now, "
-                    "or add them later in the Software Center.")
+            text = (_("You're offline – connect to the internet (step 2) to add these now, "
+                    "or add them later in the Software Center."))
         else:
             chosen = [name for key, name, *_ in COMPONENTS if self.components.get(key)]
             if not chosen:
-                text = "Nothing selected – you can add these later in the Software Center."
+                text = _("Nothing selected – you can add these later in the Software Center.")
             else:
-                text = f"Selected: {', '.join(chosen)} – additional downloads, installed at the end of the setup."
+                text = _('Selected: {components} – additional downloads, installed at the end of the '
+                         'setup.').format(components=', '.join(chosen))
         self.components_note.set_text(text)
 
     def components_checked(self, state):
@@ -828,18 +845,18 @@ class Wizard(Gtk.Window):
         return False
 
     def page_progress(self):
-        box = self.page_box("Installing your software",
-                            "You will be asked for your password once. Please keep this window open.")
+        box = self.page_box(_("Installing your software"),
+                            _("You will be asked for your password once. Please keep this window open."))
         card = self.card()
         row = Gtk.Box(spacing=12)
         self.spinner = Gtk.Spinner()
         row.pack_start(self.spinner, False, False, 0)
-        self.status_label = Gtk.Label(label="Starting ...", xalign=0, wrap=True)
+        self.status_label = Gtk.Label(label=_("Starting ..."), xalign=0, wrap=True, max_width_chars=WRAP_CHARS)
         self.status_label.get_style_context().add_class("option-name")
         row.pack_start(self.status_label, True, True, 0)
         card.pack_start(row, False, False, 0)
         # real progress (PROGRESS lines from simpleos-system-setup: apt and Flatpak), otherwise only the spinner
-        self.stage_label = Gtk.Label(label="", xalign=0, wrap=True)
+        self.stage_label = Gtk.Label(label="", xalign=0, wrap=True, max_width_chars=WRAP_CHARS)
         self.stage_label.get_style_context().add_class("dim-label")
         card.pack_start(self.stage_label, False, False, 0)
         self.bar = Gtk.ProgressBar(show_text=True, no_show_all=True)
@@ -850,42 +867,42 @@ class Wizard(Gtk.Window):
                                      wrap_mode=Gtk.WrapMode.CHAR)
         scroll = Gtk.ScrolledWindow(min_content_height=180)
         scroll.add(self.log_view)
-        expander = Gtk.Expander(label="Details")
+        expander = Gtk.Expander(label=_("Details"))
         expander.add(scroll)
         card.pack_start(expander, True, True, 0)
         box.pack_start(card, True, True, 0)
         return box
 
     def page_apps(self):
-        box = self.page_box("Get more apps",
-                            "The Software Store (Bazaar) gives you thousands of apps from Flathub.")
+        box = self.page_box(_("Get more apps"),
+                            _("The Software Store (Bazaar) gives you thousands of apps from Flathub."))
         card = self.card()
         row = Gtk.Box(spacing=16)
         text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-        n = Gtk.Label(label="Open the Software Store after setup", xalign=0)
+        n = Gtk.Label(label=_("Open the Software Store after setup"), xalign=0)
         n.get_style_context().add_class("option-name")
         text.pack_start(n, False, False, 0)
-        text.pack_start(self.dim("The store is downloaded once on first use (several hundred MB)."), False, False, 0)
+        text.pack_start(self.dim(_("The store is downloaded once on first use (several hundred MB).")), False, False, 0)
         row.pack_start(text, True, True, 0)
         switch = Gtk.Switch(valign=Gtk.Align.CENTER)
         switch.connect("notify::active", lambda sw, _p: setattr(self, "open_store", sw.get_active()))
         row.pack_end(switch, False, False, 0)
         card.pack_start(row, False, False, 0)
         box.pack_start(card, False, False, 0)
-        box.pack_start(self.dim("GNOME Software is also in the menu and works right away.\n"
-                                "Run this wizard again any time from Menu → Help → Setup Wizard."), False, False, 0)
+        box.pack_start(self.dim(_("GNOME Software is also in the menu and works right away.\n"
+                                "Run this wizard again any time from Menu → Help → Setup Wizard.")), False, False, 0)
         return box
 
     # --------------------------------------------------------- Navigation
     def go_to(self, index):
         self.page = max(0, min(index, len(STEPS) - 1))
         self.stack.set_visible_child(self.stack.get_children()[self.page])
-        self.status_label.set_text("Starting ...")
+        self.status_label.set_text(_("Starting ..."))
         for i, label in enumerate(self.step_labels):
             ctx = label.get_style_context()
             (ctx.add_class if i == self.page else ctx.remove_class)("active")
         self.back_btn.set_sensitive(self.page > 0)
-        self.next_btn.set_label("Finish" if self.page == len(STEPS) - 1 else "Next")
+        self.next_btn.set_label(_("Finish") if self.page == len(STEPS) - 1 else _("Next"))
         if self.page == NETWORK_PAGE:
             self.refresh_network()
         if self.page == EXTRAS_PAGE:
@@ -919,7 +936,7 @@ class Wizard(Gtk.Window):
         return self.browser != FIREFOX_ID and is_installed(FIREFOX_ID)
 
     def update_firefox_note(self):
-        self.firefox_note.set_text("Firefox ESR will be removed completely to free up space."
+        self.firefox_note.set_text(_("Firefox ESR will be removed completely to free up space.")
                                    if self.removes_firefox() else "")
 
     def on_mode(self, radio, mode):
@@ -979,7 +996,7 @@ class Wizard(Gtk.Window):
         self.helper_log = []
         self.stage_label.set_text("")
         self.bar.hide()
-        self.status_label.set_text("Waiting for your password ...")
+        self.status_label.set_text(_("Waiting for your password ..."))
         threading.Thread(target=self.run_helper, args=(["pkexec", HELPER, *args],), daemon=True).start()
 
     def run_helper(self, cmd):
@@ -1012,14 +1029,14 @@ class Wizard(Gtk.Window):
             return False                          # progress lines not into the detail log
         elif line.startswith("PROGRESS: "):
             # "PROGRESS: <percent> [<rest>]": rest = time left from the download speed (progress-filter, Flatpak)
-            num, _, rest = line[10:].partition(" ")
+            num, _sep, rest = line[10:].partition(" ")
             try:
                 pct = max(0, min(100, int(float(num))))
             except ValueError:
                 return False
             self.bar.set_fraction(pct / 100)
             rest = rest.strip()
-            left = f" · about {rest} left" if rest and pct < 100 else remaining_text(pct, self.step_t0)
+            left = _(' · about {rest} left').format(rest=rest) if rest and pct < 100 else remaining_text(pct, self.step_t0)
             self.bar.set_text(f"{pct}%{left}")
             self.bar.show()
             return False
@@ -1034,20 +1051,21 @@ class Wizard(Gtk.Window):
         for btn in (self.back_btn, self.next_btn, self.skip_btn):
             btn.set_sensitive(True)
         if code in (126, 127):  # pkexec: password dialog cancelled or not authorized
-            self.status_label.set_text("No password entered – nothing was installed or removed. "
-                                       "Click Finish to try again or Back to change your choices.")
-            self.next_btn.set_label("Finish")
+            self.status_label.set_text(_("No password entered – nothing was installed or removed. "
+                                       "Click Finish to try again or Back to change your choices."))
+            self.next_btn.set_label(_("Finish"))
             return False
         self.bar.hide()
         self.stage_label.set_text("")
         if code == 3:   # only optional components failed (#126): everything else is set up
-            missing = [line[17:].strip() for line in self.helper_log if line.startswith("OPTIONAL-FAILED: ")]
-            names = ", ".join(dict.fromkeys(missing)) or "an optional component"
-            self.status_label.set_text(f"Everything is set up – except {names}: it could not be installed "
-                                       "(no internet or not enough space?). You can add it later in the Software Center.")
+            # the helper names them in English ("Gaming Support"): the same texts as COMPONENTS, translated
+            missing = [_(line[17:].strip()) for line in self.helper_log if line.startswith("OPTIONAL-FAILED: ")]
+            names = ", ".join(dict.fromkeys(missing)) or _("an optional component")
+            self.status_label.set_text(_('Everything is set up – except {names}: it could not be installed (no internet or not enough '
+                                         'space?). You can add it later in the Software Center.').format(names=names))
             self.back_btn.set_sensitive(False)
             self.skip_btn.set_sensitive(False)
-            self.next_btn.set_label("Close")
+            self.next_btn.set_label(_("Close"))
             self.next_btn.disconnect_by_func(self.on_next)
             self.next_btn.connect("clicked", lambda _b: self.apply_user_settings())
             return False
@@ -1055,7 +1073,7 @@ class Wizard(Gtk.Window):
             self.status_label.set_text(failure_text(self.helper_log))
             self.back_btn.set_sensitive(False)
             self.skip_btn.set_sensitive(False)
-            self.next_btn.set_label("Close")
+            self.next_btn.set_label(_("Close"))
             self.next_btn.disconnect_by_func(self.on_next)
             self.next_btn.connect("clicked", lambda _b: self.apply_user_settings(done=False))
             return False
@@ -1083,21 +1101,21 @@ def remaining_text(pct, t0):
     if pct < 3 or pct >= 100:
         return ""
     left = (time.monotonic() - t0) * (100 - pct) / pct
-    return " · less than a minute left" if left < 60 else f" · about {int(left / 60 + 0.5)} min left"
+    return _(" · less than a minute left") if left < 60 else _(' · about {minutes} min left').format(minutes=int(left / 60 + 0.5))
 
 
 def failure_text(lines):
     """Error message by the actual cause – before, every error was "Check your internet connection"."""
     text = "\n".join(lines).lower()
-    again = " Run the wizard again from Menu → Help → Setup Wizard."
+    again = _(" Run the wizard again from Menu → Help → Setup Wizard.")
     if ("not enough free space" in text or "min-free-space" in text or "no space left" in text
             or "not enough disk space" in text):
-        return ("Some software could not be installed: not enough free space. In Live mode, apps are kept in "
-                "memory – install Simple OS first." + again)
+        return (_("Some software could not be installed: not enough free space. In Live mode, apps are kept in "
+                "memory – install Simple OS first.") + again)
     if any(k in text for k in ("could not resolve", "temporary failure resolving", "failed to fetch",
                                "could not connect", "network is unreachable", "timeout was reached")):
-        return "Some software could not be installed: no internet connection. Check your network." + again
-    return "Some software could not be installed (details below)." + again
+        return _("Some software could not be installed: no internet connection. Check your network.") + again
+    return _("Some software could not be installed (details below).") + again
 
 
 def main():

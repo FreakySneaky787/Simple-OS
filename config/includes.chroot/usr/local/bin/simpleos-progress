@@ -44,6 +44,10 @@ import stat
 import subprocess
 import sys
 import time
+import gettext
+
+# Translations (#43): the system language from /usr/share/locale/<lang>/LC_MESSAGES/simpleos.mo, else English
+_ = gettext.translation("simpleos", fallback=True).gettext
 
 TAG = "simpleos-progress"
 STROKE = 3          # arc and ring
@@ -98,7 +102,7 @@ APT_NOISE = re.compile(r"^(\(Reading database|Reading database|Unpacking |Prepar
 
 
 class State:
-    def __init__(self, title="Working", message="", percent=None, fixed_title=False):
+    def __init__(self, title=_("Working"), message="", percent=None, fixed_title=False):
         self.title, self.message, self.pct, self.remaining = title, message, percent, ""
         self.fixed = fixed_title  # --title given: the helpers' STEP texts (raw point names) do not replace it
         self.exit, self.started = None, False
@@ -373,7 +377,7 @@ def run_notify(args, st, src):
         pct = 100 if st.exit == 0 else int(st.pct or 0)
         body = st.title + (f"\n{st.message}" if st.message else "")
         if st.pct is not None or st.exit == 0:
-            body += f" · {pct}%" + (f" · {st.remaining} left" if st.remaining and st.exit is None else "")
+            body += f" · {pct}%" + (_(' · {remaining} left').format(remaining=st.remaining) if st.remaining and st.exit is None else "")
         cmd = ["notify-send", "-u", "low", "-c", "x-simpleos", "-a", args.app, "-i", args.icon_name, "-t", expire,
                "-h", f"string:x-dunst-stack-tag:{TAG}", "-h", f"int:value:{pct}", args.app, body]
         try:
@@ -551,7 +555,7 @@ def parse(argv=None):
 
 def main():
     args = parse()
-    st = State(args.title or "Working", args.message, args.percent, fixed_title=bool(args.title))
+    st = State(args.title or _("Working"), args.message, args.percent, fixed_title=bool(args.title))
     src = Source(args.follow)
     if not src.active:
         st.started = True  # nothing to read: show immediately

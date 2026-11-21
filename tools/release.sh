@@ -150,6 +150,8 @@ cmd_publish() {
     # next: its notice at the top of the README ("still being tested") must be gone first (docs/MAINTAINING.md, section 7)
     [ "$(head -n1 RELEASE_NOTES.md 2>/dev/null)" = "# Simple OS $v" ] ||
         die "RELEASE_NOTES.md is not about $v (first line must be '# Simple OS $v') – write the release text first"
+    # Every text of the tools translated (#43) – otherwise a German system shows English bits of this release
+    python3 tools/i18n.py check >/dev/null 2>&1 || die "translations incomplete – run ./tools/i18n.py check (and extract)"
     ! grep -q 'simpleos-next-branch' README.md ||
         die "README.md still has the notice of the branch next at the top – remove it, commit, push, then publish"
     # The next edition recognizes unchanged files by their versions in git – an edition from uncommitted files
