@@ -1,0 +1,217 @@
+#!/bin/sh
+# Simple OS – user accounts (root part of Control Center → Users, #68; called via pkexec, polkit action
+# org.simpleos.users: an administrator's password). Only fixed actions, every argument checked:
+#   simpleos-users-helper --create USER "FULL NAME" admin|standard   new account; the password comes as ONE line on
+#                                          stdin (never on the command line). Groups like an account from the
+#                                          installer (audio, video, printers, scanners, Bluetooth …), admin = sudo
+#   simpleos-users-helper --delete USER keep|remove   delete the account; keep = its home folder stays in /home
+#   simpleos-users-helper --name USER "FULL NAME"     change the full name
+#   simpleos-users-helper --password USER             set a new password (one line on stdin) – without the old one,
+#                                          so the account's keyring no longer opens at sign-in (the page says so)
+#   simpleos-users-helper --admin USER on|off         administrator (group sudo) or standard user
+#   simpleos-users-helper --picture USER FILE|none    account picture (PNG/JPEG, at most 5 MB) for the login screen –
+#                                          through AccountsService, so the greeter can show it (home folders of
+#                                          new accounts are private, the greeter cannot read ~/.face there)
+#   simpleos-users-helper --autologin USER|off        sign in automatically (LightDM); the installer's own
+#                                          autologin-user line in /etc/lightdm/lightdm.conf is commented out, since
+#                                          that file is read last and would always win
+# Rules: only people's accounts (UID_MIN..UID_MAX of /etc/login.defs with a login shell), never root or system users;
+# the last administrator can't be deleted or made a standard user; nobody deletes or demotes their own account here
+# (the caller = PKEXEC_UID); an account that is signed in is not deleted; nothing in the live session.
+# Exit: 0 ok, 1 error, 2 invalid call, 3 not allowed (last administrator / own account), 4 live session,
+#       5 the account is signed in, 6 the user name exists already. Errors also as "ERROR: <text>" on stderr.
+# Tests: SIMPLEOS_USERS_TEST=1 – passwd/group/login.defs/lightdm from $SIMPLEOS_USERS_ETC, the caller from
+# SIMPLEOS_USERS_CALLER, commands are printed ("RUN: …") instead of run; SIMPLEOS_USERS_SIGNED_IN lists signed-in users.
+set -u
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+TEST=${SIMPLEOS_USERS_TEST:-}
+ETC=/etc
+[ -n "$TEST" ] && ETC=${SIMPLEOS_USERS_ETC:?}
+LIGHTDM_CONF=$ETC/lightdm/lightdm.conf
+AUTOLOGIN_CONF=$ETC/lightdm/lightdm.conf.d/50-simpleos-autologin.conf
+# Groups of an account made by the installer (Calamares), the ones that exist here; administrators also get sudo
+ACCOUNT_GROUPS="cdrom floppy audio dip video plugdev netdev bluetooth lpadmin scanner"
+
+die() { echo "ERROR: $1" >&2; exit "${2:-1}"; }
+usage() { die "Usage: --create USER NAME admin|standard | --delete USER keep|remove | --name USER NAME | --password USER | --admin USER on|off | --picture USER FILE|none | --autologin USER|off" 2; }
+run() { if [ -n "$TEST" ]; then echo "RUN: $*"; else "$@"; fi; }
+
+[ "$(id -u)" -eq 0 ] || [ -n "$TEST" ] || die "must run as root (pkexec)"
+if [ -z "$TEST" ] && [ -x /usr/local/bin/simpleos-live ] && /usr/local/bin/simpleos-live --check; then
+    die "user accounts can only be changed on an installed system" 4
+fi
+
+defs() { awk -v k="$1" '$1 == k { print $2; exit }' "$ETC/login.defs" 2>/dev/null; }
+UID_MIN=$(defs UID_MIN); UID_MIN=${UID_MIN:-1000}
+UID_MAX=$(defs UID_MAX); UID_MAX=${UID_MAX:-60000}
+
+# A person's account: in passwd, UID in range, a real shell
+human() {
+    awk -F: -v u="$1" -v lo="$UID_MIN" -v hi="$UID_MAX" '
+        $1 == u && $3 >= lo && $3 <= hi && $7 !~ /(nologin|false)$/ { f = 1 } END { exit !f }' "$ETC/passwd"
+}
+exists() { awk -F: -v u="$1" '$1 == u { f = 1 } END { exit !f }' "$ETC/passwd" "$ETC/group"; }
+is_admin() {
+    awk -F: -v u="$1" '$1 == "sudo" { n = split($4, m, ","); for (i = 1; i <= n; i++) if (m[i] == u) f = 1 } END { exit !f }' \
+        "$ETC/group"
+}
+admins() {
+    awk -F: -v lo="$UID_MIN" -v hi="$UID_MAX" '
+        FILENAME ~ /passwd$/ { if ($3 >= lo && $3 <= hi && $7 !~ /(nologin|false)$/) h[$1] = 1; next }
+        $1 == "sudo" { n = split($4, m, ","); for (i = 1; i <= n; i++) if (m[i] in h) print m[i] }' "$ETC/passwd" "$ETC/group"
+}
+last_admin() { is_admin "$1" && [ "$(admins | grep -c .)" -le 1 ]; }
+caller() {
+    if [ -n "$TEST" ]; then echo "${SIMPLEOS_USERS_CALLER:-}"; return; fi
+    [ -n "${PKEXEC_UID:-}" ] && awk -F: -v id="$PKEXEC_UID" '$3 == id { print $1; exit }' "$ETC/passwd"
+}
+signed_in() {
+    if [ -n "$TEST" ]; then
+        case " ${SIMPLEOS_USERS_SIGNED_IN:-} " in *" $1 "*) return 0 ;; esac
+        return 1
+    fi
+    # a session of the account (logind keeps a user that just signed out listed for a moment – without sessions)
+    [ -n "$(loginctl show-user "$1" -p Sessions --value 2>/dev/null)" ] && return 0
+    pgrep -u "$1" >/dev/null 2>&1
+}
+valid_user() { printf '%s' "$1" | grep -qxE '[a-z][a-z0-9_-]{0,31}'; }
+# Full name: letters of any language, spaces, . ' - … – no ":" "," "=" (passwd/GECOS separators) or control characters
+valid_name() {
+    [ -n "$1" ] && [ "${#1}" -le 80 ] || return 1
+    printf '%s' "$1" | LC_ALL=C grep -q '[[:cntrl:]:,=]' && return 1
+    return 0
+}
+read_password() {
+    IFS= read -r pw || [ -n "${pw:-}" ] || die "no password given" 2
+    [ -n "$pw" ] || die "the password is empty" 2
+    printf '%s' "$pw" | LC_ALL=C grep -q '[[:cntrl:]]' && die "the password has control characters" 2
+    return 0
+}
+set_password() {   # USER (password in $pw)
+    if [ -n "$TEST" ]; then echo "RUN: chpasswd ($1)"; return 0; fi
+    printf '%s:%s\n' "$1" "$pw" | chpasswd
+}
+need_person() { valid_user "$1" && human "$1" || die "$1 is not a person's account on this computer" 2; }
+not_self() { [ "$1" != "$(caller)" ] || die "you can't $2 your own account here" 3; }
+
+# AccountsService: the object of an account (empty if the service is not there)
+as_user() {
+    busctl --json=short call org.freedesktop.Accounts /org/freedesktop/Accounts org.freedesktop.Accounts \
+        FindUserByName s "$1" 2>/dev/null | sed -n 's/.*"data":\["\([^"]*\)"\].*/\1/p'
+}
+
+# Autologin: who signs in by themselves now (the last file LightDM reads wins: conf.d in order, then lightdm.conf)
+autologin_user() {
+    for f in "$ETC"/lightdm/lightdm.conf.d/*.conf "$LIGHTDM_CONF"; do
+        [ -f "$f" ] && sed -n 's/^[[:space:]]*autologin-user[[:space:]]*=[[:space:]]*\(.*\)$/\1/p' "$f"
+    done | tail -n 1
+}
+set_autologin() {   # USER or "off"
+    if [ -f "$LIGHTDM_CONF" ] && grep -qE '^[[:space:]]*autologin-user(-timeout)?[[:space:]]*=' "$LIGHTDM_CONF"; then
+        run sed -i -E 's/^([[:space:]]*autologin-user(-timeout)?[[:space:]]*=.*)$/#\1   # Simple OS: see lightdm.conf.d\/50-simpleos-autologin.conf/' "$LIGHTDM_CONF"
+    fi
+    if [ "$1" = off ]; then
+        run rm -f "$AUTOLOGIN_CONF"
+        return 0
+    fi
+    if [ -n "$TEST" ]; then echo "RUN: write $AUTOLOGIN_CONF autologin-user=$1"; return 0; fi
+    mkdir -p "${AUTOLOGIN_CONF%/*}"
+    printf '# Simple OS – sign in automatically (Control Center → Users, #68)\n[Seat:*]\nautologin-user=%s\nautologin-user-timeout=0\n' \
+        "$1" > "$AUTOLOGIN_CONF.tmp" && mv -f "$AUTOLOGIN_CONF.tmp" "$AUTOLOGIN_CONF"
+}
+
+[ $# -ge 2 ] || usage
+action=$1 user=$2
+shift 2
+case "$action" in
+    --create)
+        [ $# -eq 2 ] || usage
+        name=$1 kind=$2
+        valid_user "$user" || die "the user name may only have small letters, digits, - and _ and must start with a letter" 2
+        valid_name "$name" || die "the full name is empty, too long or has : , =" 2
+        case "$kind" in admin|standard) ;; *) usage ;; esac
+        exists "$user" && die "the user name $user is taken already" 6
+        read_password
+        run adduser --quiet --disabled-password --comment "$name" "$user" || die "the account could not be created"
+        set_password "$user" || { run deluser --quiet --remove-home "$user"; die "the password could not be set"; }
+        for g in $ACCOUNT_GROUPS; do
+            awk -F: -v g="$g" '$1 == g { f = 1 } END { exit !f }' "$ETC/group" && run adduser --quiet "$user" "$g"
+        done
+        [ "$kind" = admin ] && run adduser --quiet "$user" sudo
+        exit 0 ;;
+    --delete)
+        [ $# -eq 1 ] || usage
+        need_person "$user"
+        case "$1" in keep|remove) ;; *) usage ;; esac
+        not_self "$user" delete
+        last_admin "$user" && die "$user is the last administrator" 3
+        signed_in "$user" && die "$user is signed in – sign them out first" 5
+        [ "$(autologin_user)" = "$user" ] && set_autologin off
+        if [ "$1" = remove ]; then run deluser --quiet --remove-home "$user"; else run deluser --quiet "$user"; fi ||
+            die "the account could not be deleted"
+        # AccountsService's files of the account (picture, settings) – it forgets the account by itself
+        run rm -f "/var/lib/AccountsService/users/$user" "/var/lib/AccountsService/icons/$user"
+        exit 0 ;;
+    --name)
+        [ $# -eq 1 ] || usage
+        need_person "$user"
+        valid_name "$1" || die "the full name is empty, too long or has : , =" 2
+        run chfn -f "$1" "$user" || die "the name could not be changed"
+        exit 0 ;;
+    --password)
+        [ $# -eq 0 ] || usage
+        need_person "$user"
+        read_password
+        set_password "$user" || die "the password could not be changed"
+        exit 0 ;;
+    --admin)
+        [ $# -eq 1 ] || usage
+        need_person "$user"
+        case "$1" in
+            on)  is_admin "$user" || run adduser --quiet "$user" sudo || die "could not make $user an administrator" ;;
+            off) is_admin "$user" || exit 0
+                 not_self "$user" "make a standard user of"
+                 last_admin "$user" && die "$user is the last administrator" 3
+                 run deluser --quiet "$user" sudo || die "could not make $user a standard user" ;;
+            *)   usage ;;
+        esac
+        exit 0 ;;
+    --picture)
+        [ $# -eq 1 ] || usage
+        need_person "$user"
+        file=$1
+        if [ "$file" != none ]; then
+            [ -f "$file" ] && [ -r "$file" ] || die "the picture can't be read" 2
+            [ "$(stat -c %s "$file")" -le 5000000 ] || die "the picture is bigger than 5 MB" 2
+            magic=$(od -An -tx1 -N4 "$file" | tr -d ' \n')
+            case "$magic" in 89504e47|ffd8ff*) ;; *) die "the picture is not a PNG or JPEG file" 2 ;; esac
+        fi
+        if [ -n "$TEST" ]; then echo "RUN: picture $user $file"; exit 0; fi
+        # A copy only root can change: the file the user picked could be swapped while AccountsService reads it
+        copy=
+        if [ "$file" != none ]; then
+            copy=$(mktemp /run/simpleos-picture.XXXXXX) || die "no temporary file"
+            cp "$file" "$copy" && chmod 0644 "$copy" || { rm -f "$copy"; die "the picture can't be read"; }
+        fi
+        obj=$(as_user "$user")
+        if [ -n "$obj" ] && busctl call org.freedesktop.Accounts "$obj" org.freedesktop.Accounts.User SetIconFile s "${copy:-}" >/dev/null 2>&1; then
+            rm -f "$copy"
+            exit 0
+        fi
+        # Without AccountsService: its files directly (it reads them when it starts)
+        mkdir -p /var/lib/AccountsService/icons /var/lib/AccountsService/users
+        if [ -n "$copy" ]; then
+            mv -f "$copy" "/var/lib/AccountsService/icons/$user" && chmod 0644 "/var/lib/AccountsService/icons/$user"
+            printf '[User]\nIcon=/var/lib/AccountsService/icons/%s\n' "$user" > "/var/lib/AccountsService/users/$user"
+        else
+            rm -f "/var/lib/AccountsService/icons/$user"
+            printf '[User]\nIcon=\n' > "/var/lib/AccountsService/users/$user"
+        fi
+        exit 0 ;;
+    --autologin)
+        [ $# -eq 0 ] || usage
+        if [ "$user" != off ]; then need_person "$user"; fi
+        set_autologin "$user" || die "automatic sign-in could not be changed"
+        exit 0 ;;
+    *) usage ;;
+esac

@@ -40,6 +40,7 @@ SYSTEM = [  # (key, name, icon, keywords incl. German synonyms for German speake
     ("sleep", "Sleep", "system-suspend", "sleep suspend standby ruhezustand", None),
     ("restart", "Restart", "system-reboot", "restart reboot neustart", "Restart now"),
     ("shutdown", "Shut down", "system-shutdown", "shut down shutdown power off poweroff herunterfahren", "Shut down now"),
+    ("switch", "Switch user", "system-switch-user", "switch user change user other account benutzer wechseln", None),
     ("logout", "Sign out", "system-log-out", "sign out log out logout abmelden", "Sign out now"),
 ]
 # Pages of the Control Center (1.1.2): "display settings" opens Control Center → Display, like Windows' search does.
@@ -68,6 +69,8 @@ SETTINGS = [
     ("storage", "Storage & backup settings", "drive-harddisk",
      "storage disk space clean backup restore point speicher festplatte sicherung wiederherstellung"),
     ("security", "Password & security settings", "security-high", "password security firewall passwort sicherheit"),
+    ("users", "User account settings", "system-users",
+     "users user accounts account add user administrator picture automatic login benutzer konto konten anmelden"),
     ("system", "System & update settings", "computer", "system about version updates drivers hardware info über"),
 ]
 
@@ -435,11 +438,18 @@ def run_system(key):
     # lock before sleeping – not in the live session (password unknown, like system-sleep/simpleos-lock)
     live = os.access(LIVE, os.X_OK) and subprocess.run([LIVE, "--check"], stdout=subprocess.DEVNULL,
                                                         stderr=subprocess.DEVNULL).returncode == 0
+    if key == "switch":
+        if live:
+            notify("Switching users is not available in Live Mode.")
+            return
+        os.environ.setdefault("XDG_SEAT_PATH", "/org/freedesktop/DisplayManager/Seat0")   # dm-tool finds LightDM by it
     ok = {"lock": lambda: first(*lock),
           "sleep": lambda: ((live or first(*lock)), first(["systemctl", "suspend"], ["loginctl", "suspend"]))[1],
           "restart": lambda: first(["systemctl", "reboot"], ["loginctl", "reboot"]),
           "shutdown": lambda: first(["systemctl", "poweroff"], ["loginctl", "poweroff"]),
-          "logout": lambda: first(["openbox", "--exit"])}[key]()
+          "logout": lambda: first(["openbox", "--exit"]),
+          # the login screen next to this session (#68); not in the live session: nobody else can sign in there
+          "switch": lambda: first(["dm-tool", "switch-to-greeter"])}[key]()
     if not ok:
         notify("That did not work. Please try again.", "critical")
 

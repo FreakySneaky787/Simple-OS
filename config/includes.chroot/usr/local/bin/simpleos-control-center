@@ -24,6 +24,10 @@ One window for all settings, the sections on the left, the page on the right:
                (locale-gen, /etc/default/locale, language packs), applies after signing out (#42)
   Storage & Backups  free space, simpleos-cleaner, disks (gnome-disks), restore points (simpleos-backup)
   Password & Security  password, firewall (ufw via the root helper)
+  Users        people's accounts with picture and type: add, delete (keep or delete the files), full name, picture,
+               password, administrator or standard user, sign in automatically, switch user (#68; root parts through
+               pkexec simpleos-users-helper, your own name/picture through AccountsService, your own password through
+               passwd in a pseudo terminal)
   System & Updates  Simple OS version, What's new (simpleos-whats-new), Software Updates, Hardware & Drivers
                (simpleos-drivers: graphics, Wi-Fi, CPU microcode; "Install Recommended Drivers"), Task Manager,
                Setup Wizard, report a problem (simpleos-report)
@@ -60,13 +64,14 @@ PAGES = [("wifi", "Wi-Fi", "network-wireless"), ("bluetooth", "Bluetooth", "blue
          ("datetime", "Date & Time", "preferences-system-time"),
          ("language", "Language & Region", "preferences-desktop-locale"),
          ("storage", "Storage & Backups", "drive-harddisk"), ("security", "Password & Security", "security-high"),
-         ("system", "System & Updates", "computer")]
+         ("users", "Users", "system-users"), ("system", "System & Updates", "computer")]
 GROUP_STARTS = {"sound", "input", "apps"}
 # Older names and what they open now (simpleos-control-center PAGE from scripts, taskbar clicks …)
 ALIASES = {"dnd": "notifications", "time": "datetime", "date": "datetime", "printer": "printers", "backup": "storage",
            "backups": "storage", "firewall": "security", "password": "security", "default-apps": "apps",
            "startup": "apps", "network": "wifi", "about": "system", "updates": "system",
-           "region": "language", "locale": "language", "formats": "language"}
+           "region": "language", "locale": "language", "formats": "language", "accounts": "users",
+           "user": "users"}
 WIZARD = "/usr/local/bin/simpleos-welcome-wizard"
 HELPER = "/usr/local/sbin/simpleos-system-setup"
 UFW_CONF = Path(os.environ.get("SIMPLEOS_UFW_CONF", "/etc/ufw/ufw.conf"))
@@ -1005,6 +1010,192 @@ def remove_startup(app_id):
 
 
 # ================================================================== Window
+# ------------------------------------------------------------------ Users (#68)
+USERS_HELPER = "/usr/local/sbin/simpleos-users-helper"
+USERS_ETC = Path(os.environ.get("SIMPLEOS_USERS_ETC", "/etc"))
+AS_ICONS = Path(os.environ.get("SIMPLEOS_AS_ICONS", "/var/lib/AccountsService/icons"))
+
+
+def _login_defs():
+    lo, hi = 1000, 60000
+    try:
+        for line in (USERS_ETC / "login.defs").read_text().splitlines():
+            parts = line.split()
+            if len(parts) >= 2 and parts[0] == "UID_MIN" and parts[1].isdigit():
+                lo = int(parts[1])
+            if len(parts) >= 2 and parts[0] == "UID_MAX" and parts[1].isdigit():
+                hi = int(parts[1])
+    except OSError:
+        pass
+    return lo, hi
+
+
+def users_list():
+    """People's accounts (like simpleos-users-helper): [{name, full, uid, home, admin}], sorted by full name"""
+    lo, hi = _login_defs()
+    try:
+        admins = set()
+        for line in (USERS_ETC / "group").read_text().splitlines():
+            f = line.split(":")
+            if len(f) >= 4 and f[0] == "sudo":
+                admins = set(filter(None, f[3].split(",")))
+        out = []
+        for line in (USERS_ETC / "passwd").read_text().splitlines():
+            f = line.split(":")
+            if len(f) < 7 or not f[2].isdigit() or not lo <= int(f[2]) <= hi:
+                continue
+            if f[6].endswith(("nologin", "false")):
+                continue
+            out.append({"name": f[0], "full": f[4].split(",")[0].strip() or f[0], "uid": int(f[2]), "home": f[5],
+                        "admin": f[0] in admins})
+    except OSError:
+        return []
+    return sorted(out, key=lambda u: u["full"].lower())
+
+
+def autologin_user():
+    """Who signs in automatically (the last file LightDM reads wins: lightdm.conf.d in order, then lightdm.conf)"""
+    files = sorted((USERS_ETC / "lightdm/lightdm.conf.d").glob("*.conf")) + [USERS_ETC / "lightdm/lightdm.conf"]
+    who = ""
+    for f in files:
+        try:
+            for line in f.read_text().splitlines():
+                m = re.match(r"\s*autologin-user\s*=\s*(\S*)\s*$", line)
+                if m:
+                    who = m.group(1)
+        except OSError:
+            continue
+    return who
+
+
+_TRANSLIT = {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss", "é": "e", "è": "e", "ê": "e", "à": "a", "á": "a", "â": "a",
+             "ç": "c", "ñ": "n", "ó": "o", "ò": "o", "ô": "o", "í": "i", "ì": "i", "ú": "u", "ù": "u", "ø": "o",
+             "å": "a", "æ": "ae", "œ": "oe"}
+
+
+def suggest_username(full, taken=()):
+    """'Anna Müller' -> 'anna'; taken -> 'anna2' … (small letters, digits, - and _, starts with a letter)"""
+    first = (full.strip().split() or [""])[0].lower()
+    base = re.sub(r"[^a-z0-9_-]", "", "".join(_TRANSLIT.get(c, c) for c in first))
+    base = re.sub(r"^[^a-z]+", "", base)[:28] or "user"
+    name, n = base, 2
+    while name in taken:
+        name, n = f"{base}{n}", n + 1
+    return name
+
+
+def valid_username(name):
+    return bool(re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", name))
+
+
+def valid_fullname(full):
+    return bool(full.strip()) and len(full) <= 80 and not re.search(r"[:,=\x00-\x1f\x7f]", full)
+
+
+def user_picture(user):
+    """Account picture: AccountsService's copy, else the account's own ~/.face (only readable for its owner)"""
+    for p in (AS_ICONS / user["name"], Path(user["home"]) / ".face"):
+        try:
+            if p.is_file() and os.access(p, os.R_OK) and p.stat().st_size > 0:
+                return str(p)
+        except OSError:
+            continue
+    return None
+
+
+def password_message(output):
+    """passwd's answer in plain words"""
+    text = output.lower()
+    if "authentication token manipulation" in text or "authentication failure" in text:
+        return "The current password is wrong."
+    if "too short" in text or "shorter than" in text or "longer password" in text:
+        return "The new password is too short – please use at least 8 characters."
+    if "too simple" in text or "bad password" in text or "palindrome" in text or "too similar" in text:
+        return "The new password is too simple or too close to the old one – please choose another one."
+    if "do not match" in text or "don't match" in text:
+        return "The two new passwords don't match."
+    return "The password could not be changed."
+
+
+def change_own_password(old, new, timeout=30):
+    """passwd in a pseudo terminal (it asks for the current password itself): (ok, message)"""
+    import pty
+    import select
+    import time
+    try:
+        pid, fd = pty.fork()
+    except OSError as err:
+        return False, str(err)
+    if pid == 0:   # child: English prompts and messages
+        os.environ.update(LC_ALL="C", LANG="C")
+        try:
+            os.execvp("passwd", ["passwd"])
+        finally:
+            os._exit(127)
+    answers, sent, out = [old, new, new], 0, b""
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        ready, _w, _x = select.select([fd], [], [], 0.5)
+        if fd not in ready:
+            continue
+        try:
+            data = os.read(fd, 4096)
+        except OSError:
+            break
+        if not data:
+            break
+        out += data
+        while sent < len(answers) and out.lower().count(b"password:") > sent:
+            os.write(fd, answers[sent].encode() + b"\n")
+            sent += 1
+    try:
+        os.close(fd)
+    except OSError:
+        pass
+    try:
+        _p, status = os.waitpid(pid, 0)
+    except ChildProcessError:
+        status = 1
+    text = out.decode(errors="replace")
+    ok = os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0
+    return ok, "" if ok else password_message(text)
+
+
+def accounts_set_own(method, value):
+    """Your own full name / picture through AccountsService (no password for your own data). True if it worked."""
+    try:
+        import gi
+        gi.require_version("Gio", "2.0")
+        from gi.repository import Gio, GLib
+        bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+        path = bus.call_sync("org.freedesktop.Accounts", "/org/freedesktop/Accounts", "org.freedesktop.Accounts",
+                             "FindUserByName", GLib.Variant("(s)", (os.environ.get("USER") or Path.home().name,)),
+                             GLib.VariantType("(o)"), Gio.DBusCallFlags.NONE, 5000, None).unpack()[0]
+        bus.call_sync("org.freedesktop.Accounts", path, "org.freedesktop.Accounts.User", method,
+                      GLib.Variant("(s)", (value,)), None, Gio.DBusCallFlags.NONE, 30000, None)
+        return True
+    except Exception:  # noqa: BLE001 – no AccountsService, not allowed … -> the caller uses the root helper
+        return False
+
+
+def square_picture(src, dst, size=256):
+    """Any picture -> a centred square PNG (size px) for the login screen. True if it worked."""
+    try:
+        import gi
+        gi.require_version("GdkPixbuf", "2.0")
+        from gi.repository import GdkPixbuf
+        pb = GdkPixbuf.Pixbuf.new_from_file(src)
+        pb = pb.apply_embedded_orientation() or pb
+        side = min(pb.get_width(), pb.get_height())
+        pb = pb.new_subpixbuf((pb.get_width() - side) // 2, (pb.get_height() - side) // 2, side, side)
+        pb = pb.scale_simple(size, size, GdkPixbuf.InterpType.BILINEAR)
+        pb.savev(dst, "png", [], [])
+        os.chmod(dst, 0o644)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def load_gtk():
     import gi
     gi.require_version("Gtk", "3.0")
@@ -2044,9 +2235,9 @@ def main(argv):
             self.clear()
             if not live_session():
                 self.put(card([("Password", "The password you sign in with",
-                                button("Change…", lambda: spawn(
-                                    "kitty", "--title", "Change password", "sh", "-c",
-                                    "passwd; printf '\\nPress Enter to close.'; read -r _")))]))
+                                button("Change…", lambda: own_password_dialog(self.win))),
+                               ("Users", "Add accounts, administrators, automatic sign-in",
+                                button("Open", lambda: self.win.open("users")))]))
             fw = Gtk.Switch(active=firewall_on())
             fw.connect("notify::active", self.set_firewall)
             self.put(card([("Firewall", "Blocks connections from other devices to this computer – "
@@ -2067,6 +2258,356 @@ def main(argv):
                     self.win.error("The firewall could not be changed.")
                 self.refresh()
             bg(lambda: cmd("pkexec", HELPER, "--firewall", "on" if want else "off", timeout=120), done)
+
+    def users_helper(*args, password=None):
+        """pkexec simpleos-users-helper …; the password (if any) as one line on stdin. CompletedProcess."""
+        try:
+            return subprocess.run(["pkexec", USERS_HELPER, *args], input=(password + "\n") if password is not None
+                                  else None, capture_output=True, text=True, timeout=180)
+        except (OSError, subprocess.TimeoutExpired) as err:
+            return subprocess.CompletedProcess(args, 1, "", f"ERROR: {err}")
+
+    def helper_failed(res, what):
+        """None if it worked or the password dialog was cancelled, else the message to show"""
+        rc = getattr(res, "returncode", 1)
+        if rc in (0, 126, 127):
+            return None
+        for line in (getattr(res, "stderr", "") or "").splitlines():
+            if line.startswith("ERROR: "):
+                text = line[7:].strip()
+                return f"{what}: {text[0].upper() + text[1:]}." if text else what + "."
+        return what + "."
+
+    def password_entry(placeholder):
+        e = Gtk.Entry(visibility=False, placeholder_text=placeholder, activates_default=True)
+        e.set_input_purpose(Gtk.InputPurpose.PASSWORD)
+        return e
+
+    def own_password_dialog(parent):
+        """Change your own password: passwd asks for the current one (also for the keyring: libpam-gnome-keyring
+        changes the keyring's password along with it)"""
+        d = Gtk.Dialog(title="Change your password", transient_for=parent, modal=True)
+        d.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Change", Gtk.ResponseType.OK)
+        d.set_default_response(Gtk.ResponseType.OK)
+        box = d.get_content_area()
+        box.set_spacing(8)
+        box.set_border_width(14)
+        old, new, again = password_entry("Current password"), password_entry("New password"), password_entry("Repeat the new password")
+        msg = label("", wrap=True)
+        for w in (label("Use at least 8 characters. Your keyring (saved passwords) keeps working with the new one."),
+                  old, new, again, msg):
+            box.add(w)
+        d.show_all()
+        while True:
+            if d.run() != Gtk.ResponseType.OK:
+                break
+            if not old.get_text() or not new.get_text():
+                msg.set_markup("<b>Please fill in all fields.</b>")
+                continue
+            if new.get_text() != again.get_text():
+                msg.set_markup("<b>The two new passwords don't match.</b>")
+                continue
+            d.set_sensitive(False)
+            msg.set_text("Changing the password …")
+            result = {}
+
+            def work():
+                return change_own_password(old.get_text(), new.get_text())
+
+            loop = GLib.MainLoop()
+
+            def done(res):
+                result["res"] = res
+                loop.quit()
+            bg(work, done)
+            loop.run()            # wait for the background thread, the window keeps drawing
+            d.set_sensitive(True)
+            ok, text = result["res"] if isinstance(result.get("res"), tuple) else (False, "The password could not be changed.")
+            if ok:
+                d.destroy()
+                info = Gtk.MessageDialog(transient_for=parent, modal=True, message_type=Gtk.MessageType.INFO,
+                                         buttons=Gtk.ButtonsType.OK, text="Your password was changed.")
+                info.run()
+                info.destroy()
+                return True
+            msg.set_markup(f"<b>{GLib.markup_escape_text(text)}</b>")
+        d.destroy()
+        return False
+
+    class UsersPage(Page):
+        title = "Users"
+
+        def avatar(self, user, size):
+            pic = user_picture(user)
+            if pic:
+                try:
+                    from gi.repository import GdkPixbuf
+                    return Gtk.Image.new_from_pixbuf(GdkPixbuf.Pixbuf.new_from_file_at_scale(pic, size, size, True))
+                except Exception:  # noqa: BLE001 – a broken picture: the default one
+                    pass
+            img = Gtk.Image.new_from_icon_name("avatar-default", Gtk.IconSize.DIALOG)
+            img.set_pixel_size(size)
+            return img
+
+        def refresh(self):
+            self.clear()
+            self.users = users_list()
+            self.me = os.environ.get("USER") or Path.home().name
+            self.live = live_session()
+            auto = autologin_user()
+            if self.live:
+                self.note("This is the live session – user accounts can be managed once Simple OS is installed.")
+            lst = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+            lst.get_style_context().add_class("frame")
+            for u in self.users:
+                row = Gtk.Box(spacing=12, margin=10)
+                row.pack_start(self.avatar(u, 40), False, False, 0)
+                texts = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, valign=Gtk.Align.CENTER)
+                texts.pack_start(label(u["full"] + ("  (you)" if u["name"] == self.me else "")), False, False, 0)
+                sub = f'{u["name"]} · {"Administrator" if u["admin"] else "Standard user"}'
+                if u["name"] == auto:
+                    sub += " · signs in automatically"
+                texts.pack_start(label(sub, dim=True), False, False, 0)
+                row.pack_start(texts, True, True, 0)
+                if not self.live:
+                    b = button("Change…", lambda user=u: self.edit(user))
+                    b.set_valign(Gtk.Align.CENTER)
+                    row.pack_end(b, False, False, 0)
+                lst.add(row)
+            self.put(lst)
+            if not self.live:
+                actions = Gtk.Box(spacing=8)
+                actions.pack_start(button("Add a user…", self.add_user, "suggested-action"), False, False, 0)
+                if len(self.users) > 1:
+                    actions.pack_start(button("Switch user", self.switch_user), False, False, 0)
+                self.put(actions)
+                combo = Gtk.ComboBoxText()
+                combo.append("off", "Off")
+                for u in self.users:
+                    combo.append(u["name"], u["full"])
+                combo.set_active_id(auto if any(u["name"] == auto for u in self.users) else "off")
+                combo.connect("changed", self.set_autologin)
+                self.put(card([("Sign in automatically", "Start without the login screen. Anyone who turns on this "
+                                "computer gets in, and the keyring (saved passwords) asks for its password once.",
+                                combo)]))
+            self.note("Administrators can install apps and change settings for everyone. Standard users use the "
+                      "computer and change their own settings – for everything else they need an administrator's "
+                      "password.")
+            self.show_all_now()
+
+        def run_helper(self, what, *args, password=None, then=None):
+            """In the background; afterwards an error (if any) and a fresh page"""
+            def done(res):
+                text = helper_failed(res, what)
+                if text:
+                    self.win.error(text)
+                if then and not text and getattr(res, "returncode", 1) == 0:
+                    then()
+                self.refresh()
+            bg(lambda: users_helper(*args, password=password), done)
+
+        def set_autologin(self, combo):
+            who = combo.get_active_id() or "off"
+            if who == (autologin_user() or "off"):
+                return
+            self.run_helper("Automatic sign-in could not be changed", "--autologin", who)
+
+        def switch_user(self):
+            env = dict(os.environ)
+            env.setdefault("XDG_SEAT_PATH", "/org/freedesktop/DisplayManager/Seat0")
+            try:
+                subprocess.Popen(["dm-tool", "switch-to-greeter"], env=env, start_new_session=True,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except OSError:
+                self.win.error("Could not switch to the login screen.")
+
+        def add_user(self):
+            d = Gtk.Dialog(title="Add a user", transient_for=self.win, modal=True)
+            d.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Add", Gtk.ResponseType.OK)
+            d.set_default_response(Gtk.ResponseType.OK)
+            d.set_default_size(420, -1)
+            box = d.get_content_area()
+            box.set_spacing(8)
+            box.set_border_width(14)
+            full = Gtk.Entry(placeholder_text="Full name, e.g. Anna Müller", activates_default=True)
+            uname = Gtk.Entry(placeholder_text="User name", activates_default=True)
+            pw, pw2 = password_entry("Password"), password_entry("Repeat the password")
+            standard = Gtk.RadioButton.new_with_label(None, "Standard user – uses the computer, changes own settings")
+            admin = Gtk.RadioButton.new_with_label_from_widget(standard, "Administrator – can install apps and change "
+                                                                         "settings for everyone")
+            msg = label("")
+            taken = {u["name"] for u in self.users}
+            edited = {"name": False}
+            full.connect("changed", lambda e: edited["name"] or uname.set_text(suggest_username(e.get_text(), taken)))
+            uname.connect("key-press-event", lambda *_: edited.__setitem__("name", True) or False)
+            for w in (label("Name"), full, label("User name (for signing in, small letters)", dim=True), uname,
+                      label("Password"), pw, pw2, label("Account type"), standard, admin, msg):
+                box.add(w)
+            d.show_all()
+            while d.run() == Gtk.ResponseType.OK:
+                name, user = full.get_text().strip(), uname.get_text().strip()
+                problem = (None if valid_fullname(name) else "Please type a name (without : , =).") or \
+                          (None if valid_username(user) else "The user name may only have small letters, digits, "
+                                                             "- and _, and must start with a letter.") or \
+                          (None if user not in taken else f"The user name {user} is taken already.") or \
+                          (None if pw.get_text() else "Please choose a password.") or \
+                          (None if pw.get_text() == pw2.get_text() else "The two passwords don't match.")
+                if problem:
+                    msg.set_markup(f"<b>{GLib.markup_escape_text(problem)}</b>")
+                    continue
+                d.destroy()
+                self.run_helper("The account could not be created", "--create", user, name,
+                                "admin" if admin.get_active() else "standard", password=pw.get_text())
+                return
+            d.destroy()
+
+        def edit(self, u):
+            me = u["name"] == self.me
+            last_admin = u["admin"] and sum(x["admin"] for x in self.users) <= 1
+            d = Gtk.Dialog(title=u["full"], transient_for=self.win, modal=True)
+            d.add_buttons("Close", Gtk.ResponseType.CLOSE)
+            d.set_default_size(440, -1)
+            box = d.get_content_area()
+            box.set_spacing(10)
+            box.set_border_width(14)
+
+            after = {}
+
+            def close_then(fn):
+                """the action runs once the dialog is closed (it may open its own dialog)"""
+                return lambda *_: (after.setdefault("fn", fn), d.response(Gtk.ResponseType.CLOSE))
+
+            head = Gtk.Box(spacing=12)
+            head.pack_start(self.avatar(u, 64), False, False, 0)
+            pics = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, valign=Gtk.Align.CENTER)
+            pics.pack_start(button("Choose a picture…", close_then(lambda: self.choose_picture(u))), False, False, 0)
+            if user_picture(u):
+                pics.pack_start(button("Remove the picture", close_then(lambda: self.set_picture(u, None))), False, False, 0)
+            head.pack_start(pics, False, False, 0)
+            box.add(head)
+
+            name = Gtk.Entry(text=u["full"], activates_default=False)
+            save = button("Save", close_then(lambda: self.set_name(u, name.get_text().strip())))
+            row = Gtk.Box(spacing=8)
+            row.pack_start(name, True, True, 0)
+            row.pack_start(save, False, False, 0)
+            box.add(label("Full name"))
+            box.add(row)
+
+            kind = Gtk.ComboBoxText()
+            kind.append("admin", "Administrator")
+            kind.append("standard", "Standard user")
+            kind.set_active_id("admin" if u["admin"] else "standard")
+            kind.set_sensitive(not me and not last_admin)
+            kind.connect("changed", lambda c: close_then(lambda: self.run_helper(
+                "The account type could not be changed", "--admin", u["name"],
+                "on" if c.get_active_id() == "admin" else "off"))())
+            box.add(label("Account type"))
+            box.add(kind)
+            if me or last_admin:
+                box.add(label("You can't make your own account a standard user here." if me else
+                              "This is the only administrator – make another account an administrator first.", dim=True))
+
+            pwb = button("Change password…", close_then(lambda: own_password_dialog(self.win) if me
+                                                         else self.set_password(u)))
+            pwb.set_halign(Gtk.Align.START)
+            box.add(pwb)
+            if not me:
+                delete = button("Delete this account…", close_then(lambda: self.delete(u)), "destructive-action")
+                delete.set_halign(Gtk.Align.START)
+                delete.set_sensitive(not last_admin)
+                box.add(delete)
+            d.show_all()
+            d.run()
+            d.destroy()
+            if "fn" in after:
+                after["fn"]()
+
+        def set_name(self, u, full):
+            if full == u["full"] or not full:
+                return
+            if not valid_fullname(full):
+                return self.win.error("Please type a name without : , =")
+            if u["name"] == self.me and accounts_set_own("SetRealName", full):
+                return self.refresh()
+            self.run_helper("The name could not be changed", "--name", u["name"], full)
+
+        def choose_picture(self, u):
+            fc = Gtk.FileChooserDialog(title="Choose a picture", transient_for=self.win,
+                                       action=Gtk.FileChooserAction.OPEN)
+            fc.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Choose", Gtk.ResponseType.OK)
+            filt = Gtk.FileFilter()
+            filt.set_name("Pictures")
+            for pattern in ("*.png", "*.jpg", "*.jpeg", "*.PNG", "*.JPG", "*.JPEG", "*.webp", "*.gif"):
+                filt.add_pattern(pattern)
+            fc.add_filter(filt)
+            pictures = Path.home() / "Pictures"
+            if pictures.is_dir():
+                fc.set_current_folder(str(pictures))
+            ok = fc.run() == Gtk.ResponseType.OK
+            src = fc.get_filename()
+            fc.destroy()
+            if ok and src:
+                self.set_picture(u, src)
+
+        def set_picture(self, u, src):
+            import tempfile
+            if src is None:
+                if u["name"] == self.me and accounts_set_own("SetIconFile", ""):
+                    return self.refresh()
+                return self.run_helper("The picture could not be removed", "--picture", u["name"], "none")
+            fd, tmp = tempfile.mkstemp(prefix="simpleos-picture-", suffix=".png")
+            os.close(fd)
+            if not square_picture(src, tmp):
+                os.unlink(tmp)
+                return self.win.error("This picture can't be used. Please choose a PNG or JPEG picture.")
+            if u["name"] == self.me and accounts_set_own("SetIconFile", tmp):
+                os.unlink(tmp)
+                return self.refresh()
+            self.run_helper("The picture could not be changed", "--picture", u["name"], tmp,
+                            then=lambda: os.path.exists(tmp) and os.unlink(tmp))
+
+        def set_password(self, u):
+            d = Gtk.Dialog(title=f"New password for {u['full']}", transient_for=self.win, modal=True)
+            d.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Set password", Gtk.ResponseType.OK)
+            d.set_default_response(Gtk.ResponseType.OK)
+            box = d.get_content_area()
+            box.set_spacing(8)
+            box.set_border_width(14)
+            pw, pw2 = password_entry("New password"), password_entry("Repeat the new password")
+            msg = label("")
+            for w in (label(f"{u['full']} signs in with this password from now on. Their keyring (passwords saved in "
+                            "the browser and apps) keeps the old password: they will be asked for it once, or can "
+                            "start a new keyring.", wrap=True), pw, pw2, msg):
+                box.add(w)
+            d.show_all()
+            while d.run() == Gtk.ResponseType.OK:
+                if not pw.get_text() or pw.get_text() != pw2.get_text():
+                    msg.set_markup("<b>" + ("Please type the password twice." if not pw.get_text() else
+                                            "The two passwords don't match.") + "</b>")
+                    continue
+                d.destroy()
+                self.run_helper("The password could not be changed", "--password", u["name"], password=pw.get_text())
+                return
+            d.destroy()
+
+        def delete(self, u):
+            d = Gtk.Dialog(title=f"Delete {u['full']}?", transient_for=self.win, modal=True)
+            d.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Delete", Gtk.ResponseType.OK)
+            d.get_widget_for_response(Gtk.ResponseType.OK).get_style_context().add_class("destructive-action")
+            box = d.get_content_area()
+            box.set_spacing(8)
+            box.set_border_width(14)
+            keep = Gtk.RadioButton.new_with_label(None, f"Keep their files (in {u['home']})")
+            remove = Gtk.RadioButton.new_with_label_from_widget(keep, "Delete their files too – this can't be undone")
+            for w in (label(f"{u['full']} can no longer sign in to this computer."), keep, remove):
+                box.add(w)
+            d.show_all()
+            ok = d.run() == Gtk.ResponseType.OK
+            gone = remove.get_active()
+            d.destroy()
+            if ok:
+                self.run_helper("The account could not be deleted", "--delete", u["name"], "remove" if gone else "keep")
 
     class SystemPage(Page):
         title = "System & Updates"
@@ -2160,7 +2701,7 @@ def main(argv):
             self.pages = {}
             classes = {"system": SystemPage, "notifications": NotificationsPage, "keyboard": KeyboardPage,
                        "printers": PrintersPage, "apps": AppsPage, "datetime": DateTimePage, "storage": StoragePage,
-                       "security": SecurityPage, "language": LanguagePage,
+                       "security": SecurityPage, "language": LanguagePage, "users": UsersPage,
                        "sound": SoundPage, "display": DisplayPage, "wifi": WifiPage, "bluetooth": BluetoothPage,
                        "appearance": AppearancePage, "input": InputPage, "power": PowerPage}
             for key, title, icon in PAGES:

@@ -1181,6 +1181,10 @@ hcase "$P" "Sleep in the live session does not lock (password unknown)" "" "SIMP
 hcase "$P" "Restart" "" "" "2" 'grep -qx "systemctl reboot" $S/power'
 hcase "$P" "Shut down" "" "" "3" 'grep -qx "systemctl poweroff" $S/power'
 hcase "$P" "Sign out" "" "" "4" 'grep -qx "openbox --exit" $S/power'
+# #68: "Switch user" only when another person has an account here, never in the live session
+hcase "$P" "Switch user with a second account" "" "SIMPLEOS_OTHER_USERS=1 SIMPLEOS_LIVE=0" "4" \
+    '[ "$(row 0 5)" = "Switch user" ] && [ "$(row 0 6)" = "Sign out" ] && grep -qx "dm-tool switch-to-greeter" $S/power'
+hcase "$P" "Switch user in the live session" "" "SIMPLEOS_OTHER_USERS=1 SIMPLEOS_LIVE=1" "-" '! grep -q "Switch user" $S/rofi.0'
 hcase "$P" "Restart fails -> notification" "" "POWER_RC=1" "2" 'grep -q "could not restart" $S/notify'
 hcase "$P" "Lock without dm-tool -> loginctl" "dm-tool" "SIMPLEOS_LIVE=0" "0" 'grep -qx "loginctl lock-session" $S/power'
 hcase "$P" "rofi missing -> notification" "rofi" "" "" 'grep -q "Right-click the desktop" $S/notify'
@@ -3657,6 +3661,46 @@ check "DND: launcher missing/wrong" \
 check "DND: Control Center switch missing" \
       "grep -qF '(\"Do Not Disturb\", \"Pause notifications until you turn it off\", dnd)' /usr/local/bin/simpleos-control-center &&
        grep -qF 'cmd(\"simpleos-dnd\", \"--status\")' /usr/local/bin/simpleos-control-center"
+# #68: user accounts – root helper (test mode: own passwd/group, commands only printed), polkit action, CC page
+UH=/usr/local/sbin/simpleos-users-helper
+UPOL=/usr/share/polkit-1/actions/org.simpleos.users.policy
+check "Users: helper missing/syntax error or polkit action wrong" \
+      "[ -x $UH ] && sh -n $UH && python3 -c 'import sys, xml.etree.ElementTree as E
+a = E.parse(sys.argv[1]).getroot().find(\"action\")
+assert a.get(\"id\") == \"org.simpleos.users\" and a.find(\"annotate\").text == \"/usr/local/sbin/simpleos-users-helper\"
+assert a.find(\"defaults\").findtext(\"allow_active\") == \"auth_admin_keep\"' $UPOL"
+ue=$(mktemp -d)
+mkdir -p "$ue/lightdm/lightdm.conf.d"
+printf 'root:x:0:0:root:/root:/bin/bash\nlightdm:x:110:115::/var/lib/lightdm:/bin/false\npax:x:1000:1000:Pax,,,:/home/pax:/bin/bash\nanna:x:1001:1001:Anna:/home/anna:/bin/bash\nsvc:x:1002:1002::/home/svc:/usr/sbin/nologin\n' > "$ue/passwd"
+printf 'root:x:0:\nsudo:x:27:pax\naudio:x:29:pax\nlpadmin:x:113:pax\npax:x:1000:\nanna:x:1001:\n' > "$ue/group"
+printf 'UID_MIN 1000\nUID_MAX 60000\n' > "$ue/login.defs"
+printf '[Seat:*]\nautologin-user=pax\n' > "$ue/lightdm/lightdm.conf"
+uh() { env SIMPLEOS_USERS_TEST=1 SIMPLEOS_USERS_ETC="$ue" SIMPLEOS_USERS_CALLER=pax "$@" > "$ue/out" 2>&1; }
+check "Users: new account not created with its groups (password via stdin, never on the command line)" \
+      "echo secret | uh $UH --create bob 'Bob Müller' standard && grep -qx 'RUN: adduser --quiet --disabled-password --comment Bob Müller bob' $ue/out &&
+       grep -qx 'RUN: chpasswd (bob)' $ue/out && grep -qx 'RUN: adduser --quiet bob audio' $ue/out && ! grep -q 'bob sudo' $ue/out && ! grep -q secret $ue/out"
+check "Users: an administrator not put into sudo" "echo secret | uh $UH --create carl Carl admin && grep -qx 'RUN: adduser --quiet carl sudo' $ue/out"
+for c in "6|--create anna Anna standard" "2|--create Bob Bob standard" "2|--create bob Bob:x standard" "3|--delete pax remove" \
+         "2|--delete svc remove" "2|--delete root remove" "3|--admin pax off" "2|--autologin svc" "2|--picture anna /etc/hostname" \
+         "2|--frobnicate anna"; do
+    check "Users: '${c#*|}' not refused with exit ${c%%|*}" "echo pw | uh $UH ${c#*|}; [ \$? -eq ${c%%|*} ]"
+done
+check "Users: the last administrator can be demoted by someone else" "env SIMPLEOS_USERS_TEST=1 SIMPLEOS_USERS_ETC=$ue SIMPLEOS_USERS_CALLER=anna $UH --admin pax off >/dev/null 2>&1; [ \$? -eq 3 ]"
+check "Users: a signed-in account deleted" "env SIMPLEOS_USERS_SIGNED_IN=anna SIMPLEOS_USERS_TEST=1 SIMPLEOS_USERS_ETC=$ue SIMPLEOS_USERS_CALLER=pax $UH --delete anna keep >/dev/null 2>&1; [ \$? -eq 5 ]"
+check "Users: delete keeps the home folder unless asked" "uh $UH --delete anna keep && grep -qx 'RUN: deluser --quiet anna' $ue/out && uh $UH --delete anna remove && grep -qx 'RUN: deluser --quiet --remove-home anna' $ue/out"
+check "Users: automatic sign-in does not take the installer's line in lightdm.conf out of the way" \
+      "uh $UH --autologin anna && grep -q '^RUN: sed -i -E .*autologin-user' $ue/out && grep -q 'RUN: write .*50-simpleos-autologin.conf autologin-user=anna' $ue/out"
+check "Control Center → Users: accounts, administrators or automatic sign-in read wrong" \
+      "env SIMPLEOS_USERS_ETC=$ue python3 -c \"import importlib.machinery as m; c = m.SourceFileLoader('c', '/usr/local/bin/simpleos-control-center').load_module()
+u = c.users_list(); assert [(x['name'], x['full'], x['admin']) for x in u] == [('anna', 'Anna', False), ('pax', 'Pax', True)], u
+assert c.autologin_user() == 'pax'
+assert c.suggest_username('Jürgen Müller') == 'juergen' and c.suggest_username('Anna', {'anna'}) == 'anna2'
+assert c.valid_username('anna') and not c.valid_username('Anna') and not c.valid_fullname('a:b')
+assert c.password_message('passwd: Authentication token manipulation error') == 'The current password is wrong.'
+assert ('users', 'Users', 'system-users') in c.PAGES and c.ALIASES['accounts'] == 'users'\" 2>/dev/null"
+check "Password & Security: password still changed in a terminal" "! grep -q '\"kitty\", \"--title\", \"Change password\"' /usr/local/bin/simpleos-control-center"
+rm -rf "${ue:?}"
+check "accountsservice missing (account pictures on the login screen, #68)" "dpkg -s accountsservice >/dev/null 2>&1"
 POL=/usr/share/polkit-1/actions/org.simpleos.power-tools.policy
 check "Polkit: power tools invalid" "python3 -c 'import sys, xml.dom.minidom as m; m.parse(sys.argv[1])' $POL 2>/dev/null"
 check "Polkit: actions wrong (governor still there / backup, cleaner without a password)" \

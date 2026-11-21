@@ -1,6 +1,6 @@
 #!/bin/sh
 # Simple OS – power menu (Super+X, red button on the right of the taskbar, Menu → Power)
-# Rofi flyout: Lock, Sleep, Restart, Shut down, Sign out. Esc closes without an action.
+# Rofi flyout: Lock, Sleep, Restart, Shut down, (Switch user,) Sign out. Esc closes without an action.
 #   simpleos-powermenu --lock    lock the screen right away (Super+L)
 # Robust like simpleos-wifi: no set -e, every path ends with exit 0, errors as a clear notification,
 # details in ~/.cache/simpleos-powermenu.log. If Rofi does not start, a notification explains the way via the menu.
@@ -31,6 +31,13 @@ lock_screen() {
     command -v loginctl >/dev/null && loginctl lock-session >&2 2>&1 && return 0
     return 1
 }
+# Another person's account on this computer? (UID_MIN..UID_MAX with a login shell; test: SIMPLEOS_OTHER_USERS=0/1)
+others() {
+    case "${SIMPLEOS_OTHER_USERS:-}" in 0) return 1 ;; 1) return 0 ;; esac
+    [ "$(id -u)" -ge 1000 ] || return 1    # root or a system account has no login screen to switch from
+    getent passwd | awk -F: -v me="$(id -un)" '$3 >= 1000 && $3 <= 60000 && $1 != me && $7 !~ /(nologin|false)$/ { f = 1 }
+        END { exit !f }'
+}
 # $1 = systemctl verb, $2 = notification on error
 power() {
     systemctl "$1" >&2 2>&1 || loginctl "$1" >&2 2>&1 || sos_notify "$2" critical
@@ -47,6 +54,8 @@ sos_add "$(sos_fa '\357\200\243')  Lock" "lock"
 sos_add "$(sos_fa '\357\206\206')  Sleep" "sleep"
 sos_add "$(sos_fa '\357\200\241')  Restart" "restart"
 sos_add "$(sos_fa '\357\200\221')  Shut down" "shutdown"
+# Switch user (#68, FontAwesome users U+F0C0): only when another person has an account here, never in the live session
+others && ! is_live && sos_add "$(sos_fa '\357\203\200')  Switch user" "switch"
 sos_add "$(sos_fa '\357\202\213')  Sign out" "logout"
 sos_pick "<b>Power</b>" 300
 
@@ -83,5 +92,8 @@ case "$action" in
     restart)  power reboot "The computer could not restart. Please save your work and try again." ;;
     shutdown) power poweroff "The computer could not shut down. Please save your work and try again." ;;
     logout)   openbox --exit >&2 2>&1 || sos_notify "Could not sign out. Please try again." critical ;;
+    # the login screen next to this session; dm-tool finds LightDM through XDG_SEAT_PATH (only the session has it)
+    switch)   XDG_SEAT_PATH=${XDG_SEAT_PATH:-/org/freedesktop/DisplayManager/Seat0} dm-tool switch-to-greeter >&2 2>&1 ||
+                  sos_notify "Could not switch to the login screen." critical ;;
 esac
 exit 0

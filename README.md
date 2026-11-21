@@ -548,6 +548,17 @@ the lb default files, the generated graphics and the fastfetch package.
   The verify hook simulates all click paths (cable, Wi-Fi, offline, missing GUI tools) under dash.
   Additionally `nm-applet` in the tray (left click = Wi-Fi list).
 - `simpleos-setup` – short name for the Setup Wizard (`simpleos-welcome-wizard`).
+- **Control Center → Users** (#68, 1.2): the people's accounts with picture and type; add (full name, a suggested
+  user name, password, Standard user or Administrator = group `sudo`), delete (keep or delete the home folder), full
+  name, picture, password, account type, sign in automatically, switch user (`dm-tool switch-to-greeter`, also in the
+  power menu and the search when another account exists). Root parts: `/usr/local/sbin/simpleos-users-helper` via
+  pkexec (polkit `org.simpleos.users`, administrator password; only accounts with UID_MIN..UID_MAX and a login shell;
+  the last administrator and your own account can't be deleted or demoted; a signed-in account isn't deleted). New
+  accounts get the installer's groups (audio, video, lpadmin, scanner, bluetooth …). Pictures go through
+  **AccountsService** (new home folders are private, the greeter can't read `~/.face`); your own name and picture
+  through AccountsService without a password, your own password through `passwd` in a pseudo terminal (the keyring
+  follows). Automatic sign-in: `/etc/lightdm/lightdm.conf.d/50-simpleos-autologin.conf`, the installer's
+  `autologin-user` line in `lightdm.conf` is commented out (that file is read last). No guest account.
 - `simpleos-windows-app` – Windows programs (#85): a double-click on a `.exe`/`.msi` (and the right-click action "Run
   with SOS Bridge") opens it in Bottles; without Bottles a small window explains honestly what works and offers to
   install **SOS Bridge** (Bottles from Flathub, space and Flathub checked first, progress window). `--help-page` opens
