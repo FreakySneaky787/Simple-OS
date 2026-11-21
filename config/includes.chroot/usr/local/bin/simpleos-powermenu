@@ -57,7 +57,7 @@ sos_add "$(sos_fa '\357\200\221')  $(_t 'Shut down')" "shutdown"
 # Switch user (#68, FontAwesome users U+F0C0): only when another person has an account here, never in the live session
 others && ! is_live && sos_add "$(sos_fa '\357\203\200')  $(_t 'Switch user')" "switch"
 sos_add "$(sos_fa '\357\202\213')  $(_t 'Sign out')" "logout"
-sos_pick "<b>$(_t 'Power')</b>" 300
+sos_pick "<b>$(_t 'Power options')</b>" 300
 
 # The installer is working (#62, #64): switching off while it resizes or formats a partition can leave every system
 # on the disk unable to start. logind's inhibitor (simpleos-install) does not stop us – the live user may override

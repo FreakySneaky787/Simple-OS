@@ -386,7 +386,7 @@ def row(text, info, icon=None, meta=None):
 
 
 def header(message):
-    print(f"\0prompt{SEP}Search")
+    print(f"\0prompt{SEP}" + _("Search"))
     print(f"\0message{SEP}{clean(message)}")
     print(f"\0markup-rows{SEP}false")
     print(f"\0no-custom{SEP}false")

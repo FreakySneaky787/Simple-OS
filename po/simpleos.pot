@@ -606,7 +606,7 @@ msgstr ""
 msgid "Mouse & Touchpad"
 msgstr ""
 
-#: usr/local/bin/simpleos-control-center:66 usr/local/bin/simpleos-control-center:1763 usr/local/bin/simpleos-control-center:1805 usr/local/bin/simpleos-powermenu:60 config/i18n/extra.txt:17
+#: usr/local/bin/simpleos-control-center:66 usr/local/bin/simpleos-control-center:1763 usr/local/bin/simpleos-control-center:1805 config/i18n/extra.txt:17
 msgid "Power"
 msgstr ""
 
@@ -1118,7 +1118,7 @@ msgstr ""
 msgid "Put your device in pairing mode first"
 msgstr ""
 
-#: usr/local/bin/simpleos-control-center:1634 usr/local/bin/simpleos-control-center:1655 usr/local/bin/simpleos-search:371 usr/local/bin/simpleos-search:371
+#: usr/local/bin/simpleos-control-center:1634 usr/local/bin/simpleos-control-center:1655 usr/local/bin/simpleos-search:371 usr/local/bin/simpleos-search:371 usr/local/bin/simpleos-search:389
 msgid "Search"
 msgstr ""
 
@@ -1198,7 +1198,7 @@ msgstr ""
 msgid "Position, size, style"
 msgstr ""
 
-#: usr/local/bin/simpleos-control-center:1707 usr/local/bin/simpleos-taskbar-select:244 config/i18n/extra.txt:25
+#: usr/local/bin/simpleos-control-center:1707 usr/local/bin/simpleos-taskbar-select:245 config/i18n/extra.txt:25
 msgid "Taskbar"
 msgstr ""
 
@@ -2482,6 +2482,10 @@ msgstr ""
 msgid "The screen could not be locked."
 msgstr ""
 
+#: usr/local/bin/simpleos-powermenu:60
+msgid "Power options"
+msgstr ""
+
 #: usr/local/bin/simpleos-powermenu:69
 msgid "Restart anyway"
 msgstr ""
@@ -3026,75 +3030,75 @@ msgstr ""
 msgid "Shut down / Restart (Super+X)"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:251
+#: usr/local/bin/simpleos-taskbar-select:252
 msgid "icons + text"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:251
+#: usr/local/bin/simpleos-taskbar-select:252
 msgid "icons only"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:252 usr/local/bin/simpleos-taskbar-select:274
+#: usr/local/bin/simpleos-taskbar-select:253 usr/local/bin/simpleos-taskbar-select:275
 msgid "Dark transparent"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:252
+#: usr/local/bin/simpleos-taskbar-select:253
 msgid "Match theme"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:258
+#: usr/local/bin/simpleos-taskbar-select:259
 msgid "Simple OS Taskbar Setup"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:259
+#: usr/local/bin/simpleos-taskbar-select:260
 msgid "Position:  %s"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:260
+#: usr/local/bin/simpleos-taskbar-select:261
 msgid "Layout:  %s, %s"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:261
+#: usr/local/bin/simpleos-taskbar-select:262
 msgid "Look:  %s"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:262
+#: usr/local/bin/simpleos-taskbar-select:263
 msgid "Network & clock:  network %s, clock %s"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:263
+#: usr/local/bin/simpleos-taskbar-select:264
 msgid "Reset to defaults"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:269
+#: usr/local/bin/simpleos-taskbar-select:270
 msgid "Full (40 px bar)"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:269
+#: usr/local/bin/simpleos-taskbar-select:270
 msgid "Compact (34 px bar)"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:270
+#: usr/local/bin/simpleos-taskbar-select:271
 msgid "Large (48 px bar, bigger clock and text)"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:271
+#: usr/local/bin/simpleos-taskbar-select:272
 msgid "Icons + text"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:271
+#: usr/local/bin/simpleos-taskbar-select:272
 msgid "Icons only"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:275
+#: usr/local/bin/simpleos-taskbar-select:276
 msgid "Match theme (light or dark like your apps)"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:278
+#: usr/local/bin/simpleos-taskbar-select:279
 msgid "Network & clock (select to switch on/off)"
 msgstr ""
 
-#: usr/local/bin/simpleos-taskbar-select:279
+#: usr/local/bin/simpleos-taskbar-select:280
 msgid "Network display (LAN IP)"
 msgstr ""
 
