@@ -1,12 +1,28 @@
-# Simple OS 1.1.2
-## Better menus
+# Simple OS 1.2
+## New in 1.2
+- **Simple OS speaks German.** Every Simple OS window, menu and message follows the language you pick in Control
+  Center → Language & Region – German for now, other languages fall back to English.
+- **Users.** Control Center → Users: add and remove accounts, change names, pictures and passwords, make someone an
+  administrator, sign in automatically – and "Switch user" in the power menu.
+- **Windows programs.** Double-click a .exe or .msi: SOS Bridge (Bottles) runs many Windows programs. The first time
+  it is installed with one click. Menu → Help → Windows Programs explains what works and what doesn't.
+- **Extras in the Setup Wizard.** Its new step "Extras" adds SOS Bridge, Gaming Support (now with game controllers)
+  or Developer Tools – all off unless you turn them on.
+- **AppArmor.** The security profiles that come with your apps (printing, LibreOffice …) are now active.
+## Fixed in 1.2
+- **The search picks the best match** even when the mouse pointer rests where the menu opens.
+- **Chromium no longer asks for a new keyring password** a few minutes after the first sign-in.
+- **Chromium in your language** – its translations are installed with the language.
+- **The calculator understands** "round(3.14159,2)", "max(1,2)" and German numbers like "1.234,5".
+- **The first restore point** checks the space it really needs before it starts.
+## Better menus in 1.1.2
 - **The row under the mouse lights up.** In the start menu, the search and the menus of the taskbar, the row you point
   at is highlighted in your accent color – the same as with the arrow keys.
 - **The best match comes first.** Type "Sound" in the start menu and Sound is at the top.
 - **Settings in the search.** Search for "display settings" (or sound, Wi-Fi, keyboard …) and the right page of the
   Control Center opens.
 - **The sound menu stays open** while you change the volume, and menus opened from the start menu appear faster.
-## Fixed
+## Fixed in 1.1.2
 - **Desktop PCs lock again after a video.** After watching a video, a computer without a battery no longer locked the
   screen when it turned off.
 - **Do Not Disturb stays on** after signing out and after a restart, until you turn it off.

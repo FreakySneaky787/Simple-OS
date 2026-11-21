@@ -16,6 +16,10 @@ Problem** – that tests the tool at the same time.
       carries the build time, `X.Y.Z+YYYYMMDDHHMMSS` (since 1.1, #102), so a system installed from an earlier test build
       of the same version is offered the published build.
 - [ ] `cd output && sha256sum -c Simple-OS.iso.sha256` reports `Simple-OS.iso: OK`.
+- [ ] `./tools/qemu-test.sh` (since 1.2, #124): BIOS and UEFI both PASS (`output/.qemu-test`); otherwise look at
+      `output/qemu-test/<mode>.png` and `.serial`. `publish` refuses an ISO without it.
+- [ ] `output/repo` also contains `rofi_1.7.3-0.1-simpleos1_amd64.deb` (#144, `tools/build_rofi.sh`).
+- [ ] `./tools/i18n.py check` reports OK (#43) – `publish` refuses missing translations.
 
 ## 1. In the VM (no extra hardware)
 
@@ -170,3 +174,26 @@ Before publishing (Sunday 2026-11-15), with the new ISO (built 2026-11-11 from f
       UEFI VM 2026-11-11, account named **simple**: no autologin (login screen), `sudo -n` and polkit ask for the
       password, only `10-installer` in sudoers.d, only the update-refresh polkit rule, 0 failed units, Setup Wizard
       starts. **Still open: BIOS.**
+
+## 8. What changed in 1.2
+
+- [ ] **German** (#43): install in German (or Control Center → Language & Region → Deutsch, sign out and in). Control
+      Center, Setup Wizard, Software Center, search, taskbar menus (Wi-Fi, sound, power …), notifications, password
+      prompts, the desktop right-click menu, start menu names, Welcome page, What's New and the shortcut list are German;
+      nothing English is left over. Back to English: everything English again.
+- [ ] **Users** (#68): add a Standard user and an Administrator, sign in as the new user (desktop, wizard, no keyring
+      prompt), their picture on the login screen, "Switch user" in the power menu, automatic sign-in on/off (also after
+      an installation with "Log in automatically"), change your own password (keyring still opens), delete a user with
+      and without files. The last administrator can't be demoted or deleted.
+- [ ] **Windows programs** (#85): double-click a downloaded `.exe` (e.g. the Notepad++ installer) → the SOS Bridge
+      window → Install → progress → Bottles opens with the file. Second double-click: straight into Bottles. Right-click
+      "Run with SOS Bridge"; Menu → Help → Windows Programs (also in German).
+- [ ] **Setup Wizard → Extras** (#126): all three off; turning on SOS Bridge + Developer Tools installs both with one
+      password and one progress bar; offline the switches are off with a hint; Gaming Support installs `steam-devices`.
+- [ ] **AppArmor** (#48): `sudo aa-status` shows the profiles enforced, `journalctl -k | grep DENIED` stays quiet while
+      printing (a test page), LibreOffice, Firefox, Chromium and a Flatpak app run.
+- [ ] **Search on real hardware** (#144, ThinkPad E16): pointer resting in the middle of the screen, Super, type
+      "display settings", Enter → the Display page (3–4 tries); moving the mouse still highlights rows.
+- [ ] **Updating from 1.1.2** through Software Updates: AppArmor, accountsservice and the new rofi are installed, the
+      menu becomes German after signing in again on a German system, What's New shows 1.2.
+

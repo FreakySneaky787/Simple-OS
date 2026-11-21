@@ -1,10 +1,61 @@
-# Simple OS 1.1.2
+# Simple OS 1.2
 
 **SOS – Simple Operating System. Keep it Simple.**
 
 Simple OS is a fast, quiet desktop built on Debian 12 "bookworm". It boots straight into a calm dark desktop
 (Openbox, Catppuccin colors), sets itself up with a short wizard and keeps itself up to date. You don't
 need a terminal.
+
+## What's new in 1.2
+
+The last feature release of Simple OS 1.x – after it, 1.2.x gets fixes and the work goes into Simple OS 2.0 on Debian 13.
+If you run Simple OS 1.0 to 1.1.2, you get it through **Software Updates** – no need to reinstall. The first time you
+sign in afterwards, "What's new" shows the highlights.
+
+### New
+
+- **Simple OS speaks German** (issue #43). Every Simple OS window, menu, notification, password prompt and help page
+  follows the language you choose in the installer or in Control Center → Language & Region: the Control Center, the
+  Setup Wizard, the menus of the taskbar, Software Updates, the right-click menu of the desktop, the app names in the
+  start menu and the search. German is the first language; others fall back to English, and more can be added
+  without touching the tools (`po/`).
+- **Users** in Control Center (issue #68): see who has an account on this computer, add people (name, password,
+  Standard user or Administrator), change names, pictures and passwords, delete accounts (keeping or deleting their
+  files), and turn on automatic sign-in. Pictures show on the login screen. "Switch user" is in the power menu and the
+  search as soon as a second person has an account. Changing your own password keeps your keyring (saved passwords)
+  working.
+- **Windows programs** (issue #85): double-click a `.exe` or `.msi` file (or right-click → "Run with SOS Bridge").
+  **SOS Bridge** – the free app Bottles with Wine – runs many Windows programs. If it is not there yet, a small window
+  explains what works and installs it from Flathub with one click, then opens your program. Menu → Help → Windows
+  Programs says honestly what usually works, what doesn't (Microsoft 365, current Adobe apps, games with anti-cheat),
+  the alternatives, and where Steam's own "Steam Play for all other titles" switch is.
+- **Extras in the Setup Wizard** (issue #126): its step "Extras" (the old "Gaming" step) offers SOS Bridge, **Gaming
+  Support** (Steam, Lutris, MangoHud – now with game controller support) and **Developer Tools** (Git, compilers,
+  Python tools and the code editor VSCodium). All are off unless you turn them on, each shows its download size, and
+  one that fails (no internet, no space) no longer ends the setup with an error. The Software Center offers the same
+  bundles under the same names.
+- **AppArmor** (issue #48): the security profiles that your apps bring along – printing, LibreOffice and more – are
+  now loaded at every start. Debian's kernel had the security module on, but no profile was ever used.
+
+### Fixed
+
+- **The search picks the best match** (issue #144). When the mouse pointer rested where the search opened, the row
+  under it was selected, and typing "display settings" + Enter could open the Control Center's main page instead.
+  Simple OS now ships Rofi with two small fixes: opening a menu no longer selects under a resting pointer, and typing
+  always selects the best match again. Moving the mouse still highlights the row under it.
+- **No keyring prompt in Chromium** (issue #148). A few minutes after the first sign-in of a new account, Chromium
+  asked "Choose password for new keyring": the keyring service that sign-in started quit after two minutes.
+- **Chromium in your language** (issue #149): its translations are installed with the system language, like
+  Firefox's and LibreOffice's.
+- **Small things** (issue #147): the calculator in the search understands `round(3.14159,2)`, `max(1,2)` and German
+  numbers like `1.234,5`, and shows German results with a decimal comma; the first restore point checks the space it
+  really needs (the size of the system) before it starts instead of a fixed 5 GB.
+
+### For testers and developers
+
+- **Automatic boot test** (issue #124): `tools/qemu-test.sh` starts a new ISO in QEMU (BIOS and UEFI) and waits until
+  the live desktop runs without failed services; no ISO is published without it.
+- **A shorter README** (issue #125): the details moved to `docs/DEVELOPING.md` and `docs/TOOLS.md`.
 
 ## What's new in 1.1.2
 
@@ -129,8 +180,8 @@ The live system needs no password – not for the installer either. Only if some
 `simple` and the password is `live`.
 To install, use **Install Simple OS** on the desktop.
 
-The other files attached here (`simpleos_1.1.1_all.deb`, `Packages`, `InRelease` …) are the signed update repository that
-installed systems use. You don't need to download them yourself.
+The other files attached here (`simpleos_1.2_all.deb`, `rofi_…deb`, `Packages`, `InRelease` …) are the signed update
+repository that installed systems use. You don't need to download them yourself.
 
 ## System requirements
 
@@ -142,16 +193,19 @@ installed systems use. You don't need to download them yourself.
 ## What's inside
 
 - **Setup wizard** on first login: Wi-Fi, browser (Firefox, Chromium or Mullvad Browser), light/dark,
-  accent color, office suite (LibreOffice or ONLYOFFICE) and an optional gaming setup (Steam, Lutris, MangoHud)
+  accent color, office suite (LibreOffice or ONLYOFFICE) and optional extras: SOS Bridge for Windows programs, Gaming
+  Support (Steam, Lutris, MangoHud, game controllers) and Developer Tools
+- **In your language:** every Simple OS window and message in German or English (more languages can be added)
 - **Control Center** (Super+I) for Wi-Fi, Bluetooth, sound, display, brightness and scaling, appearance, notifications,
   mouse & touchpad, keyboard, language & region, printers, power and screen lock, default and startup apps, date & time, storage and backups,
-  password and firewall, updates and drivers
+  password and firewall, user accounts, updates and drivers
 - **Software Store** (Flathub) and **Software Updates** with a single password prompt. Firmware and BIOS updates
   from the LVFS are included, and so are **new versions of Simple OS itself**: you don't need to reinstall to get
   the next Simple OS. Settings you changed yourself are kept.
 - **Hardware & Drivers**: detects NVIDIA graphics, Wi-Fi chips and CPU microcode and installs what is missing
 - **Backups**: restore points with Timeshift, optionally created before every update
-- **Firewall** on by default: other devices can't connect to you, while browsing, printing and updates keep working
+- **Windows programs** with SOS Bridge (Bottles): double-click a `.exe` – many programs run, Menu → Help explains which
+- **Firewall** on by default, **AppArmor** profiles for the apps that bring them: other devices can't connect to you, while browsing, printing and updates keep working
 - **Battery care** (charge to 80 %) on laptops that support it, **power modes**, and protection against freezing
   when memory runs out (earlyoom)
 - **Camera** app to see your webcam and take photos
@@ -162,15 +216,11 @@ installed systems use. You don't need to download them yourself.
 
 ## Known issues
 
-- **Simple OS's own tools are in English.** Your apps, menus and date formats follow the language you choose
-  (installer or Control Center → Language & Region), but the Control Center, the setup wizard and Simple OS's messages
-  stay English until their translations come in 1.2. The keyboard layout can be changed at any time in
-  Control Center → Keyboard.
-- **Chromium asks for a keyring password.** If you chose Chromium and start it a few minutes after signing in to a new
-  account, a window "Choose password for new keyring" can appear. Chromium works if you close it; this is fixed in 1.2
-  (issue #148). Firefox is not affected.
-- **Chromium stays English** after you change the system language, while Firefox and LibreOffice follow it. Fixed in 1.2
-  (issue #149).
+- **Languages:** Simple OS's own tools are translated into German; in other languages they stay English while your
+  apps follow the language. The keyboard layout can be changed at any time in Control Center → Keyboard.
+- **Windows programs** run with SOS Bridge only if Wine supports them: many older programs and lots of games do,
+  Microsoft 365, current Adobe apps and games with kernel anti-cheat don't. Menu → Help → Windows Programs has
+  alternatives.
 - **The network icon's right-click menu** (next to the network display in the taskbar) closes again if you hold the
   mouse button for more than half a second – a limit of that GTK menu, it has no setting. Click quickly, or use the
   network display itself (a click opens the Simple OS network menu).
