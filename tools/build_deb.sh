@@ -211,7 +211,8 @@ mkdir -p config/packages.chroot
 rm -f config/packages.chroot/simpleos_*.deb
 dpkg-deb --root-owner-group -Zxz --build "$ROOT" "config/packages.chroot/$DEB" >/dev/null
 
-# APT repository (flat): the edition package and the other own packages (fastfetch, not in Debian)
+# APT repository (flat): the edition package and the other own packages (fastfetch, not in Debian; rofi with our
+# patches, tools/build_rofi.sh – installed systems get it as an ordinary update)
 rm -rf "$REPO_OUT"
 mkdir -p "$REPO_OUT"
 cp config/packages.chroot/*.deb "$REPO_OUT/"

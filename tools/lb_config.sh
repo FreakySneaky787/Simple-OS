@@ -2,7 +2,7 @@
 # Simple OS – configure live-build.
 # Runs in the build container in the working directory build/, into which build_iso.sh has copied the
 # source configuration (../config) beforehand. Only adds what is not stored as a file in the repo:
-# the lb config basics, the branding graphics and the fastfetch package.
+# the lb config basics, the branding graphics, the fastfetch package and our rofi build (tools/build_rofi.sh).
 set -euo pipefail
 TOOLS=$(cd "$(dirname "$0")" && pwd)
 
@@ -52,6 +52,9 @@ if ! echo "$FASTFETCH_SHA256  $FASTFETCH_DEB" | sha256sum -c --quiet >/dev/null 
     echo "$FASTFETCH_SHA256  $FASTFETCH_DEB" | sha256sum -c --quiet
 fi
 cp "$FASTFETCH_DEB" config/packages.chroot/
+
+# rofi: Debian's package with Simple OS's patches (#144: no selection under a resting pointer, best match after typing)
+"$TOOLS/build_rofi.sh"
 
 # Edition package "simpleos" (installed into the image, updates installed systems) + repository files in output/repo
 "$TOOLS/build_deb.sh"

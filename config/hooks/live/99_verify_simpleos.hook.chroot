@@ -2825,6 +2825,9 @@ check "fontconfig: system-ui is not Inter" "fc-match -f '%{family[0]}' system-ui
 check "fontconfig: monospace is not JetBrains Mono" "fc-match -f '%{family[0]}' monospace | grep -qx 'JetBrains Mono'"
 check "Papirus-Dark: SVG icons cannot be displayed (gdk-pixbuf SVG loader missing)" \
       "ls /usr/lib/*/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-svg.so >/dev/null 2>&1"
+# #144: Rofi with Simple OS's patches (tools/build_rofi.sh) – a resting pointer does not pick the row when a menu opens,
+# typing selects the best match again; with Debian's own build "display settings" + Enter opened another entry
+check "Rofi: Debian's build instead of Simple OS's (patches for #144)" "dpkg-query -W -f '\${Version}' rofi 2>/dev/null | grep -q '+simpleos'"
 for home in /etc/skel /home/simple; do
     c=$home/.config
     for gtk in gtk-3.0 gtk-4.0; do

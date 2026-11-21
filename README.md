@@ -203,8 +203,9 @@ simple-os/
 ├── Containerfile                                   build environment (Debian bookworm + live-build)
 ├── docs/sos-banner.png   README banner (tools/gen_branding.py --readme docs)
 ├── tools/
-│   ├── lb_config.sh      lb config + build-time parts (branding, fastfetch download, edition package)
+│   ├── lb_config.sh      lb config + build-time parts (branding, fastfetch download, rofi, edition package)
 │   ├── build_deb.sh      edition package "simpleos" + APT repository files in output/repo
+│   ├── build_rofi.sh     Debian's rofi with our patches in rofi/ (#144), cached in build/downloads/rofi
 │   ├── managed_history.py  every git version of the managed files (edition tool: "unchanged?")
 │   ├── release.sh        signing key, sign output/repo, GitHub release
 │   └── gen_branding.py   generates wallpapers, logos, Calamares and Plymouth graphics, the ISO boot menu image
