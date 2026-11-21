@@ -1657,7 +1657,7 @@ for home in /etc/skel /home/simple; do
     check "autostart: simpleos-input --watch is missing in $home" "grep -qx 'simpleos-input --watch &' '$home/.config/openbox/autostart'"
 done
 check "package xinput not installed" "dpkg-query -W -f='\${Status}' xinput 2>/dev/null | grep -q 'install ok installed'"
-check "Control Center: Mouse & Touchpad page missing" "grep -qF '(\"input\", \"Mouse & Touchpad\", \"input-mouse\")' /usr/local/bin/simpleos-control-center"
+check "Control Center: Mouse & Touchpad page missing" "grep -qF '(\"input\", _(\"Mouse & Touchpad\"), \"input-mouse\")' /usr/local/bin/simpleos-control-center"
 check "Control Center: Wi-Fi band selector missing" "grep -qF '\"802-11-wireless.band\"' /usr/local/bin/simpleos-control-center && grep -qF 'self.set_band(state' /usr/local/bin/simpleos-control-center"
 check "Control Center: Date & Time missing" "grep -qF 'cmd(\"timedatectl\", \"set-timezone\", zone, timeout=120)' /usr/local/bin/simpleos-control-center &&
       grep -qF 'cmd(\"timedatectl\", \"set-ntp\"' /usr/local/bin/simpleos-control-center"
@@ -3659,7 +3659,7 @@ check "Game Mode: leftovers of simpleos-gamemode/simpleos-governor" \
 check "DND: launcher missing/wrong" \
       "grep -qx 'Name=Do Not Disturb' /usr/share/applications/simpleos-dnd.desktop && grep -qx 'Exec=/usr/local/bin/simpleos-dnd --toggle' /usr/share/applications/simpleos-dnd.desktop"
 check "DND: Control Center switch missing" \
-      "grep -qF '(\"Do Not Disturb\", \"Pause notifications until you turn it off\", dnd)' /usr/local/bin/simpleos-control-center &&
+      "grep -qF '(_(\"Do Not Disturb\"), _(\"Pause notifications until you turn it off\"), dnd)' /usr/local/bin/simpleos-control-center &&
        grep -qF 'cmd(\"simpleos-dnd\", \"--status\")' /usr/local/bin/simpleos-control-center"
 # #68: user accounts – root helper (test mode: own passwd/group, commands only printed), polkit action, CC page
 UH=/usr/local/sbin/simpleos-users-helper
@@ -4748,7 +4748,7 @@ for home in /etc/skel /home/simple; do
     check "autostart: keyboard layout is not applied at login in $home" "grep -qx 'simpleos-keyboard-setup --apply' '$home/.config/openbox/autostart'"
     check "menu.xml: Keyboard missing in $home" "grep -qF '<command>/usr/local/bin/simpleos-control-center keyboard</command>' '$home/.config/openbox/menu.xml'"
 done
-check "Control Center: keyboard layout selection missing" "grep -qF '(\"Keyboard layout\", \"Applies right away – also on the login screen\", kb)' /usr/local/bin/simpleos-control-center"
+check "Control Center: keyboard layout selection missing" "grep -qF '(_(\"Keyboard layout\"), _(\"Applies right away – also on the login screen\"), kb)' /usr/local/bin/simpleos-control-center"
 check "Keyboard layout: launcher missing" "grep -qx 'Exec=/usr/local/bin/simpleos-keyboard-setup' /usr/share/applications/simpleos-keyboard.desktop"
 check "localectl does not write /etc/default/keyboard (systemd-localed without the Debian patch)" "grep -qa '/etc/default/keyboard' /lib/systemd/systemd-localed"
 
