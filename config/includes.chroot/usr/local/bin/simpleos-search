@@ -29,6 +29,10 @@ import sys
 import time
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
+import gettext
+
+# Translations (#43): the system language from /usr/share/locale/<lang>/LC_MESSAGES/simpleos.mo, else English
+_ = gettext.translation("simpleos", fallback=True).gettext
 
 SEP = "\x1f"
 HOME = Path(os.environ.get("SIMPLEOS_SEARCH_ROOT") or Path.home())
@@ -36,42 +40,42 @@ MAX_FILES = 60
 FILE_TIMEOUT = 3.0   # seconds for the file search
 LIVE = "/usr/local/bin/simpleos-live"
 SYSTEM = [  # (key, name, icon, keywords incl. German synonyms for German speakers, confirmation)
-    ("lock", "Lock", "system-lock-screen", "lock screen sperren", None),
-    ("sleep", "Sleep", "system-suspend", "sleep suspend standby ruhezustand", None),
-    ("restart", "Restart", "system-reboot", "restart reboot neustart", "Restart now"),
-    ("shutdown", "Shut down", "system-shutdown", "shut down shutdown power off poweroff herunterfahren", "Shut down now"),
-    ("switch", "Switch user", "system-switch-user", "switch user change user other account benutzer wechseln", None),
-    ("logout", "Sign out", "system-log-out", "sign out log out logout abmelden", "Sign out now"),
+    ("lock", _("Lock"), "system-lock-screen", "lock screen sperren", None),
+    ("sleep", _("Sleep"), "system-suspend", "sleep suspend standby ruhezustand", None),
+    ("restart", _("Restart"), "system-reboot", "restart reboot neustart", _("Restart now")),
+    ("shutdown", _("Shut down"), "system-shutdown", "shut down shutdown power off poweroff herunterfahren", _("Shut down now")),
+    ("switch", _("Switch user"), "system-switch-user", "switch user change user other account benutzer wechseln", None),
+    ("logout", _("Sign out"), "system-log-out", "sign out log out logout abmelden", _("Sign out now")),
 ]
 # Pages of the Control Center (1.1.2): "display settings" opens Control Center → Display, like Windows' search does.
 # (page key of simpleos-control-center, name, icon as in its sidebar, keywords incl. German synonyms)
 SETTINGS = [
-    ("wifi", "Wi-Fi settings", "network-wireless", "wifi wlan wireless network internet netzwerk"),
-    ("bluetooth", "Bluetooth settings", "bluetooth", "bluetooth pair pairing headphones kopfhörer"),
-    ("sound", "Sound settings", "audio-volume-high", "sound audio volume speaker output microphone mikrofon ton lautstärke"),
-    ("display", "Display settings", "video-display",
+    ("wifi", _("Wi-Fi settings"), "network-wireless", "wifi wlan wireless network internet netzwerk"),
+    ("bluetooth", _("Bluetooth settings"), "bluetooth", "bluetooth pair pairing headphones kopfhörer"),
+    ("sound", _("Sound settings"), "audio-volume-high", "sound audio volume speaker output microphone mikrofon ton lautstärke"),
+    ("display", _("Display settings"), "video-display",
      "display screen monitor resolution refresh rate brightness night light scale scaling bildschirm anzeige auflösung "
      "helligkeit nachtlicht skalierung"),
-    ("appearance", "Appearance settings", "preferences-desktop-theme",
+    ("appearance", _("Appearance settings"), "preferences-desktop-theme",
      "appearance theme dark light mode accent color wallpaper background design aussehen hintergrund"),
-    ("notifications", "Notification settings", "preferences-system-notifications",
+    ("notifications", _("Notification settings"), "preferences-system-notifications",
      "notifications do not disturb dnd benachrichtigungen nicht stören"),
-    ("input", "Mouse & touchpad settings", "input-mouse", "mouse touchpad pointer speed tap scrolling maus"),
-    ("keyboard", "Keyboard settings", "input-keyboard", "keyboard layout shortcuts tastatur tastaturlayout"),
-    ("printers", "Printer & scanner settings", "printer", "printer printing scanner scan drucker drucken"),
-    ("power", "Power settings", "battery",
+    ("input", _("Mouse & touchpad settings"), "input-mouse", "mouse touchpad pointer speed tap scrolling maus"),
+    ("keyboard", _("Keyboard settings"), "input-keyboard", "keyboard layout shortcuts tastatur tastaturlayout"),
+    ("printers", _("Printer & scanner settings"), "printer", "printer printing scanner scan drucker drucken"),
+    ("power", _("Power settings"), "battery",
      "power battery sleep screen off lock charge limit power mode energie akku bildschirmsperre"),
-    ("apps", "Default & startup app settings", "preferences-desktop-default-applications",
+    ("apps", _("Default & startup app settings"), "preferences-desktop-default-applications",
      "apps default applications startup autostart standard programme"),
-    ("datetime", "Date & time settings", "preferences-system-time", "date time clock time zone datum uhrzeit uhr zeitzone"),
-    ("language", "Language & region settings", "preferences-desktop-locale",
+    ("datetime", _("Date & time settings"), "preferences-system-time", "date time clock time zone datum uhrzeit uhr zeitzone"),
+    ("language", _("Language & region settings"), "preferences-desktop-locale",
      "language region formats locale sprache region formate"),
-    ("storage", "Storage & backup settings", "drive-harddisk",
+    ("storage", _("Storage & backup settings"), "drive-harddisk",
      "storage disk space clean backup restore point speicher festplatte sicherung wiederherstellung"),
-    ("security", "Password & security settings", "security-high", "password security firewall passwort sicherheit"),
-    ("users", "User account settings", "system-users",
+    ("security", _("Password & security settings"), "security-high", "password security firewall passwort sicherheit"),
+    ("users", _("User account settings"), "system-users",
      "users user accounts account add user administrator picture automatic login benutzer konto konten anmelden"),
-    ("system", "System & update settings", "computer", "system about version updates drivers hardware info über"),
+    ("system", _("System & update settings"), "computer", "system about version updates drivers hardware info über"),
 ]
 
 
@@ -205,19 +209,19 @@ def calculate(text):
     try:
         value = _eval(ast.parse(py, mode="eval"))
     except ZeroDivisionError:
-        return f"{expr} – can't divide by zero", None
+        return _("{expr} – can't divide by zero").format(expr=expr), None
     except TooLarge:
-        return f"{expr} – the number is too large", None
+        return _('{expr} – the number is too large').format(expr=expr), None
     except NoResult:
-        return f"{expr} – no result", None
+        return _('{expr} – no result').format(expr=expr), None
     except (ValueError, TypeError, SyntaxError, OverflowError, RecursionError, ArithmeticError):
         return None
     # a negative base with a fractional exponent ((-8)^(1/3)) gives a complex number in Python
     if isinstance(value, complex):
-        return f"{expr} – no result", None
+        return _('{expr} – no result').format(expr=expr), None
     if isinstance(value, float):
         if math.isnan(value) or math.isinf(value):
-            return f"{expr} – no result", None
+            return _('{expr} – no result').format(expr=expr), None
         value = int(value) if value.is_integer() and abs(value) < 1e15 else float(f"{value:.12g}")
     pretty = re.sub(r"\s*(//|[+\-*/%^×÷])\s*", r" \1 ", expr).strip()
     pretty = re.sub(r"\s+", " ", pretty).replace("( ", "(").replace(" )", ")")
@@ -364,7 +368,8 @@ def spawn(argv):
 
 def notify(text, urgency="normal"):
     if shutil.which("notify-send"):
-        spawn(["notify-send", "-u", urgency, "-c", "x-simpleos", "-a", "Search", "-i", "system-search", "Search", text])
+        spawn(["notify-send", "-u", urgency, "-c", "x-simpleos", "-a", _("Search"), "-i", "system-search", _("Search"),
+               text])
 
 
 def clean(text):
@@ -387,7 +392,7 @@ def header(message):
     print(f"\0no-custom{SEP}false")
 
 
-HINT = "Apps, settings and power options · type a calculation or a file name and press Enter"
+HINT = _("Apps, settings and power options · type a calculation or a file name and press Enter")
 
 
 def start_page():
@@ -406,25 +411,25 @@ def search_page(text):
     calc = calculate(text)
     if calc:
         shown, value = calc
-        header("Enter copies the result" if value is not None else "That calculation has no result")
+        header(_("Enter copies the result") if value is not None else _("That calculation has no result"))
         row(shown, f"calc:{value}" if value is not None else "back:", "accessories-calculator")
-        row("Back", "back:", "go-previous")
+        row(_("Back"), "back:", "go-previous")
         return
     hits = find_files(text)
     if not hits:
-        header(f"Nothing found for “{text}” in your files")
-        row("Back", "back:", "go-previous")
+        header(_('Nothing found for “{text}” in your files').format(text=text))
+        row(_("Back"), "back:", "go-previous")
         return
-    header(f"{len(hits)} file{'s' if len(hits) != 1 else ''} and folder{'s' if len(hits) != 1 else ''} "
-           f"matching “{text}” · Enter opens")
+    header((_("1 file or folder matching “{text}” · Enter opens") if len(hits) == 1 else
+            _("{count} files and folders matching “{text}” · Enter opens")).format(count=len(hits), text=text))
     for p in hits:
         try:
             where = str(p.parent.relative_to(HOME))
         except ValueError:
             where = str(p.parent)
-        where = "Home" if where == "." else f"~/{where}"
+        where = _("Home") if where == "." else f"~/{where}"
         row(f"{p.name}   —   {where}", f"file:{p}", file_icon(p))
-    row("Back", "back:", "go-previous")
+    row(_("Back"), "back:", "go-previous")
 
 
 def run_system(key):
@@ -440,7 +445,7 @@ def run_system(key):
                                                         stderr=subprocess.DEVNULL).returncode == 0
     if key == "switch":
         if live:
-            notify("Switching users is not available in Live Mode.")
+            notify(_("Switching users is not available in Live Mode."))
             return
         os.environ.setdefault("XDG_SEAT_PATH", "/org/freedesktop/DisplayManager/Seat0")   # dm-tool finds LightDM by it
     ok = {"lock": lambda: first(*lock),
@@ -451,20 +456,20 @@ def run_system(key):
           # the login screen next to this session (#68); not in the live session: nobody else can sign in there
           "switch": lambda: first(["dm-tool", "switch-to-greeter"])}[key]()
     if not ok:
-        notify("That did not work. Please try again.", "critical")
+        notify(_("That did not work. Please try again."), "critical")
 
 
 def selected(info, text):
-    kind, _, value = info.partition(":")
+    kind, _sep, value = info.partition(":")
     if kind == "app":
         if not launch_app(Path(value)):
-            notify(f"{text} could not be started.", "critical")
+            notify(_('{text} could not be started.').format(text=text), "critical")
     elif kind == "file":
         if not open_path(value):
-            notify("The file could not be opened.", "critical")
+            notify(_("The file could not be opened."), "critical")
     elif kind == "cc":
         if not spawn(["simpleos-control-center", value]):
-            notify("The Control Center could not be opened.", "critical")
+            notify(_("The Control Center could not be opened."), "critical")
     elif kind == "calc":
         if shutil.which("xclip"):
             try:
@@ -472,13 +477,13 @@ def selected(info, text):
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             except (OSError, subprocess.SubprocessError):
                 pass
-        notify(f"{value} copied to the clipboard.", "low")
+        notify(_('{value} copied to the clipboard.').format(value=value), "low")
     elif kind == "sys":
         confirm = next((c for k, _n, _i, _w, c in SYSTEM if k == value), None)
         if confirm:   # restart/off/sign out: ask first (a search for "sh…" should never switch off)
-            header("Save your work first.")
+            header(_("Save your work first."))
             row(confirm, f"do:{value}", next(i for k, _n, i, _w, _c in SYSTEM if k == value))
-            row("Cancel", "back:", "go-previous")
+            row(_("Cancel"), "back:", "go-previous")
             return
         run_system(value)
     elif kind == "do":
@@ -489,13 +494,14 @@ def selected(info, text):
 
 def open_window():
     if not shutil.which("rofi"):
-        notify("Search is not available (rofi missing). Press Super+Space again later.", "critical")
+        notify(_("Search is not available (rofi missing). Press Super+Space again later."), "critical")
         return 0
     theme = ("window { width: 680px; location: center; anchor: center; } listview { lines: 9; } "
-             "element-icon { size: 24px; } entry { placeholder: \"Search apps, files, or calculate\"; }")
+             "element-icon { size: 24px; } entry { placeholder: \"" +
+             _("Search apps, files, or calculate").replace('"', "'") + "\"; }")
     cmd = ["rofi", "-show", "search", "-modi", f"search:{os.path.abspath(sys.argv[0])}", "-show-icons",
            "-i", "-matching", "normal", "-sort", "-sorting-method", "fzf", "-theme-str", theme]
-    for _ in range(40):
+    for _attempt in range(40):
         proc = subprocess.run(cmd, stderr=subprocess.PIPE, text=True)
         err = proc.stderr.lower()
         if proc.returncode == 0 or not ("grab" in err or "already running" in err or "pidfile" in err):
@@ -504,7 +510,7 @@ def open_window():
         # (every 0.05 s, at most about 2 s; a fixed 0.3 s before 1.1.2)
         time.sleep(0.05)
     else:
-        notify("Search could not open. Please try again.", "critical")
+        notify(_("Search could not open. Please try again."), "critical")
     return 0
 
 

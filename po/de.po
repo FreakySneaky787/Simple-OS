@@ -19,7 +19,95 @@ msgstr "Heute"
 
 #: usr/local/bin/simpleos-calendar:143
 msgid "Date & Time settings"
-msgstr "Einstellungen für Datum & Uhrzeit"
+msgstr "Einstellungen: Datum & Uhrzeit"
+
+#: usr/local/bin/simpleos-camera:31
+msgid "No camera found"
+msgstr "Keine Kamera gefunden"
+
+#: usr/local/bin/simpleos-camera:32
+msgid ""
+"Laptops: look for a camera switch on the side, a key with a camera symbol (often F8 or F10), or a small cover that slides over the lens.\n"
+"USB cameras: plug it in – it appears here by itself."
+msgstr ""
+"Laptops: Such nach einem Kameraschalter an der Seite, einer Taste mit Kamerasymbol (oft F8 oder F10) oder einer kleinen Abdeckung vor der Linse.\n"
+"USB-Kameras: einfach einstecken – sie erscheinen hier von selbst."
+
+#: usr/local/bin/simpleos-camera:48 usr/local/bin/simpleos-camera:65 usr/local/bin/simpleos-camera:170 usr/local/bin/simpleos-camera:177
+msgid "Camera"
+msgstr "Kamera"
+
+#: usr/local/bin/simpleos-camera:53
+msgid "Photo %Y-%m-%d %H-%M-%S"
+msgstr "Foto %Y-%m-%d %H-%M-%S"
+
+#: usr/local/bin/simpleos-camera:124
+msgid "The camera is in use"
+msgstr "Die Kamera wird gerade benutzt"
+
+#: usr/local/bin/simpleos-camera:125
+msgid "Another app is using the camera right now – a video call or a browser tab. Close it and try again."
+msgstr "Eine andere App benutzt gerade die Kamera – ein Videoanruf oder ein Browser-Tab. Schließ sie und versuche es noch einmal."
+
+#: usr/local/bin/simpleos-camera:127
+msgid "Simple OS was not allowed to use the camera. Restart the computer and try again."
+msgstr "Simple OS durfte die Kamera nicht benutzen. Starte den Computer neu und versuche es noch einmal."
+
+#: usr/local/bin/simpleos-camera:127
+msgid "The camera could not be opened"
+msgstr "Die Kamera konnte nicht geöffnet werden"
+
+#: usr/local/bin/simpleos-camera:131
+msgid "The camera could not be started"
+msgstr "Die Kamera konnte nicht gestartet werden"
+
+#: usr/local/bin/simpleos-camera:131
+msgid "Unplug and reconnect it, or restart the computer. ({message})"
+msgstr "Zieh sie ab und steck sie wieder ein, oder starte den Computer neu. ({message})"
+
+#: usr/local/bin/simpleos-camera:154
+msgid "Parts of the camera app are missing"
+msgstr "Teile der Kamera-App fehlen"
+
+#: usr/local/bin/simpleos-camera:155
+msgid "Open Software Updates and install all updates, then try again. (missing: {missing})"
+msgstr "Öffne die Software-Aktualisierung und installiere alle Updates, dann versuche es noch einmal. (fehlt: {missing})"
+
+#: usr/local/bin/simpleos-camera:202
+msgid "Try Again"
+msgstr "Noch einmal versuchen"
+
+#: usr/local/bin/simpleos-camera:210
+msgid "Take Photo"
+msgstr "Foto aufnehmen"
+
+#: usr/local/bin/simpleos-camera:214
+msgid "Open Folder"
+msgstr "Ordner öffnen"
+
+#: usr/local/bin/simpleos-camera:240
+msgid "Test camera"
+msgstr "Kamera testen"
+
+#: usr/local/bin/simpleos-camera:342
+msgid "No picture yet – try again in a moment."
+msgstr "Noch kein Bild – versuche es gleich noch einmal."
+
+#: usr/local/bin/simpleos-camera:351
+msgid "the picture could not be read from the camera"
+msgstr "das Bild konnte nicht von der Kamera gelesen werden"
+
+#: usr/local/bin/simpleos-camera:357
+msgid "The photo could not be saved: {error}"
+msgstr "Das Foto konnte nicht gespeichert werden: {error}"
+
+#: usr/local/bin/simpleos-camera:360
+msgid "Saved to {parent}/{folder}: {file}"
+msgstr "Gespeichert in {parent}/{folder}: {file}"
+
+#: usr/local/bin/simpleos-camera:373
+msgid "Your photos are in {folder}"
+msgstr "Deine Fotos liegen in {folder}"
 
 #: usr/local/bin/simpleos-clipboard:30
 msgid "Clipboard"
@@ -49,13 +137,721 @@ msgstr "Der Text konnte nicht kopiert werden (xclip fehlt)."
 msgid "The clipboard history ran into a problem: {e}"
 msgstr "Beim Verlauf der Zwischenablage ist ein Fehler aufgetreten: {e}"
 
-#: usr/local/bin/simpleos-progress:105 usr/local/bin/simpleos-progress:558
+#: usr/local/bin/simpleos-drivers:204
+msgid "Virtual graphics – no driver needed"
+msgstr "Virtuelle Grafik – kein Treiber nötig"
+
+#: usr/local/bin/simpleos-drivers:207
+msgid "NVIDIA driver active"
+msgstr "NVIDIA-Treiber aktiv"
+
+#: usr/local/bin/simpleos-drivers:209
+msgid "Too new for the NVIDIA driver of Debian 12 – no driver is installed for it"
+msgstr "Zu neu für den NVIDIA-Treiber von Debian 12 – dafür wird kein Treiber installiert"
+
+#: usr/local/bin/simpleos-drivers:210
+msgid "Your NVIDIA graphics card is newer than the NVIDIA driver in Debian 12 supports, so Simple OS does not install one (it would stop the graphical login). The screen works with the basic driver; full 3D speed has to wait for a newer Simple OS."
+msgstr "Deine NVIDIA-Grafikkarte ist neuer, als der NVIDIA-Treiber in Debian 12 unterstützt, deshalb installiert Simple OS keinen (er würde die grafische Anmeldung verhindern). Der Bildschirm läuft mit dem Basistreiber; volle 3D-Leistung muss auf ein neueres Simple OS warten."
+
+#: usr/local/bin/simpleos-drivers:215
+msgid "Open-source driver – the NVIDIA driver is faster"
+msgstr "Open-Source-Treiber – der NVIDIA-Treiber ist schneller"
+
+#: usr/local/bin/simpleos-drivers:216
+msgid "NVIDIA driver installed – active after a restart"
+msgstr "NVIDIA-Treiber installiert – aktiv nach einem Neustart"
+
+#: usr/local/bin/simpleos-drivers:219
+msgid "Open-source driver – NVIDIA 470 driver available for this card"
+msgstr "Open-Source-Treiber – für diese Karte gibt es den NVIDIA-Treiber 470"
+
+#: usr/local/bin/simpleos-drivers:220
+msgid "NVIDIA 470 driver installed – active after a restart"
+msgstr "NVIDIA-Treiber 470 installiert – aktiv nach einem Neustart"
+
+#: usr/local/bin/simpleos-drivers:222
+msgid "Open-source driver (nouveau) – no newer NVIDIA driver supports this card"
+msgstr "Open-Source-Treiber (nouveau) – kein neuerer NVIDIA-Treiber unterstützt diese Karte"
+
+#: usr/local/bin/simpleos-drivers:226
+msgid "Secure Boot is on: the NVIDIA driver only works after you turn Secure Boot off in your computer's firmware settings (BIOS/UEFI)."
+msgstr "Secure Boot ist an: Der NVIDIA-Treiber funktioniert erst, wenn du Secure Boot in den Firmware-Einstellungen deines Computers (BIOS/UEFI) ausschaltest."
+
+#: usr/local/bin/simpleos-drivers:240
+msgid "No driver for this graphics chip in kernel {kver} – the screen stays at a low resolution until the newer kernel is installed"
+msgstr "Kein Treiber für diesen Grafikchip im Kernel {kver} – der Bildschirm bleibt bei niedriger Auflösung, bis der neuere Kernel installiert ist"
+
+#: usr/local/bin/simpleos-drivers:243
+msgid "No driver for this graphics chip yet (kernel {kernel}) – the screen stays at a low resolution"
+msgstr "Noch kein Treiber für diesen Grafikchip (Kernel {kernel}) – der Bildschirm bleibt bei niedriger Auflösung"
+
+#: usr/local/bin/simpleos-drivers:246
+msgid "Firmware missing (power saving, video decoding)"
+msgstr "Firmware fehlt (Stromsparen, Videowiedergabe)"
+
+#: usr/local/bin/simpleos-drivers:247
+msgid "Firmware installed – active after a restart"
+msgstr "Firmware installiert – aktiv nach einem Neustart"
+
+#: usr/local/bin/simpleos-drivers:249 usr/local/bin/simpleos-drivers:252 usr/local/bin/simpleos-drivers:254 usr/local/bin/simpleos-drivers:266
+msgid "Working ({driver})"
+msgstr "Funktioniert ({driver})"
+
+#: usr/local/bin/simpleos-drivers:252 usr/local/bin/simpleos-drivers:272 usr/local/bin/simpleos-drivers:287
+msgid "Firmware missing"
+msgstr "Firmware fehlt"
+
+#: usr/local/bin/simpleos-drivers:254
+msgid "No driver in use"
+msgstr "Kein Treiber in Gebrauch"
+
+#: usr/local/bin/simpleos-drivers:269
+msgid "Driver installed – active after a restart"
+msgstr "Treiber installiert – aktiv nach einem Neustart"
+
+#: usr/local/bin/simpleos-drivers:269
+msgid "Driver missing"
+msgstr "Treiber fehlt"
+
+#: usr/local/bin/simpleos-drivers:273
+msgid "Driver loaded, but no Wi-Fi interface – try a restart"
+msgstr "Treiber geladen, aber keine WLAN-Schnittstelle – versuche einen Neustart"
+
+#: usr/local/bin/simpleos-drivers:273 usr/local/bin/simpleos-drivers:275 usr/local/bin/simpleos-drivers:289
+msgid "No driver found"
+msgstr "Kein Treiber gefunden"
+
+#: usr/local/bin/simpleos-drivers:282
+msgid "USB Wi-Fi {vendor}:{product}"
+msgstr "USB-WLAN {vendor}:{product}"
+
+#: usr/local/bin/simpleos-drivers:284 usr/local/bin/simpleos-progress:105 usr/local/bin/simpleos-progress:558
 msgid "Working"
 msgstr "Wird ausgeführt"
+
+#: usr/local/bin/simpleos-drivers:287
+msgid "No Wi-Fi interface – try a restart"
+msgstr "Keine WLAN-Schnittstelle – versuche einen Neustart"
+
+#: usr/local/bin/simpleos-drivers:295
+msgid "Unknown CPU"
+msgstr "Unbekannte CPU"
+
+#: usr/local/bin/simpleos-drivers:299
+msgid "Microcode is handled by the host (virtual machine)"
+msgstr "Den Microcode verwaltet der Host (virtuelle Maschine)"
+
+#: usr/local/bin/simpleos-drivers:301
+msgid "No microcode package for this CPU"
+msgstr "Kein Microcode-Paket für diese CPU"
+
+#: usr/local/bin/simpleos-drivers:304
+msgid "Microcode update missing (security and stability fixes)"
+msgstr "Microcode-Update fehlt (Sicherheits- und Stabilitätskorrekturen)"
+
+#: usr/local/bin/simpleos-drivers:305
+msgid "Microcode up to date"
+msgstr "Microcode ist aktuell"
+
+#: usr/local/bin/simpleos-drivers:316
+msgid "No graphics card found"
+msgstr "Keine Grafikkarte gefunden"
+
+#: usr/local/bin/simpleos-drivers:317
+msgid "Graphics: {name} – {status}"
+msgstr "Grafik: {name} – {status}"
+
+#: usr/local/bin/simpleos-drivers:318
+msgid "No Wi-Fi adapter found"
+msgstr "Kein WLAN-Adapter gefunden"
+
+#: usr/local/bin/simpleos-drivers:320
+msgid "CPU: {name} – {status}"
+msgstr "CPU: {name} – {status}"
+
+#: usr/local/bin/simpleos-drivers:321
+msgid "Note: {n}"
+msgstr "Hinweis: {n}"
+
+#: usr/local/bin/simpleos-drivers:322
+msgid "Recommended: "
+msgstr "Empfohlen: "
+
+#: usr/local/bin/simpleos-drivers:322
+msgid "nothing – all drivers are installed"
+msgstr "nichts – alle Treiber sind installiert"
+
+#: usr/local/bin/simpleos-drivers:329 usr/local/bin/simpleos-drivers:330 usr/local/bin/simpleos-drivers:349
+msgid "Hardware & Drivers"
+msgstr "Hardware & Treiber"
+
+#: usr/local/bin/simpleos-drivers:339
+msgid "All recommended drivers are already installed."
+msgstr "Alle empfohlenen Treiber sind schon installiert."
+
+#: usr/local/bin/simpleos-drivers:347
+msgid "Installing drivers"
+msgstr "Treiber werden installiert"
+
+#: usr/local/bin/simpleos-drivers:348
+msgid "Drivers installed"
+msgstr "Treiber installiert"
+
+#: usr/local/bin/simpleos-drivers:348
+msgid "Restart afterwards to use them"
+msgstr "Starte danach neu, um sie zu nutzen"
+
+#: usr/local/bin/simpleos-drivers:359
+msgid "Drivers installed. Restart the computer to use them."
+msgstr "Treiber installiert. Starte den Computer neu, um sie zu nutzen."
+
+#: usr/local/bin/simpleos-drivers:361
+msgid "No password entered – nothing was changed."
+msgstr "Kein Passwort eingegeben – nichts wurde geändert."
+
+#: usr/local/bin/simpleos-drivers:363
+msgid "The drivers could not be installed. Details: ~/.cache/simpleos-drivers.log"
+msgstr "Die Treiber konnten nicht installiert werden. Details: ~/.cache/simpleos-drivers.log"
 
 #: usr/local/bin/simpleos-progress:380
 msgid " · {remaining} left"
 msgstr " · noch {remaining}"
+
+#: usr/local/bin/simpleos-search:43
+msgid "Lock"
+msgstr "Sperren"
+
+#: usr/local/bin/simpleos-search:44
+msgid "Sleep"
+msgstr "Energie sparen"
+
+#: usr/local/bin/simpleos-search:45
+msgid "Restart"
+msgstr "Neu starten"
+
+#: usr/local/bin/simpleos-search:45 usr/local/sbin/simpleos-installer-restart:140
+msgid "Restart now"
+msgstr "Jetzt neu starten"
+
+#: usr/local/bin/simpleos-search:46
+msgid "Shut down"
+msgstr "Herunterfahren"
+
+#: usr/local/bin/simpleos-search:46
+msgid "Shut down now"
+msgstr "Jetzt herunterfahren"
+
+#: usr/local/bin/simpleos-search:47
+msgid "Switch user"
+msgstr "Benutzer wechseln"
+
+#: usr/local/bin/simpleos-search:48
+msgid "Sign out"
+msgstr "Abmelden"
+
+#: usr/local/bin/simpleos-search:48
+msgid "Sign out now"
+msgstr "Jetzt abmelden"
+
+#: usr/local/bin/simpleos-search:53
+msgid "Wi-Fi settings"
+msgstr "Einstellungen: WLAN"
+
+#: usr/local/bin/simpleos-search:54
+msgid "Bluetooth settings"
+msgstr "Einstellungen: Bluetooth"
+
+#: usr/local/bin/simpleos-search:55
+msgid "Sound settings"
+msgstr "Einstellungen: Ton"
+
+#: usr/local/bin/simpleos-search:56
+msgid "Display settings"
+msgstr "Einstellungen: Bildschirm"
+
+#: usr/local/bin/simpleos-search:59
+msgid "Appearance settings"
+msgstr "Einstellungen: Aussehen"
+
+#: usr/local/bin/simpleos-search:61
+msgid "Notification settings"
+msgstr "Einstellungen: Benachrichtigungen"
+
+#: usr/local/bin/simpleos-search:63
+msgid "Mouse & touchpad settings"
+msgstr "Einstellungen: Maus & Touchpad"
+
+#: usr/local/bin/simpleos-search:64
+msgid "Keyboard settings"
+msgstr "Einstellungen: Tastatur"
+
+#: usr/local/bin/simpleos-search:65
+msgid "Printer & scanner settings"
+msgstr "Einstellungen: Drucker & Scanner"
+
+#: usr/local/bin/simpleos-search:66
+msgid "Power settings"
+msgstr "Einstellungen: Energie"
+
+#: usr/local/bin/simpleos-search:68
+msgid "Default & startup app settings"
+msgstr "Einstellungen: Standard- und Autostart-Apps"
+
+#: usr/local/bin/simpleos-search:70
+msgid "Date & time settings"
+msgstr "Einstellungen: Datum & Uhrzeit"
+
+#: usr/local/bin/simpleos-search:71
+msgid "Language & region settings"
+msgstr "Einstellungen: Sprache & Region"
+
+#: usr/local/bin/simpleos-search:73
+msgid "Storage & backup settings"
+msgstr "Einstellungen: Speicher & Sicherungen"
+
+#: usr/local/bin/simpleos-search:75
+msgid "Password & security settings"
+msgstr "Einstellungen: Passwort & Sicherheit"
+
+#: usr/local/bin/simpleos-search:76
+msgid "User account settings"
+msgstr "Einstellungen: Benutzerkonten"
+
+#: usr/local/bin/simpleos-search:78
+msgid "System & update settings"
+msgstr "Einstellungen: System & Updates"
+
+#: usr/local/bin/simpleos-search:212
+msgid "{expr} – can't divide by zero"
+msgstr "{expr} – durch null kann man nicht teilen"
+
+#: usr/local/bin/simpleos-search:214
+msgid "{expr} – the number is too large"
+msgstr "{expr} – die Zahl ist zu groß"
+
+#: usr/local/bin/simpleos-search:216 usr/local/bin/simpleos-search:221 usr/local/bin/simpleos-search:224
+msgid "{expr} – no result"
+msgstr "{expr} – kein Ergebnis"
+
+#: usr/local/bin/simpleos-search:371 usr/local/bin/simpleos-search:371
+msgid "Search"
+msgstr "Suche"
+
+#: usr/local/bin/simpleos-search:395
+msgid "Apps, settings and power options · type a calculation or a file name and press Enter"
+msgstr "Apps, Einstellungen und Ein/Aus · gib eine Rechnung oder einen Dateinamen ein und drücke Enter"
+
+#: usr/local/bin/simpleos-search:414
+msgid "Enter copies the result"
+msgstr "Enter kopiert das Ergebnis"
+
+#: usr/local/bin/simpleos-search:414
+msgid "That calculation has no result"
+msgstr "Diese Rechnung hat kein Ergebnis"
+
+#: usr/local/bin/simpleos-search:416 usr/local/bin/simpleos-search:421 usr/local/bin/simpleos-search:432 usr/local/bin/simpleos-welcome-wizard:446
+msgid "Back"
+msgstr "Zurück"
+
+#: usr/local/bin/simpleos-search:420
+msgid "Nothing found for “{text}” in your files"
+msgstr "Nichts gefunden für „{text}“ in deinen Dateien"
+
+#: usr/local/bin/simpleos-search:423
+msgid "1 file or folder matching “{text}” · Enter opens"
+msgstr "1 Datei oder Ordner passt zu „{text}“ · Enter öffnet"
+
+#: usr/local/bin/simpleos-search:424
+msgid "{count} files and folders matching “{text}” · Enter opens"
+msgstr "{count} Dateien und Ordner passen zu „{text}“ · Enter öffnet"
+
+#: usr/local/bin/simpleos-search:430
+msgid "Home"
+msgstr "Persönlicher Ordner"
+
+#: usr/local/bin/simpleos-search:448
+msgid "Switching users is not available in Live Mode."
+msgstr "Benutzer wechseln geht im Live-Modus nicht."
+
+#: usr/local/bin/simpleos-search:459
+msgid "That did not work. Please try again."
+msgstr "Das hat nicht geklappt. Bitte versuche es noch einmal."
+
+#: usr/local/bin/simpleos-search:466
+msgid "{text} could not be started."
+msgstr "{text} konnte nicht gestartet werden."
+
+#: usr/local/bin/simpleos-search:469
+msgid "The file could not be opened."
+msgstr "Die Datei konnte nicht geöffnet werden."
+
+#: usr/local/bin/simpleos-search:472
+msgid "The Control Center could not be opened."
+msgstr "Die Einstellungen konnten nicht geöffnet werden."
+
+#: usr/local/bin/simpleos-search:480
+msgid "{value} copied to the clipboard."
+msgstr "{value} in die Zwischenablage kopiert."
+
+#: usr/local/bin/simpleos-search:484
+msgid "Save your work first."
+msgstr "Speichere zuerst deine Arbeit."
+
+#: usr/local/bin/simpleos-search:486 usr/local/bin/simpleos-windows-app:242
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: usr/local/bin/simpleos-search:497
+msgid "Search is not available (rofi missing). Press Super+Space again later."
+msgstr "Die Suche ist nicht verfügbar (rofi fehlt). Drücke später noch einmal Super+Leertaste."
+
+#: usr/local/bin/simpleos-search:501
+msgid "Search apps, files, or calculate"
+msgstr "Apps, Dateien suchen oder rechnen"
+
+#: usr/local/bin/simpleos-search:513
+msgid "Search could not open. Please try again."
+msgstr "Die Suche konnte nicht geöffnet werden. Bitte versuche es noch einmal."
+
+#: usr/local/bin/simpleos-software-center:47 usr/local/bin/simpleos-software-center:70 usr/local/bin/simpleos-software-center:72 usr/local/bin/simpleos-software-center:85
+msgid "Games"
+msgstr "Spiele"
+
+#: usr/local/bin/simpleos-software-center:47 usr/local/bin/simpleos-welcome-wizard:83
+msgid "Gaming Support"
+msgstr "Gaming-Unterstützung"
+
+#: usr/local/bin/simpleos-software-center:47
+msgid "Steam, Lutris, MangoHud and game controllers – thousands of games"
+msgstr "Steam, Lutris, MangoHud und Gamecontroller – Tausende Spiele"
+
+#: usr/local/bin/simpleos-software-center:49
+msgid "Documents, spreadsheets and presentations"
+msgstr "Dokumente, Tabellen und Präsentationen"
+
+#: usr/local/bin/simpleos-software-center:49 usr/local/bin/simpleos-software-center:85 usr/local/bin/simpleos-welcome-wizard:95
+msgid "Office"
+msgstr "Office"
+
+#: usr/local/bin/simpleos-software-center:51 usr/local/bin/simpleos-software-center:57 usr/local/bin/simpleos-software-center:59 usr/local/bin/simpleos-software-center:60 usr/local/bin/simpleos-software-center:61 usr/local/bin/simpleos-software-center:85 usr/local/bin/simpleos-welcome-wizard:95
+msgid "Internet"
+msgstr "Internet"
+
+#: usr/local/bin/simpleos-software-center:51
+msgid "Voice, video and text chat"
+msgstr "Sprach-, Video- und Textchat"
+
+#: usr/local/bin/simpleos-software-center:53 usr/local/bin/simpleos-software-center:54 usr/local/bin/simpleos-software-center:65 usr/local/bin/simpleos-software-center:67 usr/local/bin/simpleos-software-center:68 usr/local/bin/simpleos-software-center:82 usr/local/bin/simpleos-software-center:85
+msgid "Media"
+msgstr "Medien"
+
+#: usr/local/bin/simpleos-software-center:53
+msgid "Music and podcasts"
+msgstr "Musik und Podcasts"
+
+#: usr/local/bin/simpleos-software-center:54
+msgid "Plays almost every video and audio file"
+msgstr "Spielt fast jede Video- und Audiodatei ab"
+
+#: usr/local/bin/simpleos-software-center:55
+msgid "Office suite that looks like Microsoft Office"
+msgstr "Office-Suite, die aussieht wie Microsoft Office"
+
+#: usr/local/bin/simpleos-software-center:57
+msgid "Email and calendar"
+msgstr "E-Mail und Kalender"
+
+#: usr/local/bin/simpleos-software-center:59
+msgid "Messenger"
+msgstr "Messenger"
+
+#: usr/local/bin/simpleos-software-center:60
+msgid "Private messenger"
+msgstr "Privater Messenger"
+
+#: usr/local/bin/simpleos-software-center:61
+msgid "Video meetings"
+msgstr "Videokonferenzen"
+
+#: usr/local/bin/simpleos-software-center:62
+msgid "Edit photos and images"
+msgstr "Fotos und Bilder bearbeiten"
+
+#: usr/local/bin/simpleos-software-center:62 usr/local/bin/simpleos-software-center:63 usr/local/bin/simpleos-software-center:64 usr/local/bin/simpleos-software-center:85
+msgid "Graphics"
+msgstr "Grafik"
+
+#: usr/local/bin/simpleos-software-center:63
+msgid "Digital painting"
+msgstr "Digitales Malen"
+
+#: usr/local/bin/simpleos-software-center:64
+msgid "Vector graphics"
+msgstr "Vektorgrafik"
+
+#: usr/local/bin/simpleos-software-center:65
+msgid "Record and stream your screen"
+msgstr "Bildschirm aufnehmen und streamen"
+
+#: usr/local/bin/simpleos-software-center:67
+msgid "Video editor"
+msgstr "Videoschnitt"
+
+#: usr/local/bin/simpleos-software-center:68
+msgid "Record and edit audio"
+msgstr "Audio aufnehmen und bearbeiten"
+
+#: usr/local/bin/simpleos-software-center:70
+msgid "Epic Games, GOG and Amazon games"
+msgstr "Spiele von Epic Games, GOG und Amazon"
+
+#: usr/local/bin/simpleos-software-center:72
+msgid "Minecraft launcher"
+msgstr "Minecraft-Launcher"
+
+#: usr/local/bin/simpleos-software-center:74
+msgid "Run many Windows programs (Bottles and Wine) – double-click a .exe"
+msgstr "Viele Windows-Programme nutzen (Bottles und Wine) – Doppelklick auf eine .exe"
+
+#: usr/local/bin/simpleos-software-center:76 usr/local/bin/simpleos-welcome-wizard:85
+msgid "Developer Tools"
+msgstr "Entwicklerwerkzeuge"
+
+#: usr/local/bin/simpleos-software-center:76
+msgid "Git, compilers, Python tools and the VSCodium code editor"
+msgstr "Git, Compiler, Python-Werkzeuge und der Code-Editor VSCodium"
+
+#: usr/local/bin/simpleos-software-center:78
+msgid "Code editor"
+msgstr "Code-Editor"
+
+#: usr/local/bin/simpleos-software-center:78 usr/local/bin/simpleos-software-center:85
+msgid "Development"
+msgstr "Entwicklung"
+
+#: usr/local/bin/simpleos-software-center:80
+msgid "Password manager"
+msgstr "Passwortmanager"
+
+#: usr/local/bin/simpleos-software-center:80 usr/local/bin/simpleos-software-center:86
+msgid "Utilities"
+msgstr "Werkzeuge"
+
+#: usr/local/bin/simpleos-software-center:82
+msgid "Media center for TV and movies"
+msgstr "Mediencenter für Fernsehen und Filme"
+
+#: usr/local/bin/simpleos-software-center:85
+msgid "All"
+msgstr "Alle"
+
+#: usr/local/bin/simpleos-software-center:160 usr/local/bin/simpleos-welcome-wizard:1104
+msgid " · less than a minute left"
+msgstr " · noch weniger als eine Minute"
+
+#: usr/local/bin/simpleos-software-center:161 usr/local/bin/simpleos-welcome-wizard:1104
+msgid " · about {minutes} min left"
+msgstr " · noch etwa {minutes} Min."
+
+#: usr/local/bin/simpleos-software-center:176
+msgid "No password entered – nothing was installed."
+msgstr "Kein Passwort eingegeben – nichts wurde installiert."
+
+#: usr/local/bin/simpleos-software-center:178
+msgid "This could not start (a required program is missing)."
+msgstr "Das konnte nicht starten (ein nötiges Programm fehlt)."
+
+#: usr/local/bin/simpleos-software-center:182
+msgid "Not enough free space. In Live mode, apps are kept in memory – install Simple OS first."
+msgstr "Nicht genug freier Speicherplatz. Im Live-Modus liegen Apps im Arbeitsspeicher – installiere zuerst Simple OS."
+
+#: usr/local/bin/simpleos-software-center:185
+msgid "No internet connection. Check your network and try again."
+msgstr "Keine Internetverbindung. Prüfe dein Netzwerk und versuche es noch einmal."
+
+#: usr/local/bin/simpleos-software-center:187
+msgid "Flathub is not set up on this computer."
+msgstr "Flathub ist auf diesem Computer nicht eingerichtet."
+
+#: usr/local/bin/simpleos-software-center:188
+msgid "Something went wrong. Please try again later."
+msgstr "Etwas ist schiefgegangen. Bitte versuche es später noch einmal."
+
+#: usr/local/bin/simpleos-software-center:223 usr/local/bin/simpleos-software-center:233 usr/local/bin/simpleos-software-center:448
+msgid "Software Center"
+msgstr "Software-Center"
+
+#: usr/local/bin/simpleos-software-center:234
+msgid "Search apps"
+msgstr "Apps suchen"
+
+#: usr/local/bin/simpleos-software-center:237
+msgid "More apps"
+msgstr "Mehr Apps"
+
+#: usr/local/bin/simpleos-software-center:239
+msgid "Browse Flathub (Bazaar)"
+msgstr "Flathub durchstöbern (Bazaar)"
+
+#: usr/local/bin/simpleos-software-center:240
+msgid "GNOME Software (all apps and system packages)"
+msgstr "GNOME Software (alle Apps und Systempakete)"
+
+#: usr/local/bin/simpleos-software-center:269
+msgid "Flatpak is missing – only system apps can be installed."
+msgstr "Flatpak fehlt – nur System-Apps können installiert werden."
+
+#: usr/local/bin/simpleos-software-center:279
+msgid "{doing} continues in the background. You'll get a message when it's done."
+msgstr "{doing} läuft im Hintergrund weiter. Du bekommst eine Nachricht, wenn es fertig ist."
+
+#: usr/local/bin/simpleos-software-center:287
+msgid "{program} is not installed."
+msgstr "{program} ist nicht installiert."
+
+#: usr/local/bin/simpleos-software-center:308
+msgid "No apps found. Try “More apps” for the full catalog."
+msgstr "Keine Apps gefunden. Unter „Mehr Apps“ findest du den ganzen Katalog."
+
+#: usr/local/bin/simpleos-software-center:326
+msgid "Working…"
+msgstr "Läuft…"
+
+#: usr/local/bin/simpleos-software-center:328
+msgid "Open"
+msgstr "Öffnen"
+
+#: usr/local/bin/simpleos-software-center:332
+msgid "Remove"
+msgstr "Entfernen"
+
+#: usr/local/bin/simpleos-software-center:338
+msgid "Install"
+msgstr "Installieren"
+
+#: usr/local/bin/simpleos-software-center:350
+msgid "Remove {app}?"
+msgstr "{app} entfernen?"
+
+#: usr/local/bin/simpleos-software-center:351
+msgid "Your files stay. The app's settings are kept for a later reinstall."
+msgstr "Deine Dateien bleiben. Die Einstellungen der App bleiben für eine spätere Neuinstallation erhalten."
+
+#: usr/local/bin/simpleos-software-center:362
+msgid "Only {free} MB free – install {app} anyway?"
+msgstr "Nur {free} MB frei – {app} trotzdem installieren?"
+
+#: usr/local/bin/simpleos-software-center:364
+msgid "Large apps need 1–3 GB including their runtime. In Live mode, apps are kept in memory and are gone after a restart – install Simple OS first."
+msgstr "Große Apps brauchen 1–3 GB samt Laufzeitumgebung. Im Live-Modus liegen Apps im Arbeitsspeicher und sind nach einem Neustart weg – installiere zuerst Simple OS."
+
+#: usr/local/bin/simpleos-software-center:374
+msgid "Installing {app}"
+msgstr "{app} wird installiert"
+
+#: usr/local/bin/simpleos-software-center:374
+msgid "Removing {app}"
+msgstr "{app} wird entfernt"
+
+#: usr/local/bin/simpleos-software-center:377
+msgid "{doing}… (this can take a few minutes)"
+msgstr "{doing}… (das kann ein paar Minuten dauern)"
+
+#: usr/local/bin/simpleos-software-center:398 usr/local/bin/simpleos-welcome-wizard:1039
+msgid " · about {rest} left"
+msgstr " · noch etwa {rest}"
+
+#: usr/local/bin/simpleos-software-center:435
+msgid "{app} is installed."
+msgstr "{app} ist installiert."
+
+#: usr/local/bin/simpleos-software-center:436
+msgid "{app} is removed."
+msgstr "{app} ist entfernt."
+
+#: usr/local/bin/simpleos-taskmanager:111
+msgid "{n:.1f} GB"
+msgstr "{n:.1f} GB"
+
+#: usr/local/bin/simpleos-taskmanager:175 usr/local/bin/simpleos-taskmanager:179
+msgid "Task Manager"
+msgstr "Task-Manager"
+
+#: usr/local/bin/simpleos-taskmanager:189
+msgid "Search processes"
+msgstr "Prozesse suchen"
+
+#: usr/local/bin/simpleos-taskmanager:192
+msgid "All users"
+msgstr "Alle Benutzer"
+
+#: usr/local/bin/simpleos-taskmanager:208
+msgid "Name"
+msgstr "Name"
+
+#: usr/local/bin/simpleos-taskmanager:209
+msgid "User"
+msgstr "Benutzer"
+
+#: usr/local/bin/simpleos-taskmanager:210 usr/local/bin/simpleos-welcome-wizard:168
+msgid "Memory"
+msgstr "Arbeitsspeicher"
+
+#: usr/local/bin/simpleos-taskmanager:238 usr/local/bin/simpleos-taskmanager:342
+msgid "End task"
+msgstr "Task beenden"
+
+#: usr/local/bin/simpleos-taskmanager:272
+msgid " – ending…"
+msgstr " – wird beendet…"
+
+#: usr/local/bin/simpleos-taskmanager:290
+msgid " · Memory {mem}"
+msgstr " · Arbeitsspeicher {mem}"
+
+#: usr/local/bin/simpleos-taskmanager:290
+msgid "{count} processes · CPU {total_cpu:.0f} %"
+msgstr "{count} Prozesse · CPU {total_cpu:.0f} %"
+
+#: usr/local/bin/simpleos-taskmanager:304
+msgid "{used} of {total}"
+msgstr "{used} von {total}"
+
+#: usr/local/bin/simpleos-taskmanager:355
+msgid "This process can't be ended."
+msgstr "Dieser Prozess kann nicht beendet werden."
+
+#: usr/local/bin/simpleos-taskmanager:359
+msgid "End {process}?"
+msgstr "{process} beenden?"
+
+#: usr/local/bin/simpleos-taskmanager:360
+msgid "It is part of the desktop or the system. Ending it can close your session or stop the network or sound."
+msgstr "Er gehört zum Desktop oder zum System. Wenn du ihn beendest, kann sich deine Sitzung schließen oder Netzwerk oder Ton können ausfallen."
+
+#: usr/local/bin/simpleos-taskmanager:368
+msgid "Ending {process}…"
+msgstr "{process} wird beendet…"
+
+#: usr/local/bin/simpleos-taskmanager:382
+msgid "{process} was closed."
+msgstr "{process} wurde geschlossen."
+
+#: usr/local/bin/simpleos-taskmanager:383
+msgid "{process} did not respond and was forced to close."
+msgstr "{process} hat nicht reagiert und wurde zwangsweise geschlossen."
+
+#: usr/local/bin/simpleos-taskmanager:384
+msgid "{process} had already closed."
+msgstr "{process} war schon geschlossen."
+
+#: usr/local/bin/simpleos-taskmanager:385
+msgid "{process} was not ended – no password entered."
+msgstr "{process} wurde nicht beendet – kein Passwort eingegeben."
+
+#: usr/local/bin/simpleos-taskmanager:386
+msgid "{process} could not be ended."
+msgstr "{process} konnte nicht beendet werden."
 
 #: usr/local/bin/simpleos-welcome-wizard:60
 msgid "Preinstalled. Stable and privacy-friendly."
@@ -118,20 +914,12 @@ msgid "about 700 MB download"
 msgstr "etwa 700 MB Download"
 
 #: usr/local/bin/simpleos-welcome-wizard:83
-msgid "Gaming Support"
-msgstr "Gaming-Unterstützung"
-
-#: usr/local/bin/simpleos-welcome-wizard:83
 msgid "Steam, Lutris and MangoHud with 32-bit support and game controllers. GameMode is already built in."
 msgstr "Steam, Lutris und MangoHud mit 32-Bit-Unterstützung und Gamecontrollern. GameMode ist schon eingebaut."
 
 #: usr/local/bin/simpleos-welcome-wizard:84
 msgid "about 1 GB download"
 msgstr "etwa 1 GB Download"
-
-#: usr/local/bin/simpleos-welcome-wizard:85
-msgid "Developer Tools"
-msgstr "Entwicklerwerkzeuge"
 
 #: usr/local/bin/simpleos-welcome-wizard:85
 msgid "Git, compilers, Python tools and the code editor VSCodium."
@@ -141,359 +929,343 @@ msgstr "Git, Compiler, Python-Werkzeuge und der Code-Editor VSCodium."
 msgid "about 800 MB download"
 msgstr "etwa 800 MB Download"
 
-#: usr/local/bin/simpleos-welcome-wizard:92
+#: usr/local/bin/simpleos-welcome-wizard:95
 msgid "Appearance"
 msgstr "Aussehen"
 
-#: usr/local/bin/simpleos-welcome-wizard:92 usr/local/bin/simpleos-welcome-wizard:708
+#: usr/local/bin/simpleos-welcome-wizard:95 usr/local/bin/simpleos-welcome-wizard:711
 msgid "Apps"
 msgstr "Apps"
 
-#: usr/local/bin/simpleos-welcome-wizard:92
+#: usr/local/bin/simpleos-welcome-wizard:95
 msgid "Browser"
 msgstr "Browser"
 
-#: usr/local/bin/simpleos-welcome-wizard:92
+#: usr/local/bin/simpleos-welcome-wizard:95
 msgid "Extras"
 msgstr "Extras"
 
-#: usr/local/bin/simpleos-welcome-wizard:92
-msgid "Internet"
-msgstr "Internet"
-
-#: usr/local/bin/simpleos-welcome-wizard:92
-msgid "Office"
-msgstr "Office"
-
-#: usr/local/bin/simpleos-welcome-wizard:92
+#: usr/local/bin/simpleos-welcome-wizard:95
 msgid "Welcome"
 msgstr "Willkommen"
 
-#: usr/local/bin/simpleos-welcome-wizard:136
+#: usr/local/bin/simpleos-welcome-wizard:139
 msgid "{model} ({threads} threads)"
 msgstr "{model} ({threads} Threads)"
 
-#: usr/local/bin/simpleos-welcome-wizard:140
+#: usr/local/bin/simpleos-welcome-wizard:143
 msgid "{threads} threads"
 msgstr "{threads} Threads"
 
-#: usr/local/bin/simpleos-welcome-wizard:156
+#: usr/local/bin/simpleos-welcome-wizard:159
 msgid "{free:.0f} GiB free of {total:.0f} GiB"
 msgstr "{free:.0f} GiB von {total:.0f} GiB frei"
 
-#: usr/local/bin/simpleos-welcome-wizard:161
+#: usr/local/bin/simpleos-welcome-wizard:164
 msgid "System"
 msgstr "System"
 
-#: usr/local/bin/simpleos-welcome-wizard:162
+#: usr/local/bin/simpleos-welcome-wizard:165
 msgid "Computer"
 msgstr "Computer"
 
-#: usr/local/bin/simpleos-welcome-wizard:163
+#: usr/local/bin/simpleos-welcome-wizard:166
 msgid "Kernel"
 msgstr "Kernel"
 
-#: usr/local/bin/simpleos-welcome-wizard:164
+#: usr/local/bin/simpleos-welcome-wizard:167
 msgid "Processor"
 msgstr "Prozessor"
 
-#: usr/local/bin/simpleos-welcome-wizard:165
-msgid "Memory"
-msgstr "Arbeitsspeicher"
-
-#: usr/local/bin/simpleos-welcome-wizard:166
+#: usr/local/bin/simpleos-welcome-wizard:169
 msgid "Storage"
 msgstr "Speicher"
 
-#: usr/local/bin/simpleos-welcome-wizard:312
+#: usr/local/bin/simpleos-welcome-wizard:315
 msgid "You're online – connected to {network}"
 msgstr "Du bist online – verbunden mit {network}"
 
-#: usr/local/bin/simpleos-welcome-wizard:314
+#: usr/local/bin/simpleos-welcome-wizard:317
 msgid "You're online – connected with a network cable"
 msgstr "Du bist online – über ein Netzwerkkabel verbunden"
 
-#: usr/local/bin/simpleos-welcome-wizard:316
+#: usr/local/bin/simpleos-welcome-wizard:319
 msgid "Not connected yet"
 msgstr "Noch nicht verbunden"
 
-#: usr/local/bin/simpleos-welcome-wizard:317
+#: usr/local/bin/simpleos-welcome-wizard:320
 msgid " · needs password"
 msgstr " · braucht ein Passwort"
 
-#: usr/local/bin/simpleos-welcome-wizard:317
+#: usr/local/bin/simpleos-welcome-wizard:320
 msgid " · open"
 msgstr " · offen"
 
-#: usr/local/bin/simpleos-welcome-wizard:317
+#: usr/local/bin/simpleos-welcome-wizard:320
 msgid "Connected"
 msgstr "Verbunden"
 
-#: usr/local/bin/simpleos-welcome-wizard:322
+#: usr/local/bin/simpleos-welcome-wizard:325
 msgid "Click Next to continue."
 msgstr "Klicke auf Weiter, um fortzufahren."
 
-#: usr/local/bin/simpleos-welcome-wizard:323
+#: usr/local/bin/simpleos-welcome-wizard:326
 msgid "Use a different network"
 msgstr "Anderes Netzwerk verwenden"
 
-#: usr/local/bin/simpleos-welcome-wizard:325
+#: usr/local/bin/simpleos-welcome-wizard:328
 msgid "This computer has no Wi-Fi. Plug in a network cable – it connects by itself."
 msgstr "Dieser Computer hat kein WLAN. Schließ ein Netzwerkkabel an – er verbindet sich dann von selbst."
 
-#: usr/local/bin/simpleos-welcome-wizard:326
+#: usr/local/bin/simpleos-welcome-wizard:329
 msgid "Check again"
 msgstr "Noch einmal prüfen"
 
-#: usr/local/bin/simpleos-welcome-wizard:328
+#: usr/local/bin/simpleos-welcome-wizard:331
 msgid "Wi-Fi is turned off. Click \"Turn on Wi-Fi\" to see the networks around you."
 msgstr "WLAN ist ausgeschaltet. Klicke auf „WLAN einschalten“, um die Netzwerke in deiner Nähe zu sehen."
 
-#: usr/local/bin/simpleos-welcome-wizard:329
+#: usr/local/bin/simpleos-welcome-wizard:332
 msgid "Turn on Wi-Fi"
 msgstr "WLAN einschalten"
 
-#: usr/local/bin/simpleos-welcome-wizard:331
+#: usr/local/bin/simpleos-welcome-wizard:334
 msgid "No Wi-Fi networks found nearby. Move closer to your router and click \"Search again\"."
 msgstr "Keine WLAN-Netzwerke in der Nähe gefunden. Geh näher an deinen Router und klicke auf „Erneut suchen“."
 
-#: usr/local/bin/simpleos-welcome-wizard:332 usr/local/bin/simpleos-welcome-wizard:335 usr/local/bin/simpleos-welcome-wizard:339 usr/local/bin/simpleos-welcome-wizard:544
+#: usr/local/bin/simpleos-welcome-wizard:335 usr/local/bin/simpleos-welcome-wizard:338 usr/local/bin/simpleos-welcome-wizard:342 usr/local/bin/simpleos-welcome-wizard:547
 msgid "Search again"
 msgstr "Erneut suchen"
 
-#: usr/local/bin/simpleos-welcome-wizard:334
+#: usr/local/bin/simpleos-welcome-wizard:337
 msgid "To switch, click another network, type its password if it needs one, then click Connect."
 msgstr "Zum Wechseln klickst du ein anderes Netzwerk an, gibst sein Passwort ein, falls es eins braucht, und klickst auf Verbinden."
 
-#: usr/local/bin/simpleos-welcome-wizard:337
+#: usr/local/bin/simpleos-welcome-wizard:340
 msgid "1. Click your Wi-Fi network.   2. Type its password (often on a sticker on your router).   3. Click Connect."
 msgstr "1. Klicke dein WLAN an.   2. Gib sein Passwort ein (oft auf einem Aufkleber am Router).   3. Klicke auf Verbinden."
 
-#: usr/local/bin/simpleos-welcome-wizard:345
+#: usr/local/bin/simpleos-welcome-wizard:348
 msgid "Good signal"
 msgstr "Guter Empfang"
 
-#: usr/local/bin/simpleos-welcome-wizard:345
+#: usr/local/bin/simpleos-welcome-wizard:348
 msgid "Strong signal"
 msgstr "Starker Empfang"
 
-#: usr/local/bin/simpleos-welcome-wizard:345
+#: usr/local/bin/simpleos-welcome-wizard:348
 msgid "Weak signal"
 msgstr "Schwacher Empfang"
 
-#: usr/local/bin/simpleos-welcome-wizard:358 usr/local/bin/simpleos-welcome-wizard:366 usr/local/bin/simpleos-welcome-wizard:372
+#: usr/local/bin/simpleos-welcome-wizard:361 usr/local/bin/simpleos-welcome-wizard:369 usr/local/bin/simpleos-welcome-wizard:375
 msgid "Connected to {ssid}. You're online."
 msgstr "Mit {ssid} verbunden. Du bist online."
 
-#: usr/local/bin/simpleos-welcome-wizard:377
+#: usr/local/bin/simpleos-welcome-wizard:380
 msgid "That didn't work. The password may be wrong – please check it and try again."
 msgstr "Das hat nicht geklappt. Vielleicht ist das Passwort falsch – bitte prüfe es und versuche es noch einmal."
 
-#: usr/local/bin/simpleos-welcome-wizard:379
+#: usr/local/bin/simpleos-welcome-wizard:382
 msgid "That didn't work. The saved password may be wrong – please type the password and try again."
 msgstr "Das hat nicht geklappt. Vielleicht ist das gespeicherte Passwort falsch – bitte gib das Passwort ein und versuche es noch einmal."
 
-#: usr/local/bin/simpleos-welcome-wizard:380
+#: usr/local/bin/simpleos-welcome-wizard:383
 msgid "That didn't work. Move closer to your router and try again."
 msgstr "Das hat nicht geklappt. Geh näher an deinen Router und versuche es noch einmal."
 
-#: usr/local/bin/simpleos-welcome-wizard:386
+#: usr/local/bin/simpleos-welcome-wizard:389
 msgid "Simple OS Setup"
 msgstr "Simple OS – Einrichtung"
 
-#: usr/local/bin/simpleos-welcome-wizard:435
+#: usr/local/bin/simpleos-welcome-wizard:438
 msgid "Skip setup"
 msgstr "Einrichtung überspringen"
 
-#: usr/local/bin/simpleos-welcome-wizard:436
+#: usr/local/bin/simpleos-welcome-wizard:439
 msgid "Keep the defaults and don't show this again"
 msgstr "Die Standardeinstellungen behalten und das nicht wieder anzeigen"
 
-#: usr/local/bin/simpleos-welcome-wizard:439 usr/local/bin/simpleos-welcome-wizard:902
+#: usr/local/bin/simpleos-welcome-wizard:442 usr/local/bin/simpleos-welcome-wizard:905
 msgid "Next"
 msgstr "Weiter"
 
-#: usr/local/bin/simpleos-welcome-wizard:443
-msgid "Back"
-msgstr "Zurück"
-
-#: usr/local/bin/simpleos-welcome-wizard:461
+#: usr/local/bin/simpleos-welcome-wizard:464
 msgid "You're already online"
 msgstr "Du bist schon online"
 
-#: usr/local/bin/simpleos-welcome-wizard:494 usr/local/lib/simpleos/welcome-viewer:150
+#: usr/local/bin/simpleos-welcome-wizard:497 usr/local/lib/simpleos/welcome-viewer:150
 msgid "Welcome to Simple OS"
 msgstr "Willkommen bei Simple OS"
 
-#: usr/local/bin/simpleos-welcome-wizard:495
+#: usr/local/bin/simpleos-welcome-wizard:498
 msgid "Let's set up a few things. This takes less than a minute."
 msgstr "Lass uns ein paar Dinge einrichten. Das dauert weniger als eine Minute."
 
-#: usr/local/bin/simpleos-welcome-wizard:514
+#: usr/local/bin/simpleos-welcome-wizard:517
 msgid "Connect to the internet"
 msgstr "Mit dem Internet verbinden"
 
-#: usr/local/bin/simpleos-welcome-wizard:515
+#: usr/local/bin/simpleos-welcome-wizard:518
 msgid "The next steps download your browser and apps, so Simple OS needs the internet once."
 msgstr "Die nächsten Schritte laden deinen Browser und deine Apps herunter, deshalb braucht Simple OS einmal das Internet."
 
-#: usr/local/bin/simpleos-welcome-wizard:517 usr/local/bin/simpleos-welcome-wizard:565
+#: usr/local/bin/simpleos-welcome-wizard:520 usr/local/bin/simpleos-welcome-wizard:568
 msgid "Checking your connection ..."
 msgstr "Verbindung wird geprüft …"
 
-#: usr/local/bin/simpleos-welcome-wizard:535
+#: usr/local/bin/simpleos-welcome-wizard:538
 msgid "Wi-Fi password"
 msgstr "WLAN-Passwort"
 
-#: usr/local/bin/simpleos-welcome-wizard:537
+#: usr/local/bin/simpleos-welcome-wizard:540
 msgid "Show the password"
 msgstr "Passwort anzeigen"
 
-#: usr/local/bin/simpleos-welcome-wizard:541
+#: usr/local/bin/simpleos-welcome-wizard:544
 msgid "Connect"
 msgstr "Verbinden"
 
-#: usr/local/bin/simpleos-welcome-wizard:550
+#: usr/local/bin/simpleos-welcome-wizard:553
 msgid "Not now? Just click Next. Later, click the network display in the taskbar (bottom right) to connect."
 msgstr "Jetzt nicht? Klicke einfach auf Weiter. Später kannst du dich über die Netzwerkanzeige in der Taskleiste (unten rechts) verbinden."
 
-#: usr/local/bin/simpleos-welcome-wizard:620
+#: usr/local/bin/simpleos-welcome-wizard:623
 msgid "Password for “{ssid}”:"
 msgstr "Passwort für „{ssid}“:"
 
-#: usr/local/bin/simpleos-welcome-wizard:636
+#: usr/local/bin/simpleos-welcome-wizard:639
 msgid "Please type the password for \"{ssid}\", then click Connect."
 msgstr "Bitte gib das Passwort für „{ssid}“ ein und klicke dann auf Verbinden."
 
-#: usr/local/bin/simpleos-welcome-wizard:640
+#: usr/local/bin/simpleos-welcome-wizard:643
 msgid "Connecting to {ssid} ..."
 msgstr "Verbindung mit {ssid} wird hergestellt …"
 
-#: usr/local/bin/simpleos-welcome-wizard:654
+#: usr/local/bin/simpleos-welcome-wizard:657
 msgid " Click Next to continue."
 msgstr " Klicke auf Weiter, um fortzufahren."
 
-#: usr/local/bin/simpleos-welcome-wizard:676
+#: usr/local/bin/simpleos-welcome-wizard:679
 msgid "Turning on Wi-Fi ..."
 msgstr "WLAN wird eingeschaltet …"
 
-#: usr/local/bin/simpleos-welcome-wizard:681
+#: usr/local/bin/simpleos-welcome-wizard:684
 msgid "Choose your web browser"
 msgstr "Wähle deinen Webbrowser"
 
-#: usr/local/bin/simpleos-welcome-wizard:682
+#: usr/local/bin/simpleos-welcome-wizard:685
 msgid "Links and Super+B open this browser. Missing browsers are installed for you."
 msgstr "Links und Super+B öffnen diesen Browser. Fehlende Browser werden für dich installiert."
 
-#: usr/local/bin/simpleos-welcome-wizard:687 usr/local/bin/simpleos-welcome-wizard:774 usr/local/bin/simpleos-welcome-wizard:789
+#: usr/local/bin/simpleos-welcome-wizard:690 usr/local/bin/simpleos-welcome-wizard:777 usr/local/bin/simpleos-welcome-wizard:792
 msgid "installed"
 msgstr "installiert"
 
-#: usr/local/bin/simpleos-welcome-wizard:687 usr/local/bin/simpleos-welcome-wizard:774
+#: usr/local/bin/simpleos-welcome-wizard:690 usr/local/bin/simpleos-welcome-wizard:777
 msgid "will be installed"
 msgstr "wird installiert"
 
-#: usr/local/bin/simpleos-welcome-wizard:701
+#: usr/local/bin/simpleos-welcome-wizard:704
 msgid "You can change this later in Control Center → Apps."
 msgstr "Du kannst das später unter Einstellungen → Apps ändern."
 
-#: usr/local/bin/simpleos-welcome-wizard:705
+#: usr/local/bin/simpleos-welcome-wizard:708
 msgid "Make it yours"
 msgstr "Mach es zu deinem"
 
-#: usr/local/bin/simpleos-welcome-wizard:706
+#: usr/local/bin/simpleos-welcome-wizard:709
 msgid "Pick a style for your apps and an accent color for menus, panel and windows."
 msgstr "Wähle einen Stil für deine Apps und eine Akzentfarbe für Menüs, Leiste und Fenster."
 
-#: usr/local/bin/simpleos-welcome-wizard:712
+#: usr/local/bin/simpleos-welcome-wizard:715
 msgid "Dark"
 msgstr "Dunkel"
 
-#: usr/local/bin/simpleos-welcome-wizard:713
+#: usr/local/bin/simpleos-welcome-wizard:716
 msgid "Light"
 msgstr "Hell"
 
-#: usr/local/bin/simpleos-welcome-wizard:720
+#: usr/local/bin/simpleos-welcome-wizard:723
 msgid "The panel, menus and terminal always stay dark."
 msgstr "Die Leiste, die Menüs und das Terminal bleiben immer dunkel."
 
-#: usr/local/bin/simpleos-welcome-wizard:722
+#: usr/local/bin/simpleos-welcome-wizard:725
 msgid "Accent color"
 msgstr "Akzentfarbe"
 
-#: usr/local/bin/simpleos-welcome-wizard:767
+#: usr/local/bin/simpleos-welcome-wizard:770
 msgid "Office suite"
 msgstr "Office-Suite"
 
-#: usr/local/bin/simpleos-welcome-wizard:768
+#: usr/local/bin/simpleos-welcome-wizard:771
 msgid "Documents, spreadsheets and presentations. Pick one or keep the system minimal."
 msgstr "Dokumente, Tabellen und Präsentationen. Wähle eine aus oder halte das System schlank."
 
-#: usr/local/bin/simpleos-welcome-wizard:777
+#: usr/local/bin/simpleos-welcome-wizard:780
 msgid "Already installed office apps are not removed."
 msgstr "Schon installierte Office-Apps werden nicht entfernt."
 
-#: usr/local/bin/simpleos-welcome-wizard:781
+#: usr/local/bin/simpleos-welcome-wizard:784
 msgid "Optional components"
 msgstr "Optionale Komponenten"
 
-#: usr/local/bin/simpleos-welcome-wizard:782
+#: usr/local/bin/simpleos-welcome-wizard:785
 msgid "Add extras now or later in the Software Center. Nothing is installed unless you turn it on."
 msgstr "Füge Extras jetzt hinzu oder später im Software-Center. Installiert wird nur, was du einschaltest."
 
-#: usr/local/bin/simpleos-welcome-wizard:804
+#: usr/local/bin/simpleos-welcome-wizard:807
 msgid "What runs with SOS Bridge?"
 msgstr "Was läuft mit SOS Bridge?"
 
-#: usr/local/bin/simpleos-welcome-wizard:809
+#: usr/local/bin/simpleos-welcome-wizard:812
 msgid "Gaming Support: by turning it on you accept the Steam license agreement (store.steampowered.com/subscriber_agreement)."
 msgstr "Gaming-Unterstützung: Wenn du sie einschaltest, akzeptierst du die Steam-Lizenzvereinbarung (store.steampowered.com/subscriber_agreement)."
 
-#: usr/local/bin/simpleos-welcome-wizard:821
+#: usr/local/bin/simpleos-welcome-wizard:824
 msgid "You're offline – connect to the internet (step 2) to add these now, or add them later in the Software Center."
 msgstr "Du bist offline – verbinde dich mit dem Internet (Schritt 2), um sie jetzt hinzuzufügen, oder füge sie später im Software-Center hinzu."
 
-#: usr/local/bin/simpleos-welcome-wizard:826
+#: usr/local/bin/simpleos-welcome-wizard:829
 msgid "Nothing selected – you can add these later in the Software Center."
 msgstr "Nichts ausgewählt – du kannst sie später im Software-Center hinzufügen."
 
-#: usr/local/bin/simpleos-welcome-wizard:828
+#: usr/local/bin/simpleos-welcome-wizard:831
 msgid "Selected: {components} – additional downloads, installed at the end of the setup."
 msgstr "Ausgewählt: {components} – zusätzliche Downloads, installiert am Ende der Einrichtung."
 
-#: usr/local/bin/simpleos-welcome-wizard:845
+#: usr/local/bin/simpleos-welcome-wizard:848
 msgid "Installing your software"
 msgstr "Deine Software wird installiert"
 
-#: usr/local/bin/simpleos-welcome-wizard:846
+#: usr/local/bin/simpleos-welcome-wizard:849
 msgid "You will be asked for your password once. Please keep this window open."
 msgstr "Du wirst einmal nach deinem Passwort gefragt. Bitte lass dieses Fenster offen."
 
-#: usr/local/bin/simpleos-welcome-wizard:851 usr/local/bin/simpleos-welcome-wizard:897
+#: usr/local/bin/simpleos-welcome-wizard:854 usr/local/bin/simpleos-welcome-wizard:900
 msgid "Starting ..."
 msgstr "Wird gestartet …"
 
-#: usr/local/bin/simpleos-welcome-wizard:867
+#: usr/local/bin/simpleos-welcome-wizard:870
 msgid "Details"
 msgstr "Details"
 
-#: usr/local/bin/simpleos-welcome-wizard:874
+#: usr/local/bin/simpleos-welcome-wizard:877
 msgid "Get more apps"
 msgstr "Mehr Apps holen"
 
-#: usr/local/bin/simpleos-welcome-wizard:875
+#: usr/local/bin/simpleos-welcome-wizard:878
 msgid "The Software Store (Bazaar) gives you thousands of apps from Flathub."
 msgstr "Der Software-Store (Bazaar) bietet dir Tausende Apps von Flathub."
 
-#: usr/local/bin/simpleos-welcome-wizard:879
+#: usr/local/bin/simpleos-welcome-wizard:882
 msgid "Open the Software Store after setup"
 msgstr "Den Software-Store nach der Einrichtung öffnen"
 
-#: usr/local/bin/simpleos-welcome-wizard:882
+#: usr/local/bin/simpleos-welcome-wizard:885
 msgid "The store is downloaded once on first use (several hundred MB)."
 msgstr "Der Store wird bei der ersten Nutzung einmal heruntergeladen (mehrere hundert MB)."
 
-#: usr/local/bin/simpleos-welcome-wizard:889
+#: usr/local/bin/simpleos-welcome-wizard:892
 msgid ""
 "GNOME Software is also in the menu and works right away.\n"
 "Run this wizard again any time from Menu → Help → Setup Wizard."
@@ -501,59 +1273,47 @@ msgstr ""
 "GNOME Software ist auch im Menü und funktioniert sofort.\n"
 "Diesen Assistenten kannst du jederzeit wieder über Menü → Hilfe → Einrichtungsassistent starten."
 
-#: usr/local/bin/simpleos-welcome-wizard:902 usr/local/bin/simpleos-welcome-wizard:1053
+#: usr/local/bin/simpleos-welcome-wizard:905 usr/local/bin/simpleos-welcome-wizard:1056
 msgid "Finish"
 msgstr "Fertig"
 
-#: usr/local/bin/simpleos-welcome-wizard:936
+#: usr/local/bin/simpleos-welcome-wizard:939
 msgid "Firefox ESR will be removed completely to free up space."
 msgstr "Firefox ESR wird vollständig entfernt, um Platz zu schaffen."
 
-#: usr/local/bin/simpleos-welcome-wizard:996
+#: usr/local/bin/simpleos-welcome-wizard:999
 msgid "Waiting for your password ..."
 msgstr "Warte auf dein Passwort …"
 
-#: usr/local/bin/simpleos-welcome-wizard:1036
-msgid " · about {rest} left"
-msgstr " · noch etwa {rest}"
-
-#: usr/local/bin/simpleos-welcome-wizard:1051
+#: usr/local/bin/simpleos-welcome-wizard:1054
 msgid "No password entered – nothing was installed or removed. Click Finish to try again or Back to change your choices."
 msgstr "Kein Passwort eingegeben – nichts wurde installiert oder entfernt. Klicke auf Fertig, um es noch einmal zu versuchen, oder auf Zurück, um deine Auswahl zu ändern."
 
-#: usr/local/bin/simpleos-welcome-wizard:1060
+#: usr/local/bin/simpleos-welcome-wizard:1063
 msgid "an optional component"
 msgstr "eine optionale Komponente"
 
-#: usr/local/bin/simpleos-welcome-wizard:1061
+#: usr/local/bin/simpleos-welcome-wizard:1064
 msgid "Everything is set up – except {names}: it could not be installed (no internet or not enough space?). You can add it later in the Software Center."
 msgstr "Alles ist eingerichtet – außer {names}: konnte nicht installiert werden (kein Internet oder zu wenig Platz?). Du kannst es später im Software-Center hinzufügen."
 
-#: usr/local/bin/simpleos-welcome-wizard:1065 usr/local/bin/simpleos-welcome-wizard:1073 usr/local/bin/simpleos-whats-new:171
+#: usr/local/bin/simpleos-welcome-wizard:1068 usr/local/bin/simpleos-welcome-wizard:1076 usr/local/bin/simpleos-whats-new:171
 msgid "Close"
 msgstr "Schließen"
 
-#: usr/local/bin/simpleos-welcome-wizard:1101
-msgid " · about {minutes} min left"
-msgstr " · noch etwa {minutes} Min."
-
-#: usr/local/bin/simpleos-welcome-wizard:1101
-msgid " · less than a minute left"
-msgstr " · noch weniger als eine Minute"
-
-#: usr/local/bin/simpleos-welcome-wizard:1107
+#: usr/local/bin/simpleos-welcome-wizard:1110
 msgid " Run the wizard again from Menu → Help → Setup Wizard."
 msgstr " Starte den Assistenten noch einmal über Menü → Hilfe → Einrichtungsassistent."
 
-#: usr/local/bin/simpleos-welcome-wizard:1110
+#: usr/local/bin/simpleos-welcome-wizard:1113
 msgid "Some software could not be installed: not enough free space. In Live mode, apps are kept in memory – install Simple OS first."
 msgstr "Manche Software konnte nicht installiert werden: nicht genug freier Speicherplatz. Im Live-Modus liegen Apps im Arbeitsspeicher – installiere zuerst Simple OS."
 
-#: usr/local/bin/simpleos-welcome-wizard:1114
+#: usr/local/bin/simpleos-welcome-wizard:1117
 msgid "Some software could not be installed: no internet connection. Check your network."
 msgstr "Manche Software konnte nicht installiert werden: keine Internetverbindung. Prüfe dein Netzwerk."
 
-#: usr/local/bin/simpleos-welcome-wizard:1115
+#: usr/local/bin/simpleos-welcome-wizard:1118
 msgid "Some software could not be installed (details below)."
 msgstr "Manche Software konnte nicht installiert werden (Details unten)."
 
@@ -649,10 +1409,6 @@ msgstr "Zusätzlicher Download nötig: SOS Bridge kommt einmalig von Flathub ({D
 msgid "What works?"
 msgstr "Was läuft?"
 
-#: usr/local/bin/simpleos-windows-app:242
-msgid "Cancel"
-msgstr "Abbrechen"
-
 #: usr/local/bin/simpleos-windows-app:243
 msgid "Install SOS Bridge"
 msgstr "SOS Bridge installieren"
@@ -683,9 +1439,65 @@ msgstr ""
 "\n"
 "Klicke dann auf „Jetzt neu starten“ – der Computer startet dein neues Simple OS."
 
-#: usr/local/sbin/simpleos-installer-restart:140
-msgid "Restart now"
-msgstr "Jetzt neu starten"
+#: usr/local/lib/simpleos/progress-filter:50
+msgid "This can take 10–20 minutes – don't turn off the computer"
+msgstr "Das kann 10–20 Minuten dauern – schalte den Computer nicht aus"
+
+#: usr/local/lib/simpleos/progress-filter:51
+msgid "Still working, this is normal – don't turn off the computer"
+msgstr "Läuft noch, das ist normal – schalte den Computer nicht aus"
+
+#: usr/local/lib/simpleos/progress-filter:55
+msgid "Measuring the system"
+msgstr "System wird vermessen"
+
+#: usr/local/lib/simpleos/progress-filter:56
+msgid "Preparing the backup disk"
+msgstr "Sicherungslaufwerk wird vorbereitet"
+
+#: usr/local/lib/simpleos/progress-filter:57
+msgid "Copying system files"
+msgstr "Systemdateien werden kopiert"
+
+#: usr/local/lib/simpleos/progress-filter:58
+msgid "Putting system files back"
+msgstr "Systemdateien werden zurückgelegt"
+
+#: usr/local/lib/simpleos/progress-filter:59
+msgid "Removing old files"
+msgstr "Alte Dateien werden entfernt"
+
+#: usr/local/lib/simpleos/progress-filter:60 usr/local/lib/simpleos/progress-filter:206 usr/local/lib/simpleos/progress-filter:210
+msgid "Finishing up"
+msgstr "Wird abgeschlossen"
+
+#: usr/local/lib/simpleos/progress-filter:138
+msgid "Checking for app updates"
+msgstr "Suche nach App-Updates"
+
+#: usr/local/lib/simpleos/progress-filter:168 usr/local/lib/simpleos/progress-filter:193
+msgid "Downloading"
+msgstr "Wird heruntergeladen"
+
+#: usr/local/lib/simpleos/progress-filter:168
+msgid "Downloading part {cur} of {cnt}"
+msgstr "Teil {cur} von {cnt} wird heruntergeladen"
+
+#: usr/local/lib/simpleos/progress-filter:196
+msgid "Downloading {done} of {total}"
+msgstr "{done} von {total} heruntergeladen"
+
+#: usr/local/lib/simpleos/progress-filter:208
+msgid "Update {n} of {updates}"
+msgstr "Update {n} von {updates}"
+
+#: usr/local/lib/simpleos/progress-filter:212
+msgid "Installing"
+msgstr "Wird installiert"
+
+#: usr/local/lib/simpleos/progress-filter:282
+msgid "Copying system files · {ts_files:,} files"
+msgstr "Systemdateien werden kopiert · {ts_files:,} Dateien"
 
 #: usr/local/lib/simpleos/welcome-viewer:59
 msgid "You are running Simple OS in Live Mode! Try out everything safely or install it to your system."
