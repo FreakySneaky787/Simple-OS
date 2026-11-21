@@ -315,7 +315,7 @@ def main(argv):
                 texts = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
                 texts.pack_start(label(f"<b>{GLib.markup_escape_text(name)}</b>", markup=True), False, False, 0)
                 texts.pack_start(label(desc, dim=True), False, False, 0)
-                texts.pack_start(label(f"{cat} · {'Flathub' if source == 'flatpak' else 'Debian'}", dim=True),
+                texts.pack_start(label(f"{_(cat)} · {'Flathub' if source == 'flatpak' else 'Debian'}", dim=True),
                                  False, False, 0)
                 row.pack_start(texts, True, True, 0)
                 st = self.states.get(key)
