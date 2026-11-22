@@ -100,7 +100,7 @@ msgstr ""
 msgid "Yes, restore and restart"
 msgstr ""
 
-#: usr/local/bin/simpleos-backup:123 usr/local/bin/simpleos-cleaner:203 usr/local/bin/simpleos-control-center:1954 usr/local/bin/simpleos-control-center:2036 usr/local/bin/simpleos-control-center:2119 usr/local/bin/simpleos-control-center:2298 usr/local/bin/simpleos-control-center:2434 usr/local/bin/simpleos-control-center:2546 usr/local/bin/simpleos-control-center:2580 usr/local/bin/simpleos-control-center:2603 usr/local/bin/simpleos-control-center:2755 usr/local/bin/simpleos-report:287 usr/local/bin/simpleos-search:486 usr/local/bin/simpleos-windows-app:242
+#: usr/local/bin/simpleos-backup:123 usr/local/bin/simpleos-cleaner:203 usr/local/bin/simpleos-control-center:1954 usr/local/bin/simpleos-control-center:2036 usr/local/bin/simpleos-control-center:2119 usr/local/bin/simpleos-control-center:2298 usr/local/bin/simpleos-control-center:2434 usr/local/bin/simpleos-control-center:2546 usr/local/bin/simpleos-control-center:2580 usr/local/bin/simpleos-control-center:2603 usr/local/bin/simpleos-control-center:2755 usr/local/bin/simpleos-report:287 usr/local/bin/simpleos-search:486 usr/local/bin/simpleos-windows-app:427
 msgid "Cancel"
 msgstr ""
 
@@ -2738,7 +2738,7 @@ msgstr ""
 msgid "Not enough free disk space for the Software Store: %s MB free, about %s MB needed. Free up space with the Storage Cleaner."
 msgstr ""
 
-#: usr/local/bin/simpleos-software:83 usr/local/bin/simpleos-software:119 usr/local/bin/simpleos-windows-app:203 usr/local/bin/simpleos-windows-app:267
+#: usr/local/bin/simpleos-software:83 usr/local/bin/simpleos-software:119 usr/local/bin/simpleos-windows-app:387 usr/local/bin/simpleos-windows-app:452
 msgid "Flathub can't be reached. Check your internet connection and try again."
 msgstr ""
 
@@ -3966,79 +3966,111 @@ msgstr ""
 msgid "Could not connect to %s. Move closer to the router and try again."
 msgstr ""
 
-#: usr/local/bin/simpleos-windows-app:40
+#: usr/local/bin/simpleos-windows-app:53
 msgid "about 700 MB"
 msgstr ""
 
-#: usr/local/bin/simpleos-windows-app:111
+#: usr/local/bin/simpleos-windows-app:132
 msgid "In Live mode, apps are kept in memory – only {free} MB are free, SOS Bridge needs about {need} MB. Install Simple OS first (icon on the desktop)."
 msgstr ""
 
-#: usr/local/bin/simpleos-windows-app:113
+#: usr/local/bin/simpleos-windows-app:134
 msgid "Not enough free disk space for SOS Bridge: {free} MB free, about {need} MB needed. Free up space with the Storage Cleaner."
 msgstr ""
 
-#: usr/local/bin/simpleos-windows-app:168
-msgid "Installing SOS Bridge"
+#: usr/local/bin/simpleos-windows-app:173
+msgid "Preparing SOS Bridge"
 msgstr ""
 
-#: usr/local/bin/simpleos-windows-app:169
-msgid "SOS Bridge installed"
-msgstr ""
-
-#: usr/local/bin/simpleos-windows-app:170
-msgid "One time only · {size} from Flathub"
+#: usr/local/bin/simpleos-windows-app:173
+msgid "SOS Bridge is ready"
 msgstr ""
 
 #: usr/local/bin/simpleos-windows-app:174
-msgid "Installing SOS Bridge (Bottles)"
+msgid "One time only · about a minute"
 msgstr ""
 
-#: usr/local/bin/simpleos-windows-app:200
-msgid "Not enough free space to install SOS Bridge."
+#: usr/local/bin/simpleos-windows-app:177
+msgid "Setting up Windows support (Wine) …"
 msgstr ""
 
-#: usr/local/bin/simpleos-windows-app:205
-msgid "Installing apps needs an administrator's password."
+#: usr/local/bin/simpleos-windows-app:242 usr/local/bin/simpleos-windows-app:330
+msgid "Starting {program} …"
 msgstr ""
 
-#: usr/local/bin/simpleos-windows-app:206
-msgid "SOS Bridge could not be installed. Details: {LOG}"
+#: usr/local/bin/simpleos-windows-app:243 usr/local/bin/simpleos-windows-app:331
+msgid "Windows programs take a few seconds to open."
 msgstr ""
 
-#: usr/local/bin/simpleos-windows-app:217 usr/local/bin/simpleos-windows-app:314
+#: usr/local/bin/simpleos-windows-app:303
+msgid "Windows program (SOS Bridge)"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:323 usr/local/bin/simpleos-windows-app:401 usr/local/bin/simpleos-windows-app:514
 msgid "Windows program"
 msgstr ""
 
-#: usr/local/bin/simpleos-windows-app:226
+#: usr/local/bin/simpleos-windows-app:324
+msgid "This program is not installed any more."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:352
+msgid "Installing SOS Bridge"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:353
+msgid "SOS Bridge installed"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:354
+msgid "One time only · {size} from Flathub"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:358
+msgid "Installing SOS Bridge (Bottles)"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:384
+msgid "Not enough free space to install SOS Bridge."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:389
+msgid "Installing apps needs an administrator's password."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:390
+msgid "SOS Bridge could not be installed. Details: {LOG}"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:410
 msgid "<b><big>{program} is a Windows program</big></b>"
 msgstr ""
 
-#: usr/local/bin/simpleos-windows-app:229
-msgid "Simple OS can try to run it with SOS Bridge – the free app Bottles with Wine, no Windows needed. Many Windows programs work, some don't (for example Microsoft 365, current Adobe apps and games with anti-cheat)."
+#: usr/local/bin/simpleos-windows-app:413
+msgid "Simple OS can try to run it with SOS Bridge – the free app Bottles with Wine, no Windows needed. Many Windows programs work, some don't (for example Microsoft 365, current Adobe apps and games with anti-cheat). Programs made for Windows itself never work: Windows installation media and setup tools, drivers and antivirus programs."
 msgstr ""
 
-#: usr/local/bin/simpleos-windows-app:234
+#: usr/local/bin/simpleos-windows-app:419
 msgid "Additional download required: SOS Bridge comes once from Flathub ({DOWNLOAD}). You can also install it later in the Software Center."
 msgstr ""
 
-#: usr/local/bin/simpleos-windows-app:241
+#: usr/local/bin/simpleos-windows-app:426
 msgid "What works?"
 msgstr ""
 
-#: usr/local/bin/simpleos-windows-app:243
+#: usr/local/bin/simpleos-windows-app:428
 msgid "Install SOS Bridge"
 msgstr ""
 
-#: usr/local/bin/simpleos-windows-app:258
+#: usr/local/bin/simpleos-windows-app:443
 msgid "Try again"
 msgstr ""
 
-#: usr/local/bin/simpleos-windows-app:279
+#: usr/local/bin/simpleos-windows-app:469
 msgid "Installing SOS Bridge – this takes a few minutes …"
 msgstr ""
 
-#: usr/local/bin/simpleos-windows-app:315
+#: usr/local/bin/simpleos-windows-app:515
 msgid "The file does not exist."
 msgstr ""
 

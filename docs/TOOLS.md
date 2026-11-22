@@ -301,8 +301,12 @@ What each of Simple OS's own tools does and how (the developer overview: [DEVELO
   follows). Automatic sign-in: `/etc/lightdm/lightdm.conf.d/50-simpleos-autologin.conf`, the installer's
   `autologin-user` line in `lightdm.conf` is commented out (that file is read last). No guest account.
 - `simpleos-windows-app` – Windows programs (#85): a double-click on a `.exe`/`.msi` (and the right-click action "Run
-  with SOS Bridge") opens it in Bottles; without Bottles a small window explains honestly what works and offers to
-  install **SOS Bridge** (Bottles from Flathub, space and Flathub checked first, progress window). `--help-page` opens
+  with SOS Bridge") starts it directly in SOS Bridge's own bottle "Windows" (`bottles-cli run`, the sandbox gets the
+  program's folder; the bottle is created on first use with a progress window, ~1 min). When Wine has ended, the
+  shortcuts the program put in Wine's start menu become menu entries (`~/.local/share/applications/simpleos-bridge-*`,
+  started with `--start`, removed when the program is gone). Without Bottles a small window explains honestly what
+  works and offers to install **SOS Bridge** (Bottles from Flathub, space and Flathub checked first, progress
+  window). `--help-page` opens
   `/usr/share/simpleos/windows-programs.html` (Menu → Help → Windows Programs) in the welcome window: what usually
   works, what doesn't (Microsoft 365, current Adobe apps, kernel anti-cheat) with alternatives, Steam's "Steam Play
   for all other titles" switch. SOS Bridge is only the name of the bundle, not a Windows layer of our own.

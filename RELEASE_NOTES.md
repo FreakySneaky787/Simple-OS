@@ -26,9 +26,12 @@ sign in afterwards, "What's new" shows the highlights.
   working.
 - **Windows programs** (issue #85): double-click a `.exe` or `.msi` file (or right-click → "Run with SOS Bridge").
   **SOS Bridge** – the free app Bottles with Wine – runs many Windows programs. If it is not there yet, a small window
-  explains what works and installs it from Flathub with one click, then opens your program. Menu → Help → Windows
-  Programs says honestly what usually works, what doesn't (Microsoft 365, current Adobe apps, games with anti-cheat),
-  the alternatives, and where Steam's own "Steam Play for all other titles" switch is.
+  explains what works and installs it from Flathub with one click, then opens your program. The program opens
+  straight away – no Bottles window, no "bottle" to choose (the first time SOS Bridge sets itself up, about a minute).
+  Programs you install with their setup file appear in the menu afterwards like any other app. Menu → Help → Windows
+  Programs says honestly what usually works, what doesn't (Microsoft 365, current Adobe apps, games with anti-cheat,
+  and never Windows itself: installation media, drivers, antivirus), the alternatives, and where Steam's own
+  "Steam Play for all other titles" switch is.
 - **Extras in the Setup Wizard** (issue #126): its step "Extras" (the old "Gaming" step) offers SOS Bridge, **Gaming
   Support** (Steam, Lutris, MangoHud – now with game controller support) and **Developer Tools** (Git, compilers,
   Python tools and the code editor VSCodium). All are off unless you turn them on, each shows its download size, and
@@ -219,7 +222,8 @@ repository that installed systems use. You don't need to download them yourself.
 - **Languages:** Simple OS's own tools are translated into German; in other languages they stay English while your
   apps follow the language. The keyboard layout can be changed at any time in Control Center → Keyboard.
 - **Windows programs** run with SOS Bridge only if Wine supports them: many older programs and lots of games do,
-  Microsoft 365, current Adobe apps and games with kernel anti-cheat don't. Menu → Help → Windows Programs has
+  Microsoft 365, current Adobe apps and games with kernel anti-cheat don't. Programs made for Windows itself –
+  Windows installation media and setup tools, drivers, antivirus – never do. Menu → Help → Windows Programs has
   alternatives.
 - **The network icon's right-click menu** (next to the network display in the taskbar) closes again if you hold the
   mouse button for more than half a second – a limit of that GTK menu, it has no setting. Click quickly, or use the

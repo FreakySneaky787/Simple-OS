@@ -276,8 +276,10 @@ check "Windows programs: tool missing or Python error" "[ -x $WA ] && python3 -m
 check "Windows programs: Bottles installed -> not opened there" "[ \"\$(SIMPLEOS_WA_INSTALLED=1 python3 $WA --decide $wexe)\" = open ]"
 check "Windows programs: Bottles missing -> SOS Bridge not offered" "[ \"\$(SIMPLEOS_WA_INSTALLED=0 python3 $WA --decide $wexe)\" = offer ]"
 check "Windows programs: missing file not reported" "SIMPLEOS_WA_INSTALLED=1 python3 $WA --decide /nonexistent.exe | grep -q '^error:'"
-check "Windows programs: does not hand the file to Bottles as a file URI" \
-      "SIMPLEOS_WA_INSTALLED=1 SIMPLEOS_WA_DRYRUN=1 python3 $WA $wexe | grep -qx \"DRYRUN: open file://$wexe in com.usebottles.bottles\""
+check "Windows programs: does not start the program in the bottle Windows (no bottle choice)" \
+      "SIMPLEOS_WA_INSTALLED=1 SIMPLEOS_WA_DRYRUN=1 python3 $WA $wexe | grep -qx \"DRYRUN: run \$(readlink -f $wexe) in bottle Windows of com.usebottles.bottles\""
+check "Windows programs: sandbox gets the home folder for a program lying directly in it" \
+      "python3 -c \"import importlib.machinery as m, pathlib; a = m.SourceFileLoader('a', '$WA').load_module(); h = str(pathlib.Path.home()); assert a.sandbox_access(h + '/x.exe') == h + '/x.exe'; assert a.sandbox_access(h + '/Downloads/x.exe') == h + '/Downloads'\""
 check "Windows programs: too little space in Live mode not explained" \
       "SIMPLEOS_WA_FREE_MB=100 python3 -c \"import importlib.machinery as m; a = m.SourceFileLoader('a', '$WA').load_module(); a.is_live = lambda: True; t = a.space_problem(); assert t and 'Live mode' in t, t\""
 rm -f "$wexe"

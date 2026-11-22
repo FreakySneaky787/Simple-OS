@@ -2,7 +2,13 @@
 """Simple OS – Windows programs (.exe / .msi) with SOS Bridge (#85).
 
 People coming from Windows double-click a downloaded .exe – before 1.2 the archive manager opened it. Now:
-  - SOS Bridge (Bottles from Flathub) installed -> the file opens in Bottles, which asks for the bottle to run it in;
+  - SOS Bridge (Bottles from Flathub) installed -> the program starts right away in SOS Bridge's own bottle "Windows"
+    (bottles-cli run; the sandbox gets the program's folder). The first time the bottle is created (bottles-cli new,
+    environment Application; Bottles downloads its Wine version, about a minute) with the progress window. If that
+    fails, Bottles' own window opens the file as before (it asks for a bottle). When the program (e.g. an installer)
+    has ended, the shortcuts it put in Wine's start menu become entries in the Simple OS menu
+    (~/.local/share/applications/simpleos-bridge-*.desktop, "Uninstall"/"Help"/… left out, removed again when the
+    program is gone);
   - not installed -> a small window explains it honestly ("many programs work, some don't") and offers to install
     SOS Bridge (system-wide Flatpak; Flatpak's polkit rule allows it for administrators without a password), with
     the progress window simpleos-progress, then opens the file. "What works?" opens the help page.
@@ -12,15 +18,22 @@ Windows layer. Also: right-click "Run with SOS Bridge" (Thunar), the Setup Wizar
   simpleos-windows-app FILE        double-click / right-click
   simpleos-windows-app --help-page open "Windows programs on Simple OS"
   simpleos-windows-app --status    "bottles: installed|missing" (tests)
+  simpleos-windows-app --start LNK start a menu entry's Windows shortcut (.lnk in the bottle)
+  simpleos-windows-app --sync-menu  update the menu entries now
+  (--run FILE: internal – runs the program, waits for Wine to end, updates the menu entries)
 Tests: SIMPLEOS_WA_INSTALLED=0/1 (Bottles there?), SIMPLEOS_WA_FREE_MB, SIMPLEOS_WA_NET=0/1,
 SIMPLEOS_WA_DRYRUN=1 (print what would be started instead of starting it; no window with --decide).
   simpleos-windows-app --decide FILE   print the decision without a window: "open", "offer" or "error: …" (tests)
 """
+import fcntl
 import os
+import re
+import shlex
 import subprocess
 import sys
 import tempfile
 import threading
+import time
 import urllib.request
 from pathlib import Path
 import gettext
@@ -39,6 +52,14 @@ NEED_FULL = 2000   # MB: Bottles + GNOME runtime (+ GL extensions)
 NEED_APP = 400     # MB: runtime already there
 DOWNLOAD = _("about 700 MB")
 DRYRUN = os.environ.get("SIMPLEOS_WA_DRYRUN") == "1"
+BOTTLE = "Windows"     # SOS Bridge's own bottle (Bottles' environment "Application"), created on first use
+BOTTLES_DATA = Path.home() / ".var/app" / APP / "data/bottles"
+MENU_DIR = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")) / "applications"
+MENU_PREFIX = "simpleos-bridge-"
+# Start menu shortcuts that are no programs (English and German names)
+SKIP_SHORTCUT = re.compile(r"uninstall|deinstall|entfern|help|hilfe|readme|read me|liesmich|website|web site|homepage|"
+                           r"manual|handbuch|documentation|dokumentation|licen[cs]e|lizenz|faq|support|release notes|"
+                           r"changelog|what's new", re.I)
 
 
 def log(text):
@@ -123,12 +144,71 @@ def decide(path):
     return "offer"
 
 
-def open_in_bottles(path):
-    """Bottles' own launcher handles the file (it asks for the bottle); started detached"""
+def bottle_ready():
+    return (BOTTLES_DATA / "bottles" / BOTTLE / "bottle.yml").is_file()
+
+
+def bottles_cli(*args, extra=()):
+    return ["flatpak", "run", *extra, "--command=bottles-cli", APP, *args]
+
+
+def create_bottle():
+    """First use: the bottle "Windows" (Bottles downloads its Wine version, about a minute) with the progress
+    window. A lock keeps a second double-click from creating it twice. True if the bottle is there afterwards."""
+    lock_path = LOG.parent / "simpleos-windows-app.lock"
+    try:
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        lock = open(lock_path, "w")
+        fcntl.flock(lock, fcntl.LOCK_EX)
+    except OSError:
+        lock = None
+    try:
+        if bottle_ready():          # the other double-click created it meanwhile
+            return True
+        fd, feed = tempfile.mkstemp(prefix="simpleos-wa-")
+        os.close(fd)
+        window = None
+        if os.access(PROGRESS, os.X_OK):
+            window = subprocess.Popen([PROGRESS, "--follow", feed, "--indeterminate",
+                                       "--title", _("Preparing SOS Bridge"), "--done", _("SOS Bridge is ready"),
+                                       "--hint", _("One time only · about a minute"), "--app", "SOS Bridge",
+                                       "--icon-name", APP, "--pid", str(os.getpid())])
+        with open(feed, "a") as f:
+            f.write("MESSAGE: " + _("Setting up Windows support (Wine) …") + "\n")
+        rc = 1
+        try:
+            with LOG.open("a") as out:
+                rc = subprocess.run(bottles_cli("new", "--bottle-name", BOTTLE, "--environment", "application"),
+                                    stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT,
+                                    timeout=1200).returncode
+        except (OSError, subprocess.TimeoutExpired) as err:
+            log(f"bottles-cli new: {err}")
+        ok = bottle_ready()
+        log(f"bottles-cli new: rc={rc} ready={ok}")
+        with open(feed, "a") as f:
+            f.write(f"EXIT: {0 if ok else 1}\n")
+        if window:
+            try:
+                window.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                pass
+        os.unlink(feed)
+        return ok
+    finally:
+        if lock:
+            lock.close()
+
+
+def sandbox_access(path):
+    """What the Bottles sandbox gets: the program's folder (installers and portable programs need the files next
+    to them), only the file itself when it lies directly in the home folder or in /"""
+    folder = os.path.dirname(path)
+    return path if folder in ("", "/", str(Path.home())) else folder
+
+
+def open_in_bottles_window(path):
+    """Fallback: Bottles' own launcher handles the file (it asks for the bottle); started detached"""
     uri = Path(path).resolve().as_uri()
-    if DRYRUN:
-        print(f"DRYRUN: open {uri} in {APP}", flush=True)
-        return True
     try:
         import gi
         gi.require_version("Gio", "2.0")
@@ -147,6 +227,110 @@ def open_in_bottles(path):
     except OSError as err:
         log(f"flatpak run: {err}")
         return False
+
+
+def open_in_bottles(path):
+    """Start the program in the bottle "Windows" (created the first time); detached, output in the log"""
+    path = str(Path(path).resolve())
+    if DRYRUN:
+        print(f"DRYRUN: run {path} in bottle {BOTTLE} of {APP}", flush=True)
+        return True
+    if not bottle_ready() and not create_bottle():
+        log("the bottle could not be created – Bottles' own window opens the file")
+        return open_in_bottles_window(path)
+    subprocess.call(["notify-send", "-i", APP, "-t", "8000",
+                     _("Starting {program} …").format(program=os.path.basename(path)),
+                     _("Windows programs take a few seconds to open.")], stderr=subprocess.DEVNULL)
+    try:
+        subprocess.Popen([sys.executable, os.path.abspath(__file__), "--run", path], start_new_session=True,
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except OSError as err:
+        log(f"--run: {err}")
+        return open_in_bottles_window(path)
+
+
+def run_and_watch(command, cwd=None):
+    """Run bottles-cli (output in the log), wait until Wine has ended (an installer may start a second process and
+    end early: wineserver stays until the last Wine program is closed), then update the menu entries"""
+    try:
+        with LOG.open("a") as out:
+            subprocess.run(command, stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT, cwd=cwd)
+    except OSError as err:
+        log(f"bottles-cli: {err}")
+    sync_menu()
+    for _i in range(720):                       # at most 3 hours, then the next program start updates them
+        if subprocess.run(["pgrep", "-u", str(os.getuid()), "-x", "wineserver"],
+                          stdout=subprocess.DEVNULL).returncode != 0:
+            break
+        time.sleep(15)
+        sync_menu()
+    sync_menu()
+
+
+def start_menu_shortcuts():
+    """{entry id: (name, .lnk path)} – the shortcuts installers put in Wine's start menu (all users and own)"""
+    drive = BOTTLES_DATA / "bottles" / BOTTLE / "drive_c"
+    roots = [drive / "ProgramData/Microsoft/Windows/Start Menu/Programs"]
+    roots += sorted((drive / "users").glob("*/AppData/Roaming/Microsoft/Windows/Start Menu/Programs"))
+    found = {}
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for lnk in sorted(root.rglob("*")):
+            if lnk.suffix.lower() != ".lnk" or not lnk.is_file() or SKIP_SHORTCUT.search(lnk.stem):
+                continue
+            rel = str(lnk.relative_to(root).with_suffix(""))
+            slug = re.sub(r"[^a-z0-9]+", "-", rel.lower()).strip("-") or "program"
+            found.setdefault(MENU_PREFIX + slug + ".desktop", (lnk.stem, str(lnk)))
+    return found
+
+
+def desktop_quote(arg):
+    """One Exec argument (Desktop Entry spec): quoted, \\ " ` $ escaped, then the value's own \\ escaping, %% for %"""
+    quoted = '"' + re.sub(r'(["`$\\])', r"\\\1", arg) + '"'
+    return quoted.replace("\\", "\\\\").replace("%", "%%")
+
+
+def sync_menu():
+    """Menu entries = the start menu shortcuts in the bottle; only our own files (simpleos-bridge-*) are touched"""
+    try:
+        wanted = start_menu_shortcuts()
+        MENU_DIR.mkdir(parents=True, exist_ok=True)
+        for did, (name, lnk) in wanted.items():
+            text = ("[Desktop Entry]\nType=Application\n"
+                    f"Name={name}\n"
+                    f"Comment={_('Windows program (SOS Bridge)')}\n"
+                    f"Exec=/usr/local/bin/simpleos-windows-app --start {desktop_quote(lnk)}\n"
+                    f"Icon={APP}\nKeywords=windows;wine;bottles;\nStartupNotify=false\n"
+                    "X-SimpleOS-Bridge=true\n")
+            target = MENU_DIR / did
+            if not target.is_file() or target.read_text(errors="replace") != text:
+                target.write_text(text)
+                log(f"menu entry: {name}")
+        for old in MENU_DIR.glob(MENU_PREFIX + "*.desktop"):
+            if old.name not in wanted:
+                old.unlink()
+                log(f"menu entry removed: {old.name}")
+    except OSError as err:
+        log(f"menu entries: {err}")
+
+
+def start_shortcut(lnk):
+    """A menu entry: the shortcut through Wine's start (it knows .lnk files; bottles-cli run does not)"""
+    if not os.path.isfile(lnk):
+        sync_menu()
+        subprocess.call(["notify-send", "-i", "dialog-warning", _("Windows program"),
+                         _("This program is not installed any more.")])
+        return 1
+    if DRYRUN:
+        print(f"DRYRUN: start {lnk} in bottle {BOTTLE} of {APP}", flush=True)
+        return 0
+    subprocess.call(["notify-send", "-i", APP, "-t", "8000",
+                     _("Starting {program} …").format(program=Path(lnk).stem),
+                     _("Windows programs take a few seconds to open.")], stderr=subprocess.DEVNULL)
+    run_and_watch(bottles_cli("shell", "-b", BOTTLE, "-i", "start /unix " + shlex.quote(lnk)))
+    return 0
 
 
 def open_help():
@@ -228,7 +412,8 @@ def ask(path):
     body = Gtk.Label(xalign=0, wrap=True, max_width_chars=60, label=(
         _("Simple OS can try to run it with SOS Bridge – the free app Bottles with Wine, no Windows needed. "
         "Many Windows programs work, some don't (for example Microsoft 365, current Adobe apps and games with "
-        "anti-cheat).")))
+        "anti-cheat). Programs made for Windows itself never work: Windows installation media and setup tools, "
+        "drivers and antivirus programs.")))
     box.pack_start(body, False, False, 0)
     note = Gtk.Label(xalign=0, wrap=True, max_width_chars=60,
                      label=_('Additional download required: SOS Bridge comes once from Flathub ({DOWNLOAD}). You can also '
@@ -246,10 +431,10 @@ def ask(path):
     dialog.show_all()
     result = {"opened": False, "busy": False}
 
-    def finished(ok, message):
+    def finished(ok, message, opened=False):
         result["busy"] = False
         if ok:
-            result["opened"] = open_in_bottles(path)
+            result["opened"] = opened
             dialog.response(Gtk.ResponseType.CLOSE)
             return False
         status.set_markup(f"<b>{GLib.markup_escape_text(message)}</b>")
@@ -266,7 +451,12 @@ def ask(path):
         if not flathub_reachable():
             GLib.idle_add(finished, False, _("Flathub can't be reached. Check your internet connection and try again."))
             return
-        GLib.idle_add(finished, *install())
+        ok, message = install()
+        if ok:
+            GLib.idle_add(dialog.hide)
+            GLib.idle_add(finished, True, "", open_in_bottles(path))
+            return
+        GLib.idle_add(finished, False, message)
 
     def on_response(_d, response):
         if response == 1:
@@ -297,6 +487,16 @@ def main(argv):
         return 0
     if len(argv) > 2 and argv[1] == "--decide":
         print(decide(argv[2]))
+        return 0
+    if len(argv) > 1 and argv[1] == "--sync-menu":
+        sync_menu()
+        return 0
+    if len(argv) > 2 and argv[1] == "--start":
+        return start_shortcut(argv[2])
+    if len(argv) > 2 and argv[1] == "--run":
+        path = argv[2]
+        run_and_watch(bottles_cli("run", "-b", BOTTLE, "-e", path, extra=(f"--filesystem={sandbox_access(path)}",)),
+                      cwd=os.path.dirname(path) or None)
         return 0
     args = [a for a in argv[1:] if not a.startswith("--")]
     if not args:
