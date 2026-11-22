@@ -188,7 +188,9 @@ Before publishing (Sunday 2026-11-15), with the new ISO (built 2026-11-11 from f
 - [ ] **Windows programs** (#85): double-click a downloaded `.exe` (e.g. the Notepad++ installer) → the SOS Bridge
       window → Install → progress → "Preparing SOS Bridge" (first time, ~1 min) → the installer opens by itself, no
       Bottles window. After installing: the program is in the menu (search its name) and starts from there. Second
-      double-click: opens within seconds. Right-click "Run with SOS Bridge"; Menu → Help → Windows Programs (also in
+      double-click: opens within seconds. `SteamSetup.exe` → "Steam has its own version for Simple OS" → Software
+      Center opens with Gaming Support; "Run the Windows version anyway" still works. `MediaCreationTool*.exe` →
+      "made for Windows itself". Right-click "Run with SOS Bridge"; Menu → Help → Windows Programs (also in
       German).
 - [ ] **Setup Wizard → Extras** (#126): all three off; turning on SOS Bridge + Developer Tools installs both with one
       password and one progress bar; offline the switches are off with a hint; Gaming Support installs `steam-devices`.

@@ -276,6 +276,13 @@ check "Windows programs: tool missing or Python error" "[ -x $WA ] && python3 -m
 check "Windows programs: Bottles installed -> not opened there" "[ \"\$(SIMPLEOS_WA_INSTALLED=1 python3 $WA --decide $wexe)\" = open ]"
 check "Windows programs: Bottles missing -> SOS Bridge not offered" "[ \"\$(SIMPLEOS_WA_INSTALLED=0 python3 $WA --decide $wexe)\" = offer ]"
 check "Windows programs: missing file not reported" "SIMPLEOS_WA_INSTALLED=1 python3 $WA --decide /nonexistent.exe | grep -q '^error:'"
+wdir=$(mktemp -d); : > "$wdir/SteamSetup.exe"; : > "$wdir/MediaCreationTool_22H2.exe"; : > "$wdir/npp.8.7.Installer.x64.exe"
+check "Windows programs: SteamSetup.exe not pointed to the Simple OS Steam" "[ \"\$(SIMPLEOS_WA_INSTALLED=1 python3 $WA --decide $wdir/SteamSetup.exe)\" = 'native steam' ]"
+check "Windows programs: Media Creation Tool not called Windows-only" "[ \"\$(SIMPLEOS_WA_INSTALLED=1 python3 $WA --decide $wdir/MediaCreationTool_22H2.exe)\" = windows-only ]"
+check "Windows programs: an ordinary installer (Notepad++) not run with SOS Bridge" "[ \"\$(SIMPLEOS_WA_INSTALLED=1 python3 $WA --decide $wdir/npp.8.7.Installer.x64.exe)\" = open ]"
+check "Windows programs: a catalog key of the native list missing in the Software Center" \
+      "python3 -c \"import importlib.machinery as m, subprocess; a = m.SourceFileLoader('a', '$WA').load_module(); keys = {l.split(chr(9))[0] for l in subprocess.run(['/usr/local/bin/simpleos-software-center', '--list'], capture_output=True, text=True).stdout.splitlines()}; missing = {k for _p, _n, k in a.NATIVE} - keys; assert not missing, missing\""
+rm -rf "$wdir"
 check "Windows programs: does not start the program in the bottle Windows (no bottle choice)" \
       "SIMPLEOS_WA_INSTALLED=1 SIMPLEOS_WA_DRYRUN=1 python3 $WA $wexe | grep -qx \"DRYRUN: run \$(readlink -f $wexe) in bottle Windows of com.usebottles.bottles\""
 check "Windows programs: sandbox gets the home folder for a program lying directly in it" \

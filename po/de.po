@@ -101,7 +101,7 @@ msgstr "Zurück"
 msgid "Yes, restore and restart"
 msgstr "Ja, wiederherstellen und neu starten"
 
-#: usr/local/bin/simpleos-backup:123 usr/local/bin/simpleos-cleaner:203 usr/local/bin/simpleos-control-center:1954 usr/local/bin/simpleos-control-center:2036 usr/local/bin/simpleos-control-center:2119 usr/local/bin/simpleos-control-center:2298 usr/local/bin/simpleos-control-center:2434 usr/local/bin/simpleos-control-center:2546 usr/local/bin/simpleos-control-center:2580 usr/local/bin/simpleos-control-center:2603 usr/local/bin/simpleos-control-center:2755 usr/local/bin/simpleos-report:287 usr/local/bin/simpleos-search:486 usr/local/bin/simpleos-windows-app:427
+#: usr/local/bin/simpleos-backup:123 usr/local/bin/simpleos-cleaner:203 usr/local/bin/simpleos-control-center:1954 usr/local/bin/simpleos-control-center:2036 usr/local/bin/simpleos-control-center:2119 usr/local/bin/simpleos-control-center:2298 usr/local/bin/simpleos-control-center:2434 usr/local/bin/simpleos-control-center:2546 usr/local/bin/simpleos-control-center:2580 usr/local/bin/simpleos-control-center:2603 usr/local/bin/simpleos-control-center:2755 usr/local/bin/simpleos-report:287 usr/local/bin/simpleos-search:486 usr/local/bin/simpleos-windows-app:476 usr/local/bin/simpleos-windows-app:566
 msgid "Cancel"
 msgstr "Abbrechen"
 
@@ -909,7 +909,7 @@ msgstr "Erweiterte Toneinstellungen"
 msgid "Per-app volume, inputs, profiles"
 msgstr "Lautstärke pro App, Eingänge, Profile"
 
-#: usr/local/bin/simpleos-control-center:1348 usr/local/bin/simpleos-control-center:1454 usr/local/bin/simpleos-control-center:1557 usr/local/bin/simpleos-control-center:1635 usr/local/bin/simpleos-control-center:1708 usr/local/bin/simpleos-control-center:1875 usr/local/bin/simpleos-control-center:2107 usr/local/bin/simpleos-control-center:2228 usr/local/bin/simpleos-control-center:2234 usr/local/bin/simpleos-control-center:2248 usr/local/bin/simpleos-control-center:2254 usr/local/bin/simpleos-control-center:2628 usr/local/bin/simpleos-control-center:2637 usr/local/bin/simpleos-control-center:2639 usr/local/bin/simpleos-software-center:328
+#: usr/local/bin/simpleos-control-center:1348 usr/local/bin/simpleos-control-center:1454 usr/local/bin/simpleos-control-center:1557 usr/local/bin/simpleos-control-center:1635 usr/local/bin/simpleos-control-center:1708 usr/local/bin/simpleos-control-center:1875 usr/local/bin/simpleos-control-center:2107 usr/local/bin/simpleos-control-center:2228 usr/local/bin/simpleos-control-center:2234 usr/local/bin/simpleos-control-center:2248 usr/local/bin/simpleos-control-center:2254 usr/local/bin/simpleos-control-center:2628 usr/local/bin/simpleos-control-center:2637 usr/local/bin/simpleos-control-center:2639 usr/local/bin/simpleos-software-center:331
 msgid "Open"
 msgstr "Öffnen"
 
@@ -1109,7 +1109,7 @@ msgstr "Das WLAN-Band konnte nicht geändert werden."
 msgid "Bluetooth could not be read: {res}"
 msgstr "Bluetooth konnte nicht gelesen werden: {res}"
 
-#: usr/local/bin/simpleos-control-center:1627 usr/local/bin/simpleos-control-center:1933 usr/local/bin/simpleos-software-center:332
+#: usr/local/bin/simpleos-control-center:1627 usr/local/bin/simpleos-control-center:1933 usr/local/bin/simpleos-software-center:335
 msgid "Remove"
 msgstr "Entfernen"
 
@@ -1861,7 +1861,7 @@ msgstr "Die beiden Passwörter stimmen nicht überein."
 msgid "The account could not be created"
 msgstr "Das Konto konnte nicht erstellt werden"
 
-#: usr/local/bin/simpleos-control-center:2476 usr/local/bin/simpleos-welcome-wizard:1068 usr/local/bin/simpleos-welcome-wizard:1076 usr/local/bin/simpleos-whats-new:191
+#: usr/local/bin/simpleos-control-center:2476 usr/local/bin/simpleos-welcome-wizard:1068 usr/local/bin/simpleos-welcome-wizard:1076 usr/local/bin/simpleos-whats-new:191 usr/local/bin/simpleos-windows-app:556
 msgid "Close"
 msgstr "Schließen"
 
@@ -2741,7 +2741,7 @@ msgstr "Im Live-Modus liegen Apps im Arbeitsspeicher – nur %s MB sind frei, de
 msgid "Not enough free disk space for the Software Store: %s MB free, about %s MB needed. Free up space with the Storage Cleaner."
 msgstr "Nicht genug freier Speicherplatz für den Software-Store: %s MB frei, etwa %s MB nötig. Mach mit der Speicherbereinigung Platz."
 
-#: usr/local/bin/simpleos-software:83 usr/local/bin/simpleos-software:119 usr/local/bin/simpleos-windows-app:387 usr/local/bin/simpleos-windows-app:452
+#: usr/local/bin/simpleos-software:83 usr/local/bin/simpleos-software:119 usr/local/bin/simpleos-windows-app:436 usr/local/bin/simpleos-windows-app:501
 msgid "Flathub can't be reached. Check your internet connection and try again."
 msgstr "Flathub ist nicht erreichbar. Prüfe deine Internetverbindung und versuche es noch einmal."
 
@@ -2773,251 +2773,251 @@ msgstr "Nicht genug freier Speicherplatz für den Software-Store. Installiere im
 msgid "The Software Store could not be installed. Details: ~/.cache/simpleos-software.log"
 msgstr "Der Software-Store konnte nicht installiert werden. Details: ~/.cache/simpleos-software.log"
 
-#: usr/local/bin/simpleos-software-center:47 usr/local/bin/simpleos-software-center:70 usr/local/bin/simpleos-software-center:72 usr/local/bin/simpleos-software-center:85
+#: usr/local/bin/simpleos-software-center:49 usr/local/bin/simpleos-software-center:72 usr/local/bin/simpleos-software-center:74 usr/local/bin/simpleos-software-center:87
 msgid "Games"
 msgstr "Spiele"
 
-#: usr/local/bin/simpleos-software-center:47 usr/local/bin/simpleos-welcome-wizard:83
+#: usr/local/bin/simpleos-software-center:49 usr/local/bin/simpleos-welcome-wizard:83
 msgid "Gaming Support"
 msgstr "Gaming-Unterstützung"
 
-#: usr/local/bin/simpleos-software-center:47
+#: usr/local/bin/simpleos-software-center:49
 msgid "Steam, Lutris, MangoHud and game controllers – thousands of games"
 msgstr "Steam, Lutris, MangoHud und Gamecontroller – Tausende Spiele"
 
-#: usr/local/bin/simpleos-software-center:49
+#: usr/local/bin/simpleos-software-center:51
 msgid "Documents, spreadsheets and presentations"
 msgstr "Dokumente, Tabellen und Präsentationen"
 
-#: usr/local/bin/simpleos-software-center:49 usr/local/bin/simpleos-software-center:85 usr/local/bin/simpleos-welcome-wizard:95
+#: usr/local/bin/simpleos-software-center:51 usr/local/bin/simpleos-software-center:87 usr/local/bin/simpleos-welcome-wizard:95
 msgid "Office"
 msgstr "Office"
 
-#: usr/local/bin/simpleos-software-center:51 usr/local/bin/simpleos-software-center:57 usr/local/bin/simpleos-software-center:59 usr/local/bin/simpleos-software-center:60 usr/local/bin/simpleos-software-center:61 usr/local/bin/simpleos-software-center:85 usr/local/bin/simpleos-welcome-wizard:95
+#: usr/local/bin/simpleos-software-center:53 usr/local/bin/simpleos-software-center:59 usr/local/bin/simpleos-software-center:61 usr/local/bin/simpleos-software-center:62 usr/local/bin/simpleos-software-center:63 usr/local/bin/simpleos-software-center:87 usr/local/bin/simpleos-welcome-wizard:95
 msgid "Internet"
 msgstr "Internet"
 
-#: usr/local/bin/simpleos-software-center:51
+#: usr/local/bin/simpleos-software-center:53
 msgid "Voice, video and text chat"
 msgstr "Sprach-, Video- und Textchat"
 
-#: usr/local/bin/simpleos-software-center:53 usr/local/bin/simpleos-software-center:54 usr/local/bin/simpleos-software-center:65 usr/local/bin/simpleos-software-center:67 usr/local/bin/simpleos-software-center:68 usr/local/bin/simpleos-software-center:82 usr/local/bin/simpleos-software-center:85
+#: usr/local/bin/simpleos-software-center:55 usr/local/bin/simpleos-software-center:56 usr/local/bin/simpleos-software-center:67 usr/local/bin/simpleos-software-center:69 usr/local/bin/simpleos-software-center:70 usr/local/bin/simpleos-software-center:84 usr/local/bin/simpleos-software-center:87
 msgid "Media"
 msgstr "Medien"
 
-#: usr/local/bin/simpleos-software-center:53
+#: usr/local/bin/simpleos-software-center:55
 msgid "Music and podcasts"
 msgstr "Musik und Podcasts"
 
-#: usr/local/bin/simpleos-software-center:54
+#: usr/local/bin/simpleos-software-center:56
 msgid "Plays almost every video and audio file"
 msgstr "Spielt fast jede Video- und Audiodatei ab"
 
-#: usr/local/bin/simpleos-software-center:55
+#: usr/local/bin/simpleos-software-center:57
 msgid "Office suite that looks like Microsoft Office"
 msgstr "Office-Suite, die aussieht wie Microsoft Office"
 
-#: usr/local/bin/simpleos-software-center:57
+#: usr/local/bin/simpleos-software-center:59
 msgid "Email and calendar"
 msgstr "E-Mail und Kalender"
 
-#: usr/local/bin/simpleos-software-center:59
+#: usr/local/bin/simpleos-software-center:61
 msgid "Messenger"
 msgstr "Messenger"
 
-#: usr/local/bin/simpleos-software-center:60
+#: usr/local/bin/simpleos-software-center:62
 msgid "Private messenger"
 msgstr "Privater Messenger"
 
-#: usr/local/bin/simpleos-software-center:61
+#: usr/local/bin/simpleos-software-center:63
 msgid "Video meetings"
 msgstr "Videokonferenzen"
 
-#: usr/local/bin/simpleos-software-center:62
+#: usr/local/bin/simpleos-software-center:64
 msgid "Edit photos and images"
 msgstr "Fotos und Bilder bearbeiten"
 
-#: usr/local/bin/simpleos-software-center:62 usr/local/bin/simpleos-software-center:63 usr/local/bin/simpleos-software-center:64 usr/local/bin/simpleos-software-center:85
+#: usr/local/bin/simpleos-software-center:64 usr/local/bin/simpleos-software-center:65 usr/local/bin/simpleos-software-center:66 usr/local/bin/simpleos-software-center:87
 msgid "Graphics"
 msgstr "Grafik"
 
-#: usr/local/bin/simpleos-software-center:63
+#: usr/local/bin/simpleos-software-center:65
 msgid "Digital painting"
 msgstr "Digitales Malen"
 
-#: usr/local/bin/simpleos-software-center:64
+#: usr/local/bin/simpleos-software-center:66
 msgid "Vector graphics"
 msgstr "Vektorgrafik"
 
-#: usr/local/bin/simpleos-software-center:65
+#: usr/local/bin/simpleos-software-center:67
 msgid "Record and stream your screen"
 msgstr "Bildschirm aufnehmen und streamen"
 
-#: usr/local/bin/simpleos-software-center:67
+#: usr/local/bin/simpleos-software-center:69
 msgid "Video editor"
 msgstr "Videoschnitt"
 
-#: usr/local/bin/simpleos-software-center:68
+#: usr/local/bin/simpleos-software-center:70
 msgid "Record and edit audio"
 msgstr "Audio aufnehmen und bearbeiten"
 
-#: usr/local/bin/simpleos-software-center:70
+#: usr/local/bin/simpleos-software-center:72
 msgid "Epic Games, GOG and Amazon games"
 msgstr "Spiele von Epic Games, GOG und Amazon"
 
-#: usr/local/bin/simpleos-software-center:72
+#: usr/local/bin/simpleos-software-center:74
 msgid "Minecraft launcher"
 msgstr "Minecraft-Launcher"
 
-#: usr/local/bin/simpleos-software-center:74
+#: usr/local/bin/simpleos-software-center:76
 msgid "Run many Windows programs (Bottles and Wine) – double-click a .exe"
 msgstr "Viele Windows-Programme nutzen (Bottles und Wine) – Doppelklick auf eine .exe"
 
-#: usr/local/bin/simpleos-software-center:76 usr/local/bin/simpleos-welcome-wizard:85
+#: usr/local/bin/simpleos-software-center:78 usr/local/bin/simpleos-welcome-wizard:85
 msgid "Developer Tools"
 msgstr "Entwicklerwerkzeuge"
 
-#: usr/local/bin/simpleos-software-center:76
+#: usr/local/bin/simpleos-software-center:78
 msgid "Git, compilers, Python tools and the VSCodium code editor"
 msgstr "Git, Compiler, Python-Werkzeuge und der Code-Editor VSCodium"
 
-#: usr/local/bin/simpleos-software-center:78
+#: usr/local/bin/simpleos-software-center:80
 msgid "Code editor"
 msgstr "Code-Editor"
 
-#: usr/local/bin/simpleos-software-center:78 usr/local/bin/simpleos-software-center:85
+#: usr/local/bin/simpleos-software-center:80 usr/local/bin/simpleos-software-center:87
 msgid "Development"
 msgstr "Entwicklung"
 
-#: usr/local/bin/simpleos-software-center:80
+#: usr/local/bin/simpleos-software-center:82
 msgid "Password manager"
 msgstr "Passwortmanager"
 
-#: usr/local/bin/simpleos-software-center:80 usr/local/bin/simpleos-software-center:86
+#: usr/local/bin/simpleos-software-center:82 usr/local/bin/simpleos-software-center:88
 msgid "Utilities"
 msgstr "Werkzeuge"
 
-#: usr/local/bin/simpleos-software-center:82
+#: usr/local/bin/simpleos-software-center:84
 msgid "Media center for TV and movies"
 msgstr "Mediencenter für Fernsehen und Filme"
 
-#: usr/local/bin/simpleos-software-center:85
+#: usr/local/bin/simpleos-software-center:87
 msgid "All"
 msgstr "Alle"
 
-#: usr/local/bin/simpleos-software-center:160 usr/local/bin/simpleos-welcome-wizard:1104
+#: usr/local/bin/simpleos-software-center:162 usr/local/bin/simpleos-welcome-wizard:1104
 msgid " · less than a minute left"
 msgstr " · noch weniger als eine Minute"
 
-#: usr/local/bin/simpleos-software-center:161 usr/local/bin/simpleos-welcome-wizard:1104
+#: usr/local/bin/simpleos-software-center:163 usr/local/bin/simpleos-welcome-wizard:1104
 msgid " · about {minutes} min left"
 msgstr " · noch etwa {minutes} Min."
 
-#: usr/local/bin/simpleos-software-center:176
+#: usr/local/bin/simpleos-software-center:178
 msgid "No password entered – nothing was installed."
 msgstr "Kein Passwort eingegeben – nichts wurde installiert."
 
-#: usr/local/bin/simpleos-software-center:178
+#: usr/local/bin/simpleos-software-center:180
 msgid "This could not start (a required program is missing)."
 msgstr "Das konnte nicht starten (ein nötiges Programm fehlt)."
 
-#: usr/local/bin/simpleos-software-center:182
+#: usr/local/bin/simpleos-software-center:184
 msgid "Not enough free space. In Live mode, apps are kept in memory – install Simple OS first."
 msgstr "Nicht genug freier Speicherplatz. Im Live-Modus liegen Apps im Arbeitsspeicher – installiere zuerst Simple OS."
 
-#: usr/local/bin/simpleos-software-center:185
+#: usr/local/bin/simpleos-software-center:187
 msgid "No internet connection. Check your network and try again."
 msgstr "Keine Internetverbindung. Prüfe dein Netzwerk und versuche es noch einmal."
 
-#: usr/local/bin/simpleos-software-center:187
+#: usr/local/bin/simpleos-software-center:189
 msgid "Flathub is not set up on this computer."
 msgstr "Flathub ist auf diesem Computer nicht eingerichtet."
 
-#: usr/local/bin/simpleos-software-center:188
+#: usr/local/bin/simpleos-software-center:190
 msgid "Something went wrong. Please try again later."
 msgstr "Etwas ist schiefgegangen. Bitte versuche es später noch einmal."
 
-#: usr/local/bin/simpleos-software-center:223 usr/local/bin/simpleos-software-center:233 usr/local/bin/simpleos-software-center:448 config/i18n/extra.txt:35
+#: usr/local/bin/simpleos-software-center:226 usr/local/bin/simpleos-software-center:236 usr/local/bin/simpleos-software-center:451 config/i18n/extra.txt:35
 msgid "Software Center"
 msgstr "Software-Center"
 
-#: usr/local/bin/simpleos-software-center:234
+#: usr/local/bin/simpleos-software-center:237
 msgid "Search apps"
 msgstr "Apps suchen"
 
-#: usr/local/bin/simpleos-software-center:237
+#: usr/local/bin/simpleos-software-center:240
 msgid "More apps"
 msgstr "Mehr Apps"
 
-#: usr/local/bin/simpleos-software-center:239
+#: usr/local/bin/simpleos-software-center:242
 msgid "Browse Flathub (Bazaar)"
 msgstr "Flathub durchstöbern (Bazaar)"
 
-#: usr/local/bin/simpleos-software-center:240
+#: usr/local/bin/simpleos-software-center:243
 msgid "GNOME Software (all apps and system packages)"
 msgstr "GNOME Software (alle Apps und Systempakete)"
 
-#: usr/local/bin/simpleos-software-center:269
+#: usr/local/bin/simpleos-software-center:272
 msgid "Flatpak is missing – only system apps can be installed."
 msgstr "Flatpak fehlt – nur System-Apps können installiert werden."
 
-#: usr/local/bin/simpleos-software-center:279
+#: usr/local/bin/simpleos-software-center:282
 msgid "{doing} continues in the background. You'll get a message when it's done."
 msgstr "{doing} läuft im Hintergrund weiter. Du bekommst eine Nachricht, wenn es fertig ist."
 
-#: usr/local/bin/simpleos-software-center:287
+#: usr/local/bin/simpleos-software-center:290
 msgid "{program} is not installed."
 msgstr "{program} ist nicht installiert."
 
-#: usr/local/bin/simpleos-software-center:308
+#: usr/local/bin/simpleos-software-center:311
 msgid "No apps found. Try “More apps” for the full catalog."
 msgstr "Keine Apps gefunden. Unter „Mehr Apps“ findest du den ganzen Katalog."
 
-#: usr/local/bin/simpleos-software-center:326
+#: usr/local/bin/simpleos-software-center:329
 msgid "Working…"
 msgstr "Läuft…"
 
-#: usr/local/bin/simpleos-software-center:338
+#: usr/local/bin/simpleos-software-center:341
 msgid "Install"
 msgstr "Installieren"
 
-#: usr/local/bin/simpleos-software-center:350
+#: usr/local/bin/simpleos-software-center:353
 msgid "Remove {app}?"
 msgstr "{app} entfernen?"
 
-#: usr/local/bin/simpleos-software-center:351
+#: usr/local/bin/simpleos-software-center:354
 msgid "Your files stay. The app's settings are kept for a later reinstall."
 msgstr "Deine Dateien bleiben. Die Einstellungen der App bleiben für eine spätere Neuinstallation erhalten."
 
-#: usr/local/bin/simpleos-software-center:362
+#: usr/local/bin/simpleos-software-center:365
 msgid "Only {free} MB free – install {app} anyway?"
 msgstr "Nur {free} MB frei – {app} trotzdem installieren?"
 
-#: usr/local/bin/simpleos-software-center:364
+#: usr/local/bin/simpleos-software-center:367
 msgid "Large apps need 1–3 GB including their runtime. In Live mode, apps are kept in memory and are gone after a restart – install Simple OS first."
 msgstr "Große Apps brauchen 1–3 GB samt Laufzeitumgebung. Im Live-Modus liegen Apps im Arbeitsspeicher und sind nach einem Neustart weg – installiere zuerst Simple OS."
 
-#: usr/local/bin/simpleos-software-center:374
+#: usr/local/bin/simpleos-software-center:377
 msgid "Installing {app}"
 msgstr "{app} wird installiert"
 
-#: usr/local/bin/simpleos-software-center:374
+#: usr/local/bin/simpleos-software-center:377
 msgid "Removing {app}"
 msgstr "{app} wird entfernt"
 
-#: usr/local/bin/simpleos-software-center:377
+#: usr/local/bin/simpleos-software-center:380
 msgid "{doing}… (this can take a few minutes)"
 msgstr "{doing}… (das kann ein paar Minuten dauern)"
 
-#: usr/local/bin/simpleos-software-center:398 usr/local/bin/simpleos-welcome-wizard:1039
+#: usr/local/bin/simpleos-software-center:401 usr/local/bin/simpleos-welcome-wizard:1039
 msgid " · about {rest} left"
 msgstr " · noch etwa {rest}"
 
-#: usr/local/bin/simpleos-software-center:435
+#: usr/local/bin/simpleos-software-center:438
 msgid "{app} is installed."
 msgstr "{app} ist installiert."
 
-#: usr/local/bin/simpleos-software-center:436
+#: usr/local/bin/simpleos-software-center:439
 msgid "{app} is removed."
 msgstr "{app} ist entfernt."
 
@@ -3973,111 +3973,135 @@ msgstr "Konnte nicht mit %s verbinden. Vielleicht ist das Passwort falsch – kl
 msgid "Could not connect to %s. Move closer to the router and try again."
 msgstr "Konnte nicht mit %s verbinden. Geh näher an den Router und versuche es noch einmal."
 
-#: usr/local/bin/simpleos-windows-app:53
+#: usr/local/bin/simpleos-windows-app:58
 msgid "about 700 MB"
 msgstr "etwa 700 MB"
 
-#: usr/local/bin/simpleos-windows-app:132
+#: usr/local/bin/simpleos-windows-app:166
 msgid "In Live mode, apps are kept in memory – only {free} MB are free, SOS Bridge needs about {need} MB. Install Simple OS first (icon on the desktop)."
 msgstr "Im Live-Modus liegen Apps im Arbeitsspeicher – nur {free} MB sind frei, SOS Bridge braucht etwa {need} MB. Installiere zuerst Simple OS (Symbol auf dem Desktop)."
 
-#: usr/local/bin/simpleos-windows-app:134
+#: usr/local/bin/simpleos-windows-app:168
 msgid "Not enough free disk space for SOS Bridge: {free} MB free, about {need} MB needed. Free up space with the Storage Cleaner."
 msgstr "Nicht genug freier Speicherplatz für SOS Bridge: {free} MB frei, etwa {need} MB nötig. Mach mit der Speicherbereinigung Platz."
 
-#: usr/local/bin/simpleos-windows-app:173
+#: usr/local/bin/simpleos-windows-app:222
 msgid "Preparing SOS Bridge"
 msgstr "SOS Bridge wird vorbereitet"
 
-#: usr/local/bin/simpleos-windows-app:173
+#: usr/local/bin/simpleos-windows-app:222
 msgid "SOS Bridge is ready"
 msgstr "SOS Bridge ist bereit"
 
-#: usr/local/bin/simpleos-windows-app:174
+#: usr/local/bin/simpleos-windows-app:223
 msgid "One time only · about a minute"
 msgstr "Nur einmalig · etwa eine Minute"
 
-#: usr/local/bin/simpleos-windows-app:177
+#: usr/local/bin/simpleos-windows-app:226
 msgid "Setting up Windows support (Wine) …"
 msgstr "Windows-Unterstützung (Wine) wird eingerichtet …"
 
-#: usr/local/bin/simpleos-windows-app:242 usr/local/bin/simpleos-windows-app:330
+#: usr/local/bin/simpleos-windows-app:291 usr/local/bin/simpleos-windows-app:379
 msgid "Starting {program} …"
 msgstr "{program} wird gestartet …"
 
-#: usr/local/bin/simpleos-windows-app:243 usr/local/bin/simpleos-windows-app:331
+#: usr/local/bin/simpleos-windows-app:292 usr/local/bin/simpleos-windows-app:380
 msgid "Windows programs take a few seconds to open."
 msgstr "Windows-Programme brauchen ein paar Sekunden, bis sie sich öffnen."
 
-#: usr/local/bin/simpleos-windows-app:303
+#: usr/local/bin/simpleos-windows-app:352
 msgid "Windows program (SOS Bridge)"
 msgstr "Windows-Programm (SOS Bridge)"
 
-#: usr/local/bin/simpleos-windows-app:323 usr/local/bin/simpleos-windows-app:401 usr/local/bin/simpleos-windows-app:514
+#: usr/local/bin/simpleos-windows-app:372 usr/local/bin/simpleos-windows-app:450 usr/local/bin/simpleos-windows-app:538 usr/local/bin/simpleos-windows-app:625
 msgid "Windows program"
 msgstr "Windows-Programm"
 
-#: usr/local/bin/simpleos-windows-app:324
+#: usr/local/bin/simpleos-windows-app:373
 msgid "This program is not installed any more."
 msgstr "Dieses Programm ist nicht mehr installiert."
 
-#: usr/local/bin/simpleos-windows-app:352
+#: usr/local/bin/simpleos-windows-app:401
 msgid "Installing SOS Bridge"
 msgstr "SOS Bridge wird installiert"
 
-#: usr/local/bin/simpleos-windows-app:353
+#: usr/local/bin/simpleos-windows-app:402
 msgid "SOS Bridge installed"
 msgstr "SOS Bridge ist installiert"
 
-#: usr/local/bin/simpleos-windows-app:354
+#: usr/local/bin/simpleos-windows-app:403
 msgid "One time only · {size} from Flathub"
 msgstr "Nur einmal · {size} von Flathub"
 
-#: usr/local/bin/simpleos-windows-app:358
+#: usr/local/bin/simpleos-windows-app:407
 msgid "Installing SOS Bridge (Bottles)"
 msgstr "SOS Bridge (Bottles) wird installiert"
 
-#: usr/local/bin/simpleos-windows-app:384
+#: usr/local/bin/simpleos-windows-app:433
 msgid "Not enough free space to install SOS Bridge."
 msgstr "Nicht genug freier Speicherplatz, um SOS Bridge zu installieren."
 
-#: usr/local/bin/simpleos-windows-app:389
+#: usr/local/bin/simpleos-windows-app:438
 msgid "Installing apps needs an administrator's password."
 msgstr "Zum Installieren von Apps ist das Passwort eines Administrators nötig."
 
-#: usr/local/bin/simpleos-windows-app:390
+#: usr/local/bin/simpleos-windows-app:439
 msgid "SOS Bridge could not be installed. Details: {LOG}"
 msgstr "SOS Bridge konnte nicht installiert werden. Details: {LOG}"
 
-#: usr/local/bin/simpleos-windows-app:410
+#: usr/local/bin/simpleos-windows-app:459
 msgid "<b><big>{program} is a Windows program</big></b>"
 msgstr "<b><big>{program} ist ein Windows-Programm</big></b>"
 
-#: usr/local/bin/simpleos-windows-app:413
+#: usr/local/bin/simpleos-windows-app:462
 msgid "Simple OS can try to run it with SOS Bridge – the free app Bottles with Wine, no Windows needed. Many Windows programs work, some don't (for example Microsoft 365, current Adobe apps and games with anti-cheat). Programs made for Windows itself never work: Windows installation media and setup tools, drivers and antivirus programs."
 msgstr "Simple OS kann versuchen, es mit SOS Bridge zu starten – der kostenlosen App Bottles mit Wine, ganz ohne Windows. Viele Windows-Programme laufen, manche nicht (zum Beispiel Microsoft 365, aktuelle Adobe-Apps und Spiele mit Anti-Cheat). Programme für Windows selbst laufen nie: Windows-Installationsmedien und Setup-Werkzeuge, Treiber und Virenscanner."
 
-#: usr/local/bin/simpleos-windows-app:419
+#: usr/local/bin/simpleos-windows-app:468
 msgid "Additional download required: SOS Bridge comes once from Flathub ({DOWNLOAD}). You can also install it later in the Software Center."
 msgstr "Zusätzlicher Download nötig: SOS Bridge kommt einmalig von Flathub ({DOWNLOAD}). Du kannst es auch später im Software-Center installieren."
 
-#: usr/local/bin/simpleos-windows-app:426
+#: usr/local/bin/simpleos-windows-app:475 usr/local/bin/simpleos-windows-app:555
 msgid "What works?"
 msgstr "Was läuft?"
 
-#: usr/local/bin/simpleos-windows-app:428
+#: usr/local/bin/simpleos-windows-app:477
 msgid "Install SOS Bridge"
 msgstr "SOS Bridge installieren"
 
-#: usr/local/bin/simpleos-windows-app:443
+#: usr/local/bin/simpleos-windows-app:492
 msgid "Try again"
 msgstr "Noch einmal versuchen"
 
-#: usr/local/bin/simpleos-windows-app:469
+#: usr/local/bin/simpleos-windows-app:518
 msgid "Installing SOS Bridge – this takes a few minutes …"
 msgstr "SOS Bridge wird installiert – das dauert ein paar Minuten …"
 
-#: usr/local/bin/simpleos-windows-app:515
+#: usr/local/bin/simpleos-windows-app:551
+msgid "<b><big>{program} is made for Windows itself</big></b>"
+msgstr "<b><big>{program} ist für Windows selbst gemacht</big></b>"
+
+#: usr/local/bin/simpleos-windows-app:553
+msgid "Windows installation media and setup tools only work on a Windows computer – SOS Bridge can't run them, and Simple OS doesn't need them."
+msgstr "Windows-Installationsmedien und Setup-Werkzeuge funktionieren nur auf einem Windows-Computer – SOS Bridge kann sie nicht ausführen, und Simple OS braucht sie nicht."
+
+#: usr/local/bin/simpleos-windows-app:560
+msgid "<b><big>{name} has its own version for Simple OS</big></b>"
+msgstr "<b><big>{name} gibt es in einer eigenen Version für Simple OS</big></b>"
+
+#: usr/local/bin/simpleos-windows-app:562
+msgid "{program} is the Windows installer of {name}. The version for Simple OS works much better and updates itself – install it from the Software Center with one click."
+msgstr "{program} ist das Windows-Installationsprogramm von {name}. Die Version für Simple OS läuft viel besser und aktualisiert sich selbst – installiere sie mit einem Klick im Software-Center."
+
+#: usr/local/bin/simpleos-windows-app:565
+msgid "Run the Windows version anyway"
+msgstr "Trotzdem die Windows-Version starten"
+
+#: usr/local/bin/simpleos-windows-app:567
+msgid "Open in the Software Center"
+msgstr "Im Software-Center öffnen"
+
+#: usr/local/bin/simpleos-windows-app:626
 msgid "The file does not exist."
 msgstr "Die Datei gibt es nicht."
 

@@ -14,6 +14,8 @@ helper died at its next line, Steam/LibreOffice stayed half installed); then a n
 
   simpleos-software-center            window
   simpleos-software-center --list     catalog with status (installed/available) as text (tests)
+  simpleos-software-center --search TEXT   window with TEXT in the search (e.g. a catalog key: SOS Bridge points
+                                           Windows installers of Steam, Discord … here, #85)
 Test: SIMPLEOS_SC_SELFTEST=1 (build the window, switch through search/categories, exit 1 on a Python exception),
 SIMPLEOS_SC_SELFTEST=close (install Steam, close the window at once: the program must end by itself afterwards).
 """
@@ -203,6 +205,7 @@ def main(argv):
     from gi.repository import Gio, GLib, Gtk
 
     selftest = os.environ.get("SIMPLEOS_SC_SELFTEST") in ("1", "close")
+    initial_search = ""
     errors = []
     if selftest:
         def hook(etype, value, tb):
@@ -463,6 +466,8 @@ def main(argv):
             if self.win:
                 return self.win.present()   # started again: the same window (also when hidden during an installation)
             self.win = win = Store(self)
+            if initial_search:
+                win.search.set_text(initial_search)
             if os.environ.get("SIMPLEOS_SC_SELFTEST") == "close":
                 steam = next(a for a in CATALOG if a[0] == "steam")
                 GLib.timeout_add(500, lambda: (win.install(steam), False)[1])
@@ -479,6 +484,8 @@ def main(argv):
                     return False
                 GLib.timeout_add(500, step)
 
+    if "--search" in argv[1:-1]:
+        initial_search = argv[argv.index("--search") + 1]
     rc = App().run(argv[:1])
     if errors:
         print(f"simpleos-software-center: {len(errors)} error(s) in self-test", file=sys.stderr)

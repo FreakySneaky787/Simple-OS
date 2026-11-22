@@ -304,7 +304,9 @@ What each of Simple OS's own tools does and how (the developer overview: [DEVELO
   with SOS Bridge") starts it directly in SOS Bridge's own bottle "Windows" (`bottles-cli run`, the sandbox gets the
   program's folder; the bottle is created on first use with a progress window, ~1 min). When Wine has ended, the
   shortcuts the program put in Wine's start menu become menu entries (`~/.local/share/applications/simpleos-bridge-*`,
-  started with `--start`, removed when the program is gone). Without Bottles a small window explains honestly what
+  started with `--start`, removed when the program is gone). Windows installers of apps with a Simple OS version
+  (`NATIVE`: SteamSetup.exe, DiscordSetup.exe …) get a window that opens `simpleos-software-center --search KEY`
+  ("Run the Windows version anyway" possible); Windows installation media get "made for Windows itself". Without Bottles a small window explains honestly what
   works and offers to install **SOS Bridge** (Bottles from Flathub, space and Flathub checked first, progress
   window). `--help-page` opens
   `/usr/share/simpleos/windows-programs.html` (Menu → Help → Windows Programs) in the welcome window: what usually

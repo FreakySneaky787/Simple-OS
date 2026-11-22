@@ -28,7 +28,9 @@ sign in afterwards, "What's new" shows the highlights.
   **SOS Bridge** – the free app Bottles with Wine – runs many Windows programs. If it is not there yet, a small window
   explains what works and installs it from Flathub with one click, then opens your program. The program opens
   straight away – no Bottles window, no "bottle" to choose (the first time SOS Bridge sets itself up, about a minute).
-  Programs you install with their setup file appear in the menu afterwards like any other app. Menu → Help → Windows
+  Programs you install with their setup file appear in the menu afterwards like any other app. The Windows
+  installer of an app that has its own Simple OS version (Steam, Discord, Spotify, VLC …) points you to that version
+  in the Software Center instead. Menu → Help → Windows
   Programs says honestly what usually works, what doesn't (Microsoft 365, current Adobe apps, games with anti-cheat,
   and never Windows itself: installation media, drivers, antivirus), the alternatives, and where Steam's own
   "Steam Play for all other titles" switch is.
