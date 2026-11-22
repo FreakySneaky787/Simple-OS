@@ -66,6 +66,16 @@ if [[ -z "$ISO" ]]; then
     echo "Error: no ISO found – see build/build.log" >&2
     exit 1
 fi
+# The network went away during the build (2026-11-22: DNS failed after the verify hook): apt's last "update" in the
+# image fails with only a warning, and the ISO ships without package lists (/var/lib/apt/lists, 166 MB, and the
+# AppStream catalog) – language packs in the installer and Gaming Support would fail. Never hand out such an ISO.
+NET_FAIL="Temporary failure resolving|Could not resolve|Could not connect to|Network is unreachable|Connection timed out"
+if grep -qE "$NET_FAIL" build/build.log; then
+    echo "Error: downloads failed during the build (network?) – the ISO would lack apt's package lists." >&2
+    grep -E "$NET_FAIL" build/build.log | sort | uniq -c | head -n 5 >&2
+    echo "The ISO stays in $ISO (not moved to output/). Check the internet connection and build again." >&2
+    exit 1
+fi
 sudo mv "$ISO" output/Simple-OS.iso
 
 # For the download: checksum (only the file name in it, so "sha256sum -c" works in the download folder) and the
