@@ -8,7 +8,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: usr/local/bin/simpleos-admin-open:9 usr/local/bin/simpleos-control-center:2506
+#: usr/local/bin/simpleos-admin-open:9 usr/local/bin/simpleos-control-center:2375 usr/local/bin/simpleos-control-center:2506
 msgid "Administrator"
 msgstr ""
 
@@ -810,7 +810,7 @@ msgstr ""
 msgid "PDF documents"
 msgstr ""
 
-#: usr/local/bin/simpleos-control-center:809
+#: usr/local/bin/simpleos-control-center:809 usr/local/bin/simpleos-control-center:1683 usr/local/bin/simpleos-control-center:2548
 msgid "Pictures"
 msgstr ""
 
@@ -1762,6 +1762,14 @@ msgstr ""
 msgid "This is the live session – user accounts can be managed once Simple OS is installed."
 msgstr ""
 
+#: usr/local/bin/simpleos-control-center:2374
+msgid "{name}  (you)"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2375 usr/local/bin/simpleos-control-center:2507
+msgid "Standard user"
+msgstr ""
+
 #: usr/local/bin/simpleos-control-center:2377
 msgid " · signs in automatically"
 msgstr ""
@@ -1868,10 +1876,6 @@ msgstr ""
 
 #: usr/local/bin/simpleos-control-center:2502
 msgid "Full name"
-msgstr ""
-
-#: usr/local/bin/simpleos-control-center:2507
-msgid "Standard user"
 msgstr ""
 
 #: usr/local/bin/simpleos-control-center:2511

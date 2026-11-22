@@ -1680,7 +1680,7 @@ def main(argv):
                            (_("Accent color"), _("Menus, taskbar, window borders"), acc)]))
             chooser = Gtk.FileChooserButton(title=_("Choose a picture"), action=Gtk.FileChooserAction.OPEN)
             filt = Gtk.FileFilter()
-            filt.set_name("Pictures")
+            filt.set_name(_("Pictures"))
             filt.add_mime_type("image/*")
             chooser.add_filter(filt)
             wp = current_wallpaper()
@@ -2371,8 +2371,8 @@ def main(argv):
                 row = Gtk.Box(spacing=12, margin=10)
                 row.pack_start(self.avatar(u, 40), False, False, 0)
                 texts = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, valign=Gtk.Align.CENTER)
-                texts.pack_start(label(u["full"] + ("  (you)" if u["name"] == self.me else "")), False, False, 0)
-                sub = f'{u["name"]} · {"Administrator" if u["admin"] else "Standard user"}'
+                texts.pack_start(label(_("{name}  (you)").format(name=u["full"]) if u["name"] == self.me else u["full"]), False, False, 0)
+                sub = f'{u["name"]} · {_("Administrator") if u["admin"] else _("Standard user")}'
                 if u["name"] == auto:
                     sub += _(" · signs in automatically")
                 texts.pack_start(label(sub, dim=True), False, False, 0)
@@ -2545,7 +2545,7 @@ def main(argv):
                                        action=Gtk.FileChooserAction.OPEN)
             fc.add_buttons(_("Cancel"), Gtk.ResponseType.CANCEL, _("Choose"), Gtk.ResponseType.OK)
             filt = Gtk.FileFilter()
-            filt.set_name("Pictures")
+            filt.set_name(_("Pictures"))
             for pattern in ("*.png", "*.jpg", "*.jpeg", "*.PNG", "*.JPG", "*.JPEG", "*.webp", "*.gif"):
                 filt.add_pattern(pattern)
             fc.add_filter(filt)
