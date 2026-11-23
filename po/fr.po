@@ -4125,7 +4125,7 @@ msgstr "Le fichier n’existe pas."
 msgid "Usage: --list | --create TEXT | --restore NAME | --delete NAME | --check NAME | --auto on|off|status | --before-update"
 msgstr "Utilisation : --list | --create TEXTE | --restore NOM | --delete NOM | --check NOM | --auto on|off|status | --before-update"
 
-#: usr/local/sbin/simpleos-backup-helper:60 usr/local/sbin/simpleos-users-helper:41
+#: usr/local/sbin/simpleos-backup-helper:60 usr/local/sbin/simpleos-users-helper:44
 msgid "must run as root (pkexec)"
 msgstr "doit être lancé en tant que root (pkexec)"
 
@@ -4415,103 +4415,107 @@ msgstr "Terminé – non installé : %s"
 msgid "Finished with errors"
 msgstr "Terminé avec des erreurs"
 
-#: usr/local/sbin/simpleos-users-helper:38
+#: usr/local/sbin/simpleos-users-helper:41
 msgid "Usage: --create USER NAME admin|standard | --delete USER keep|remove | --name USER NAME | --password USER | --admin USER on|off | --picture USER FILE|none | --autologin USER|off"
 msgstr "Utilisation : --create UTILISATEUR NOM admin|standard | --delete UTILISATEUR keep|remove | --name UTILISATEUR NOM | --password UTILISATEUR | --admin UTILISATEUR on|off | --picture UTILISATEUR FICHIER|none | --autologin UTILISATEUR|off"
 
-#: usr/local/sbin/simpleos-users-helper:43
+#: usr/local/sbin/simpleos-users-helper:46
 msgid "user accounts can only be changed on an installed system"
 msgstr "les comptes utilisateurs ne peuvent être modifiés que sur un système installé"
 
-#: usr/local/sbin/simpleos-users-helper:87
+#: usr/local/sbin/simpleos-users-helper:90
 msgid "no password given"
 msgstr "aucun mot de passe fourni"
 
-#: usr/local/sbin/simpleos-users-helper:88
+#: usr/local/sbin/simpleos-users-helper:91
 msgid "the password is empty"
 msgstr "le mot de passe est vide"
 
-#: usr/local/sbin/simpleos-users-helper:89
+#: usr/local/sbin/simpleos-users-helper:92
 msgid "the password has control characters"
 msgstr "le mot de passe contient des caractères de contrôle"
 
-#: usr/local/sbin/simpleos-users-helper:96
+#: usr/local/sbin/simpleos-users-helper:99
 msgid "%s is not a person's account on this computer"
 msgstr "%s n’est pas le compte d’une personne sur cet ordinateur"
 
-#: usr/local/sbin/simpleos-users-helper:100
+#: usr/local/sbin/simpleos-users-helper:103
 msgid "you can't delete your own account here"
 msgstr "vous ne pouvez pas supprimer votre propre compte ici"
 
-#: usr/local/sbin/simpleos-users-helper:101
+#: usr/local/sbin/simpleos-users-helper:104
 msgid "you can't make your own account a standard user here"
 msgstr "vous ne pouvez pas faire de votre propre compte un utilisateur standard ici"
 
-#: usr/local/sbin/simpleos-users-helper:137
+#: usr/local/sbin/simpleos-users-helper:140
 msgid "the user name may only have small letters, digits, - and _ and must start with a letter"
 msgstr "le nom d’utilisateur ne peut contenir que des minuscules, des chiffres, - et _ et doit commencer par une lettre"
 
-#: usr/local/sbin/simpleos-users-helper:138 usr/local/sbin/simpleos-users-helper:165
+#: usr/local/sbin/simpleos-users-helper:141 usr/local/sbin/simpleos-users-helper:171
 msgid "the full name is empty, too long or has : , ="
 msgstr "le nom complet est vide, trop long ou contient : , ="
 
-#: usr/local/sbin/simpleos-users-helper:140
+#: usr/local/sbin/simpleos-users-helper:143
 msgid "the user name %s is taken already"
 msgstr "le nom d’utilisateur %s est déjà pris"
 
-#: usr/local/sbin/simpleos-users-helper:142
+#: usr/local/sbin/simpleos-users-helper:146
+msgid "the folder %s exists already (files of a deleted account?) – choose another user name, or move the folder away first"
+msgstr "le dossier %s existe déjà (fichiers d’un compte supprimé ?) – choisissez un autre nom d’utilisateur, ou déplacez d’abord le dossier"
+
+#: usr/local/sbin/simpleos-users-helper:148
 msgid "the account could not be created"
 msgstr "le compte n’a pas pu être créé"
 
-#: usr/local/sbin/simpleos-users-helper:143
+#: usr/local/sbin/simpleos-users-helper:149
 msgid "the password could not be set"
 msgstr "le mot de passe n’a pas pu être défini"
 
-#: usr/local/sbin/simpleos-users-helper:154 usr/local/sbin/simpleos-users-helper:181
+#: usr/local/sbin/simpleos-users-helper:160 usr/local/sbin/simpleos-users-helper:187
 msgid "%s is the last administrator"
 msgstr "%s est le dernier administrateur"
 
-#: usr/local/sbin/simpleos-users-helper:155
+#: usr/local/sbin/simpleos-users-helper:161
 msgid "%s is signed in – sign them out first"
 msgstr "%s est connecté – déconnectez-le d’abord"
 
-#: usr/local/sbin/simpleos-users-helper:158
+#: usr/local/sbin/simpleos-users-helper:164
 msgid "the account could not be deleted"
 msgstr "le compte n’a pas pu être supprimé"
 
-#: usr/local/sbin/simpleos-users-helper:166
+#: usr/local/sbin/simpleos-users-helper:172
 msgid "the name could not be changed"
 msgstr "le nom n’a pas pu être modifié"
 
-#: usr/local/sbin/simpleos-users-helper:172
+#: usr/local/sbin/simpleos-users-helper:178
 msgid "the password could not be changed"
 msgstr "le mot de passe n’a pas pu être modifié"
 
-#: usr/local/sbin/simpleos-users-helper:178
+#: usr/local/sbin/simpleos-users-helper:184
 msgid "could not make %s an administrator"
 msgstr "impossible de faire de %s un administrateur"
 
-#: usr/local/sbin/simpleos-users-helper:182
+#: usr/local/sbin/simpleos-users-helper:188
 msgid "could not make %s a standard user"
 msgstr "impossible de faire de %s un utilisateur standard"
 
-#: usr/local/sbin/simpleos-users-helper:191 usr/local/sbin/simpleos-users-helper:201
+#: usr/local/sbin/simpleos-users-helper:197 usr/local/sbin/simpleos-users-helper:207
 msgid "the picture can't be read"
 msgstr "l’image ne peut pas être lue"
 
-#: usr/local/sbin/simpleos-users-helper:192
+#: usr/local/sbin/simpleos-users-helper:198
 msgid "the picture is bigger than 5 MB"
 msgstr "l’image dépasse 5 Mo"
 
-#: usr/local/sbin/simpleos-users-helper:194
+#: usr/local/sbin/simpleos-users-helper:200
 msgid "the picture is not a PNG or JPEG file"
 msgstr "l’image n’est pas un fichier PNG ou JPEG"
 
-#: usr/local/sbin/simpleos-users-helper:200
+#: usr/local/sbin/simpleos-users-helper:206
 msgid "no temporary file"
 msgstr "pas de fichier temporaire"
 
-#: usr/local/sbin/simpleos-users-helper:221
+#: usr/local/sbin/simpleos-users-helper:227
 msgid "automatic sign-in could not be changed"
 msgstr "la connexion automatique n’a pas pu être modifiée"
 

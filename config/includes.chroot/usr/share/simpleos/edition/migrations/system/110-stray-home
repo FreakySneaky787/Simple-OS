@@ -1,0 +1,35 @@
+#!/bin/sh
+# Simple OS 1.2 – remove /home/aaron that every image since 1.0 carried (runs once, as root, from the postinst of the
+# package simpleos via "edition --system").
+# The build's self-test (hook 99) ran the bug report's redaction with HOME=/home/aaron; the report's log went to
+# /home/aaron/.cache/simpleos-report.log, owned by root, into the image and every installation. An account named
+# "aaron" (installer or Control Center → Users) then got that folder as its home: adduser does not take over an existing
+# home, so it stayed root's, the account could not write to it, and every sign-in ended at the login screen again.
+#   - no account "aaron": the folder goes if it holds nothing but that log
+#   - an account "aaron" whose home is still root's: the home becomes the account's and gets the /etc/skel files
+#     it never received (existing files are kept)
+# Never fails (exit 0). Tests: SIMPLEOS_HOME replaces /home, SIMPLEOS_PASSWD replaces /etc/passwd,
+# SIMPLEOS_SKEL replaces /etc/skel, SIMPLEOS_TEST=1 prints chown instead of running it.
+H=${SIMPLEOS_HOME:-/home}
+PW=${SIMPLEOS_PASSWD:-/etc/passwd}
+SKEL=${SIMPLEOS_SKEL:-/etc/skel}
+d=$H/aaron
+[ -d "$d" ] || exit 0
+[ "$(stat -c %u "$d" 2>/dev/null)" = 0 ] || exit 0        # not root's: a real home, leave it alone
+entry=$(awk -F: '$1 == "aaron" { print $3 ":" $4 ":" $6; exit }' "$PW" 2>/dev/null)
+if [ -z "$entry" ]; then
+    # only the build's leftover: .cache/simpleos-report.log and nothing else
+    others=$(find "$d" -mindepth 1 ! -path "$d/.cache" ! -path "$d/.cache/simpleos-report.log" 2>/dev/null | head -n 1)
+    if [ -z "$others" ]; then
+        rm -rf "$d" && echo "110-stray-home: removed $d (left over from the image)"
+    fi
+    exit 0
+fi
+uid=${entry%%:*}; rest=${entry#*:}; gid=${rest%%:*}; home=${rest#*:}
+[ "$home" = "$d" ] || exit 0
+rm -f "$d/.cache/simpleos-report.log"
+cp -an "$SKEL/." "$d/" 2>/dev/null
+if [ -n "${SIMPLEOS_TEST:-}" ]; then echo "RUN: chown -R $uid:$gid $d"; else chown -R "$uid:$gid" "$d"; fi
+chmod 0700 "$d" 2>/dev/null
+echo "110-stray-home: $d belongs to aaron again"
+exit 0

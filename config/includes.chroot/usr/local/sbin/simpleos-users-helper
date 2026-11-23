@@ -20,7 +20,8 @@
 # (the caller = PKEXEC_UID); an account that is signed in is not deleted; nothing in the live session.
 # Exit: 0 ok, 1 error, 2 invalid call, 3 not allowed (last administrator / own account), 4 live session,
 #       5 the account is signed in, 6 the user name exists already. Errors also as "ERROR: <text>" on stderr.
-# Tests: SIMPLEOS_USERS_TEST=1 – passwd/group/login.defs/lightdm from $SIMPLEOS_USERS_ETC, the caller from
+# Tests: SIMPLEOS_USERS_TEST=1 – passwd/group/login.defs/lightdm from $SIMPLEOS_USERS_ETC (home folders: $SIMPLEOS_USERS_HOMES,
+# default $SIMPLEOS_USERS_ETC/home), the caller from
 # SIMPLEOS_USERS_CALLER, commands are printed ("RUN: …") instead of run; SIMPLEOS_USERS_SIGNED_IN lists signed-in users.
 set -u
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -30,6 +31,8 @@ TEST=${SIMPLEOS_USERS_TEST:-}
 ETC=/etc
 [ -n "$TEST" ] && ETC=${SIMPLEOS_USERS_ETC:?}
 LIGHTDM_CONF=$ETC/lightdm/lightdm.conf
+HOMES=/home
+[ -n "$TEST" ] && HOMES=${SIMPLEOS_USERS_HOMES:-$ETC/home}
 AUTOLOGIN_CONF=$ETC/lightdm/lightdm.conf.d/50-simpleos-autologin.conf
 # Groups of an account made by the installer (Calamares), the ones that exist here; administrators also get sudo
 ACCOUNT_GROUPS="cdrom floppy audio dip video plugdev netdev bluetooth lpadmin scanner"
@@ -138,6 +141,9 @@ case "$action" in
         valid_name "$name" || die "$(_t 'the full name is empty, too long or has : , =')" 2
         case "$kind" in admin|standard) ;; *) usage ;; esac
         exists "$user" && die "$(printf "$(_t 'the user name %s is taken already')" "$user")" 6
+        # A folder of that name in /home (files of a deleted account, "keep"): adduser would not take it over – it stays
+        # someone else's, and the new account could not sign in (every sign-in ends at the login screen again)
+        [ -e "$HOMES/$user" ] && die "$(printf "$(_t 'the folder %s exists already (files of a deleted account?) – choose another user name, or move the folder away first')" "$HOMES/$user")" 6
         read_password
         run adduser --quiet --disabled-password --comment "$name" "$user" || die "$(_t 'the account could not be created')"
         set_password "$user" || { run deluser --quiet --remove-home "$user"; die "$(_t 'the password could not be set')"; }

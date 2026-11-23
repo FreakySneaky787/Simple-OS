@@ -5294,7 +5294,9 @@ usb 1-2: SerialNumber: 4C530001230817116183 mail aaron.example@example.org
 keep: Simple OS v1.0 simple-os /home/simple alsa-topology-conf 1.2.5.1-2 v1.2.3.4 127.0.0.1 ::1
 keep: 12:34:56 00:02.0 VGA [8086:a7a0] Mesa 22.3.6 Wired connection 1 aaronson firmware 1.2.3.4.5
 IN
-HOME=/home/aaron PATH="$rt/mock:/usr/bin:/bin" $RP --redact < "$rt/in" > "$rt/out" 2>/dev/null
+# HOME=/home/aaron only for the redaction (the path must disappear) – its log goes to $rt: with ~/.cache it created
+# /home/aaron/.cache (root's) in every image since 1.0, and an account named "aaron" could never sign in (migration 110)
+XDG_CACHE_HOME=$rt/cache HOME=/home/aaron PATH="$rt/mock:/usr/bin:/bin" $RP --redact < "$rt/in" > "$rt/out" 2>/dev/null
 for bad in aaron Aaron aarons-thinkbook FRITZ a4:5E 00-1A-7D 90_7A_58 192.168.178.23 10.0.0.1 192.168.1.1 fe80:: 2a02:8106 \
            4C530001230817116183 example.org; do
     check "Report redaction: '$bad' still there" "! grep -v '^keep:' $rt/out | grep -qF '$bad'"
@@ -5562,6 +5564,32 @@ check "Update to 1.0.7 keeps the bytecode of older images, or removes more (migr
       "[ -x /usr/share/simpleos/edition/migrations/system/090-python-bytecode ] && [ ! -e $pb/bin/__pycache__ ] &&
        [ ! -e $pb/lib/simpleos/__pycache__ ] && [ -e $pb/bin/simpleos-calendar ]"
 rm -rf "${pb:?}"
+
+# Nothing of the tests in a home folder of the image: /home holds only the live account (a test once left /home/aaron,
+# and an account of that name could never sign in); the tests' logs in /root/.cache are removed
+rm -f /root/.cache/simpleos-*.log 2>/dev/null || true
+check "A test left a folder in /home of the image (only the live account 'simple' belongs there)" \
+      "[ \"\$(ls -A /home)\" = simple ]"
+sh_home=$(mktemp -d); mkdir -p "$sh_home/home/aaron/.cache" "$sh_home/skel/.config"
+touch "$sh_home/home/aaron/.cache/simpleos-report.log" "$sh_home/skel/.bashrc"
+printf 'root:x:0:0::/root:/bin/bash\n' > "$sh_home/passwd"
+env -i SIMPLEOS_HOME="$sh_home/home" SIMPLEOS_PASSWD="$sh_home/passwd" SIMPLEOS_SKEL="$sh_home/skel" SIMPLEOS_TEST=1 \
+    sh /usr/share/simpleos/edition/migrations/system/110-stray-home >/dev/null 2>&1 || true
+check "Update: the image's /home/aaron is not removed (migration 110)" "[ ! -e $sh_home/home/aaron ]"
+mkdir -p "$sh_home/home/aaron/.cache" && touch "$sh_home/home/aaron/.cache/simpleos-report.log"
+printf 'aaron:x:1001:1001:Aaron,,,:%s/home/aaron:/bin/bash\n' "$sh_home" > "$sh_home/passwd"
+out=$(env -i SIMPLEOS_HOME="$sh_home/home" SIMPLEOS_PASSWD="$sh_home/passwd" SIMPLEOS_SKEL="$sh_home/skel" SIMPLEOS_TEST=1 \
+      sh /usr/share/simpleos/edition/migrations/system/110-stray-home 2>&1)
+check "Update: an account 'aaron' with root's home is not repaired (migration 110)" \
+      "printf '%s' \"\$out\" | grep -q 'RUN: chown -R 1001:1001' && [ -e $sh_home/home/aaron/.bashrc ] && [ ! -e $sh_home/home/aaron/.cache/simpleos-report.log ]"
+rm -rf "${sh_home:?}"
+uh_home=$(mktemp -d); mkdir -p "$uh_home/etc/home/olga"
+printf 'root:x:0:0::/root:/bin/bash\npax:x:1000:1000:Pax:/home/pax:/bin/bash\n' > "$uh_home/etc/passwd"
+printf 'sudo:x:27:pax\n' > "$uh_home/etc/group"; printf 'UID_MIN 1000\nUID_MAX 60000\n' > "$uh_home/etc/login.defs"
+check "Users: a new account takes over an existing folder in /home (it could never sign in)" \
+      "printf 'pw\\n' | env SIMPLEOS_USERS_TEST=1 SIMPLEOS_USERS_ETC=$uh_home/etc SIMPLEOS_USERS_CALLER=pax /usr/local/sbin/simpleos-users-helper --create olga Olga standard >/dev/null 2>&1; [ \$? -eq 6 ] &&
+       printf 'pw\\n' | env SIMPLEOS_USERS_TEST=1 SIMPLEOS_USERS_ETC=$uh_home/etc SIMPLEOS_USERS_CALLER=pax /usr/local/sbin/simpleos-users-helper --create max Max standard >/dev/null 2>&1"
+rm -rf "${uh_home:?}"
 
 [ "$fail" -eq 0 ]
 echo "Simple OS verify: OK"
