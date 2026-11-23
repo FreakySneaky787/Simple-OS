@@ -1,7 +1,7 @@
 # Simple OS 1.2
 ## New in 1.2
-- **Simple OS speaks German.** Every Simple OS window, menu and message follows the language you pick in Control
-  Center → Language & Region – German for now, other languages fall back to English.
+- **Simple OS speaks German and French.** Every Simple OS window, menu and message follows the language you pick in
+  Control Center → Language & Region – German and French for now, other languages fall back to English.
 - **Users.** Control Center → Users: add and remove accounts, change names, pictures and passwords, make someone an
   administrator, sign in automatically – and "Switch user" in the power menu.
 - **Windows programs.** Double-click a .exe or .msi: SOS Bridge (Bottles) runs many Windows programs. The first time

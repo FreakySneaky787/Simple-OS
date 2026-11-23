@@ -2,8 +2,10 @@
 Type=Application
 Name=Control Center
 Name[de]=Einstellungen
+Name[fr]=Centre de contrôle
 Comment=All settings in one place: Wi-Fi, sound, display, apps, date & time, updates … (Super+I)
 Comment[de]=Alle Einstellungen an einem Ort: WLAN, Ton, Bildschirm, Apps, Datum & Uhrzeit, Updates … (Super+I)
+Comment[fr]=Tous les réglages au même endroit : Wi-Fi, son, écran, applications, date et heure, mises à jour … (Super+I)
 Exec=/usr/local/bin/simpleos-control-center
 Icon=preferences-system
 Categories=Settings;

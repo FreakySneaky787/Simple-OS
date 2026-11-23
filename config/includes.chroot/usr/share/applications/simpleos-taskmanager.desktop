@@ -2,8 +2,10 @@
 Type=Application
 Name=Task Manager
 Name[de]=Task-Manager
+Name[fr]=Gestionnaire des tâches
 Comment=See running programs and end the ones that hang
 Comment[de]=Laufende Programme sehen und hängende beenden
+Comment[fr]=Voir les programmes en cours et arrêter ceux qui sont bloqués
 Exec=/usr/local/bin/simpleos-taskmanager
 Icon=utilities-system-monitor
 Categories=System;Monitor;

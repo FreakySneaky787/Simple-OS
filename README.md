@@ -49,8 +49,9 @@ Thank you for testing! Every report helps, especially from real hardware.
 
 **Wanted right now** (1.2 is coming – test builds from the branch `next`):
 
-- **German:** set Deutsch in Control Center → Language & Region (or install in German). Is anything of Simple OS still
-  English – a window, a menu, a message, a password prompt?
+- **German or French:** set Deutsch or Français in Control Center → Language & Region (or install in that language).
+  Is anything of Simple OS still English – a window, a menu, a message, a password prompt? Does a French text sound
+  wrong? The French translation is new and not yet checked by a native speaker.
 - **Users:** add a second account in Control Center → Users, sign in with it, switch between both (power menu →
   Switch user). Does the picture show on the login screen?
 - **Windows programs:** double-click a downloaded `.exe`. Does SOS Bridge install and open it? Which programs work?

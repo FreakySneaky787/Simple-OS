@@ -187,7 +187,7 @@ the lb default files, the generated graphics and the fastfetch package.
 
 ## Translations (#43, since 1.2)
 
-Simple OS's own tools speak the system language (German so far, everything else falls back to English). One gettext
+Simple OS's own tools speak the system language (German and French so far, everything else falls back to English). One gettext
 domain `simpleos`; `tools/i18n.py` does what the gettext tools would, in pure Python.
 
 - **Python tools:** `_ = gettext.translation("simpleos", fallback=True).gettext` at the top, every shown text in
@@ -200,8 +200,8 @@ domain `simpleos`; `tools/i18n.py` does what the gettext tools would, in pure Py
   (pkexec has no LANG) and in tools that set `LC_ALL=C` to read command output. Protocol lines that other tools read
   (`ERROR:`, `NOSPACE:`, `OPTIONAL-FAILED:`, `HELD:` …) stay English. Rofi menus answer with the row number
   (`-format i`), never with the translated text.
-- **Elsewhere:** `Name[de]`/`Comment[de]` in the launchers, `xml:lang="de"` in the polkit policies, `welcome.de.html` /
-  `windows-programs.de.html` (welcome-viewer picks them), `whats-new.de`, the shortcut list in `simpleos-help`, and the
+- **Elsewhere:** `Name[de]`/`Comment[de]` (and `[fr]`) in the launchers, `xml:lang="de"`/`"fr"` in the polkit policies and Thunar's uca.xml, `welcome.de.html` /
+  `windows-programs.de.html` (welcome-viewer picks them), `whats-new.de` (the same with `.fr`), the shortcut list in `simpleos-help`, and the
   Openbox menu: `menu-lang` writes `~/.config/openbox/menu-simpleos.xml` at sign-in, which rc.xml loads before the
   English menu.xml. Texts that are not in a tool go into `config/i18n/extra.txt`.
 - **Workflow:** after changing texts `./tools/i18n.py extract` (new texts appear in `po/de.po` with an empty msgstr),

@@ -2101,8 +2101,8 @@ def main(argv):
             self.put(card(rows))
             self.note(_("Applies after you sign out and back in. When the computer is online, spell checking and the "
                       "languages for Firefox and LibreOffice are installed with it."))
-            self.note(_("Simple OS's own windows, like this one, follow the language too (German so far; others "
-                        "fall back to English)."))
+            self.note(_("Simple OS's own windows, like this one, follow the language too (German and French so far; "
+                        "other languages fall back to English)."))
             if live:
                 self.note(_("Live Mode: the change lasts until the computer shuts down."))
             self.put(card([(_("Keyboard layout"), _("Set separately, on the Keyboard page"),

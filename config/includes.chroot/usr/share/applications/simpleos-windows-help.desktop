@@ -2,8 +2,10 @@
 Type=Application
 Name=Windows Programs on Simple OS
 Name[de]=Windows-Programme unter Simple OS
+Name[fr]=Programmes Windows sur Simple OS
 Comment=What runs with SOS Bridge (Bottles, Wine), what doesn't, and good alternatives
 Comment[de]=Was mit SOS Bridge (Bottles, Wine) läuft, was nicht, und gute Alternativen
+Comment[fr]=Ce qui fonctionne avec SOS Bridge (Bottles, Wine), ce qui ne fonctionne pas, et de bonnes alternatives
 Exec=/usr/local/bin/simpleos-windows-app --help-page
 Icon=com.usebottles.bottles
 Categories=System;Documentation;

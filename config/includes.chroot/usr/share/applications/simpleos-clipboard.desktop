@@ -2,8 +2,10 @@
 Type=Application
 Name=Clipboard History
 Name[de]=Verlauf der Zwischenablage
+Name[fr]=Historique du presse-papiers
 Comment=Paste something you copied earlier (Super+V)
 Comment[de]=Etwas einfügen, das du früher kopiert hast (Super+V)
+Comment[fr]=Coller quelque chose que vous avez copié auparavant (Super+V)
 Exec=/usr/local/bin/simpleos-clipboard
 Icon=edit-paste
 Categories=Utility;

@@ -1,0 +1,25 @@
+# Simple OS 1.2
+## Nouveau dans 1.2
+- **Simple OS parle français et allemand.** Toutes les fenêtres, menus et messages de Simple OS suivent la langue
+  choisie dans Centre de contrôle → Langue et région.
+- **Utilisateurs.** Centre de contrôle → Utilisateurs : ajouter et supprimer des comptes, changer les noms, les images
+  et les mots de passe, faire de quelqu’un un administrateur, se connecter automatiquement – et « Changer
+  d’utilisateur » dans le menu d’alimentation.
+- **Programmes Windows.** Double-cliquez sur un .exe ou un .msi : SOS Bridge (Bottles) exécute de nombreux programmes
+  Windows. La première fois, il s’installe en un clic. Menu → Aide → Programmes Windows explique ce qui fonctionne et
+  ce qui ne fonctionne pas.
+- **Extras dans l’assistant de configuration.** Sa nouvelle étape « Extras » ajoute SOS Bridge, le support des jeux
+  (maintenant avec les manettes) ou les outils de développement – tout est désactivé tant que vous ne l’activez pas.
+- **AppArmor.** Les profils de sécurité fournis avec vos applications (impression, LibreOffice …) sont maintenant
+  actifs.
+## Corrigé dans 1.2
+- **La recherche choisit le meilleur résultat,** même quand le pointeur de la souris reste là où le menu s’ouvre.
+- **Chromium ne demande plus de nouveau mot de passe de trousseau** quelques minutes après la première connexion.
+- **Chromium dans votre langue** – ses traductions sont installées avec la langue.
+- **La calculatrice comprend** « round(3.14159,2) », « max(1,2) » et les nombres à virgule comme « 3,5 + 1 ».
+- **Le premier point de restauration** vérifie l’espace dont il a vraiment besoin avant de commencer.
+## Versions précédentes
+- 1.1.2 : de meilleurs menus (surbrillance sous la souris, meilleur résultat en premier, réglages dans la recherche) et
+  des corrections pour le verrouillage de l’écran, « Ne pas déranger » et la fenêtre des mises à jour.
+- 1.1.1 et 1.1 : mise à l’échelle pour les écrans haute résolution, langue et région, caméra, barre des tâches plus
+  grande, démarrage plus rapide.

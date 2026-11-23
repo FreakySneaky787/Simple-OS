@@ -181,6 +181,8 @@ Before publishing (Sunday 2026-11-15), with the new ISO (built 2026-11-11 from f
       Center, Setup Wizard, Software Center, search, taskbar menus (Wi-Fi, sound, power …), notifications, password
       prompts, the desktop right-click menu, start menu names, Welcome page, What's New and the shortcut list are German;
       nothing English is left over. Back to English: everything English again.
+- [ ] **French** (1.2): the same with Français – no English left over, no text cut off (French is longer), the Welcome
+      page, Windows help page and What's New in French, file manager right-click actions in French.
 - [ ] **Users** (#68): add a Standard user and an Administrator, sign in as the new user (desktop, wizard, no keyring
       prompt), their picture on the login screen, "Switch user" in the power menu, automatic sign-in on/off (also after
       an installation with "Log in automatically"), change your own password (keyring still opens), delete a user with

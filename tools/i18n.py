@@ -245,6 +245,9 @@ def check():
                 problems.append(f"{po.name}: placeholders differ: {e['id'][:60]!r} -> {e['str'][:60]!r}")
             elif e["id"].endswith("\n") != e["str"].endswith("\n"):
                 problems.append(f"{po.name}: line end differs: {e['id'][:60]!r}")
+            elif e["id"].startswith(" ") != e["str"].startswith(" ") or e["id"].endswith(" ") != e["str"].endswith(" "):
+                # texts that are glued to others (" · needs password", "Main · ") lose their gap otherwise
+                problems.append(f"{po.name}: space at the start or end differs: {e['id'][:60]!r} -> {e['str'][:60]!r}")
     for p in problems:
         print(p)
     print(f"i18n check: {'OK' if not problems else str(len(problems)) + ' problem(s)'}")

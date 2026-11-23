@@ -11,8 +11,10 @@
   <action id="org.simpleos.backup">
     <description>Create, restore and delete system restore points</description>
     <description xml:lang="de">Wiederherstellungspunkte des Systems erstellen, zurückspielen und löschen</description>
+    <description xml:lang="fr">Créer, restaurer et supprimer des points de restauration du système</description>
     <message>Simple OS needs your password to manage restore points.</message>
     <message xml:lang="de">Simple OS braucht dein Passwort, um Wiederherstellungspunkte zu verwalten.</message>
+    <message xml:lang="fr">Simple OS a besoin de votre mot de passe pour gérer les points de restauration.</message>
     <icon_name>document-save</icon_name>
     <defaults>
       <allow_any>auth_admin</allow_any>
@@ -24,8 +26,10 @@
   <action id="org.simpleos.cleaner">
     <description>Remove cached packages, unused software and old system logs</description>
     <description xml:lang="de">Zwischengespeicherte Pakete, nicht genutzte Software und alte Systemprotokolle entfernen</description>
+    <description xml:lang="fr">Supprimer les paquets en cache, les logiciels inutilisés et les anciens journaux système</description>
     <message>Simple OS needs your password to free up disk space.</message>
     <message xml:lang="de">Simple OS braucht dein Passwort, um Speicherplatz freizugeben.</message>
+    <message xml:lang="fr">Simple OS a besoin de votre mot de passe pour libérer de l’espace.</message>
     <icon_name>user-trash-full</icon_name>
     <defaults>
       <allow_any>auth_admin</allow_any>
@@ -37,8 +41,10 @@
   <action id="org.simpleos.taskmanager">
     <description>End a process of another user</description>
     <description xml:lang="de">Einen Prozess eines anderen Benutzers beenden</description>
+    <description xml:lang="fr">Arrêter un processus d’un autre utilisateur</description>
     <message>The Task Manager needs your password to end a system process.</message>
     <message xml:lang="de">Der Task-Manager braucht dein Passwort, um einen Systemprozess zu beenden.</message>
+    <message xml:lang="fr">Le Gestionnaire des tâches a besoin de votre mot de passe pour arrêter un processus système.</message>
     <icon_name>utilities-system-monitor</icon_name>
     <defaults>
       <allow_any>auth_admin</allow_any>
@@ -50,8 +56,10 @@
   <action id="org.simpleos.report">
     <description>Read the system log for a problem report</description>
     <description xml:lang="de">Das Systemprotokoll für einen Problembericht lesen</description>
+    <description xml:lang="fr">Lire le journal système pour un rapport de problème</description>
     <message>Simple OS needs your password to add the system log to your problem report.</message>
     <message xml:lang="de">Simple OS braucht dein Passwort, um das Systemprotokoll zu deinem Problembericht hinzuzufügen.</message>
+    <message xml:lang="fr">Simple OS a besoin de votre mot de passe pour ajouter le journal système à votre rapport de problème.</message>
     <icon_name>dialog-warning</icon_name>
     <defaults>
       <allow_any>auth_admin</allow_any>

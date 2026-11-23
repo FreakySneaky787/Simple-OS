@@ -2,8 +2,10 @@
 Type=Application
 Name=What's New in Simple OS
 Name[de]=Neuigkeiten in Simple OS
+Name[fr]=Nouveautés de Simple OS
 Comment=The highlights of this Simple OS version
 Comment[de]=Die Highlights dieser Simple-OS-Version
+Comment[fr]=Les points forts de cette version de Simple OS
 Exec=/usr/local/bin/simpleos-whats-new
 Icon=help-about
 Categories=System;Documentation;

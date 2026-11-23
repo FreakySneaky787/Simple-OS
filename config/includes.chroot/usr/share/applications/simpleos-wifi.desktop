@@ -2,8 +2,10 @@
 Type=Application
 Name=Wi-Fi
 Name[de]=WLAN
+Name[fr]=Wi-Fi
 Comment=Connect to a wireless network
 Comment[de]=Mit einem Funknetzwerk verbinden
+Comment[fr]=Se connecter à un réseau sans fil
 Exec=/usr/local/bin/simpleos-wifi
 Icon=network-wireless
 Categories=Settings;Network;

@@ -2,8 +2,10 @@
 Type=Application
 Name=Night Light
 Name[de]=Nachtlicht
+Name[fr]=Éclairage nocturne
 Comment=Warmer screen colors in the evening
 Comment[de]=Wärmere Bildschirmfarben am Abend
+Comment[fr]=Couleurs d’écran plus chaudes le soir
 Exec=/usr/local/bin/simpleos-nightlight
 Icon=weather-clear-night
 Categories=Settings;

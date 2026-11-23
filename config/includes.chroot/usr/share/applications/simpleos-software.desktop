@@ -2,8 +2,10 @@
 Type=Application
 Name=Software Store
 Name[de]=Software-Store
+Name[fr]=Boutique de logiciels
 Comment=Find and install apps from Flathub
 Comment[de]=Apps von Flathub finden und installieren
+Comment[fr]=Trouver et installer des applications de Flathub
 Exec=simpleos-software
 Icon=io.elementary.appcenter
 Categories=System;PackageManager;

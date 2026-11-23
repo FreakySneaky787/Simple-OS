@@ -200,7 +200,7 @@ repository that installed systems use. You don't need to download them yourself.
 - **Setup wizard** on first login: Wi-Fi, browser (Firefox, Chromium or Mullvad Browser), light/dark,
   accent color, office suite (LibreOffice or ONLYOFFICE) and optional extras: SOS Bridge for Windows programs, Gaming
   Support (Steam, Lutris, MangoHud, game controllers) and Developer Tools
-- **In your language:** every Simple OS window and message in German or English (more languages can be added)
+- **In your language:** every Simple OS window and message in English, German or French (more languages can be added)
 - **Control Center** (Super+I) for Wi-Fi, Bluetooth, sound, display, brightness and scaling, appearance, notifications,
   mouse & touchpad, keyboard, language & region, printers, power and screen lock, default and startup apps, date & time, storage and backups,
   password and firewall, user accounts, updates and drivers

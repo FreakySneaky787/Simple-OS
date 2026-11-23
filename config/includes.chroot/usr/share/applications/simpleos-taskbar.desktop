@@ -2,8 +2,10 @@
 Type=Application
 Name=Taskbar & Panel
 Name[de]=Taskleiste
+Name[fr]=Barre des tâches
 Comment=Position, layout and look of the taskbar
 Comment[de]=Position, Aufbau und Aussehen der Taskleiste
+Comment[fr]=Position, disposition et apparence de la barre des tâches
 Exec=simpleos-taskbar-select
 Icon=preferences-desktop
 Categories=Settings;DesktopSettings;

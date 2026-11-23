@@ -2,8 +2,10 @@
 Type=Application
 Name=Sound
 Name[de]=Ton
+Name[fr]=Son
 Comment=Volume and sound output (speakers, headphones, HDMI)
 Comment[de]=Lautstärke und Tonausgabe (Lautsprecher, Kopfhörer, HDMI)
+Comment[fr]=Volume et sortie audio (haut-parleurs, casque, HDMI)
 Exec=/usr/local/bin/simpleos-volume
 Icon=audio-volume-high
 Categories=Settings;AudioVideo;Audio;

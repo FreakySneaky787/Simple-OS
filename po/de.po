@@ -1574,8 +1574,8 @@ msgid "Applies after you sign out and back in. When the computer is online, spel
 msgstr "Gilt, nachdem du dich ab- und wieder angemeldet hast. Wenn der Computer online ist, werden die Rechtschreibprüfung und die Sprachen für Firefox und LibreOffice gleich mitinstalliert."
 
 #: usr/local/bin/simpleos-control-center:2104
-msgid "Simple OS's own windows, like this one, follow the language too (German so far; others fall back to English)."
-msgstr "Die eigenen Fenster von Simple OS, wie dieses hier, folgen auch der Sprache (bisher Deutsch; andere Sprachen zeigen Englisch)."
+msgid "Simple OS's own windows, like this one, follow the language too (German and French so far; other languages fall back to English)."
+msgstr "Die eigenen Fenster von Simple OS, wie dieses hier, folgen auch der Sprache (bisher Deutsch und Französisch; andere Sprachen zeigen Englisch)."
 
 #: usr/local/bin/simpleos-control-center:2107
 msgid "Live Mode: the change lasts until the computer shuts down."

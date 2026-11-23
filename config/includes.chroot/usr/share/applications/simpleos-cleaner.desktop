@@ -2,8 +2,10 @@
 Type=Application
 Name=Storage Cleaner
 Name[de]=Speicherbereinigung
+Name[fr]=Nettoyeur de stockage
 Comment=Free up disk space and see what uses it
 Comment[de]=Speicherplatz freigeben und sehen, was ihn belegt
+Comment[fr]=Libérer de l’espace et voir ce qui l’occupe
 Exec=/usr/local/bin/simpleos-cleaner
 Icon=user-trash-full
 Categories=System;

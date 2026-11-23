@@ -2,8 +2,10 @@
 Type=Application
 Name=Keyboard Layout
 Name[de]=Tastaturlayout
+Name[fr]=Disposition du clavier
 Comment=Choose your keyboard layout (German, Swiss, US …)
 Comment[de]=Dein Tastaturlayout wählen (Deutsch, Schweiz, US …)
+Comment[fr]=Choisir la disposition de votre clavier (français, suisse, belge …)
 Exec=/usr/local/bin/simpleos-keyboard-setup
 Icon=input-keyboard
 Categories=Settings;HardwareSettings;

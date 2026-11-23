@@ -2,8 +2,10 @@
 Type=Application
 Name=Network Info
 Name[de]=Netzwerkinfo
+Name[fr]=Infos réseau
 Comment=Show LAN IP, gateway, hostname, VPN status and public IP
 Comment[de]=LAN-IP, Gateway, Rechnername, VPN-Status und öffentliche IP anzeigen
+Comment[fr]=Afficher l’IP locale, la passerelle, le nom d’hôte, l’état du VPN et l’IP publique
 Exec=simpleos-netinfo
 Icon=network-wired
 Categories=Settings;Network;

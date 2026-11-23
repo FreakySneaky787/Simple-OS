@@ -15,7 +15,7 @@ sos_rofi_failed() {
     exit 0
 }
 
-# The list in the system language (#43): German or English
+# The list in the system language (#43): German, French or English
 shortcuts() {
     case "${SOS_LANG:-}" in
         de*) cat <<'LIST'
@@ -65,6 +65,55 @@ Leiste: Uhr                 Kalender des Monats (noch einmal klicken zum Schlie�
 Software-Aktualisierung     Im Menü unter Werkzeuge: Updates suchen und installieren
 Einstellungen → Aussehen    Taskleiste: verschieben oder anders gestalten
 Dateien: Rechtsklick        Als Hintergrundbild setzen, In Zwischenablage kopieren, Als Administrator öffnen, Hier entpacken
+LIST
+            ;;
+        fr*) cat <<'LIST'
+<b>── Applications ─────────────────────────────────────────</b>
+Super / Super+Espace        Recherche – applications, fichiers, calculs (42*12), alimentation
+Super+Entrée                Terminal
+Super+B                     Navigateur web
+Super+E                     Fichiers
+Super+H / Super+Maj+?       Cet aperçu
+<b>── Fenêtres ─────────────────────────────────────────────</b>
+Super+Q / Alt+F4            Fermer l’application active
+Alt+Tab / Alt+Maj+Tab       Passer d’une fenêtre à l’autre
+Super+D                     Afficher le bureau
+Super+Gauche / Super+Droite Fenêtre sur la moitié gauche / droite (encore : écran suivant)
+Super+Haut / Super+Bas      Agrandir / restaurer ou réduire
+Super+Alt+Flèches           Fenêtre sur un quart de l’écran
+Alt+Espace                  Menu de la fenêtre (agrandir, déplacer …)
+Alt+Échap                   Envoyer la fenêtre à l’arrière-plan
+Double-clic barre de titre  Agrandir / restaurer
+Alt+glisser (gauche)        Déplacer la fenêtre
+Alt+glisser (droit)         Redimensionner la fenêtre
+<b>── Bureaux virtuels ─────────────────────────────────────</b>
+Super+F1 … Super+F4         Aller au bureau 1–4
+Ctrl+Alt+Gauche/Droite      Bureau précédent / suivant
+Maj+Alt+Gauche/Droite       Déplacer la fenêtre vers le bureau précédent / suivant
+<b>── Système ──────────────────────────────────────────────</b>
+Super+L                     Verrouiller l’écran
+Super+X                     Menu d’alimentation – verrouiller, veille, redémarrer, éteindre, se déconnecter
+Super+N                     Infos réseau – IP locale, passerelle, VPN, IP publique
+Super+I                     Centre de contrôle – tous les réglages dans une fenêtre
+Ctrl+Maj+Échap              Gestionnaire des tâches – voir processeur/mémoire, arrêter les applications bloquées
+Super+V                     Historique du presse-papiers – choisir quelque chose copié auparavant
+Super+A                     Son – volume, haut-parleurs / casque / HDMI
+Super+P                     Écran – résolution, fréquence, dupliquer / étendre
+Impr. écran                 Capture d’écran – enregistrée dans Pictures/Screenshots et copiée
+Maj+Impr. écran             Capture d’une zone – à tracer avec la souris
+Touches de volume           Plus fort / moins fort / couper le son
+Touches multimédia          Lecture / pause, suivant, précédent (navigateur, Spotify …)
+Clé USB branchée            Message avec Ouvrir / Retirer en toute sécurité
+Message de mise à jour      Cliquez dessus pour installer les mises à jour (demande votre mot de passe)
+<b>── Souris ───────────────────────────────────────────────</b>
+Clic droit sur le bureau    Menu Simple OS (applications, réglages, outils, aide, alimentation)
+Barre : bouton gauche       Applications
+Barre : affichage réseau    Menu réseau – Wi-Fi, câble, détails
+Barre : bouton rouge        Menu d’alimentation (à droite)
+Barre : horloge             Calendrier du mois (cliquez encore pour fermer)
+Outils → Mises à jour       Rechercher et installer les mises à jour
+Centre de contrôle          Apparence → Barre des tâches : la déplacer ou la modifier
+Fichiers : clic droit       Définir comme fond d’écran, Copier dans le presse-papiers, Ouvrir en tant qu’administrateur, Extraire ici
 LIST
             ;;
         *) cat <<'LIST'

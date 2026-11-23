@@ -2,8 +2,10 @@
 Type=Application
 Name=Setup Wizard
 Name[de]=Einrichtungsassistent
+Name[fr]=Assistant de configuration
 Comment=Browser, appearance and apps for Simple OS
 Comment[de]=Browser, Aussehen und Apps für Simple OS
+Comment[fr]=Navigateur, apparence et applications pour Simple OS
 Exec=simpleos-welcome-wizard
 Icon=preferences-desktop
 Categories=Settings;

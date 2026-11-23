@@ -3760,6 +3760,20 @@ check "Translations: German welcome/Windows help pages missing or not chosen" \
       "[ -s /usr/share/simpleos/welcome.de.html ] && [ -s /usr/share/simpleos/windows-programs.de.html ] &&
        grep -q 'def localized(path):' /usr/local/lib/simpleos/welcome-viewer && grep -q '<html lang=\"de\">' /usr/share/simpleos/welcome.de.html"
 check "Translations: polkit asks in English only" "[ \$(grep -l 'message xml:lang=\"de\"' /usr/share/polkit-1/actions/org.simpleos.*.policy | wc -l) -eq \$(ls /usr/share/polkit-1/actions/org.simpleos.*.policy | wc -l) ]"
+# French (1.2): the same pieces as German – catalog, launchers, polkit, menu, the three pages, Thunar's right-click actions
+check "Translations: French catalog missing or not readable" \
+      "[ -s /usr/share/locale/fr/LC_MESSAGES/simpleos.mo ] && python3 -c 'import gettext; t = gettext.translation(\"simpleos\", languages=[\"fr\"]); assert t.gettext(\"Users\") == \"Utilisateurs\" and t.gettext(\"Done\") == \"Terminé\"'"
+check "Translations: an own launcher without a French name (Name[fr])" \
+      "for f in /usr/share/applications/simpleos-*.desktop; do grep -q '^Name\\[fr\\]=' \$f || { echo \$f >&2; exit 1; }; done"
+check "Translations: polkit asks in French nowhere" "[ \$(grep -l 'message xml:lang=\"fr\"' /usr/share/polkit-1/actions/org.simpleos.*.policy | wc -l) -eq \$(ls /usr/share/polkit-1/actions/org.simpleos.*.policy | wc -l) ]"
+check "Translations: French welcome/Windows help pages or What's new missing" \
+      "[ -s /usr/share/simpleos/welcome.fr.html ] && [ -s /usr/share/simpleos/windows-programs.fr.html ] && [ -s /usr/share/simpleos/whats-new.fr ] &&
+       grep -q '<html lang=\"fr\">' /usr/share/simpleos/welcome.fr.html && [ \$(grep -c 'xml:lang=\"fr\"' /etc/skel/.config/Thunar/uca.xml) -eq \$(grep -c 'xml:lang=\"de\"' /etc/skel/.config/Thunar/uca.xml) ]"
+mlt=$(mktemp -d)
+printf '<openbox_menu>\n  <menu id="root-menu" label="Simple OS">\n    <item label="Files"/>\n  </menu>\n</openbox_menu>\n' > "$mlt/menu.xml"
+check "Translations: the Openbox menu is not translated into French (menu-lang)" \
+      "env -i LANGUAGE=fr PATH=/usr/bin:/bin /usr/local/lib/simpleos/menu-lang $mlt/menu.xml && grep -q 'label=\"Fichiers\"' $mlt/menu-simpleos.xml"
+rm -rf "${mlt:?}"
 # #48: AppArmor loads the profiles of the installed packages at boot (the kernel module alone loaded none)
 check "AppArmor: package missing or its boot service not enabled" \
       "dpkg -s apparmor >/dev/null 2>&1 && [ -x /sbin/apparmor_parser ] && systemctl is-enabled apparmor.service >/dev/null 2>&1"

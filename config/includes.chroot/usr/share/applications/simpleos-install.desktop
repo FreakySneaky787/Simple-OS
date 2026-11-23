@@ -2,8 +2,10 @@
 Type=Application
 Name=Install Simple OS
 Name[de]=Simple OS installieren
+Name[fr]=Installer Simple OS
 Comment=Install Simple OS on this computer – your files on the stick stay untouched
 Comment[de]=Simple OS auf diesem Computer installieren – deine Dateien auf dem Stick bleiben unberührt
+Comment[fr]=Installer Simple OS sur cet ordinateur – vos fichiers sur la clé restent intacts
 Exec=/usr/local/bin/simpleos-install
 Icon=system-os-installer
 Terminal=false
