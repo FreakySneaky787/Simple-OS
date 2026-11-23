@@ -304,6 +304,15 @@ check "welcome-viewer: bare page name not looked up in /usr/share/simpleos or no
       "grep -q 'if \"/\" not in page:' /usr/local/lib/simpleos/welcome-viewer && grep -q 'def window_title(path):' /usr/local/lib/simpleos/welcome-viewer"
 check "Thunar: right-click 'Run with SOS Bridge' missing" \
       "grep -q '<command>/usr/local/bin/simpleos-windows-app %f</command>' /etc/skel/.config/Thunar/uca.xml && grep -q '<patterns>\*.exe;\*.EXE;\*.msi;\*.MSI</patterns>' /etc/skel/.config/Thunar/uca.xml"
+# progress-filter reads the English lines of flatpak/apt/timeshift: on a German system Flatpak printed "1 wird installiert/3 …"
+# and no progress window got a percentage. Every parsed call runs with LANGUAGE= LC_ALL=C.UTF-8 (LANGUAGE alone wins over
+# LC_ALL, i18n.sh sets it); our own texts stay translated. And simpleos-progress knows the translated "Done".
+check "Progress: a tool whose output progress-filter reads runs in the system language (no percentages in German)" \
+      "[ \$(grep -c 'LANGUAGE= LC_ALL=C.UTF-8 \\(apt-get\\|\\\$APT_GET\\|flatpak\\|timeout 1800 fwupdmgr\\)' /usr/local/sbin/simpleos-system-setup) -eq 5 ] &&
+       grep -q 'LANGUAGE= LC_ALL=C.UTF-8 \$unbuf timeshift' /usr/local/sbin/simpleos-backup-helper &&
+       grep -q 'LANGUAGE= LC_ALL=C.UTF-8 flatpak install' /usr/local/bin/simpleos-software &&
+       grep -q 'LC_ALL=\"C.UTF-8\", LANGUAGE=\"\"' /usr/local/bin/simpleos-windows-app /usr/local/bin/simpleos-software-center &&
+       grep -q 'DONE_WORDS = tuple({\"Done\", _(\"Done\")})' /usr/local/bin/simpleos-progress"
 # #151: a failed first setup left a half-made bottle "Windows" -> the next try made "Windows__123" and every double-click
 # ended in Bottles' bottle picker. Now: half-made bottle removed, one retry, a plain "could not be set up" window.
 check "SOS Bridge: a half-made bottle blocks every later try / failure opens Bottles' bottle picker (#151)" \

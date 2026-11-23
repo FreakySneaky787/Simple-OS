@@ -440,8 +440,10 @@ def install():
         f.write("STEP: " + _("Installing SOS Bridge (Bottles)") + "\n")
     filt = FP_PROGRESS if os.access(FP_PROGRESS, os.X_OK) else "cat"
     with open(feed, "a") as out:
+        # English lines for flatpak-progress (in German it found no percentages at all)
         fp = subprocess.Popen(["flatpak", "install", "--system", "-y", "flathub", APP], stdin=subprocess.DEVNULL,
-                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              env=dict(os.environ, LC_ALL="C.UTF-8", LANGUAGE=""))
         flt = subprocess.Popen([filt], stdin=fp.stdout, stdout=subprocess.PIPE, text=True)
         fp.stdout.close()
         text = []

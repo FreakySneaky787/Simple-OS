@@ -404,7 +404,10 @@ def main(argv):
 
             def work():
                 try:
-                    p = subprocess.Popen(cmdline, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                    # Flatpak in English: flatpak-progress and explain() read its English lines (in German there
+                    # were no percentages). Not for pkexec simpleos-system-setup – its own texts are translated
+                    env = dict(os.environ, LC_ALL="C.UTF-8", LANGUAGE="") if cmdline[0] == "flatpak" else None
+                    p = subprocess.Popen(cmdline, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
                 except OSError as err:
                     return 127, str(err)
                 src = p.stdout

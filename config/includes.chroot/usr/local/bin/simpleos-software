@@ -100,7 +100,7 @@ rcf=$feed.rc
 # PROGRESS/STAGE for the progress window and passes error texts through
 FP_PROGRESS=/usr/local/lib/simpleos/flatpak-progress
 [ -x "$FP_PROGRESS" ] || FP_PROGRESS=cat
-{ flatpak install --system -y flathub "$APP" </dev/null 2>&1; echo $? > "$rcf"; } | "$FP_PROGRESS" | tee -a "$SOS_LOG" >> "$feed"
+{ LANGUAGE= LC_ALL=C.UTF-8 flatpak install --system -y flathub "$APP" </dev/null 2>&1; echo $? > "$rcf"; } | "$FP_PROGRESS" | tee -a "$SOS_LOG" >> "$feed"
 rc=$(cat "$rcf" 2>/dev/null); rc=${rc:-1}
 echo "EXIT: $rc" >> "$feed"
 [ -n "$ppid" ] && wait "$ppid" 2>/dev/null

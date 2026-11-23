@@ -130,7 +130,7 @@ APT_FILTER_ARGS=
 aptget() {
     _rcf=$(mktemp)
     # shellcheck disable=SC2086
-    { apt-get -y -o DPkg::Lock::Timeout=300 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
+    { LANGUAGE= LC_ALL=C.UTF-8 apt-get -y -o DPkg::Lock::Timeout=300 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
           -o APT::Status-Fd=3 "$@" 3>&1 1>&2; echo $? > "$_rcf"; } | /usr/local/lib/simpleos/progress-filter apt $APT_FILTER_ARGS
     _rc=$(cat "$_rcf" 2>/dev/null); rm -f "$_rcf"
     return "${_rc:-1}"
@@ -214,7 +214,9 @@ flatpak_install() {
         return 1
     fi
     _rcf=$(mktemp)
-    { flatpak install --system -y flathub "$1" </dev/null 2>&1; echo $? > "$_rcf"; } |
+    # LANGUAGE= LC_ALL=C.UTF-8 (LANGUAGE wins over LC_ALL otherwise, i18n.sh sets it): progress-filter reads the tool's English lines – in German, Flatpak printed "1 wird installiert/3 …" and
+    # the window got no percentages at all (our own texts stay translated: they come from _t/_ , not from the tool)
+    { LANGUAGE= LC_ALL=C.UTF-8 flatpak install --system -y flathub "$1" </dev/null 2>&1; echo $? > "$_rcf"; } |
         if [ -x "$FP_PROGRESS" ]; then "$FP_PROGRESS"; else cat; fi
     _rc=$(cat "$_rcf" 2>/dev/null); rm -f "$_rcf"
     return "${_rc:-1}"
@@ -270,7 +272,7 @@ install_drivers() {
         if [ "${dry:-0}" = 1 ]; then $APT_GET update >&2; else apt_wait; apt_get_update >&2; fi ||
             { echo "package lists could not be downloaded" >&2; exit 1; }
         echo "STAGE: $(_t 'Downloading drivers')" >&3
-        $APT_GET -y -o DPkg::Lock::Timeout=300 -o Dpkg::Options::=--force-confdef \
+        LANGUAGE= LC_ALL=C.UTF-8 $APT_GET -y -o DPkg::Lock::Timeout=300 -o Dpkg::Options::=--force-confdef \
             -o Dpkg::Options::=--force-confold -o APT::Status-Fd=3 install "$@" >&2
         echo $? > "$_drc"
     } 3>&1 | /usr/local/lib/simpleos/progress-filter apt --dl 5 40 --inst 40 100
@@ -337,7 +339,7 @@ fw_pending() {
 }
 fw_update() {
     # shellcheck disable=SC2086
-    _fw=$(timeout 1800 fwupdmgr update $FWUPD_OPTS 2>&1)
+    _fw=$(LANGUAGE= LC_ALL=C.UTF-8 timeout 1800 fwupdmgr update $FWUPD_OPTS 2>&1)   # English: "power"/"battery" below
     _rc=$?
     printf '%s\n' "$_fw" >&2
     if [ "$_rc" -eq 0 ]; then
@@ -633,7 +635,7 @@ if [ "$upgrade" -eq 1 ]; then
     if [ "$fp_pending" -eq 1 ]; then
         step "$(_t 'Updating apps from the Software Store')"
         _rcf=$(mktemp)
-        { flatpak update --system -y </dev/null 2>&1; echo $? > "$_rcf"; } | if [ -x "$FP_PROGRESS" ]; then "$FP_PROGRESS"; else cat; fi
+        { LANGUAGE= LC_ALL=C.UTF-8 flatpak update --system -y </dev/null 2>&1; echo $? > "$_rcf"; } | if [ -x "$FP_PROGRESS" ]; then "$FP_PROGRESS"; else cat; fi
         _rc=$(cat "$_rcf" 2>/dev/null); rm -f "$_rcf"
         [ "${_rc:-1}" -eq 0 ] || fail "$(_t 'Flatpak apps could not be updated')"
     fi
