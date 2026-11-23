@@ -3760,6 +3760,8 @@ check "Translations: German welcome/Windows help pages missing or not chosen" \
       "[ -s /usr/share/simpleos/welcome.de.html ] && [ -s /usr/share/simpleos/windows-programs.de.html ] &&
        grep -q 'def localized(path):' /usr/local/lib/simpleos/welcome-viewer && grep -q '<html lang=\"de\">' /usr/share/simpleos/welcome.de.html"
 check "Translations: polkit asks in English only" "[ \$(grep -l 'message xml:lang=\"de\"' /usr/share/polkit-1/actions/org.simpleos.*.policy | wc -l) -eq \$(ls /usr/share/polkit-1/actions/org.simpleos.*.policy | wc -l) ]"
+check "Translations: Rofi's \"Search\" placeholder stays English in German/French menus" \
+      "grep -q \"_t 'Search'\" /usr/local/bin/rofi && grep -q 'fr\\*) cat' /usr/local/bin/simpleos-help"
 # French (1.2): the same pieces as German – catalog, launchers, polkit, menu, the three pages, Thunar's right-click actions
 check "Translations: French catalog missing or not readable" \
       "[ -s /usr/share/locale/fr/LC_MESSAGES/simpleos.mo ] && python3 -c 'import gettext; t = gettext.translation(\"simpleos\", languages=[\"fr\"]); assert t.gettext(\"Users\") == \"Utilisateurs\" and t.gettext(\"Done\") == \"Terminé\"'"

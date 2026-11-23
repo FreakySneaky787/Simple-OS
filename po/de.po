@@ -9,6 +9,10 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+#: usr/local/bin/rofi:17 usr/local/bin/simpleos-control-center:1634 usr/local/bin/simpleos-control-center:1655 usr/local/bin/simpleos-search:371 usr/local/bin/simpleos-search:371 usr/local/bin/simpleos-search:389
+msgid "Search"
+msgstr "Suche"
+
 #: usr/local/bin/simpleos-admin-open:9 usr/local/bin/simpleos-control-center:2377 usr/local/bin/simpleos-control-center:2509
 msgid "Administrator"
 msgstr "Administrator"
@@ -1120,10 +1124,6 @@ msgstr "<b>Deine Geräte</b>"
 #: usr/local/bin/simpleos-control-center:1633
 msgid "Put your device in pairing mode first"
 msgstr "Versetze dein Gerät zuerst in den Kopplungsmodus"
-
-#: usr/local/bin/simpleos-control-center:1634 usr/local/bin/simpleos-control-center:1655 usr/local/bin/simpleos-search:371 usr/local/bin/simpleos-search:371 usr/local/bin/simpleos-search:389
-msgid "Search"
-msgstr "Suche"
 
 #: usr/local/bin/simpleos-control-center:1641
 msgid "Searching for devices (10 seconds)…"
@@ -2341,19 +2341,19 @@ msgstr "Die Treiber konnten nicht installiert werden. Details: ~/.cache/simpleos
 msgid "Super: apps · Super+Enter: terminal · Super+B: browser · Super+E: files · Super+X: power menu"
 msgstr "Super: Apps · Super+Enter: Terminal · Super+B: Browser · Super+E: Dateien · Super+X: Ein/Aus-Menü"
 
-#: usr/local/bin/simpleos-help:122
+#: usr/local/bin/simpleos-help:171
 msgid "Filter"
 msgstr "Filtern"
 
-#: usr/local/bin/simpleos-help:123
+#: usr/local/bin/simpleos-help:172
 msgid "Simple OS – Keyboard shortcuts"
 msgstr "Simple OS – Tastenkürzel"
 
-#: usr/local/bin/simpleos-help:123
+#: usr/local/bin/simpleos-help:172
 msgid "type to filter"
 msgstr "zum Filtern tippen"
 
-#: usr/local/bin/simpleos-help:123
+#: usr/local/bin/simpleos-help:172
 msgid "Esc to close"
 msgstr "Esc zum Schließen"
 
@@ -2521,7 +2521,7 @@ msgstr "Der Installer arbeitet noch"
 msgid "Could not sign out. Please try again."
 msgstr "Konnte nicht abmelden. Bitte versuche es noch einmal."
 
-#: usr/local/bin/simpleos-progress:51 usr/local/sbin/simpleos-backup-helper:283 usr/local/sbin/simpleos-backup-helper:297 usr/local/sbin/simpleos-backup-helper:304 usr/local/sbin/simpleos-system-setup:288 usr/local/sbin/simpleos-system-setup:590 usr/local/sbin/simpleos-system-setup:648 usr/local/sbin/simpleos-system-setup:806
+#: usr/local/bin/simpleos-progress:51 usr/local/sbin/simpleos-backup-helper:284 usr/local/sbin/simpleos-backup-helper:298 usr/local/sbin/simpleos-backup-helper:305 usr/local/sbin/simpleos-system-setup:288 usr/local/sbin/simpleos-system-setup:590 usr/local/sbin/simpleos-system-setup:648 usr/local/sbin/simpleos-system-setup:806
 msgid "Done"
 msgstr "Fertig"
 
@@ -4133,55 +4133,55 @@ msgstr "muss als root laufen (pkexec)"
 msgid "timeshift missing"
 msgstr "timeshift fehlt"
 
-#: usr/local/sbin/simpleos-backup-helper:263 usr/local/sbin/simpleos-backup-helper:268 usr/local/sbin/simpleos-backup-helper:286
+#: usr/local/sbin/simpleos-backup-helper:264 usr/local/sbin/simpleos-backup-helper:269 usr/local/sbin/simpleos-backup-helper:287
 msgid "Live-Session"
 msgstr "Live-Sitzung"
 
-#: usr/local/sbin/simpleos-backup-helper:278
+#: usr/local/sbin/simpleos-backup-helper:279
 msgid "invalid description"
 msgstr "ungültige Beschreibung"
 
-#: usr/local/sbin/simpleos-backup-helper:281
+#: usr/local/sbin/simpleos-backup-helper:282
 msgid "Creating a restore point (the first one can take 10–20 minutes)"
 msgstr "Wiederherstellungspunkt wird erstellt (der erste kann 10–20 Minuten dauern)"
 
-#: usr/local/sbin/simpleos-backup-helper:289 usr/local/sbin/simpleos-backup-helper:300 usr/local/sbin/simpleos-backup-helper:307
+#: usr/local/sbin/simpleos-backup-helper:290 usr/local/sbin/simpleos-backup-helper:301 usr/local/sbin/simpleos-backup-helper:308
 msgid "point %s not found"
 msgstr "Punkt %s nicht gefunden"
 
-#: usr/local/sbin/simpleos-backup-helper:290
+#: usr/local/sbin/simpleos-backup-helper:291
 msgid "Restoring %s – the computer restarts when it is done"
 msgstr "%s wird wiederhergestellt – der Computer startet neu, wenn es fertig ist"
 
-#: usr/local/sbin/simpleos-backup-helper:296
+#: usr/local/sbin/simpleos-backup-helper:297
 msgid "timeshift --restore failed"
 msgstr "timeshift --restore ist fehlgeschlagen"
 
-#: usr/local/sbin/simpleos-backup-helper:301
+#: usr/local/sbin/simpleos-backup-helper:302
 msgid "Deleting %s"
 msgstr "%s wird gelöscht"
 
-#: usr/local/sbin/simpleos-backup-helper:303
+#: usr/local/sbin/simpleos-backup-helper:304
 msgid "timeshift --delete: %s still there"
 msgstr "timeshift --delete: %s ist noch da"
 
-#: usr/local/sbin/simpleos-backup-helper:310
+#: usr/local/sbin/simpleos-backup-helper:311
 msgid "%s: info.json missing"
 msgstr "%s: info.json fehlt"
 
-#: usr/local/sbin/simpleos-backup-helper:311
+#: usr/local/sbin/simpleos-backup-helper:312
 msgid "%s: info.json damaged"
 msgstr "%s: info.json ist beschädigt"
 
-#: usr/local/sbin/simpleos-backup-helper:312
+#: usr/local/sbin/simpleos-backup-helper:313
 msgid "%s: system files missing (localhost/etc/os-release)"
 msgstr "%s: Systemdateien fehlen (localhost/etc/os-release)"
 
-#: usr/local/sbin/simpleos-backup-helper:313
+#: usr/local/sbin/simpleos-backup-helper:314
 msgid "%s: system files missing (localhost/usr/bin)"
 msgstr "%s: Systemdateien fehlen (localhost/usr/bin)"
 
-#: usr/local/sbin/simpleos-backup-helper:333
+#: usr/local/sbin/simpleos-backup-helper:334
 msgid "Creating a restore point before the update"
 msgstr "Wiederherstellungspunkt vor dem Update wird erstellt"
 

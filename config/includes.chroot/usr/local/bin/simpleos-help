@@ -69,7 +69,7 @@ LIST
             ;;
         fr*) cat <<'LIST'
 <b>── Applications ─────────────────────────────────────────</b>
-Super / Super+Espace        Recherche – applications, fichiers, calculs (42*12), alimentation
+Super / Super+Espace        Recherche – applis, fichiers, calculs (42*12), alimentation
 Super+Entrée                Terminal
 Super+B                     Navigateur web
 Super+E                     Fichiers
@@ -78,7 +78,7 @@ Super+H / Super+Maj+?       Cet aperçu
 Super+Q / Alt+F4            Fermer l’application active
 Alt+Tab / Alt+Maj+Tab       Passer d’une fenêtre à l’autre
 Super+D                     Afficher le bureau
-Super+Gauche / Super+Droite Fenêtre sur la moitié gauche / droite (encore : écran suivant)
+Super+Gauche / Droite       Moitié gauche / droite de l’écran (encore : écran suivant)
 Super+Haut / Super+Bas      Agrandir / restaurer ou réduire
 Super+Alt+Flèches           Fenêtre sur un quart de l’écran
 Alt+Espace                  Menu de la fenêtre (agrandir, déplacer …)
@@ -92,21 +92,21 @@ Ctrl+Alt+Gauche/Droite      Bureau précédent / suivant
 Maj+Alt+Gauche/Droite       Déplacer la fenêtre vers le bureau précédent / suivant
 <b>── Système ──────────────────────────────────────────────</b>
 Super+L                     Verrouiller l’écran
-Super+X                     Menu d’alimentation – verrouiller, veille, redémarrer, éteindre, se déconnecter
+Super+X                     Alimentation – verrouiller, veille, redémarrer, éteindre …
 Super+N                     Infos réseau – IP locale, passerelle, VPN, IP publique
 Super+I                     Centre de contrôle – tous les réglages dans une fenêtre
-Ctrl+Maj+Échap              Gestionnaire des tâches – voir processeur/mémoire, arrêter les applications bloquées
-Super+V                     Historique du presse-papiers – choisir quelque chose copié auparavant
+Ctrl+Maj+Échap              Gestionnaire des tâches – arrêter une appli bloquée
+Super+V                     Historique du presse-papiers – recoller une copie précédente
 Super+A                     Son – volume, haut-parleurs / casque / HDMI
 Super+P                     Écran – résolution, fréquence, dupliquer / étendre
-Impr. écran                 Capture d’écran – enregistrée dans Pictures/Screenshots et copiée
+Impr. écran                 Capture d’écran – dans Pictures/Screenshots et copiée
 Maj+Impr. écran             Capture d’une zone – à tracer avec la souris
 Touches de volume           Plus fort / moins fort / couper le son
 Touches multimédia          Lecture / pause, suivant, précédent (navigateur, Spotify …)
 Clé USB branchée            Message avec Ouvrir / Retirer en toute sécurité
-Message de mise à jour      Cliquez dessus pour installer les mises à jour (demande votre mot de passe)
+Message de mise à jour      Cliquez pour installer (demande votre mot de passe)
 <b>── Souris ───────────────────────────────────────────────</b>
-Clic droit sur le bureau    Menu Simple OS (applications, réglages, outils, aide, alimentation)
+Clic droit sur le bureau    Menu Simple OS (applis, réglages, outils, aide, alimentation)
 Barre : bouton gauche       Applications
 Barre : affichage réseau    Menu réseau – Wi-Fi, câble, détails
 Barre : bouton rouge        Menu d’alimentation (à droite)

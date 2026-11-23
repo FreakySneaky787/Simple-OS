@@ -9,6 +9,10 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+#: usr/local/bin/rofi:17 usr/local/bin/simpleos-control-center:1634 usr/local/bin/simpleos-control-center:1655 usr/local/bin/simpleos-search:371 usr/local/bin/simpleos-search:371 usr/local/bin/simpleos-search:389
+msgid "Search"
+msgstr "Rechercher"
+
 #: usr/local/bin/simpleos-admin-open:9 usr/local/bin/simpleos-control-center:2377 usr/local/bin/simpleos-control-center:2509
 msgid "Administrator"
 msgstr "Administrateur"
@@ -409,7 +413,9 @@ msgstr "Aucune caméra trouvée"
 msgid ""
 "Laptops: look for a camera switch on the side, a key with a camera symbol (often F8 or F10), or a small cover that slides over the lens.\n"
 "USB cameras: plug it in – it appears here by itself."
-msgstr "Ordinateurs portables : cherchez un interrupteur de caméra sur le côté, une touche avec un symbole de caméra (souvent F8 ou F10), ou un petit cache qui glisse sur l’objectif.\nCaméras USB : branchez-la – elle apparaît ici toute seule."
+msgstr ""
+"Ordinateurs portables : cherchez un interrupteur de caméra sur le côté, une touche avec un symbole de caméra (souvent F8 ou F10), ou un petit cache qui glisse sur l’objectif.\n"
+"Caméras USB : branchez-la – elle apparaît ici toute seule."
 
 #: usr/local/bin/simpleos-camera:48 usr/local/bin/simpleos-camera:65 usr/local/bin/simpleos-camera:170 usr/local/bin/simpleos-camera:177 config/i18n/extra.txt:43
 msgid "Camera"
@@ -1118,10 +1124,6 @@ msgstr "<b>Vos appareils</b>"
 #: usr/local/bin/simpleos-control-center:1633
 msgid "Put your device in pairing mode first"
 msgstr "Mettez d’abord votre appareil en mode appairage"
-
-#: usr/local/bin/simpleos-control-center:1634 usr/local/bin/simpleos-control-center:1655 usr/local/bin/simpleos-search:371 usr/local/bin/simpleos-search:371 usr/local/bin/simpleos-search:389
-msgid "Search"
-msgstr "Rechercher"
 
 #: usr/local/bin/simpleos-control-center:1641
 msgid "Searching for devices (10 seconds)…"
@@ -2339,19 +2341,19 @@ msgstr "Les pilotes n’ont pas pu être installés. Détails : ~/.cache/simpleo
 msgid "Super: apps · Super+Enter: terminal · Super+B: browser · Super+E: files · Super+X: power menu"
 msgstr "Super : applications · Super+Entrée : terminal · Super+B : navigateur · Super+E : fichiers · Super+X : menu d’alimentation"
 
-#: usr/local/bin/simpleos-help:122
+#: usr/local/bin/simpleos-help:171
 msgid "Filter"
 msgstr "Filtrer"
 
-#: usr/local/bin/simpleos-help:123
+#: usr/local/bin/simpleos-help:172
 msgid "Simple OS – Keyboard shortcuts"
 msgstr "Simple OS – Raccourcis clavier"
 
-#: usr/local/bin/simpleos-help:123
+#: usr/local/bin/simpleos-help:172
 msgid "type to filter"
 msgstr "tapez pour filtrer"
 
-#: usr/local/bin/simpleos-help:123
+#: usr/local/bin/simpleos-help:172
 msgid "Esc to close"
 msgstr "Échap pour fermer"
 
@@ -2519,7 +2521,7 @@ msgstr "L’installateur travaille encore"
 msgid "Could not sign out. Please try again."
 msgstr "Impossible de se déconnecter. Veuillez réessayer."
 
-#: usr/local/bin/simpleos-progress:51 usr/local/sbin/simpleos-backup-helper:283 usr/local/sbin/simpleos-backup-helper:297 usr/local/sbin/simpleos-backup-helper:304 usr/local/sbin/simpleos-system-setup:288 usr/local/sbin/simpleos-system-setup:590 usr/local/sbin/simpleos-system-setup:648 usr/local/sbin/simpleos-system-setup:806
+#: usr/local/bin/simpleos-progress:51 usr/local/sbin/simpleos-backup-helper:284 usr/local/sbin/simpleos-backup-helper:298 usr/local/sbin/simpleos-backup-helper:305 usr/local/sbin/simpleos-system-setup:288 usr/local/sbin/simpleos-system-setup:590 usr/local/sbin/simpleos-system-setup:648 usr/local/sbin/simpleos-system-setup:806
 msgid "Done"
 msgstr "Terminé"
 
@@ -3815,7 +3817,9 @@ msgstr "La boutique est téléchargée une fois à la première utilisation (plu
 msgid ""
 "GNOME Software is also in the menu and works right away.\n"
 "Run this wizard again any time from Menu → Help → Setup Wizard."
-msgstr "GNOME Logiciels est aussi dans le menu et fonctionne tout de suite.\nRelancez cet assistant à tout moment depuis Menu → Aide → Assistant de configuration."
+msgstr ""
+"GNOME Logiciels est aussi dans le menu et fonctionne tout de suite.\n"
+"Relancez cet assistant à tout moment depuis Menu → Aide → Assistant de configuration."
 
 #: usr/local/bin/simpleos-welcome-wizard:905 usr/local/bin/simpleos-welcome-wizard:1056
 msgid "Finish"
@@ -3865,7 +3869,9 @@ msgstr "Nouveautés de Simple OS"
 msgid ""
 "<span size='x-large' weight='bold'>What's new in Simple OS {version}</span>\n"
 "<span alpha='70%'>Your computer was updated. Here is what changed for you.</span>"
-msgstr "<span size='x-large' weight='bold'>Nouveautés de Simple OS {version}</span>\n<span alpha='70%'>Votre ordinateur a été mis à jour. Voici ce qui a changé pour vous.</span>"
+msgstr ""
+"<span size='x-large' weight='bold'>Nouveautés de Simple OS {version}</span>\n"
+"<span alpha='70%'>Votre ordinateur a été mis à jour. Voici ce qui a changé pour vous.</span>"
 
 #: usr/local/bin/simpleos-whats-new:167
 msgid "No notes for this version. The release notes on the project page list every change."
@@ -4127,55 +4133,55 @@ msgstr "doit être lancé en tant que root (pkexec)"
 msgid "timeshift missing"
 msgstr "timeshift manquant"
 
-#: usr/local/sbin/simpleos-backup-helper:263 usr/local/sbin/simpleos-backup-helper:268 usr/local/sbin/simpleos-backup-helper:286
+#: usr/local/sbin/simpleos-backup-helper:264 usr/local/sbin/simpleos-backup-helper:269 usr/local/sbin/simpleos-backup-helper:287
 msgid "Live-Session"
 msgstr "Session live"
 
-#: usr/local/sbin/simpleos-backup-helper:278
+#: usr/local/sbin/simpleos-backup-helper:279
 msgid "invalid description"
 msgstr "description invalide"
 
-#: usr/local/sbin/simpleos-backup-helper:281
+#: usr/local/sbin/simpleos-backup-helper:282
 msgid "Creating a restore point (the first one can take 10–20 minutes)"
 msgstr "Création d’un point de restauration (le premier peut prendre 10 à 20 minutes)"
 
-#: usr/local/sbin/simpleos-backup-helper:289 usr/local/sbin/simpleos-backup-helper:300 usr/local/sbin/simpleos-backup-helper:307
+#: usr/local/sbin/simpleos-backup-helper:290 usr/local/sbin/simpleos-backup-helper:301 usr/local/sbin/simpleos-backup-helper:308
 msgid "point %s not found"
 msgstr "point %s introuvable"
 
-#: usr/local/sbin/simpleos-backup-helper:290
+#: usr/local/sbin/simpleos-backup-helper:291
 msgid "Restoring %s – the computer restarts when it is done"
 msgstr "Restauration de %s – l’ordinateur redémarre une fois terminé"
 
-#: usr/local/sbin/simpleos-backup-helper:296
+#: usr/local/sbin/simpleos-backup-helper:297
 msgid "timeshift --restore failed"
 msgstr "timeshift --restore a échoué"
 
-#: usr/local/sbin/simpleos-backup-helper:301
+#: usr/local/sbin/simpleos-backup-helper:302
 msgid "Deleting %s"
 msgstr "Suppression de %s"
 
-#: usr/local/sbin/simpleos-backup-helper:303
+#: usr/local/sbin/simpleos-backup-helper:304
 msgid "timeshift --delete: %s still there"
 msgstr "timeshift --delete : %s est toujours là"
 
-#: usr/local/sbin/simpleos-backup-helper:310
+#: usr/local/sbin/simpleos-backup-helper:311
 msgid "%s: info.json missing"
 msgstr "%s : info.json manquant"
 
-#: usr/local/sbin/simpleos-backup-helper:311
+#: usr/local/sbin/simpleos-backup-helper:312
 msgid "%s: info.json damaged"
 msgstr "%s : info.json endommagé"
 
-#: usr/local/sbin/simpleos-backup-helper:312
+#: usr/local/sbin/simpleos-backup-helper:313
 msgid "%s: system files missing (localhost/etc/os-release)"
 msgstr "%s : fichiers système manquants (localhost/etc/os-release)"
 
-#: usr/local/sbin/simpleos-backup-helper:313
+#: usr/local/sbin/simpleos-backup-helper:314
 msgid "%s: system files missing (localhost/usr/bin)"
 msgstr "%s : fichiers système manquants (localhost/usr/bin)"
 
-#: usr/local/sbin/simpleos-backup-helper:333
+#: usr/local/sbin/simpleos-backup-helper:334
 msgid "Creating a restore point before the update"
 msgstr "Création d’un point de restauration avant la mise à jour"
 
@@ -4204,7 +4210,10 @@ msgid ""
 "Remove the USB stick (or take out the disc) now.\n"
 "\n"
 "Then click “Restart now” – the computer starts your new Simple OS."
-msgstr "Retirez maintenant la clé USB (ou sortez le disque).\n\nCliquez ensuite sur « Redémarrer maintenant » – l’ordinateur démarre votre nouveau Simple OS."
+msgstr ""
+"Retirez maintenant la clé USB (ou sortez le disque).\n"
+"\n"
+"Cliquez ensuite sur « Redémarrer maintenant » – l’ordinateur démarre votre nouveau Simple OS."
 
 #: usr/local/sbin/simpleos-system-setup:153
 msgid "Waiting for a background update to finish"
