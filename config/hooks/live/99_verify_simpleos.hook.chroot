@@ -304,6 +304,12 @@ check "welcome-viewer: bare page name not looked up in /usr/share/simpleos or no
       "grep -q 'if \"/\" not in page:' /usr/local/lib/simpleos/welcome-viewer && grep -q 'def window_title(path):' /usr/local/lib/simpleos/welcome-viewer"
 check "Thunar: right-click 'Run with SOS Bridge' missing" \
       "grep -q '<command>/usr/local/bin/simpleos-windows-app %f</command>' /etc/skel/.config/Thunar/uca.xml && grep -q '<patterns>\*.exe;\*.EXE;\*.msi;\*.MSI</patterns>' /etc/skel/.config/Thunar/uca.xml"
+# #151: a failed first setup left a half-made bottle "Windows" -> the next try made "Windows__123" and every double-click
+# ended in Bottles' bottle picker. Now: half-made bottle removed, one retry, a plain "could not be set up" window.
+check "SOS Bridge: a half-made bottle blocks every later try / failure opens Bottles' bottle picker (#151)" \
+      "python3 -c \"import importlib.machinery as m; w = m.SourceFileLoader('w', '/usr/local/bin/simpleos-windows-app').load_module()
+import inspect; src = inspect.getsource(w.create_bottle); o = inspect.getsource(w.open_in_bottles)
+assert w.CREATE_TRIES >= 2 and 'remove_half_made_bottle()' in src and '--setup-failed' in o and 'open_in_bottles_window' not in o.split('create_bottle()')[1].split('notify-send')[0]\""
 for home in /etc/skel /home/simple; do
     check "office marker missing in the menu in $home" "grep -q '<!-- simpleos-office:' '$home/.config/openbox/menu.xml'"
 done
