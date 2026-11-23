@@ -2463,9 +2463,10 @@ def main(argv):
                 if problem:
                     msg.set_markup(f"<b>{GLib.markup_escape_text(problem)}</b>")
                     continue
+                # read everything BEFORE destroy(): a destroyed Gtk.Entry returns "" (#150)
+                password, kind = pw.get_text(), "admin" if admin.get_active() else "standard"
                 d.destroy()
-                self.run_helper(_("The account could not be created"), "--create", user, name,
-                                "admin" if admin.get_active() else "standard", password=pw.get_text())
+                self.run_helper(_("The account could not be created"), "--create", user, name, kind, password=password)
                 return
             d.destroy()
 
@@ -2593,8 +2594,9 @@ def main(argv):
                     msg.set_markup("<b>" + (_("Please type the password twice.") if not pw.get_text() else
                                             _("The two passwords don't match.")) + "</b>")
                     continue
+                password = pw.get_text()   # before destroy(): a destroyed Gtk.Entry returns "" (#150)
                 d.destroy()
-                self.run_helper(_("The password could not be changed"), "--password", u["name"], password=pw.get_text())
+                self.run_helper(_("The password could not be changed"), "--password", u["name"], password=password)
                 return
             d.destroy()
 
