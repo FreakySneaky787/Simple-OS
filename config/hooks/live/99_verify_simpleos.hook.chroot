@@ -5248,7 +5248,7 @@ for f in $RP $RPH; do
     check "$f: shell syntax error" "sh -n $f"
 done
 check "Polkit: action org.simpleos.report missing" \
-      "grep -A12 'action id=\"org.simpleos.report\"' /usr/share/polkit-1/actions/org.simpleos.power-tools.policy | grep -q 'exec.path\">$RPH<'"
+      "sed -n '/action id=\"org.simpleos.report\"/,/<\/action>/p' /usr/share/polkit-1/actions/org.simpleos.power-tools.policy | grep -q 'exec.path\">$RPH<'"
 check "Report helper: no exit 0 as root or sections missing" "out=\$($RPH 2>&1) && echo \"\$out\" | grep -q '^--- Errors, this boot:' && echo \"\$out\" | grep -q '^--- Recent package changes:'"
 check "Report helper: accepts arguments" "$RPH --x >/dev/null 2>&1; [ \$? -eq 2 ]"
 check "launcher simpleos-report.desktop missing" "grep -qx 'Exec=$RP' /usr/share/applications/simpleos-report.desktop"

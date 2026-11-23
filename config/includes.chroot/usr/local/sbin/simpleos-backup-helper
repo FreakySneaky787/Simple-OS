@@ -233,7 +233,8 @@ progress_filter() {
 ts() {
     rcf=$TSOUT.rc
     unbuf=; command -v stdbuf >/dev/null && unbuf="stdbuf -o0 -e0"
-    { LANGUAGE= LC_ALL=C.UTF-8 $unbuf timeshift "$@" 2>&1; echo $? > "$rcf"; }   # English lines for progress-filter/classify | tee "$TSOUT" | progress_filter
+    # English lines for progress-filter and classify (LANGUAGE= too: it wins over LC_ALL otherwise)
+    { LANGUAGE= LC_ALL=C.UTF-8 $unbuf timeshift "$@" 2>&1; echo $? > "$rcf"; } | tee "$TSOUT" | progress_filter
     trc=$(cat "$rcf" 2>/dev/null); rm -f "$rcf"
     cat "$TSOUT" >&2
     return "${trc:-1}"
