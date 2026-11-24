@@ -96,8 +96,8 @@ create() {
     # Check space/device first (one password, pkexec remembers it), only then report "Creating…"
     helper --space
     explain "$(_t 'The restore point could not be created.')" || return 1
-    helper_live "Creating a restore point" "Restore point created" \
-        "The first one takes 10–20 minutes · you can keep working" --create "${1:-Restore point}" ||
+    helper_live "$(_t 'Creating a restore point')" "$(_t 'Restore point created')" \
+        "$(_t 'The first one takes 10–20 minutes · you can keep working')" --create "${1:-$(_t 'Restore point')}" ||
         sos_notify "$(_t 'Creating a restore point. The first one copies the whole system and can take 10–20 minutes.')" low
     explain "$(_t 'The restore point could not be created.')" || return 1
     sos_notify "$(_t 'Restore point created.')"
@@ -121,10 +121,10 @@ point_menu() {  # $1 name, $2 display text
         restore)
             sos_add "$(sos_fa "$I_UNDO")  $(_t 'Yes, restore and restart')" "yes"
             sos_add "$(sos_fa "$I_BACK")  $(_t 'Cancel')" "no"
-            sos_pick "<b>Restore $(sos_esc "$2")?</b>   $(sos_dim "$(_t 'System files go back to that point · your personal files stay · the computer restarts')")" 620
+            sos_pick "<b>$(printf "$(_t 'Restore %s?')" "$(sos_esc "$2")")</b>   $(sos_dim "$(_t 'System files go back to that point · your personal files stay · the computer restarts')")" 620
             [ "$action" = yes ] || return
-            helper_live "Restoring $2" "Restored – restarting" \
-                "Don't turn off the computer – it restarts by itself when done" --restore "$1" ||
+            helper_live "$(printf "$(_t 'Restoring %s')" "$2")" "$(_t 'Restored – restarting')" \
+                "$(_t "Don't turn off the computer – it restarts by itself when done")" --restore "$1" ||
                 sos_notify "$(_t "Restoring… Don't turn off the computer. It restarts by itself when done.")"
             explain "$(_t 'The restore point could not be restored. Nothing was changed.')" ;;
         check)
@@ -135,7 +135,7 @@ point_menu() {  # $1 name, $2 display text
                 listed) sos_notify "$(_t 'This restore point is listed by Timeshift (stored on another disk).')" low ;;
             esac ;;
         delete)
-            helper_live "Deleting $2" "Restore point deleted" "Only this restore point is removed" --delete "$1"
+            helper_live "$(printf "$(_t 'Deleting %s')" "$2")" "$(_t 'Restore point deleted')" "$(_t 'Only this restore point is removed')" --delete "$1"
             explain "$(_t 'The restore point could not be deleted.')" && sos_notify "$(_t 'Restore point deleted.')" low ;;
     esac
 }
@@ -163,7 +163,8 @@ while :; do
 $points
 EOF
     [ "$n" -gt 0 ] || sos_add "$(sos_fa "$I_CLOCK")  $(_t 'No restore points yet')" "noop"
-    sos_pick "<b>$(_t 'Backups')</b>   $(sos_dim "$n restore point$( [ "$n" -eq 1 ] || echo s) · system files only, not your personal files")" 560
+    if [ "$n" -eq 1 ]; then points_text=$(_t '1 restore point'); else points_text=$(printf "$(_t '%s restore points')" "$n"); fi
+    sos_pick "<b>$(_t 'Backups')</b>   $(sos_dim "$points_text · $(_t 'system files only, not your personal files')")" 560
     case "$action" in
         create)
             name=$(printf '' | sos_rofi -dmenu -p "$(_t 'Name')" -mesg "<b>$(_t 'Name for the restore point')</b>   $(sos_dim "$(_t 'optional, e.g. Before installing drivers')")" -markup \

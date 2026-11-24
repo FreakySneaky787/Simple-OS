@@ -3585,7 +3585,8 @@ check "Calculator: '1,000+5' in English" "[ \"\$(env -u LC_ALL -u LC_NUMERIC LAN
 check "Calculator: '1,000+5' in German (decimal comma)" "[ \"\$(env -u LC_ALL -u LC_NUMERIC LANG=de_DE.UTF-8 python3 $SR --calc '1,000+5')\" = '1,000 + 5 = 6' ]"
 # #147: commas between function arguments, German thousands dots, the result with a decimal comma in German
 for c in 'en_US|round(3.14159,2)|round(3.14159,2) = 3.14' 'en_US|max(1,2)|max(1,2) = 2' 'en_US|min(4, 2)|min(4, 2) = 2' \
-         'en_US|3,5*2|3,5 * 2 = 7' 'en_US|round(1234,-2)|round(1234, -2) = 1200' \
+         'en_US|3,5*2|3,5 * 2 = 7' 'en_US|round(1234,-2)|round(1234, -2) = 1200' 'en_US|max(1,234)|max(1,234) = 234' \
+         'en_US|min(10,500)|min(10,500) = 10' 'en_US|sqrt(1,000,000)|sqrt(1,000,000) = 1000' \
          'de_DE|1.234,5+1|1.234,5 + 1 = 1235,5' 'de_DE|1.000+1|1.000 + 1 = 1001' 'de_DE|round(3,14159; 2)|round(3,14159; 2) = 3,14' \
          'de_DE|round(3,14159, 2)|round(3,14159, 2) = 3,14' 'de_DE|round(3.14159,2)|round(3.14159,2) = 3,14' \
          'de_DE|round(2,5)|round(2,5) = 3' 'de_DE|max(1,2)|max(1,2) = 2' 'de_DE|1.5+1|1.5 + 1 = 2,5' 'de_DE|0.125*8|0.125 * 8 = 1'; do
@@ -3751,7 +3752,7 @@ for c in "6|--create anna Anna standard" "2|--create Bob Bob standard" "2|--crea
 done
 check "Users: the last administrator can be demoted by someone else" "env SIMPLEOS_USERS_TEST=1 SIMPLEOS_USERS_ETC=$ue SIMPLEOS_USERS_CALLER=anna $UH --admin pax off >/dev/null 2>&1; [ \$? -eq 3 ]"
 check "Users: a signed-in account deleted" "env SIMPLEOS_USERS_SIGNED_IN=anna SIMPLEOS_USERS_TEST=1 SIMPLEOS_USERS_ETC=$ue SIMPLEOS_USERS_CALLER=pax $UH --delete anna keep >/dev/null 2>&1; [ \$? -eq 5 ]"
-check "Users: delete keeps the home folder unless asked" "uh $UH --delete anna keep && grep -qx 'RUN: deluser --quiet anna' $ue/out && uh $UH --delete anna remove && grep -qx 'RUN: deluser --quiet --remove-home anna' $ue/out"
+check "Users: delete keeps the home folder unless asked / kept folder still open to the next account with the same ID" "uh $UH --delete anna keep && grep -qx 'RUN: deluser --quiet anna' $ue/out && grep -qx 'RUN: chown -R root:root /home/anna' $ue/out && grep -qx 'RUN: chmod 0700 /home/anna' $ue/out && uh $UH --delete anna remove && grep -qx 'RUN: deluser --quiet --remove-home anna' $ue/out && ! grep -q 'RUN: chown' $ue/out"
 check "Users: automatic sign-in does not take the installer's line in lightdm.conf out of the way" \
       "uh $UH --autologin anna && grep -q '^RUN: sed -i -E .*autologin-user' $ue/out && grep -q 'RUN: write .*50-simpleos-autologin.conf autologin-user=anna' $ue/out"
 check "Control Center → Users: accounts, administrators or automatic sign-in read wrong" \

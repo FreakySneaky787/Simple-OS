@@ -182,7 +182,7 @@ EOF
 }
 level_rows() {
     state="$(volume)%"; muted && state=$(_t Muted)
-    vhead "<b>Set volume</b>   $(sos_dim "$(printf "$(_t 'now %s')" "$state")")"
+    vhead "<b>$(_t 'Set volume')</b>   $(sos_dim "$(printf "$(_t 'now %s')" "$state")")"
     for l in 100 80 60 50 40 30 20 10 0; do vrow "$l%" "set$TAB$l"; done
     vrow "$(sos_fa "$I_BACK")  $(_t 'Back')" "back"
 }

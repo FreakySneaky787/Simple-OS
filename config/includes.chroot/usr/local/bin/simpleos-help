@@ -34,7 +34,7 @@ Super+Hoch / Super+Runter   Maximieren / wiederherstellen oder minimieren
 Super+Alt+Pfeiltasten       Fenster in ein Viertel des Bildschirms
 Alt+Leertaste               Fenstermenü (maximieren, verschieben …)
 Alt+Esc                     Fenster nach hinten schicken
-Doppelklick                 auf Titelleiste Maximieren / wiederherstellen
+Doppelklick Titelleiste     Maximieren / wiederherstellen
 Alt+Ziehen mit links        Fenster verschieben
 Alt+Ziehen mit rechts       Fenstergröße ändern
 <b>── Arbeitsflächen ───────────────────────────────────────</b>
@@ -60,7 +60,7 @@ Update-Nachricht            Anklicken, um Updates zu installieren (fragt nach de
 Rechtsklick auf Desktop     Simple-OS-Menü (Apps, Einstellungen, Werkzeuge, Hilfe, Ein/Aus)
 Leiste: linker Knopf        Apps
 Leiste: Netzwerkanzeige     Netzwerk-Menü – WLAN, Kabel, Details
-Leiste:                     roter Knopf (rechts) Ein/Aus-Menü
+Leiste: roter Knopf rechts  Ein/Aus-Menü
 Leiste: Uhr                 Kalender des Monats (noch einmal klicken zum Schließen)
 Software-Aktualisierung     Im Menü unter Werkzeuge: Updates suchen und installieren
 Einstellungen → Aussehen    Taskleiste: verschieben oder anders gestalten

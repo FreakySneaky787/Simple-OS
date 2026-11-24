@@ -104,6 +104,18 @@ not_self() {
     else die "$(_t "you can't make your own account a standard user here")" 3; fi
 }
 
+# set_icon_key FILE VALUE: Icon=VALUE in the [User] section of an AccountsService file, every other line kept
+set_icon_key() {
+    if [ ! -f "$1" ]; then printf '[User]\nIcon=%s\n' "$2" > "$1"; return; fi
+    tmp=$(mktemp "$1.XXXXXX") || return 1
+    awk -v icon="$2" '
+        /^\[/ { if (sec && !done) { print "Icon=" icon; done = 1 } sec = ($0 == "[User]") }
+        sec && /^Icon=/ { if (!done) print "Icon=" icon; done = 1; next }
+        { print }
+        END { if (!done) { if (!sec) print "[User]"; print "Icon=" icon } }' "$1" > "$tmp" && mv -f "$tmp" "$1" ||
+        { rm -f "$tmp"; return 1; }
+}
+
 # AccountsService: the object of an account (empty if the service is not there)
 as_user() {
     busctl --json=short call org.freedesktop.Accounts /org/freedesktop/Accounts org.freedesktop.Accounts \
@@ -160,8 +172,14 @@ case "$action" in
         last_admin "$user" && die "$(printf "$(_t '%s is the last administrator')" "$user")" 3
         signed_in "$user" && die "$(printf "$(_t '%s is signed in – sign them out first')" "$user")" 5
         [ "$(autologin_user)" = "$user" ] && set_autologin off
+        home=$(awk -F: -v u="$user" '$1 == u { print $6 }' "$ETC/passwd")
         if [ "$1" = remove ]; then run deluser --quiet --remove-home "$user"; else run deluser --quiet "$user"; fi ||
             die "$(_t 'the account could not be deleted')"
+        # Kept files: they still belong to the deleted account's user ID, and adduser gives the next new account the
+        # lowest free ID – that same one – which could then open them. Only root (an administrator) may reach them now.
+        if [ "$1" = keep ] && [ -n "$home" ] && [ "$home" != / ] && { [ -d "$home" ] || [ -n "$TEST" ]; }; then
+            run chown -R root:root "$home" && run chmod 0700 "$home"
+        fi
         # AccountsService's files of the account (picture, settings) – it forgets the account by itself
         run rm -f "/var/lib/AccountsService/users/$user" "/var/lib/AccountsService/icons/$user"
         exit 0 ;;
@@ -204,22 +222,36 @@ case "$action" in
         copy=
         if [ "$file" != none ]; then
             copy=$(mktemp /run/simpleos-picture.XXXXXX) || die "$(_t 'no temporary file')"
-            cp "$file" "$copy" && chmod 0644 "$copy" || { rm -f "$copy"; die "$(_t "the picture can't be read")"; }
+            # at most 5 MB + 1 byte, then the checks again on the copy: the file could have been swapped (for a link to a
+            # root-only file) after the checks above – only what was really copied is used, and only a picture
+            head -c 5000001 "$file" > "$copy" 2>/dev/null || { rm -f "$copy"; die "$(_t "the picture can't be read")"; }
+            [ "$(stat -c %s "$copy")" -le 5000000 ] || { rm -f "$copy"; die "$(_t 'the picture is bigger than 5 MB')" 2; }
+            case "$(od -An -tx1 -N4 "$copy" | tr -d ' \n')" in
+                89504e47|ffd8ff*) chmod 0644 "$copy" ;;
+                *) rm -f "$copy"; die "$(_t 'the picture is not a PNG or JPEG file')" 2 ;;
+            esac
         fi
         obj=$(as_user "$user")
-        if [ -n "$obj" ] && busctl call org.freedesktop.Accounts "$obj" org.freedesktop.Accounts.User SetIconFile s "${copy:-}" >/dev/null 2>&1; then
+        if [ -n "$obj" ]; then
+            # AccountsService is there: only through it (it also refuses pictures it can't use – then say so, and
+            # never write its files behind its back)
+            busctl call org.freedesktop.Accounts "$obj" org.freedesktop.Accounts.User SetIconFile s "${copy:-}" >/dev/null 2>&1
+            rc=$?
             rm -f "$copy"
+            [ $rc -eq 0 ] || die "$(_t "the picture could not be set")"
             exit 0
         fi
-        # Without AccountsService: its files directly (it reads them when it starts)
+        # Without AccountsService: its files directly (it reads them when it starts). Only the Icon= line – the
+        # account's other settings there (Language=, Session= …) stay.
         mkdir -p /var/lib/AccountsService/icons /var/lib/AccountsService/users
+        icon=
         if [ -n "$copy" ]; then
             mv -f "$copy" "/var/lib/AccountsService/icons/$user" && chmod 0644 "/var/lib/AccountsService/icons/$user"
-            printf '[User]\nIcon=/var/lib/AccountsService/icons/%s\n' "$user" > "/var/lib/AccountsService/users/$user"
+            icon="/var/lib/AccountsService/icons/$user"
         else
             rm -f "/var/lib/AccountsService/icons/$user"
-            printf '[User]\nIcon=\n' > "/var/lib/AccountsService/users/$user"
         fi
+        set_icon_key "/var/lib/AccountsService/users/$user" "$icon"
         exit 0 ;;
     --autologin)
         [ $# -eq 0 ] || usage

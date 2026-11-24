@@ -48,7 +48,27 @@ import gettext
 
 # Translations (#43): the system language from /usr/share/locale/<lang>/LC_MESSAGES/simpleos.mo, else English
 _ = gettext.translation("simpleos", fallback=True).gettext
-DONE_WORDS = tuple({"Done", _("Done")})   # the helpers' last STEP line, English and in the system language
+
+
+def _done_words():
+    """The helpers' last STEP line: "Done" in English and in every language Simple OS ships – the root helpers write
+    it in the system language (/etc/default/locale), which can differ from this session's (right after a language
+    change, until the next sign-in)"""
+    words = {"Done", _("Done")}
+    base = "/usr/share/locale"
+    try:
+        langs = [lang for lang in os.listdir(base) if os.path.isfile(f"{base}/{lang}/LC_MESSAGES/simpleos.mo")]
+    except OSError:
+        langs = []
+    for lang in langs:
+        try:
+            words.add(gettext.translation("simpleos", languages=[lang]).gettext("Done"))
+        except OSError:
+            pass
+    return tuple(words)
+
+
+DONE_WORDS = _done_words()
 
 TAG = "simpleos-progress"
 STROKE = 3          # arc and ring

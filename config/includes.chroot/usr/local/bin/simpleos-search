@@ -94,6 +94,7 @@ _FUNCS = {"sqrt": math.sqrt, "sin": math.sin, "cos": math.cos, "tan": math.tan, 
           "ln": math.log, "abs": abs, "round": _round, "floor": math.floor, "ceil": math.ceil,
           "min": min, "max": max}
 _CONST = {"pi": math.pi, "e": math.e}
+_MULTI_ARG = {"min", "max", "round"}     # functions that take two (or more) numbers
 # Largest integer (bits, ~1200 digits): larger results brought Python to the limit of number-to-text conversion
 # (4300 digits, search crashed) or kept the calculator busy for minutes ("((9^999)^999)^999")
 _MAX_BITS = 4000
@@ -152,6 +153,17 @@ def _comma_language():
     return lang in _COMMA_DECIMAL
 
 
+def _enclosing_call(expr, pos):
+    """Name of the function whose brackets are around position pos ("" for none or a plain bracket)"""
+    calls = []
+    for i, ch in enumerate(expr[:pos]):
+        if ch == "(":
+            calls.append(re.search(r"([A-Za-z_]*)\s*$", expr[:i]).group(1))
+        elif ch == ")" and calls:
+            calls.pop()
+    return calls[-1] if calls else ""
+
+
 def _decimal_commas(expr):
     """Commas, dots and semicolons the way people write numbers (#147).
 
@@ -167,8 +179,11 @@ def _decimal_commas(expr):
         expr = re.sub(r"(?<![\d.,])[1-9]\d{0,2}(?:\.\d{3})+(?:,\d+)?(?![\d.]|,\d)",
                       lambda m: m.group(0).replace(".", ""), expr)
     else:
+        # not inside min/max/round: there every comma separates the arguments ("max(1,234)" = 234, not 1234);
+        # "sqrt(1,000,000)" stays one million
         expr = re.sub(r"(?<![\d,.])\d{1,3}(?:,\d{3})+(?![\d,])(?!\.)",
-                      lambda m: m.group(0).replace(",", ""), expr)
+                      lambda m: m.group(0) if _enclosing_call(expr, m.start()) in _MULTI_ARG
+                      else m.group(0).replace(",", ""), expr)
     out, calls = [], []      # calls: one entry per open bracket – the function's name, "" for a plain bracket
     for i, ch in enumerate(expr):
         if ch == "(":

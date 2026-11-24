@@ -68,8 +68,9 @@ case "$event" in
         printf '%s\n%s\n' "$seen" "$name" | grep . > "$SEEN" 2>/dev/null
         sos_log "ask: $name mounted at $path"
         # yes/default = Open (a click on the notification itself), eject = Safely remove; waits for the click
-        answer=$(notify-send -c x-simpleos -a "$SOS_TITLE" -i "$SOS_ICON" -A "yes=Open" -A "eject=Safely remove" \
-                     -A "default=Open" "\"$name\" is ready" "Open it in the file manager or remove it safely." 2>/dev/null)
+        answer=$(notify-send -c x-simpleos -a "$SOS_TITLE" -i "$SOS_ICON" -A "yes=$(_t 'Open')" \
+                     -A "eject=$(_t 'Safely remove')" -A "default=$(_t 'Open')" "$(printf "$(_t '“%s” is ready')" "$name")" \
+                     "$(_t 'Open it in the file manager or remove it safely.')" 2>/dev/null)
         case "$answer" in
             yes|default) open_files "$path" ;;
             eject)       eject "$path" ;;

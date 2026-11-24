@@ -329,7 +329,7 @@ fi
 # Join lines with ", " – firmware names contain spaces ("System Firmware (firmware)")
 names=$(printf '%s\n' "$pkgs" | head -n 4 | awk 'NR > 1 { printf ", " } { printf "%s", $0 }')
 [ "$count" -gt 4 ] && names="$names, …"
-if [ "$count" -eq 1 ]; then head="1 update available"; else head="$count updates available"; fi
+if [ "$count" -eq 1 ]; then head=$(_t '1 update available'); else head=$(printf "$(_t '%s updates available')" "$count"); fi
 [ "$online" = 1 ] || head="$head $(sos_dim "$(_t '(could not check online – last known state)')")"
 sos_add "$(sos_fa '\357\200\231')  $(_t 'Install now')" "install"
 sos_add "$(sos_fa '\357\200\215')  $(_t 'Not now')" "close"

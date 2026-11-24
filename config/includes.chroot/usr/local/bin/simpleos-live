@@ -50,6 +50,8 @@ case "${1:-}" in
             menu=${XDG_CONFIG_HOME:-$HOME/.config}/openbox/menu.xml
             if [ -f "$menu" ] && grep -q simpleos-installer-begin "$menu"; then
                 sed -i '/simpleos-installer-begin/,/simpleos-installer-end/d' "$menu"
+                # the translated copy Openbox reads first (rc.xml) – else the old entry stays until the next sign-in
+                [ -x /usr/local/lib/simpleos/menu-lang ] && timeout 10 /usr/local/lib/simpleos/menu-lang "$menu" >/dev/null 2>&1
                 [ -n "${DISPLAY:-}" ] && openbox --reconfigure 2>/dev/null
             fi
         fi

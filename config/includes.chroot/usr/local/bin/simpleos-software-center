@@ -76,7 +76,7 @@ CATALOG = [
     ("bottles", "SOS Bridge", _("Run many Windows programs (Bottles and Wine) – double-click a .exe"), "Utilities",
      "com.usebottles.bottles", "flatpak", "com.usebottles.bottles"),
     ("devtools", _("Developer Tools"), _("Git, compilers, Python tools and the VSCodium code editor"), "Development",
-     "com.vscodium.codium", "system", "--devtools|build-essential|flatpak run com.vscodium.codium"),
+     "com.vscodium.codium", "system", "--devtools|build-essential+flatpak:com.vscodium.codium|flatpak run com.vscodium.codium"),
     ("vscode", "Visual Studio Code", _("Code editor"), N_("Development"), "com.visualstudio.code", "flatpak",
      "com.visualstudio.code"),
     ("bitwarden", "Bitwarden", _("Password manager"), N_("Utilities"), "com.bitwarden.desktop", "flatpak",
@@ -120,7 +120,16 @@ def status(app, flatpaks=None):
     if source == "flatpak":
         flatpaks = flatpak_installed() if flatpaks is None else flatpaks
         return "installed" if ident in flatpaks else "available"
-    return "installed" if deb_installed(ident.split("|")[1]) else "available"
+    # "pkg+pkg2+flatpak:ID": all of them must be there – Developer Tools are only installed with VSCodium too (its
+    # download can fail while build-essential is already in place: then "Open" would do nothing, #153 review)
+    for need in ident.split("|")[1].split("+"):
+        if need.startswith("flatpak:"):
+            flatpaks = flatpak_installed() if flatpaks is None else flatpaks
+            if need[len("flatpak:"):] not in flatpaks:
+                return "available"
+        elif not deb_installed(need):
+            return "available"
+    return "installed"
 
 
 def install_cmd(app):

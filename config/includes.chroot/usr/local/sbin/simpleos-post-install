@@ -28,6 +28,8 @@ SIMPLEOS_LANG_LIMIT=150 /usr/local/sbin/simpleos-system-setup --language || echo
 # Remove the menu entry "Install Simple OS" from skel and all user homes
 for f in /etc/skel/.config/openbox/menu.xml /home/*/.config/openbox/menu.xml; do
     [ -f "$f" ] && sed -i '/simpleos-installer-begin/,/simpleos-installer-end/d' "$f"
+    # the translated copy (menu-lang, loaded first by rc.xml) still has the entry: rebuilt at the next sign-in
+    rm -f "${f%/menu.xml}/menu-simpleos.xml"
 done
 # Installer launchers (launcher, desktop icons); simpleos-taskbar-select --apply removes the taskbar badge
 # at the next login (no live medium any more)

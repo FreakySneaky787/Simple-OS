@@ -1116,7 +1116,8 @@ def password_message(output):
         return _("The current password is wrong.")
     if "too short" in text or "shorter than" in text or "longer password" in text:
         return _("The new password is too short – please use at least 8 characters.")
-    if "too simple" in text or "bad password" in text or "palindrome" in text or "too similar" in text:
+    if ("too simple" in text or "bad password" in text or "palindrome" in text or "too similar" in text
+            or "unchanged" in text or "has not been changed" in text):
         return _("The new password is too simple or too close to the old one – please choose another one.")
     if "do not match" in text or "don't match" in text:
         return _("The two new passwords don't match.")
@@ -1154,6 +1155,10 @@ def change_own_password(old, new, timeout=30):
         while sent < len(answers) and out.lower().count(b"password:") > sent:
             os.write(fd, answers[sent].encode() + b"\n")
             sent += 1
+        # a fourth question: PAM refused the new password (too short, too simple …) and asks again – stop now
+        # instead of leaving the window on "Changing the password …" until the timeout
+        if out.lower().count(b"password:") > len(answers):
+            break
     try:
         os.close(fd)
     except OSError:
@@ -2609,7 +2614,7 @@ def main(argv):
             box = d.get_content_area()
             box.set_spacing(8)
             box.set_border_width(14)
-            keep = Gtk.RadioButton.new_with_label(None, _('Keep their files (in {folder})').format(folder=u['home']))
+            keep = Gtk.RadioButton.new_with_label(None, _('Keep their files (in {folder} – only an administrator can open them)').format(folder=u['home']))
             remove = Gtk.RadioButton.new_with_label_from_widget(keep, _("Delete their files too – this can't be undone"))
             for w in (label(_('{name} can no longer sign in to this computer.').format(name=u['full'])), keep, remove):
                 box.add(w)

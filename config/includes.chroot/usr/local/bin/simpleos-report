@@ -281,7 +281,7 @@ command -v rofi >/dev/null || { sos_log "rofi missing"; sos_rofi_failed; }
 # FontAwesome 4: file-text U+F15C, lock U+F023, globe U+F0AC, arrow-left U+F060
 I_FILE='\357\205\234' I_LOCK='\357\200\243' I_GLOBE='\357\202\254' I_BACK='\357\201\240'
 url=$(issue_url)
-sos_add "$(sos_fa "$I_LOCK")  Create report  $(sos_dim "$(_t 'includes system logs – asks for your password')")" "report${TAB}1"
+sos_add "$(sos_fa "$I_LOCK")  $(_t 'Create report')  $(sos_dim "$(_t 'includes system logs – asks for your password')")" "report${TAB}1"
 sos_add "$(sos_fa "$I_FILE")  $(_t 'Create report without system logs')" "report${TAB}0"
 [ -n "$url" ] && sos_add "$(sos_fa "$I_GLOBE")  $(_t 'Open the issue page only')" "web"
 sos_add "$(sos_fa "$I_BACK")  $(_t 'Cancel')" "cancel"

@@ -183,7 +183,7 @@ I_BACK='\357\201\240'
 usage_menu() {
     df_line=$(df -B1 --output=size,used,avail / 2>/dev/null | tail -n 1)
     set -- $df_line
-    head="<b>Disk usage</b>   $(sos_dim "$(human "${3:-0}") free of $(human "${1:-0}")")"
+    head="<b>$(_t 'Disk usage')</b>   $(sos_dim "$(printf "$(_t '%s free of %s')" "$(human "${3:-0}")" "$(human "${1:-0}")")")"
     # Largest folders in the home folder (one level, same file system)
     du -x -d1 -B1 "$HOME" 2>/dev/null | sort -rn | sed -n '2,11p' > "$SOS_LOG_DIR/simpleos-cleaner.du"
     while IFS="$TAB" read -r bytes dir; do
