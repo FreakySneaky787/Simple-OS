@@ -3544,7 +3544,7 @@ touch "$st/home/Documents/report-2026.pdf" "$st/home/Documents/.secret/report-hi
 printf '#!/bin/sh\necho "gtk-launch $*" > "$WT/opened"\n' > "$wt/mock/gtk-launch"
 chmod 0755 "$wt/mock/gtk-launch"
 srch() { rm -rf "${S:?}"; mkdir -p "$S"; $ENV -i HOME="$st/home" WT="$S" XDG_DATA_HOME="$st/none" XDG_DATA_DIRS="$st/share" \
-         PATH="$wt/mock:$wt/py:$wt/sys" "$@" python3 $SR "${SARG:-x}" 2>/dev/null </dev/null | tr '\000\037' '|~' > "$S/out"; }
+         PATH="$wt/mock:$wt/py:$wt/sys" SIMPLEOS_SIGNED_IN= "$@" python3 $SR "${SARG:-x}" 2>/dev/null </dev/null | tr '\000\037' '|~' > "$S/out"; }
 SARG=x srch ROFI_RETV=0
 check "Search: start page without app/system commands or with hidden apps" \
       "grep -q '^Calculator|info~app:.*galculator.desktop~icon~accessories-calculator~meta~math calc' $S/out &&
@@ -3624,6 +3624,8 @@ SARG=x srch ROFI_RETV=1 "ROFI_INFO=file:$st/home/Music/Report.mp3"
 check "Search: file not opened with the default app" "waitfor $S/opened && grep -qx 'xdg-open $st/home/Music/Report.mp3' $S/opened"
 SARG="Shut down" srch ROFI_RETV=1 ROFI_INFO=sys:shutdown
 check "Search: 'Shut down' without asking" "grep -q '^Shut down now|info~do:shutdown' $S/out && grep -q '^Cancel|info~back:' $S/out && [ ! -e $S/power ]"
+SARG="Shut down" srch ROFI_RETV=1 ROFI_INFO=sys:shutdown "SIMPLEOS_SIGNED_IN=Max Müller"
+check "Search: 'Shut down' while someone else is signed in does not say so" "grep -q 'Also signed in: Max Müller' $S/out && grep -q '^Shut down now|info~do:shutdown' $S/out && [ ! -e $S/power ]"
 SARG=x srch ROFI_RETV=1 ROFI_INFO=do:shutdown
 check "Search: confirmed shutdown not carried out" "grep -qx 'systemctl poweroff' $S/power"
 SARG=x srch ROFI_RETV=1 ROFI_INFO=sys:lock
