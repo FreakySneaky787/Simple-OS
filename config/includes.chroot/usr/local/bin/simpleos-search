@@ -21,6 +21,7 @@ import ast
 import math
 import operator
 import os
+import pwd
 import re
 import shlex
 import shutil
@@ -447,6 +448,36 @@ def search_page(text):
     row(_("Back"), "back:", "go-previous")
 
 
+def signed_in_others():
+    """The other people signed in right now, by full name (", " between them): restarting ends their sessions too"""
+    forced = os.environ.get("SIMPLEOS_SIGNED_IN")
+    if forced is not None:
+        return forced
+    try:
+        sessions = subprocess.run(["loginctl", "list-sessions", "--no-legend"], capture_output=True, text=True,
+                                  timeout=5).stdout.split("\n")
+        me, names = pwd.getpwuid(os.getuid()).pw_name, []
+        for line in sessions:
+            parts = line.split()
+            if len(parts) < 3 or not parts[1].isdigit() or not 1000 <= int(parts[1]) <= 60000:
+                continue
+            props = dict(l.split("=", 1) for l in subprocess.run(
+                ["loginctl", "show-session", parts[0], "-p", "Name", "-p", "State", "-p", "Class"],
+                capture_output=True, text=True, timeout=5).stdout.splitlines() if "=" in l)
+            user = props.get("Name", "")
+            if props.get("Class") != "user" or props.get("State") == "closing" or not user or user == me:
+                continue
+            try:
+                full = pwd.getpwnam(user).pw_gecos.split(",")[0]
+            except KeyError:
+                full = ""
+            if (full or user) not in names:
+                names.append(full or user)
+        return ", ".join(names)
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return ""
+
+
 def run_system(key):
     def first(*cmds):
         for c in cmds:
@@ -496,7 +527,9 @@ def selected(info, text):
     elif kind == "sys":
         confirm = next((c for k, _n, _i, _w, c in SYSTEM if k == value), None)
         if confirm:   # restart/off/sign out: ask first (a search for "sh…" should never switch off)
-            header(_("Save your work first."))
+            others = signed_in_others() if value in ("restart", "shutdown") else ""
+            header(_("Also signed in: {names} – anything they have not saved is lost.").format(names=others)
+                   if others else _("Save your work first."))
             row(confirm, f"do:{value}", next(i for k, _n, i, _w, _c in SYSTEM if k == value))
             row(_("Cancel"), "back:", "go-previous")
             return

@@ -38,6 +38,20 @@ others() {
     getent passwd | awk -F: -v me="$(id -un)" '$3 >= 1000 && $3 <= 60000 && $1 != me && $7 !~ /(nologin|false)$/ { f = 1 }
         END { exit !f }'
 }
+# The other people signed in right now (their full names, ", " between them; empty if nobody): restarting or shutting
+# down ends their sessions too, and logind does not ask (test: SIMPLEOS_SIGNED_IN="Max")
+signed_in_others() {
+    if [ -n "${SIMPLEOS_SIGNED_IN+x}" ]; then printf '%s' "$SIMPLEOS_SIGNED_IN"; return 0; fi
+    command -v loginctl >/dev/null || return 0
+    me=$(id -un)
+    for s in $(loginctl list-sessions --no-legend 2>/dev/null | awk '$2 >= 1000 && $2 <= 60000 { print $1 }'); do
+        loginctl show-session "$s" -p Name -p State -p Class 2>/dev/null |
+            awk -F= -v me="$me" '{ v[$1] = $2 } END { if (v["Class"] == "user" && v["State"] != "closing" && v["Name"] != me) print v["Name"] }'
+    done | sort -u | while read -r u; do
+        n=$(getent passwd "$u" | cut -d: -f5 | cut -d, -f1)
+        printf '%s\n' "${n:-$u}"
+    done | awk 'NR > 1 { printf ", " } { printf "%s", $0 }'
+}
 # $1 = systemctl verb, $2 = notification on error
 power() {
     systemctl "$1" >&2 2>&1 || loginctl "$1" >&2 2>&1 || sos_notify "$2" critical
@@ -78,6 +92,22 @@ $(_t 'Wait until it is finished. Stopping it now can leave
 the systems on this disk unable to start.')" 420
     fi ;;
 esac
+# Someone else is still signed in (#68 made several accounts common): their unsaved work would be lost without a word
+case "$action" in restart|shutdown)
+    who=$(signed_in_others)
+    if [ -n "$who" ]; then
+        sos_log "others signed in ($who), asking before $action"
+        if [ "$action" = restart ]; then
+            anyway="$(sos_fa '\357\200\241')  $(_t 'Restart anyway')"
+        else
+            anyway="$(sos_fa '\357\200\221')  $(_t 'Shut down anyway')"
+        fi
+        sos_add "$(sos_fa '\357\200\215')  $(_t 'Cancel')" "cancel"
+        sos_add "$anyway" "$action"
+        sos_pick "<b>$(printf "$(_t 'Also signed in: %s')" "$(sos_esc "$who")")</b>
+$(_t 'Anything they have not saved is lost.')" 420
+    fi ;;
+esac
 
 case "$action" in
     lock)     lock_screen || sos_notify "$(_t 'The screen could not be locked.')" critical ;;
@@ -88,9 +118,9 @@ case "$action" in
               else
                   lock_screen || sos_log "lock before suspend failed"
               fi
-              power suspend "Sleep is not available on this computer." ;;
-    restart)  power reboot "The computer could not restart. Please save your work and try again." ;;
-    shutdown) power poweroff "The computer could not shut down. Please save your work and try again." ;;
+              power suspend "$(_t 'Sleep is not available on this computer.')" ;;
+    restart)  power reboot "$(_t 'The computer could not restart. Please save your work and try again.')" ;;
+    shutdown) power poweroff "$(_t 'The computer could not shut down. Please save your work and try again.')" ;;
     logout)   openbox --exit >&2 2>&1 || sos_notify "$(_t 'Could not sign out. Please try again.')" critical ;;
     # the login screen next to this session; dm-tool finds LightDM through XDG_SEAT_PATH (only the session has it)
     switch)   XDG_SEAT_PATH=${XDG_SEAT_PATH:-/org/freedesktop/DisplayManager/Seat0} dm-tool switch-to-greeter >&2 2>&1 ||

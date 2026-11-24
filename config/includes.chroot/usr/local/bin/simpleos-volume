@@ -153,14 +153,14 @@ I_PHONES='\357\200\245' I_COG='\357\200\223' I_BACK='\357\201\240'
 # that come back – the window stays open (until 1.1.1 every "Volume up" closed the menu and opened a new one: a flicker
 # and a short wait each time). Row = "text\0info\x1faction<TAB>data"; no rows = Rofi closes.
 vrow() { printf '%s\000info\037%s\n' "$1" "$2"; }
-vhead() { printf '\000prompt\037Sound\n\000markup-rows\037true\n\000no-custom\037true\n\000message\037%s\n' "$1"; }
+vhead() { printf '\000prompt\037%s\n\000markup-rows\037true\n\000no-custom\037true\n\000message\037%s\n' "$(_t 'Sound')" "$1"; }
 main_rows() {
     vol=$(volume); sos_is_num "$vol" || vol=0
     out_list=$(outputs)
     current=$(printf '%s\n' "$out_list" | awk -F'\t' '$4 == 1 { print $3; exit }')
     state="$vol%"; muted && state=$(_t Muted)
-    vhead "<b>Sound</b>   $(sos_dim "${current:-No output} · $state")"
-    vrow "$(sos_fa "$I_UP")  Volume up  $(sos_dim "$state")" "up"
+    vhead "<b>$(_t 'Sound')</b>   $(sos_dim "${current:-$(_t 'No output')} · $state")"
+    vrow "$(sos_fa "$I_UP")  $(_t 'Volume up')  $(sos_dim "$state")" "up"
     vrow "$(sos_fa "$I_DOWN")  $(_t 'Volume down')" "down"
     vrow "$(sos_fa "$I_SLIDERS")  $(_t 'Set volume…')" "level"
     if muted; then vrow "$(sos_fa "$I_UP")  $(_t 'Unmute')" "mute"; else vrow "$(sos_fa "$I_OFF")  $(_t 'Mute')" "mute"; fi
