@@ -94,10 +94,24 @@ NATIVE = [
 WINDOWS_ONLY = re.compile(r"^(mediacreationtool|windows\d*-?(installation|upgrade)assistant|win1[01].*(upgrade|assistant))")
 MENU_DIR = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")) / "applications"
 MENU_PREFIX = "simpleos-bridge-"
-# Start menu shortcuts that are no programs (English and German names)
-SKIP_SHORTCUT = re.compile(r"uninstall|deinstall|entfern|help|hilfe|readme|read me|liesmich|website|web site|homepage|"
-                           r"manual|handbuch|documentation|dokumentation|licen[cs]e|lizenz|faq|support|release notes|"
-                           r"changelog|what's new", re.I)
+# Start menu shortcuts that are no programs, or only a variant/repair mode of one (English, German and French names;
+# #153: "VLC … reset preferences and cache files", "VLC (skinned)", "LibreOffice (troubleshoot mode)", "Python … module
+# docs" made the menu longer without adding a program)
+SKIP_SHORTCUT = re.compile(r"uninstall|deinstall|entfern|désinstall|help|hilfe|aide|readme|read me|liesmich|lisez|"
+                           r"website|web site|homepage|site web|manual|handbuch|manuel|documentation|dokumentation|"
+                           r"module docs|licen[cs]e|lizenz|faq|support|release notes|changelog|what's new|"
+                           r"reset|zurücksetzen|réinitialis|troubleshoot|safe mode|abgesichert|fehlerbehebung|"
+                           r"dépannage|mode sans échec|skinned", re.I)
+# The person's own folders (#153): Windows programs started through SOS Bridge may use them (Flatpak permission), and
+# the bottle's "Documents", "Downloads", … are links to them – so "Documents" in a program's Open/Save window is the
+# real Documents folder, not a hidden one in ~/.var/app. (Windows folder, GLib folder, Flatpak permission).
+# The Desktop is only made usable, not linked: installers put their .lnk shortcuts on the Windows desktop.
+USER_FOLDERS = [("Documents", "DIRECTORY_DOCUMENTS", "xdg-documents"),
+                ("Downloads", "DIRECTORY_DOWNLOAD", "xdg-download"),
+                ("Pictures", "DIRECTORY_PICTURES", "xdg-pictures"),
+                ("Music", "DIRECTORY_MUSIC", "xdg-music"),
+                ("Videos", "DIRECTORY_VIDEOS", "xdg-videos"),
+                (None, "DIRECTORY_DESKTOP", "xdg-desktop")]
 
 
 def log(text):
@@ -213,8 +227,80 @@ def remove_half_made_bottle():
         shutil.rmtree(folder, ignore_errors=True)
 
 
+def user_folders():
+    """[(Windows folder name or None, real folder, Flatpak permission)] of the person's folders that exist (never
+    the home folder itself: an unset XDG folder falls back to it, and the whole home folder is not given away)"""
+    found = []
+    try:
+        import gi
+        gi.require_version("GLib", "2.0")
+        from gi.repository import GLib
+    except (ImportError, ValueError) as err:
+        log(f"user folders: {err}")
+        return found
+    home = os.path.realpath(Path.home())
+    for win, directory, perm in USER_FOLDERS:
+        real = GLib.get_user_special_dir(getattr(GLib.UserDirectory, directory))
+        if real and os.path.isdir(real) and os.path.realpath(real) != home:
+            found.append((win, real, perm))
+    return found
+
+
 def bottles_cli(*args, extra=()):
-    return ["flatpak", "run", *extra, "--command=bottles-cli", APP, *args]
+    folders = [f"--filesystem={perm}" for _win, _real, perm in user_folders()]
+    return ["flatpak", "run", *folders, *extra, "--command=bottles-cli", APP, *args]
+
+
+def free_name(folder, name):
+    """name, or "name (2).ext", "name (3).ext" … – whatever does not exist in folder yet"""
+    stem, ext = os.path.splitext(name)
+    candidate, n = name, 2
+    while os.path.lexists(os.path.join(folder, candidate)):
+        candidate, n = f"{stem} ({n}){ext}", n + 1
+    return candidate
+
+
+def empty_tree(path):
+    """True for an empty folder, a folder of only empty folders, or a dangling link – nothing worth keeping"""
+    if path.is_symlink():
+        return not path.exists()
+    if not path.is_dir():
+        return False
+    return all(empty_tree(child) for child in path.iterdir())
+
+
+def link_user_folders():
+    """The bottle's Documents, Downloads, Pictures, Music, Videos -> the person's real folders (#153). Bottles turns
+    them into plain folders when it creates a bottle (Flatpak sandbox); whatever a program saved there before is
+    moved into the real folder first (never overwriting anything). Runs before every start, cheap when done."""
+    profile = BOTTLES_DATA / "bottles" / BOTTLE / "drive_c" / "users" / (os.environ.get("USER") or Path.home().name)
+    if not profile.is_dir():
+        log(f"user folders: no Windows profile {profile}")
+        return
+    for win, real, _perm in user_folders():
+        if not win:
+            continue
+        link = profile / win
+        try:
+            if link.is_symlink():
+                if os.readlink(link) == real:
+                    continue
+                link.unlink()
+            elif link.is_dir():
+                for item in sorted(link.iterdir()):
+                    if empty_tree(item):        # Bottles' own empty "Music", "Templates", "Screenshots" … folders
+                        shutil.rmtree(item) if item.is_dir() and not item.is_symlink() else item.unlink()
+                        continue
+                    target = os.path.join(real, free_name(real, item.name))
+                    shutil.move(str(item), target)
+                    log(f"user folders: moved {item} -> {target}")
+                link.rmdir()
+            elif link.exists():
+                continue
+            link.symlink_to(real)
+            log(f"user folders: {link} -> {real}")
+        except OSError as err:
+            log(f"user folders: {link}: {err}")
 
 
 def create_bottle():
@@ -335,6 +421,7 @@ def open_in_bottles(path):
 def run_and_watch(command, cwd=None):
     """Run bottles-cli (output in the log), wait until Wine has ended (an installer may start a second process and
     end early: wineserver stays until the last Wine program is closed), then update the menu entries"""
+    link_user_folders()
     try:
         with LOG.open("a") as out:
             subprocess.run(command, stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT, cwd=cwd)
@@ -351,18 +438,20 @@ def run_and_watch(command, cwd=None):
 
 
 def start_menu_shortcuts():
-    """{entry id: (name, .lnk path)} – the shortcuts installers put in Wine's start menu (all users and own)"""
+    """{entry id: (name, .lnk path)} – the shortcuts installers put in Wine's start menu (all users and own): all of
+    "Start Menu\\Programs" and the ones lying directly in "Start Menu" (SumatraPDF puts its shortcut there, #153)"""
     drive = BOTTLES_DATA / "bottles" / BOTTLE / "drive_c"
-    roots = [drive / "ProgramData/Microsoft/Windows/Start Menu/Programs"]
-    roots += sorted((drive / "users").glob("*/AppData/Roaming/Microsoft/Windows/Start Menu/Programs"))
+    menus = [drive / "ProgramData/Microsoft/Windows/Start Menu"]
+    menus += sorted((drive / "users").glob("*/AppData/Roaming/Microsoft/Windows/Start Menu"))
     found = {}
-    for root in roots:
-        if not root.is_dir():
-            continue
-        for lnk in sorted(root.rglob("*")):
+    for menu in menus:
+        root = menu / "Programs"
+        lnks = sorted(root.rglob("*")) if root.is_dir() else []
+        lnks += sorted(menu.glob("*")) if menu.is_dir() else []
+        for lnk in lnks:
             if lnk.suffix.lower() != ".lnk" or not lnk.is_file() or SKIP_SHORTCUT.search(lnk.stem):
                 continue
-            rel = str(lnk.relative_to(root).with_suffix(""))
+            rel = str((lnk.relative_to(root) if lnk.parent != menu else Path(lnk.name)).with_suffix(""))
             slug = re.sub(r"[^a-z0-9]+", "-", rel.lower()).strip("-") or "program"
             found.setdefault(MENU_PREFIX + slug + ".desktop", (lnk.stem, str(lnk)))
     return found

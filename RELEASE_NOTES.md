@@ -28,7 +28,9 @@ sign in afterwards, "What's new" shows the highlights.
   **SOS Bridge** – the free app Bottles with Wine – runs many Windows programs. If it is not there yet, a small window
   explains what works and installs it from Flathub with one click, then opens your program. The program opens
   straight away – no Bottles window, no "bottle" to choose (the first time SOS Bridge sets itself up, about a minute).
-  Programs you install with their setup file appear in the menu afterwards like any other app. The Windows
+  Programs you install with their setup file appear in the menu afterwards like any other app, and their
+  Documents, Downloads, Pictures, Music and Videos are your own folders (issue #153: tested with 21 programs –
+  7-Zip, Notepad++, WinSCP, PuTTY, KeePass, GIMP, Inkscape, LibreOffice, Python and more work). The Windows
   installer of an app that has its own Simple OS version (Steam, Discord, Spotify, VLC …) points you to that version
   in the Software Center instead. Menu → Help → Windows
   Programs says honestly what usually works, what doesn't (Microsoft 365, current Adobe apps, games with anti-cheat,
@@ -225,7 +227,8 @@ repository that installed systems use. You don't need to download them yourself.
   apps follow the language. The keyboard layout can be changed at any time in Control Center → Keyboard.
 - **Windows programs** run with SOS Bridge only if Wine supports them: many older programs and lots of games do,
   Microsoft 365, current Adobe apps and games with kernel anti-cheat don't. Programs made for Windows itself –
-  Windows installation media and setup tools, drivers, antivirus – never do. Menu → Help → Windows Programs has
+  Windows installation media and setup tools, drivers, antivirus – never do. Electron apps such as the Windows
+  versions of Visual Studio Code and Obsidian don't work in our test (#153). Menu → Help → Windows Programs has
   alternatives.
 - **The network icon's right-click menu** (next to the network display in the taskbar) closes again if you hold the
   mouse button for more than half a second – a limit of that GTK menu, it has no setting. Click quickly, or use the

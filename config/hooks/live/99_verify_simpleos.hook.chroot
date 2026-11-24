@@ -319,6 +319,43 @@ check "SOS Bridge: a half-made bottle blocks every later try / failure opens Bot
       "python3 -c \"import importlib.machinery as m; w = m.SourceFileLoader('w', '/usr/local/bin/simpleos-windows-app').load_module()
 import inspect; src = inspect.getsource(w.create_bottle); o = inspect.getsource(w.open_in_bottles)
 assert w.CREATE_TRIES >= 2 and 'remove_half_made_bottle()' in src and '--setup-failed' in o and 'open_in_bottles_window' not in o.split('create_bottle()')[1].split('notify-send')[0]\""
+# #153: Windows programs started from the menu saw none of the person's folders (Bottles' sandbox, the bottle's own
+# Documents/Downloads … in ~/.var/app); shortcuts directly in "Start Menu" (SumatraPDF) got no menu entry; repair and
+# variant shortcuts (VLC reset/skinned, LibreOffice troubleshoot mode) cluttered the menu.
+wa153=$(mktemp -d)
+cat > "$wa153/t.py" <<'PY'
+import importlib.machinery as m, os, sys
+from pathlib import Path
+h = Path(sys.argv[1])
+w = m.SourceFileLoader("w", "/usr/local/bin/simpleos-windows-app").load_module()
+real = {n: h / n for n in ("Documents", "Downloads", "Pictures", "Music", "Videos", "Desktop")}
+assert {r for _w, r, _p in w.user_folders()} == {str(p) for p in real.values()}, w.user_folders()
+cli = w.bottles_cli("run", "-b", "Windows")
+assert all(f"--filesystem={p}" in cli for p in ("xdg-documents", "xdg-download", "xdg-desktop")) and "--filesystem=home" not in cli, cli
+prof = w.BOTTLES_DATA / "bottles/Windows/drive_c/users/t"
+for n in ("Documents/Music", "Documents/Templates", "Pictures/Screenshots", "Downloads", "Desktop"):
+    (prof / n).mkdir(parents=True, exist_ok=True)
+(prof / "Documents/brief.txt").write_text("new")
+(real["Documents"] / "brief.txt").write_text("old")
+w.link_user_folders(); w.link_user_folders()
+for n in ("Documents", "Downloads", "Pictures", "Music", "Videos"):
+    assert os.readlink(prof / n) == str(real[n]), n
+assert not (prof / "Desktop").is_symlink()
+assert (real["Documents"] / "brief.txt").read_text() == "old" and (real["Documents"] / "brief (2).txt").read_text() == "new"
+assert not (real["Documents"] / "Music").exists() and not (real["Pictures"] / "Screenshots").exists()
+menu = w.BOTTLES_DATA / "bottles/Windows/drive_c/users/t/AppData/Roaming/Microsoft/Windows/Start Menu"
+for n in ("SumatraPDF.lnk", "Programs/VideoLAN/VLC media player.lnk", "Programs/VideoLAN/VLC media player skinned.lnk",
+          "Programs/VideoLAN/VLC media player - reset preferences and cache files.lnk",
+          "Programs/LibreOffice/LibreOffice (Troubleshoot Mode).lnk", "Programs/LibreOffice/LibreOffice Writer.lnk"):
+    (menu / n).parent.mkdir(parents=True, exist_ok=True); (menu / n).write_text("lnk")
+names = sorted(v[0] for v in w.start_menu_shortcuts().values())
+assert names == ["LibreOffice Writer", "SumatraPDF", "VLC media player"], names
+PY
+mkdir -p "$wa153/h/.config" && for n in Documents Downloads Pictures Music Videos Desktop; do mkdir -p "$wa153/h/$n"; done
+printf 'XDG_%s_DIR="$HOME/%s"\n' DOCUMENTS Documents DOWNLOAD Downloads PICTURES Pictures MUSIC Music VIDEOS Videos DESKTOP Desktop > "$wa153/h/.config/user-dirs.dirs"
+check "SOS Bridge: Windows programs don't get the person's folders / Start Menu shortcuts missed / repair entries in the menu (#153)" \
+      "env -i PATH=/usr/bin:/bin HOME=$wa153/h USER=t XDG_CONFIG_HOME=$wa153/h/.config XDG_CACHE_HOME=$wa153/h/.cache python3 $wa153/t.py $wa153/h"
+rm -rf "$wa153"
 for home in /etc/skel /home/simple; do
     check "office marker missing in the menu in $home" "grep -q '<!-- simpleos-office:' '$home/.config/openbox/menu.xml'"
 done
