@@ -312,7 +312,7 @@ check "Progress: a tool whose output progress-filter reads runs in the system la
        grep -q 'LANGUAGE= LC_ALL=C.UTF-8 \$unbuf timeshift' /usr/local/sbin/simpleos-backup-helper &&
        grep -q 'LANGUAGE= LC_ALL=C.UTF-8 flatpak install' /usr/local/bin/simpleos-software &&
        grep -q 'LC_ALL=\"C.UTF-8\", LANGUAGE=\"\"' /usr/local/bin/simpleos-windows-app /usr/local/bin/simpleos-software-center &&
-       grep -q 'DONE_WORDS = tuple({\"Done\", _(\"Done\")})' /usr/local/bin/simpleos-progress"
+       grep -q 'words = {\"Done\", _(\"Done\")}' /usr/local/bin/simpleos-progress && grep -q '^DONE_WORDS = _done_words()' /usr/local/bin/simpleos-progress"
 # #151: a failed first setup left a half-made bottle "Windows" -> the next try made "Windows__123" and every double-click
 # ended in Bottles' bottle picker. Now: half-made bottle removed, one retry, a plain "could not be set up" window.
 check "SOS Bridge: a half-made bottle blocks every later try / failure opens Bottles' bottle picker (#151)" \
@@ -1393,11 +1393,11 @@ hcase "$U --watch" "watch: a second one runs next to the first" "" "UPDATES=1 SI
 rm -f "$wt/home/.cache/simpleos-update-watch.pid" "$wt/mock/flatpak"
 USB=/usr/local/bin/simpleos-usb-notify
 hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "stick plugged in, Open clicked" "" "NOTIFY_ACTION=yes USER=simple" "" \
-    'grep -q "\"STICK\" is ready" $S/notify && grep -q "yes=Open" $S/notify && grep -qx "thunar /media/simple/STICK" $S/opened'
+    'grep -q "“STICK” is ready" $S/notify && grep -q "yes=Open" $S/notify && grep -qx "thunar /media/simple/STICK" $S/opened'
 hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "click on the notification itself" "" "NOTIFY_ACTION=default USER=simple" "" \
     'grep -qx "thunar /media/simple/STICK" $S/opened'
 hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "notification dismissed" "" "USER=simple" "" '[ ! -e $S/opened ]'
-hcase "$USB device_mounted /media/simple/X None None" "without a name" "" "USER=simple" "" 'grep -q "\"USB drive\" is ready" $S/notify'
+hcase "$USB device_mounted /media/simple/X None None" "without a name" "" "USER=simple" "" 'grep -q "“USB drive” is ready" $S/notify'
 hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "without thunar -> xdg-open" "thunar" "NOTIFY_ACTION=yes USER=simple" "" \
     'grep -qx "xdg-open /media/simple/STICK" $S/opened'
 hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "without a file manager -> notification" "thunar xdg-open" "NOTIFY_ACTION=yes USER=simple" "" \
@@ -1418,7 +1418,7 @@ hcase "$USB device_mounted /media/root/A391-8FED None None" "root's mount (fwupd
     '[ ! -s $S/notify ] && [ ! -s $S/umount ]'
 hcase "$USB device_mounted /media/other/STICK STICK Kingston" "another user's mount announced" "" "USER=simple" "" '[ ! -s $S/notify ]'
 hcase "$USB device_mounted /run/media/simple/STICK STICK Kingston" "stick below /run/media/<user>" "" "USER=simple" "" \
-    'grep -q "\"STICK\" is ready" $S/notify'
+    'grep -q "“STICK” is ready" $S/notify'
 printf '#!/bin/sh
 case "$*" in *" /media/simple/Data") echo /dev/sda5 ;; *" /media/simple/STICK") echo /dev/sdb1 ;; esac
 ' > "$wt/mock/findmnt"
@@ -1430,7 +1430,7 @@ chmod 0755 "$wt/mock/findmnt" "$wt/mock/lsblk"
 hcase "$USB device_mounted /media/simple/Data Data None" "partition of an internal disk announced as a drive" "" "USER=simple NOTIFY_ACTION=eject" "" \
     '[ ! -s $S/notify ] && [ ! -s $S/umount ]'
 hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "USB stick (HOTPLUG 1)" "" "USER=simple NOTIFY_ACTION=yes" "" \
-    'grep -q "\"STICK\" is ready" $S/notify && grep -qx "thunar /media/simple/STICK" $S/opened'
+    'grep -q "“STICK” is ready" $S/notify && grep -qx "thunar /media/simple/STICK" $S/opened'
 rm -f "$wt/mock/findmnt" "$wt/mock/lsblk"
 
 # Rofi errors and missing tools: never end silently. Grab error -> new attempt, rofi missing/does not start
