@@ -155,6 +155,13 @@ grows with every release (#49, the hardware compatibility page).
 - **RGB lighting and game controllers** (#112, optional): no own RGB tool – OpenRGB recommended in the Software Store;
   controllers work out of the box and show their battery level.
 
+### 2.4 – UI update
+
+- **A cleaner, smoother and faster interface** for the whole desktop and the Simple OS tools: *cleaner* – fewer elements,
+  the same spacing, fonts and icons everywhere; *smoother* – calm transitions, nothing that flickers or jumps when
+  windows, menus and pages open; *faster* – Control Center, menus, the Software Store and the taskbar react without a
+  noticeable delay. Polish of what exists, no new features: the pages are tidied, not rebuilt.
+
 ### Three areas
 
 The work is sorted into three areas, also as labels on GitHub (`core`, `desktop`, `tools`):
