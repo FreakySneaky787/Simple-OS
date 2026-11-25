@@ -69,12 +69,13 @@
     <h2>Schnellstart</h2>
     <ol>
       <li><strong>Mit dem WLAN verbinden.</strong> Klicke in der Taskleiste auf das Netzwerksymbol oder die IP-Adresse,
-          wähle dein Netzwerk und gib das Passwort ein. Im Terminal: <code>simpleos-wifi</code>. Kabelverbindungen
-          funktionieren von selbst. Auch der Einrichtungsassistent hilft dir bei der ersten Anmeldung dabei.
+          wähle dein Netzwerk und gib das Passwort ein. Kabelverbindungen funktionieren von selbst. Auch der
+          Einrichtungsassistent hilft dir bei der ersten Anmeldung dabei.
           <br><span class="note">VPN, feste IP und andere Extras: Klicke mit rechts auf das Netzwerksymbol im Infobereich und wähle „Verbindungen bearbeiten“.</span></li>
-      <li><strong>Deine Software installieren.</strong> Starte <code>simpleos-setup</code>, um einen Browser, eine
-          Office-Suite, optionale Komponenten und den dunklen oder hellen Modus zu wählen. Der Assistent öffnet sich auch
-          einmal nach deiner ersten Anmeldung.</li>
+      <li><strong>Deine Software installieren.</strong> Im Einrichtungsassistenten wählst du einen Browser, eine
+          Office-Suite, optionale Komponenten (Windows-Programme, Spiele, Entwicklerwerkzeuge) und den dunklen oder
+          hellen Modus. Er öffnet sich einmal nach deiner ersten Anmeldung – wieder öffnen: Menü → Hilfe →
+          Einrichtungsassistent. Weitere Apps: Menü → Software-Center.</li>
       <li><strong>Das war’s.</strong> Updates kümmern sich um sich selbst: Wenn welche bereit sind, erscheint eine
           Nachricht – klicke darauf, um sie zu installieren. Du kannst auch jederzeit unter Menü → Werkzeuge →
           Software-Aktualisierung nachsehen.</li>
@@ -92,6 +93,7 @@
         <tr><td><kbd>Super</kbd>+<kbd>B</kbd></td><td>Den Webbrowser öffnen</td></tr>
         <tr><td><kbd>Super</kbd>+<kbd>E</kbd></td><td>Den Dateimanager öffnen</td></tr>
         <tr><td><kbd>Super</kbd>+<kbd>H</kbd></td><td>Alle Tastenkürzel anzeigen</td></tr>
+        <tr><td><kbd>Super</kbd>+<kbd>I</kbd></td><td>Die Einstellungen öffnen</td></tr>
         <tr><td><kbd>Super</kbd>+<kbd>X</kbd></td><td>Herunterfahren, neu starten oder abmelden</td></tr>
       </tbody>
     </table>
@@ -99,16 +101,17 @@
 
   <section id="tools">
     <h2>Systemwerkzeuge</h2>
-    <h3>Taskleiste gestalten</h3>
-    <p>Öffne Einstellungen → Aussehen → Taskleiste oder starte <code>simpleos-taskbar-select</code>.
-       Du kannst Position, Größe und Stil ändern und wählen, ob Uhr und Netzwerkanzeige zu sehen sind.</p>
-    <h3>Openbox-Einstellungen</h3>
-    <p>Starte <code>obconf</code> für Fenster-Design, Schriften und die Anzahl der Arbeitsflächen. Tastenkürzel und
-       Fensterregeln stehen in <code>~/.config/openbox/rc.xml</code>. Nach dem Bearbeiten dieser Datei wendest du sie mit
-       <code>openbox --reconfigure</code> an.</p>
+    <h3>Einstellungen</h3>
+    <p>Menü → Einstellungen oder <kbd>Super</kbd>+<kbd>I</kbd>: WLAN, Bluetooth, Ton, Bildschirm, Aussehen und mehr in
+       einem Fenster. Position, Größe und Stil der Taskleiste: Einstellungen → Aussehen &amp; Hintergrundbild →
+       Taskleiste.</p>
     <h3>Netzwerkinfo</h3>
     <p><kbd>Super</kbd>+<kbd>N</kbd> zeigt deine LAN-IP, das Gateway, den Rechnernamen, den VPN-Status und die öffentliche
-       IP. Dieselbe Ausgabe im Terminal bekommst du mit <code>simpleos-netinfo --text</code>.</p>
+       IP.</p>
+    <h3>Für Fortgeschrittene</h3>
+    <p class="note">Alles oben geht mit Klicks – das Terminal (<kbd>Super</kbd>+<kbd>Enter</kbd>) brauchst du nicht.
+       Netzwerkinfo als Text: <code>simpleos-netinfo --text</code>. Tastenkürzel und Fensterregeln von Openbox stehen in
+       <code>~/.config/openbox/rc.xml</code>; deine Änderungen wendest du mit <code>openbox --reconfigure</code> an.</p>
   </section>
 
   <footer>Diese Seite öffnest du wieder mit einem Rechtsklick auf den Desktop → Hilfe → Willkommen bei Simple OS.</footer>

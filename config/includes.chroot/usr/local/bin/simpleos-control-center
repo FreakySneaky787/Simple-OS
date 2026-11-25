@@ -1672,8 +1672,10 @@ def main(argv):
             dark.append("light", _("Light"))
             dark.set_active_id(mode)
             acc = Gtk.ComboBoxText()
+            names = {"blue": _("Blue"), "mauve": _("Mauve"), "pink": _("Pink"), "green": _("Green"),
+                     "peach": _("Peach"), "teal": _("Teal")}
             for a in ACCENTS:
-                acc.append(a, a.capitalize())
+                acc.append(a, names.get(a, a.capitalize()))     # in the system language, like the Setup Wizard
             acc.set_active_id(accent)
 
             def apply_theme(*_):
@@ -1693,7 +1695,7 @@ def main(argv):
             wp = current_wallpaper()
             if wp and os.path.exists(wp):
                 chooser.set_filename(wp)
-            pics = Path.home() / "Pictures"
+            pics = Path(GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_PICTURES) or Path.home() / "Pictures")
             if pics.is_dir():
                 chooser.set_current_folder(str(pics))
             chooser.connect("file-set", lambda c: cmd("simpleos-wallpaper", c.get_filename() or "", timeout=20))
@@ -2557,7 +2559,7 @@ def main(argv):
             for pattern in ("*.png", "*.jpg", "*.jpeg", "*.PNG", "*.JPG", "*.JPEG", "*.webp", "*.gif"):
                 filt.add_pattern(pattern)
             fc.add_filter(filt)
-            pictures = Path.home() / "Pictures"
+            pictures = Path(GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_PICTURES) or Path.home() / "Pictures")
             if pictures.is_dir():
                 fc.set_current_folder(str(pictures))
             ok = fc.run() == Gtk.ResponseType.OK

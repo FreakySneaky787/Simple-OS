@@ -10,13 +10,15 @@ set -e
 #   nm-connection-editor (Wi-Fi → More network options), blueman-manager (Bluetooth → More Bluetooth settings),
 #   lxrandr (Display), gammastep-indicator (Night light), htop (Task Manager), pcmanfm-desktop-pref (Appearance),
 #   xfce4-power-manager-settings (Power: its own screen/sleep times were overwritten by simpleos-power anyway).
+#   1.2 (#155): org.gnome.Software – three app stores in the search confused beginners; the Software Center is the one
+#   place, its "More apps" button still opens GNOME Software (and the Software Store, Bazaar).
 DEST=/usr/local/share/applications
 mkdir -p "$DEST"
 for id in arandr lxappearance obconf tint2 tint2conf picom feh pcmanfm blueman-adapters \
           thunar-settings thunar-bulk-rename org.xfce.mousepad-settings software-properties-gtk \
           python3.11 vim kcm_trash ktelnetservice5 org.kde.kded5 org.kde.kwalletd5 install-debian \
           timeshift-gtk nm-connection-editor blueman-manager lxrandr gammastep-indicator htop pcmanfm-desktop-pref \
-          xfce4-power-manager-settings; do
+          xfce4-power-manager-settings org.gnome.Software; do
     src=/usr/share/applications/$id.desktop
     [ -f "$src" ] || continue
     sed -e '/^NoDisplay=/d' -e '/^\[Desktop Entry\]/a NoDisplay=true' "$src" > "$DEST/$id.desktop"

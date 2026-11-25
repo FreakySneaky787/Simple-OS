@@ -2,13 +2,17 @@
 # Simple OS – screenshot
 #   simpleos-screenshot          whole screen (Print)
 #   simpleos-screenshot --area   drag an area with the mouse (Shift+Print); Esc/right-click cancels silently
-# Saves to ~/Pictures/Screenshots/Screenshot_YYYY-MM-DD_HH-MM-SS.png, puts the picture into the clipboard at the
+# Saves to <Pictures>/Screenshots/Screenshot_YYYY-MM-DD_HH-MM-SS.png (the account's pictures folder – "Bilder" on a
+# German account, #157), puts the picture into the clipboard at the
 # same time (xclip, image/png) and reports "Screenshot saved & copied" with a preview.
 # Its own script because Openbox expands neither ~ nor $(date) in <command>.
 # Errors (maim missing, no screen, folder not writable) as a notification instead of a silent end.
 # Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
 if [ -r /usr/local/lib/simpleos/i18n.sh ]; then . /usr/local/lib/simpleos/i18n.sh; else _t() { printf '%s' "$1"; }; fi
-dir="${HOME:-/tmp}/Pictures/Screenshots"
+pics=$(xdg-user-dir PICTURES 2>/dev/null)
+# without a pictures folder xdg-user-dir answers the home folder itself
+[ -n "$pics" ] && [ "$pics" != "${HOME:-/tmp}" ] && [ -d "$pics" ] || pics="${HOME:-/tmp}/Pictures"
+dir="$pics/Screenshots"
 mkdir -p "$dir" 2>/dev/null || dir=/tmp
 file="$dir/Screenshot_$(date +%Y-%m-%d_%H-%M-%S).png"
 fail() { notify-send -u critical -c x-simpleos -i dialog-error "$(_t Screenshot)" "$1" 2>/dev/null; exit 0; }

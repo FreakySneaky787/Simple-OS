@@ -38,6 +38,7 @@ def N_(text):
 HELPER = "/usr/local/sbin/simpleos-system-setup"
 FP_PROGRESS = "/usr/local/lib/simpleos/flatpak-progress"
 OFFICE_MENU = "/usr/local/lib/simpleos/office-menu"
+WINDOWS_APP = "/usr/local/bin/simpleos-windows-app"
 # Ask before a Flatpak installation when there is less free space (MB) than this (large apps with runtime: 1–3 GB)
 LOW_SPACE_MB = 3000
 # (key, name, description, category, icon, source, identifier)
@@ -360,7 +361,11 @@ def main(argv):
         def confirm_remove(self, app):
             d = Gtk.MessageDialog(transient_for=self, modal=True, message_type=Gtk.MessageType.QUESTION,
                                   buttons=Gtk.ButtonsType.OK_CANCEL, text=_('Remove {app}?').format(app=app[1]))
-            d.format_secondary_text(_("Your files stay. The app's settings are kept for a later reinstall."))
+            if app[0] == "bottles":     # #165: say what happens to the Windows programs
+                d.format_secondary_text(_("Your Windows programs and their files stay. Their menu entries are "
+                                          "hidden until you install SOS Bridge again – then they come back."))
+            else:
+                d.format_secondary_text(_("Your files stay. The app's settings are kept for a later reinstall."))
             ok = d.run() == Gtk.ResponseType.OK
             d.destroy()
             if ok:
@@ -452,6 +457,9 @@ def main(argv):
                     # LibreOffice/ONLYOFFICE: entries in the Openbox menu (Apps) follow what is installed
                     if os.access(OFFICE_MENU, os.X_OK):
                         subprocess.Popen([OFFICE_MENU, "--reconfigure"], start_new_session=True)
+                    # SOS Bridge: its launcher as "SOS Bridge", the Windows programs' entries (#156, #165)
+                    if app[0] == "bottles" and os.access(WINDOWS_APP, os.X_OK):
+                        subprocess.Popen([WINDOWS_APP, "--sync-menu"], start_new_session=True)
                     if hidden:
                         return self.destroy()
                 self.reload()

@@ -54,6 +54,22 @@ sign in afterwards, "What's new" shows the highlights.
   asked "Choose password for new keyring": the keyring service that sign-in started quit after two minutes.
 - **Chromium in your language** (issue #149): its translations are installed with the system language, like
   Firefox's and LibreOffice's.
+- **Your accent color and light mode everywhere** (issue #158). Radio buttons, check boxes, switches, progress bars,
+  the selected row and the "Install" buttons of apps now follow the accent you chose (they stayed blue). In light
+  mode the file manager's sidebar and the "Open"/"Save" windows are light too, and the Setup Wizard shows the mode and
+  accent you pick right away.
+- **Folders in your language** (issue #157): a new account on a German or French system gets Dokumente, Bilder,
+  Musik … / Documents, Images, Musique …; existing accounts keep their folders.
+- **SOS Bridge polish**: the menu calls it "SOS Bridge", not "Bottles" (issue #156); no more empty "Games" folder in
+  your home folder (issue #154); while SOS Bridge is removed, your Windows programs disappear from the menu and come
+  back when you install it again – and they open at the first click (issue #165).
+- **USB sticks** (issues #159, #161): "… is ready" stays until you click it or close it, and ejecting a stick in the
+  file manager shows one message, not two.
+- **One name for the app store** (issue #155): the Setup Wizard always points to the Software Center; GNOME Software
+  is no longer a third store in the menu (it is still under "More apps" in the Software Center).
+- **Installer** (issue #160): the time zone starts where you are (or at Berlin without internet) instead of New York,
+  and the last window ("remove the USB stick") and the slideshow are in the language you chose.
+- **Welcome window without terminal commands** (issue #162): everything it explains works with clicks.
 - **Small things** (issue #147): the calculator in the search understands `round(3.14159,2)`, `max(1,2)` and German
   numbers like `1.234,5`, and shows German results with a decimal comma; the first restore point checks the space it
   really needs (the size of the system) before it starts instead of a fixed 5 GB.
@@ -230,6 +246,9 @@ repository that installed systems use. You don't need to download them yourself.
   Windows installation media and setup tools, drivers, antivirus – never do. Electron apps such as the Windows
   versions of Visual Studio Code and Obsidian don't work in our test (#153). Menu → Help → Windows Programs has
   alternatives.
+- **Installer:** a few texts of the installer itself stay English in a German installation (the summary's "Erase
+  disk … and install Simple OS 1.2"), and it suggests a computer name made of your name and the model number
+  (e.g. "lena-21tf…") – change it on the "Users" page if you like. Both come from the installer (Calamares 3.2).
 - **The network icon's right-click menu** (next to the network display in the taskbar) closes again if you hold the
   mouse button for more than half a second – a limit of that GTK menu, it has no setting. Click quickly, or use the
   network display itself (a click opens the Simple OS network menu).

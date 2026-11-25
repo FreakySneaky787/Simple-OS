@@ -1,0 +1,7 @@
+#!/bin/sh
+# Simple OS 1.2 – SOS Bridge (Bottles) no longer makes an empty "Games" folder in the home folder (#154). Runs once,
+# as root, from the postinst of the package simpleos. Bottles' Flatpak permission "~/Games/umu:create" is taken away
+# (the same as hook 06 does for new installations); simpleos-windows-app removes an empty ~/Games/umu at sign-in.
+# exit ≠ 0 = again next time (flatpak missing or the override could not be written).
+command -v flatpak >/dev/null 2>&1 || exit 0
+flatpak override --system --nofilesystem='~/Games/umu' com.usebottles.bottles

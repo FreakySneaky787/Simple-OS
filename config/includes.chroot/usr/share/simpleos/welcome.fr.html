@@ -68,16 +68,17 @@
   <section id="start">
     <h2>Démarrage rapide</h2>
     <ol>
-      <li><strong>Connectez-vous au Wi-Fi.</strong> Cliquez sur l’icône réseau ou sur l’adresse IP dans la barre des tâches,
-          choisissez votre réseau et saisissez le mot de passe. Depuis un terminal : <code>simpleos-wifi</code>. Les connexions
-          par câble fonctionnent toutes seules. L’assistant de configuration vous aide aussi à la première connexion.
-          <br><span class="note">VPN, IP fixe et autres options : clic droit sur l’icône réseau dans la zone de notification, puis Modifier les connexions.</span></li>
-      <li><strong>Installez vos logiciels.</strong> Lancez <code>simpleos-setup</code> pour choisir un navigateur, une suite
-          bureautique, des composants facultatifs (programmes Windows, jeux, outils de développement) et le mode sombre ou
-          clair. Il s’ouvre aussi une fois après votre première connexion.</li>
-      <li><strong>C’est tout.</strong> Les mises à jour s’occupent d’elles-mêmes : quand il y en a, un message apparaît –
-          cliquez dessus pour les installer. Vous pouvez aussi vérifier à tout moment sous Menu → Outils → Mises à jour
-          logicielles.</li>
+      <li><strong>Connectez-vous au Wi-Fi.</strong> Cliquez sur l’icône réseau ou sur l’adresse IP dans la barre des
+          tâches, choisissez votre réseau et saisissez le mot de passe. Les connexions par câble fonctionnent toutes
+          seules. L’assistant de configuration vous aide aussi à la première connexion.
+          <br><span class="note">VPN, IP fixe et autres options : clic droit sur l’icône réseau dans la zone de notification, puis « Modifier les connexions ».</span></li>
+      <li><strong>Installez vos logiciels.</strong> L’assistant de configuration vous permet de choisir un navigateur,
+          une suite bureautique, des composants optionnels (programmes Windows, jeux, outils de développement) et le
+          mode sombre ou clair. Il s’ouvre une fois après votre première connexion – pour le rouvrir : Menu → Aide →
+          Assistant de configuration. D’autres applications : Menu → Centre de logiciels.</li>
+      <li><strong>C’est tout.</strong> Les mises à jour se font toutes seules : quand il y en a, un message
+          apparaît – cliquez dessus pour les installer. Vous pouvez aussi vérifier à tout moment dans Menu → Outils →
+          Mises à jour logicielles.</li>
     </ol>
   </section>
 
@@ -92,6 +93,7 @@
         <tr><td><kbd>Super</kbd>+<kbd>B</kbd></td><td>Ouvrir le navigateur web</td></tr>
         <tr><td><kbd>Super</kbd>+<kbd>E</kbd></td><td>Ouvrir le gestionnaire de fichiers</td></tr>
         <tr><td><kbd>Super</kbd>+<kbd>H</kbd></td><td>Afficher tous les raccourcis</td></tr>
+        <tr><td><kbd>Super</kbd>+<kbd>I</kbd></td><td>Ouvrir les réglages</td></tr>
         <tr><td><kbd>Super</kbd>+<kbd>X</kbd></td><td>Éteindre, redémarrer ou se déconnecter</td></tr>
       </tbody>
     </table>
@@ -99,16 +101,18 @@
 
   <section id="tools">
     <h2>Outils système</h2>
-    <h3>Personnaliser la barre des tâches</h3>
-    <p>Ouvrez Centre de contrôle → Apparence → Barre des tâches, ou lancez <code>simpleos-taskbar-select</code>.
-       Vous pouvez changer la position, la taille, le style et choisir d’afficher ou non l’horloge et le réseau.</p>
-    <h3>Réglages d’Openbox</h3>
-    <p>Lancez <code>obconf</code> pour le thème des fenêtres, les polices et le nombre de bureaux. Les raccourcis et les
-       règles des fenêtres se trouvent dans <code>~/.config/openbox/rc.xml</code>. Après avoir modifié ce fichier,
-       appliquez-le avec <code>openbox --reconfigure</code>.</p>
+    <h3>Réglages</h3>
+    <p>Menu → Réglages, ou <kbd>Super</kbd>+<kbd>I</kbd> : Wi-Fi, Bluetooth, son, écran, apparence et plus dans une
+       seule fenêtre. Position, taille et style de la barre des tâches : Réglages → Apparence et fond d’écran → Barre
+       des tâches.</p>
     <h3>Infos réseau</h3>
-    <p><kbd>Super</kbd>+<kbd>N</kbd> affiche votre IP locale, la passerelle, le nom d’hôte, l’état du VPN et l’IP publique.
-       Pour le même résultat dans un terminal, lancez <code>simpleos-netinfo --text</code>.</p>
+    <p><kbd>Super</kbd>+<kbd>N</kbd> affiche votre IP locale, la passerelle, le nom de l’ordinateur, l’état du VPN et
+       l’IP publique.</p>
+    <h3>Pour les experts</h3>
+    <p class="note">Tout ce qui précède se fait en quelques clics – le terminal (<kbd>Super</kbd>+<kbd>Entrée</kbd>)
+       est facultatif. Infos réseau en texte : <code>simpleos-netinfo --text</code>. Les raccourcis et règles de
+       fenêtres d’Openbox se trouvent dans <code>~/.config/openbox/rc.xml</code> ; appliquez vos changements avec
+       <code>openbox --reconfigure</code>.</p>
   </section>
 
   <footer>Pour rouvrir cette page, faites un clic droit sur le bureau et choisissez Aide → Bienvenue dans Simple OS.</footer>

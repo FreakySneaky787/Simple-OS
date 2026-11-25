@@ -18,6 +18,12 @@ Known Windows installers of apps that have their own version for Simple OS (Stea
 don't go to Wine: a window recommends that version and opens the Software Center at it ("Run the Windows version
 anyway" stays possible) – the Windows Steam, for example, installs but never shows its window under Wine. Windows
 installation media (Media Creation Tool, Windows setup) get an honest "can't work here".
+Menu (#156, #165): Bottles' own launcher is shown as "SOS Bridge" (a copy in ~/.local/share/applications – Flatpak's
+exports come before /usr/local/share in XDG_DATA_DIRS, see simpleos-software), the Windows programs' entries carry
+TryExec= Bottles, so they disappear while SOS Bridge is removed and come back with it (the bottle stays in ~/.var/app).
+A program entry clicked without SOS Bridge offers to install it again; a start that opens nothing is tried once more.
+Bottles' permission for ~/Games/umu is taken away (#154: system Flatpak override, simpleos-system-setup + migration);
+an empty ~/Games/umu of earlier starts is removed.
 SOS Bridge is only the name of this bundle (Bottles + Wine + this double-click + the help page), not our own
 Windows layer. Also: right-click "Run with SOS Bridge" (Thunar), the Setup Wizard's page "Extras" (#126).
 
@@ -25,7 +31,7 @@ Windows layer. Also: right-click "Run with SOS Bridge" (Thunar), the Setup Wizar
   simpleos-windows-app --help-page open "Windows programs on Simple OS"
   simpleos-windows-app --status    "bottles: installed|missing" (tests)
   simpleos-windows-app --start LNK start a menu entry's Windows shortcut (.lnk in the bottle)
-  simpleos-windows-app --sync-menu  update the menu entries now
+  simpleos-windows-app --sync-menu  update the menu entries now (also at every sign-in: autostart)
   (--run FILE: internal – runs the program, waits for Wine to end, updates the menu entries)
   (--setup-failed FILE: internal – "SOS Bridge could not be set up" with "Try again")
 Tests: SIMPLEOS_WA_INSTALLED=0/1 (Bottles there?), SIMPLEOS_WA_FREE_MB, SIMPLEOS_WA_NET=0/1,
@@ -52,6 +58,7 @@ _ = gettext.translation("simpleos", fallback=True).gettext
 
 APP = "com.usebottles.bottles"
 EXPORTS = "/var/lib/flatpak/exports/share/applications"
+BOTTLES_BIN = "/var/lib/flatpak/exports/bin/" + APP       # TryExec of the menu entries: there while Bottles is
 HELP_PAGE = "windows-programs.html"
 VIEWER = "/usr/local/lib/simpleos/welcome-viewer"
 PROGRESS = "/usr/local/bin/simpleos-progress"
@@ -94,6 +101,11 @@ NATIVE = [
 WINDOWS_ONLY = re.compile(r"^(mediacreationtool|windows\d*-?(installation|upgrade)assistant|win1[01].*(upgrade|assistant))")
 MENU_DIR = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")) / "applications"
 MENU_PREFIX = "simpleos-bridge-"
+LAUNCHER = MENU_DIR / f"{APP}.desktop"     # Bottles' own launcher, renamed "SOS Bridge" (#156)
+# Processes Wine runs by itself – not "the program has opened"
+WINE_SERVICES = {"wineserver", "services.exe", "winedevice.exe", "plugplay.exe", "explorer.exe", "rpcss.exe",
+                 "svchost.exe", "conhost.exe", "start.exe", "wineboot.exe", "tabtip.exe", "rundll32.exe",
+                 "winemenubuilder.exe", "cmd.exe", "wine", "wine64", "wine-preloader", "wine64-preloader"}
 # Start menu shortcuts that are no programs, or only a variant/repair mode of one (English, German and French names;
 # #153: "VLC … reset preferences and cache files", "VLC (skinned)", "LibreOffice (troubleshoot mode)", "Python … module
 # docs" made the menu longer without adding a program)
@@ -127,6 +139,8 @@ def bottles_installed():
     forced = os.environ.get("SIMPLEOS_WA_INSTALLED")
     if forced in ("0", "1"):
         return forced == "1"
+    if os.path.exists(f"/var/lib/flatpak/app/{APP}/current/active"):    # fast: every sign-in asks (autostart)
+        return True
     try:
         return subprocess.run(["flatpak", "info", APP], capture_output=True, timeout=20).returncode == 0
     except (OSError, subprocess.TimeoutExpired):
@@ -418,15 +432,25 @@ def open_in_bottles(path):
         return open_in_bottles_window(path)
 
 
-def run_and_watch(command, cwd=None):
+def run_and_watch(command, cwd=None, retry=None, retry_note=None):
     """Run bottles-cli (output in the log), wait until Wine has ended (an installer may start a second process and
-    end early: wineserver stays until the last Wine program is closed), then update the menu entries"""
+    end early: wineserver stays until the last Wine program is closed), then update the menu entries.
+    retry: a check after the start – False starts the command once more (and tells the person if that fails too)"""
     link_user_folders()
-    try:
-        with LOG.open("a") as out:
-            subprocess.run(command, stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT, cwd=cwd)
-    except OSError as err:
-        log(f"bottles-cli: {err}")
+    for attempt in (1, 2):
+        try:
+            with LOG.open("a") as out:
+                rc = subprocess.run(command, stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT,
+                                    cwd=cwd).returncode
+            log(f"bottles-cli: rc={rc} (start {attempt})")
+        except OSError as err:
+            log(f"bottles-cli: {err}")
+        if retry is None or retry():
+            break
+        if attempt == 2:
+            subprocess.call(["notify-send", "-i", "dialog-warning", _("Windows program"),
+                             _("{program} did not open. Some Windows programs don't work with SOS Bridge – "
+                               "details: {LOG}").format(program=retry_note, LOG=LOG)], stderr=subprocess.DEVNULL)
     sync_menu()
     for _i in range(720):                       # at most 3 hours, then the next program start updates them
         if subprocess.run(["pgrep", "-u", str(os.getuid()), "-x", "wineserver"],
@@ -474,6 +498,7 @@ def sync_menu():
                     f"Comment={_('Windows program (SOS Bridge)')}\n"
                     f"Exec=/usr/local/bin/simpleos-windows-app --start {desktop_quote(lnk)}\n"
                     f"Icon={APP}\nKeywords=windows;wine;bottles;\nStartupNotify=false\n"
+                    f"TryExec={BOTTLES_BIN}\n"
                     "X-SimpleOS-Bridge=true\n")
             target = MENU_DIR / did
             if not target.is_file() or target.read_text(errors="replace") != text:
@@ -485,10 +510,85 @@ def sync_menu():
                 log(f"menu entry removed: {old.name}")
     except OSError as err:
         log(f"menu entries: {err}")
+    rename_launcher()
+    remove_empty_games()
+
+
+def rename_launcher():
+    """Bottles' launcher as "SOS Bridge" (#156): a copy of Flatpak's file in the person's own applications folder
+    (the first place menus look) with our name, search words and TryExec; removed with Bottles. Re-written when
+    Flatpak's file changes (an update may change Exec). Bottles' own Name[de]/Keywords[fr]… lines are left out –
+    they would win over ours in a German or French menu."""
+    src = Path(os.environ.get("SIMPLEOS_WA_EXPORTS", EXPORTS)) / f"{APP}.desktop"
+    try:
+        if not src.is_file():
+            if LAUNCHER.is_file() and "X-SimpleOS-Override=156" in LAUNCHER.read_text(errors="replace"):
+                LAUNCHER.unlink()
+                log("launcher copy removed (Bottles is not installed)")
+            return
+        if LAUNCHER.is_file() and "X-SimpleOS-Override=156" not in LAUNCHER.read_text(errors="replace"):
+            return      # the person's own copy: not ours to change
+        out, section = [], None
+        drop = re.compile(r"^(Name|GenericName|Keywords|TryExec|X-SimpleOS-Override)(\[[^]]*\])?\s*=")
+        for line in src.read_text(errors="replace").splitlines():
+            if line.startswith("["):
+                section = line.strip()
+            if section == "[Desktop Entry]" and drop.match(line):
+                continue
+            out.append(line)
+            if line.strip() == "[Desktop Entry]":
+                out += ["Name=SOS Bridge", f"GenericName={_('Windows programs')}",
+                        "Keywords=sos;bridge;bottles;windows;wine;exe;msi;", f"TryExec={BOTTLES_BIN}",
+                        "X-SimpleOS-Override=156"]
+        text = "\n".join(out) + "\n"
+        if not LAUNCHER.is_file() or LAUNCHER.read_text(errors="replace") != text:
+            LAUNCHER.parent.mkdir(parents=True, exist_ok=True)
+            tmp = LAUNCHER.with_suffix(".tmp")
+            tmp.write_text(text)
+            tmp.replace(LAUNCHER)
+            log("launcher copy: SOS Bridge")
+    except OSError as err:
+        log(f"launcher copy: {err}")
+
+
+def remove_empty_games():
+    """#154: ~/Games/umu, made by Bottles' Flatpak permission before Simple OS took it away – only when empty"""
+    games = Path.home() / "Games"
+    try:
+        umu = games / "umu"
+        if umu.is_dir() and not umu.is_symlink() and empty_tree(umu):
+            shutil.rmtree(umu)
+            log(f"removed the empty {umu}")
+            if games.is_dir() and not games.is_symlink() and not any(games.iterdir()):
+                games.rmdir()
+                log(f"removed the empty {games}")
+    except OSError as err:
+        log(f"{games}: {err}")
+
+
+def program_pids():
+    """PIDs of the person's Windows programs (not Wine's own services)"""
+    pids = set()
+    try:
+        out = subprocess.run(["ps", "-u", str(os.getuid()), "-o", "pid=,args="], capture_output=True, text=True,
+                             timeout=10).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return pids
+    for line in out.splitlines():
+        pid, _sep, args = line.strip().partition(" ")
+        found = re.search(r"([^\\/]+?\.exe)\b", args, re.I)
+        exe = found.group(1).strip().lower() if found else ""
+        if exe and exe not in WINE_SERVICES:
+            pids.add(pid)
+    return pids
 
 
 def start_shortcut(lnk):
     """A menu entry: the shortcut through Wine's start (it knows .lnk files; bottles-cli run does not)"""
+    if not bottles_installed():
+        # #165: the entry of a program installed before SOS Bridge was removed (TryExec hides it in our menus, other
+        # launchers may still show it): say what is missing and offer SOS Bridge again, then start the program
+        return ask(lnk, start=True)
     if not os.path.isfile(lnk):
         sync_menu()
         subprocess.call(["notify-send", "-i", "dialog-warning", _("Windows program"),
@@ -497,10 +597,28 @@ def start_shortcut(lnk):
     if DRYRUN:
         print(f"DRYRUN: start {lnk} in bottle {BOTTLE} of {APP}", flush=True)
         return 0
-    subprocess.call(["notify-send", "-i", APP, "-t", "8000",
-                     _("Starting {program} …").format(program=Path(lnk).stem),
+    if not bottle_ready() and not create_bottle():
+        subprocess.call(["notify-send", "-i", "dialog-warning", _("Windows program"),
+                         _("SOS Bridge could not be set up. Check your internet connection and try again.")])
+        return 1
+    program = Path(lnk).stem
+    subprocess.call(["notify-send", "-i", APP, "-t", "8000", _("Starting {program} …").format(program=program),
                      _("Windows programs take a few seconds to open.")], stderr=subprocess.DEVNULL)
-    run_and_watch(bottles_cli("shell", "-b", BOTTLE, "-i", "start /unix " + shlex.quote(lnk)))
+    command = bottles_cli("shell", "-b", BOTTLE, "-i", "start /unix " + shlex.quote(lnk))
+    before = program_pids()
+    # a program that is already open may only come to the front (no new process): then no second try
+
+    def opened():
+        """#165: the first start after (re)installing Bottles set Bottles up and opened nothing – wait for the
+        program, and start it once more if nothing came"""
+        for _i in range(45):
+            if program_pids() - before:
+                return True
+            time.sleep(1)
+        log(f"{program}: no program process after the start")
+        return False
+
+    run_and_watch(command, retry=None if before else opened, retry_note=program)
     return 0
 
 
@@ -564,13 +682,14 @@ def install():
 
 
 # ------------------------------------------------------------------ Window
-def ask(path):
+def ask(path, start=False):
+    """SOS Bridge is missing: explain it, offer to install it, then open the file (start=True: a menu entry's
+    Windows shortcut of a program installed earlier, #165)"""
     import gi
     gi.require_version("Gtk", "3.0")
     from gi.repository import GLib, Gtk
-    Gtk.Settings.get_default().set_property("gtk-application-prefer-dark-theme", True)
 
-    name = os.path.basename(path)
+    name = Path(path).stem if start else os.path.basename(path)
     dialog = Gtk.Dialog(title=_("Windows program"))
     dialog.set_default_size(520, -1)
     dialog.set_position(Gtk.WindowPosition.CENTER)
@@ -580,13 +699,21 @@ def ask(path):
     for side in ("start", "end", "top", "bottom"):
         getattr(box, f"set_margin_{side}")(18)
     title = Gtk.Label(xalign=0, wrap=True)
-    title.set_markup(_('<b><big>{program} is a Windows program</big></b>').format(program=GLib.markup_escape_text(name)))
+    if start:
+        title.set_markup(_('<b><big>{program} needs SOS Bridge</big></b>').format(
+            program=GLib.markup_escape_text(name)))
+        text = _("{program} is a Windows program. It runs with SOS Bridge, which is not installed any more. "
+                 "Your Windows programs and their files are still there – install SOS Bridge again and "
+                 "{program} opens.").format(program=name)
+    else:
+        title.set_markup(_('<b><big>{program} is a Windows program</big></b>').format(
+            program=GLib.markup_escape_text(name)))
+        text = _("Simple OS can try to run it with SOS Bridge – the free app Bottles with Wine, no Windows needed. "
+                 "Many Windows programs work, some don't (for example Microsoft 365, current Adobe apps and games "
+                 "with anti-cheat). Programs made for Windows itself never work: Windows installation media and "
+                 "setup tools, drivers and antivirus programs.")
     box.pack_start(title, False, False, 0)
-    body = Gtk.Label(xalign=0, wrap=True, max_width_chars=60, label=(
-        _("Simple OS can try to run it with SOS Bridge – the free app Bottles with Wine, no Windows needed. "
-        "Many Windows programs work, some don't (for example Microsoft 365, current Adobe apps and games with "
-        "anti-cheat). Programs made for Windows itself never work: Windows installation media and setup tools, "
-        "drivers and antivirus programs.")))
+    body = Gtk.Label(xalign=0, wrap=True, max_width_chars=60, label=text)
     box.pack_start(body, False, False, 0)
     note = Gtk.Label(xalign=0, wrap=True, max_width_chars=60,
                      label=_('Additional download required: SOS Bridge comes once from Flathub ({DOWNLOAD}). You can also '
@@ -627,6 +754,12 @@ def ask(path):
         ok, message = install()
         if ok:
             GLib.idle_add(dialog.hide)
+            sync_menu()
+            if start:
+                subprocess.Popen([sys.executable, os.path.abspath(__file__), "--start", path], start_new_session=True,
+                                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                GLib.idle_add(finished, True, "", True)
+                return
             GLib.idle_add(finished, True, "", open_in_bottles(path))
             return
         GLib.idle_add(finished, False, message)
@@ -656,7 +789,6 @@ def setup_failed(path):
     import gi
     gi.require_version("Gtk", "3.0")
     from gi.repository import Gtk
-    Gtk.Settings.get_default().set_property("gtk-application-prefer-dark-theme", True)
     dialog = Gtk.MessageDialog(message_type=Gtk.MessageType.WARNING, buttons=Gtk.ButtonsType.NONE,
                                text=_("SOS Bridge could not be set up"))
     dialog.format_secondary_text(_("The first time, SOS Bridge downloads its Windows support (Wine, about a minute). "
@@ -682,7 +814,6 @@ def native_window(path, what):
     import gi
     gi.require_version("Gtk", "3.0")
     from gi.repository import GLib, Gtk
-    Gtk.Settings.get_default().set_property("gtk-application-prefer-dark-theme", True)
     file = os.path.basename(path)
     dialog = Gtk.Dialog(title=_("Windows program"))
     dialog.set_default_size(520, -1)

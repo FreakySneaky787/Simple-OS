@@ -75,6 +75,7 @@ check "Openbox session missing" "[ -f /usr/share/xsessions/openbox.desktop ]"
 check "wallpaper missing" "[ -s /usr/share/backgrounds/simpleos/wallpaper.png ]"
 check "Openbox theme SimpleOS missing" "[ -f /usr/share/themes/SimpleOS/openbox-3/themerc ]"
 check "GTK theme Arc-Dark missing" "[ -d /usr/share/themes/Arc-Dark/gtk-3.0 ]"
+check "GTK theme Arc-Lighter missing (light mode, #158)" "[ -s /usr/share/themes/Arc-Lighter/gtk-3.0/gtk.gresource ] && [ -d /usr/share/themes/Arc-Lighter/gtk-2.0 ]"
 check "icon theme Papirus-Dark missing" "[ -d /usr/share/icons/Papirus-Dark ]"
 for home in /etc/skel /home/simple; do
     check "Openbox theme not active in $home" "grep -q '<name>SimpleOS</name>' '$home/.config/openbox/rc.xml'"
@@ -356,6 +357,50 @@ printf 'XDG_%s_DIR="$HOME/%s"\n' DOCUMENTS Documents DOWNLOAD Downloads PICTURES
 check "SOS Bridge: Windows programs don't get the person's folders / Start Menu shortcuts missed / repair entries in the menu (#153)" \
       "env -i PATH=/usr/bin:/bin HOME=$wa153/h USER=t XDG_CONFIG_HOME=$wa153/h/.config XDG_CACHE_HOME=$wa153/h/.cache python3 $wa153/t.py $wa153/h"
 rm -rf "$wa153"
+# #154/#156/#165: Bottles made an empty ~/Games/umu; the menu said "Bottles", not "SOS Bridge"; the Windows programs'
+# entries stayed in the menu after SOS Bridge was removed and did nothing when clicked.
+check "SOS Bridge: Bottles may still create ~/Games/umu (#154)" \
+      "grep -qx 'filesystems=!~/Games/umu;' /var/lib/flatpak/overrides/com.usebottles.bottles && [ -x /usr/share/simpleos/edition/migrations/system/120-bottles-games ]"
+check "SOS Bridge: the menu entries are not updated at sign-in (#156)" \
+      "grep -qx 'Exec=/usr/local/bin/simpleos-windows-app --sync-menu' /etc/xdg/autostart/simpleos-windows-app.desktop"
+wa156=$(mktemp -d)
+cat > "$wa156/t.py" <<'PY'
+import importlib.machinery as m, os, sys
+from pathlib import Path
+h = Path(sys.argv[1])
+w = m.SourceFileLoader("w", "/usr/local/bin/simpleos-windows-app").load_module()
+exports = Path(os.environ["SIMPLEOS_WA_EXPORTS"])
+(exports / "com.usebottles.bottles.desktop").write_text(
+    "[Desktop Entry]\nName=Bottles\nName[de]=Bottles\nKeywords=wine;\nKeywords[de]=wine;\n"
+    "Exec=/usr/bin/flatpak run --branch=stable --command=bottles com.usebottles.bottles %u\nIcon=com.usebottles.bottles\n"
+    "[Desktop Action new]\nName=New bottle\n")
+lnk = w.BOTTLES_DATA / "bottles/Windows/drive_c/ProgramData/Microsoft/Windows/Start Menu/Programs/7-Zip/7-Zip File Manager.lnk"
+lnk.parent.mkdir(parents=True); lnk.write_text("lnk")
+(h / "Games/umu").mkdir(parents=True)
+w.sync_menu()
+launcher = (w.MENU_DIR / "com.usebottles.bottles.desktop").read_text()
+assert "Name=SOS Bridge\n" in launcher and "Name[de]" not in launcher and "Keywords[de]" not in launcher, launcher
+assert f"TryExec={w.BOTTLES_BIN}" in launcher and "Exec=/usr/bin/flatpak run" in launcher and "Name=New bottle" in launcher
+entry = (w.MENU_DIR / "simpleos-bridge-7-zip-7-zip-file-manager.desktop").read_text()
+assert f"TryExec={w.BOTTLES_BIN}\n" in entry, entry
+assert not (h / "Games").exists()
+(h / "Games/umu").mkdir(parents=True); (h / "Games/mine").mkdir()
+w.sync_menu()
+assert not (h / "Games/umu").exists() and (h / "Games/mine").is_dir()
+(exports / "com.usebottles.bottles.desktop").unlink()
+w.sync_menu()
+assert not (w.MENU_DIR / "com.usebottles.bottles.desktop").exists()
+assert (w.MENU_DIR / "simpleos-bridge-7-zip-7-zip-file-manager.desktop").is_file()
+PY
+mkdir -p "$wa156/h" "$wa156/exports"
+check "SOS Bridge: launcher not named SOS Bridge / program entries without TryExec / empty ~/Games/umu kept (#154 #156 #165)" \
+      "env -i PATH=/usr/bin:/bin HOME=$wa156/h USER=t XDG_CACHE_HOME=$wa156/h/.cache SIMPLEOS_WA_EXPORTS=$wa156/exports python3 $wa156/t.py $wa156/h"
+rm -rf "$wa156"
+check "SOS Bridge: a program entry clicked without SOS Bridge does nothing / no second try (#165)" \
+      "python3 -c \"import importlib.machinery as m, inspect; w = m.SourceFileLoader('w', '/usr/local/bin/simpleos-windows-app').load_module()
+s = inspect.getsource(w.start_shortcut); r = inspect.getsource(w.run_and_watch)
+assert 'bottles_installed()' in s.split('isfile')[0] and 'ask(lnk, start=True)' in s and 'retry=' in s and 'for attempt in (1, 2)' in r
+assert 'start.exe' in w.WINE_SERVICES and 'services.exe' in w.WINE_SERVICES\""
 for home in /etc/skel /home/simple; do
     check "office marker missing in the menu in $home" "grep -q '<!-- simpleos-office:' '$home/.config/openbox/menu.xml'"
 done
@@ -549,7 +594,7 @@ for home in /etc/skel /home/simple; do
     check "menu.xml: Reconfigure still in the menu in $home" "! grep -q 'name=\"Reconfigure\"' '$menu'"
     check "menu.xml: installer marker missing in $home" "grep -q 'simpleos-installer-begin' '$menu' && grep -q 'simpleos-installer-end' '$menu'"
 done
-for id in arandr lxappearance obconf tint2conf pcmanfm; do
+for id in arandr lxappearance obconf tint2conf pcmanfm org.gnome.Software; do
     [ -f /usr/share/applications/$id.desktop ] || continue
     check "launcher: $id not hidden" "grep -qx 'NoDisplay=true' /usr/local/share/applications/$id.desktop"
 done
@@ -1403,6 +1448,11 @@ hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "without thunar -
 hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "without a file manager -> notification" "thunar xdg-open" "NOTIFY_ACTION=yes USER=simple" "" \
     'grep -q "Your files are in /media/simple/STICK" $S/notify'
 hcase "$USB device_unmounted None STICK Kingston" "safely remove" "" "" "" 'grep -q "“STICK” can now be removed safely" $S/notify'
+# #159: "is ready" vanished after 8 s (a late click did nothing) – it stays now, and "can be removed safely" replaces it
+hcase "$USB device_mounted /media/simple/URLAUB URLAUB Kingston" "ready notification expires / no stack tag (#159)" "" "USER=simple" "" \
+    'grep -q -- "-t 0 -h string:x-dunst-stack-tag:simpleos-usb-URLAUB .*“URLAUB” is ready" $S/notify'
+hcase "$USB device_unmounted None URLAUB Kingston" "removed notification does not replace the ready one (#159)" "" "" "" \
+    'grep -q -- "-h string:x-dunst-stack-tag:simpleos-usb-URLAUB .*“URLAUB” can now be removed safely" $S/notify'
 hcase "$USB job_failed None STICK Kingston" "error" "" "" "" 'grep -q "could not be opened" $S/notify'
 hcase "$USB device_added None STICK Kingston" "other events silent" "" "" "" '[ ! -s $S/notify ]'
 # The installer's own mounts (Calamares: /tmp/calamares-root-…) are no USB drive – no "ready"/"Safely remove" during the
@@ -2191,7 +2241,7 @@ for home in /etc/skel /home/simple; do
     for kv in DESKTOP=Desktop DOWNLOAD=Downloads DOCUMENTS=Documents MUSIC=Music PICTURES=Pictures VIDEOS=Videos TEMPLATES=Templates; do
         check "user-dirs.dirs: XDG_${kv%%=*}_DIR missing in $home" "grep -qx 'XDG_${kv%%=*}_DIR=\"\$HOME/${kv#*=}\"' '$home/.config/user-dirs.dirs'"
     done
-    check "autostart: sidebar without standard folders in $home" "grep -q 'for d in Documents Downloads Pictures Music Videos' '$home/.config/openbox/autostart'"
+    check "autostart: sidebar without standard folders in $home" "grep -qx '/usr/local/lib/simpleos/home-folders' '$home/.config/openbox/autostart'"
     check "bookmarks with a placeholder path in $home (GTK needs the real home path)" "[ ! -e '$home/.config/gtk-3.0/bookmarks' ]"
 done
 uh=$(mktemp -d)
@@ -2199,15 +2249,26 @@ cp -a /etc/skel/. "$uh/"
 check "xdg-user-dirs-update changes the Simple OS folders (e.g. creates Public)" \
       "env -i HOME=$uh PATH=/usr/bin:/bin LANG=en_US.UTF-8 xdg-user-dirs-update >/dev/null 2>&1 &&
        [ \"\$(env -i HOME=$uh PATH=/usr/bin:/bin xdg-user-dir DOWNLOAD)\" = '$uh/Downloads' ] && [ ! -e $uh/Public ]"
-# Sidebar: the autostart block creates bookmarks with the real path at the first login, a second login
-# leaves your own changes alone
-sed -n '/^mkdir -p ~\/.config\/gtk-3.0$/,/^done > ~\/.config\/gtk-3.0\/bookmarks$/p' /etc/skel/.config/openbox/autostart > "$uh/block"
-check "autostart: bookmarks block not found" "grep -q 'gtk-3.0/bookmarks' $uh/block"
-check "autostart: bookmarks wrong" \
-      "env -i HOME=$uh PATH=/usr/bin:/bin sh $uh/block && grep -qx 'file://$uh/Downloads Downloads' $uh/.config/gtk-3.0/bookmarks && [ \$(wc -l < $uh/.config/gtk-3.0/bookmarks) -eq 5 ]"
+# Sidebar: home-folders (autostart) creates bookmarks with the real path at the first login, a second login
+# leaves your own changes alone. #157: a new German/French account gets Dokumente, Bilder … / Documents, Images …
+HF=/usr/local/lib/simpleos/home-folders
+check "home-folders missing" "[ -x $HF ]"
+hf() { rm -rf "${uh:?}"; mkdir -p "$uh"; cp -a /etc/skel/. "$uh/"; env -i HOME=$uh PATH=/usr/bin:/bin SIMPLEOS_HF_HOME=$uh SIMPLEOS_HF_LIVE=0 "$@" $HF; }
+check "home-folders: English bookmarks wrong" \
+      "hf LANG=en_US.UTF-8 && grep -qx 'file://$uh/Downloads Downloads' $uh/.config/gtk-3.0/bookmarks && [ \$(wc -l < $uh/.config/gtk-3.0/bookmarks) -eq 5 ] && [ -d $uh/Documents ] && [ -f '$uh/Templates/Text Document.txt' ]"
+check "home-folders: a new German account keeps English folder names (#157)" \
+      "hf LANG=de_DE.UTF-8 && [ -d $uh/Dokumente ] && [ -d $uh/Bilder/Screenshots ] && [ -f $uh/Schreibtisch/simpleos-welcome.desktop ] && [ ! -e $uh/Documents ] &&
+       [ \"\$(env -i HOME=$uh PATH=/usr/bin:/bin xdg-user-dir PICTURES)\" = '$uh/Bilder' ] && grep -qx 'file://$uh/Dokumente Dokumente' $uh/.config/gtk-3.0/bookmarks &&
+       grep -qx de_DE $uh/.config/user-dirs.locale && [ -d $uh/Downloads ] && [ -d $uh/Vorlagen ]"
+check "home-folders: a new French account keeps English folder names (#157)" \
+      "hf LANG=fr_FR.UTF-8 && [ -d $uh/Images ] && [ -d '$uh/Téléchargements' ] && grep -q 'T%C3%A9l%C3%A9chargements Téléchargements' $uh/.config/gtk-3.0/bookmarks"
+check "home-folders: renames the folders of an account that signed in before (#157)" \
+      "rm -rf $uh && mkdir -p $uh && cp -a /etc/skel/. $uh/ && mkdir -p $uh/.config/simpleos && touch $uh/.config/simpleos/wizard-done &&
+       env -i HOME=$uh PATH=/usr/bin:/bin SIMPLEOS_HF_HOME=$uh SIMPLEOS_HF_LIVE=0 LANG=de_DE.UTF-8 $HF && [ -d $uh/Documents ] && [ ! -e $uh/Dokumente ]"
+check "home-folders: renames folders in the live session" "hf LANG=de_DE.UTF-8 SIMPLEOS_HF_LIVE=1 && [ -d $uh/Documents ]"
 echo 'file:///mnt Mine' > "$uh/.config/gtk-3.0/bookmarks"
-check "autostart: overwrites your own bookmarks" \
-      "env -i HOME=$uh PATH=/usr/bin:/bin sh $uh/block && [ \"\$(cat $uh/.config/gtk-3.0/bookmarks)\" = 'file:///mnt Mine' ]"
+check "home-folders: overwrites your own bookmarks" \
+      "env -i HOME=$uh PATH=/usr/bin:/bin SIMPLEOS_HF_HOME=$uh LANG=de_DE.UTF-8 $HF && [ \"\$(cat $uh/.config/gtk-3.0/bookmarks)\" = 'file:///mnt Mine' ]"
 rm -rf "${uh:?}"
 
 # ---- Thunar right-click: wallpaper, copy to clipboard, open as administrator (+ extract
@@ -3073,6 +3134,11 @@ done
 #      notification with Battery/Akku/Power (title, text, icon, sender). dunst itself needs X -> the rules
 #      are recomputed with the same logic as dunst 1.9 (sections in order, shell globs,
 #      all conditions of a section must match, format = "" -> "Skipping notification").
+# #161: Thunar's eject showed gvfs' "Device can be removed." next to Simple OS's own "“STICK” can now be removed safely."
+for home in /etc/skel /home/simple; do
+    check "dunst: gvfs' second eject notification not dropped in $home (#161)" \
+          "grep -q '^\[simpleos-drop-gvfs-unplugged\]' $home/.config/dunst/dunstrc && grep -qF 'body = \"*Das Gerät kann ausgesteckt werden.*\"' $home/.config/dunst/dunstrc"
+done
 FLT=/etc/xdg/dunst/simpleos-battery-filter.conf
 SD=/usr/local/bin/simpleos-dunst
 check "dunst battery filter $FLT missing" "[ -s $FLT ]"
@@ -3339,6 +3405,24 @@ printf '%s\n' '/dev/sr0 /run/live/medium iso9660 ro 0 0' '/dev/sda1 /tmp/calamar
 check "$IR: does not unmount exactly the new system's root left by Calamares" \
       "[ \"\$(env -i SIMPLEOS_RESTART_DRYRUN=1 SIMPLEOS_MOUNTS=$irm SIMPLEOS_LIVE_MEDIUM_DEV= python3 $IR --no-dialog | tr '\n' ' ')\" = 'unmount: /tmp/calamares-root-ab12 restart: systemctl ' ]"
 rm -f "$irm"
+# #160: the window was English after a German installation (the live session is English) – the new system's language
+irr=$(mktemp -d)
+mkdir -p "$irr/tmp/calamares-root-x9/etc/default"
+echo 'LANG=de_DE.UTF-8' > "$irr/tmp/calamares-root-x9/etc/default/locale"
+printf '%s\n' "/dev/sda1 $irr/tmp/calamares-root-x9 ext4 rw 0 0" > "$irr/mounts"
+sed "s#\"/tmp/calamares-root-\")\(.*\)target.count(\"/\") == 2#\"$irr/tmp/calamares-root-\")\1True#" $IR > "$irr/ir.py"
+check "$IR: the restart window is not in the new system's language (#160)" \
+      "env -i SIMPLEOS_RESTART_DRYRUN=1 SIMPLEOS_MOUNTS=$irr/mounts SIMPLEOS_LIVE_MEDIUM_DEV= python3 $irr/ir.py --no-dialog 2>&1 >/dev/null | grep -qx 'language: de_DE | Simple OS ist installiert' &&
+       env -i SIMPLEOS_RESTART_DRYRUN=1 SIMPLEOS_MOUNTS=/dev/null SIMPLEOS_RESTART_LANG=fr_FR.UTF-8 SIMPLEOS_LIVE_MEDIUM_DEV= python3 $IR --no-dialog 2>&1 >/dev/null | grep -q '^language: fr_FR | Simple OS est install'"
+rm -rf "$irr"
+# #160: the slideshow stayed English in a German/French installation (no branding translations)
+for l in de fr; do
+    check "installer: slideshow translation $l missing (#160)" \
+          "[ -s /etc/calamares/branding/simpleos/lang/calamares-simpleos_$l.qm ] && grep -q 'qsTr(\"Welcome to Simple OS.<br/>\"' /etc/calamares/branding/simpleos/show.qml"
+done
+# #160: Calamares started at America/New_York (Debian's built-in default) – GeoIP, otherwise Europe/Berlin
+check "installer: time zone default New York / no GeoIP (#160)" \
+      "grep -qx 'region: \"Europe\"' /etc/calamares/modules/locale.conf && grep -qx 'zone: \"Berlin\"' /etc/calamares/modules/locale.conf && grep -q 'url: \"https://geoip.kde.org/v1/calamares\"' /etc/calamares/modules/locale.conf"
 check "$IR: imports something only after the window (could not be loaded after the stick is pulled)" \
       "! sed -n '/^def restart/,/^def ask/p' $IR | grep -q 'import'"
 check "simpleos-post-install does not remove $IR" "grep -qx 'rm -f $IR' /usr/local/sbin/simpleos-post-install"
@@ -5032,11 +5116,11 @@ tcase() {
 G3=$th/.config/gtk-3.0/settings.ini RASI=$th/.config/rofi/config.rasi XSD=$th/.config/xsettingsd/xsettingsd.conf
 theme_home
 tcase "light, running session" "DISPLAY=:0 XSD_RUNNING=1" "--mode light" \
-    'grep -qx "gtk-theme-name=Arc" '"$G3"' && grep -qx "gtk-application-prefer-dark-theme=0" '"$G3"' &&
-     grep -qx "gtk-theme-name=Arc" '"$th"'/.config/gtk-4.0/settings.ini && grep -qx "gtk-theme-name=\"Arc\"" '"$th"'/.gtkrc-2.0 &&
+    'grep -qx "gtk-theme-name=Arc-Lighter" '"$G3"' && grep -qx "gtk-application-prefer-dark-theme=0" '"$G3"' &&
+     grep -qx "gtk-theme-name=Arc-Lighter" '"$th"'/.config/gtk-4.0/settings.ini && grep -qx "gtk-theme-name=\"Arc-Lighter\"" '"$th"'/.gtkrc-2.0 &&
      grep -qx "gsettings set org.gnome.desktop.interface color-scheme prefer-light" $S/gsettings &&
-     grep -qx "gsettings set org.gnome.desktop.interface gtk-theme Arc" $S/gsettings &&
-     grep -qx "Net/ThemeName \"Arc\"" '"$XSD"' && grep -qx "Net/IconThemeName \"Papirus-Light\"" '"$XSD"' && grep -qx "Gtk/FontName \"Inter 10\"" '"$XSD"' &&
+     grep -qx "gsettings set org.gnome.desktop.interface gtk-theme Arc-Lighter" $S/gsettings &&
+     grep -qx "Net/ThemeName \"Arc-Lighter\"" '"$XSD"' && grep -qx "Net/IconThemeName \"Papirus-Light\"" '"$XSD"' && grep -qx "Gtk/FontName \"Inter 10\"" '"$XSD"' &&
      grep -qx "pkill -HUP -x xsettingsd" $S/pkill && [ ! -e $S/xsd ] &&
      grep -qx "openbox --reconfigure" $S/power &&
      grep -qx "/usr/share/backgrounds/simpleos/wallpaper-day.png" $S/wallpaper &&
@@ -5058,7 +5142,7 @@ tcase "Dynamic Wallpaper on -> the background stays with the schedule" "DISPLAY=
 tcase "--no-wallpaper" "DISPLAY=:0 XSD_RUNNING=1" "--mode dark --no-wallpaper" '[ ! -e $S/wallpaper ] && grep -qx "gtk-theme-name=Arc-Dark" '"$G3"
 theme_home
 tcase "without a screen: files only, no signals" "" "--mode light" \
-    'grep -qx "gtk-theme-name=Arc" '"$G3"' && [ ! -e $S/power ] && ! grep -q "HUP\|USR1" $S/pkill 2>/dev/null && [ ! -e $S/xsd ]'
+    'grep -qx "gtk-theme-name=Arc-Lighter" '"$G3"' && [ ! -e $S/power ] && ! grep -q "HUP\|USR1" $S/pkill 2>/dev/null && [ ! -e $S/xsd ]'
 tcase "accent pink in light mode: Latte shade in Rofi" "DISPLAY=:0 XSD_RUNNING=1" "--accent pink" 'grep -qE "^ *accent: *#ea76cb;" '"$RASI"' && grep -qE "^ *sel: *#ea76cb40;" '"$RASI"
 # 1.1.2: a config.rasi from before (no "sel" line) gets it after the accent
 sed -i '/^ *sel: *#/d' "$RASI"
@@ -5074,6 +5158,26 @@ tcase "accent mauve: active task + app button, badge unchanged" "DISPLAY=:0" "--
 tcase "accent green after mauve: badge still mauve/pink" "DISPLAY=:0" "--accent green" \
     'grep -qx "background_color = #a6e3a1 25" '"$TRC"' && grep -qx "button_font_color = #a6e3a1 100" '"$TRC"' &&
      grep -qx "background_color = #cba6f7 100" '"$TRC"' && grep -qx "border_color_pressed = #f5c2e7 0" '"$TRC"
+# #158: radio buttons, switches, progress bars, the selected row stayed Arc's blue whatever the accent
+GA=/usr/local/lib/simpleos/gtk-accent
+gah=$(mktemp -d)
+mkdir -p "$gah/.config/gtk-3.0" && printf '/* mine */\nlabel { font-weight: bold; }\n' > "$gah/.config/gtk-3.0/gtk.css"
+check "gtk-accent: green accent not in GTK apps / own gtk.css lines lost (#158)" \
+      "env -i HOME=$gah PATH=/usr/bin:/bin $GA --accent green --mode light && c=$gah/.config/gtk-3.0/gtk.css &&
+       grep -q '^/\* simpleos-accent begin' \$c && grep -q 'label { font-weight: bold; }' \$c && ! grep -qi '#5294e2' \$c &&
+       grep -q '^progressbar progress' \$c && grep -q 'radio:checked.*gtk-accent/green-light/radio-checked.png' \$c &&
+       [ -s $gah/.local/share/simpleos/gtk-accent/green-light/switch-active.png ]"
+check "gtk-accent: switching to dark keeps the light images / two blocks (#158)" \
+      "env -i HOME=$gah PATH=/usr/bin:/bin $GA --accent green --mode dark && c=$gah/.config/gtk-3.0/gtk.css &&
+       [ \$(grep -c 'simpleos-accent begin' \$c) = 1 ] && grep -q 'gtk-accent/green-dark/' \$c && [ ! -e $gah/.local/share/simpleos/gtk-accent/green-light ]"
+check "gtk-accent: blue (Arc's own) still writes a block / removes your own lines (#158)" \
+      "env -i HOME=$gah PATH=/usr/bin:/bin $GA --accent blue --mode dark && c=$gah/.config/gtk-3.0/gtk.css &&
+       ! grep -q simpleos-accent \$c && grep -q 'label { font-weight: bold; }' \$c"
+rm -rf "$gah"
+check "simpleos-theme / migration 160 do not apply the accent to GTK apps (#158)" \
+      "grep -q 'gtk-accent --accent \"\$accent\" --mode \"\$mode\"' /usr/local/bin/simpleos-theme && [ -x /usr/share/simpleos/edition/migrations/user/160-gtk-accent ] && grep -qF 'simpleos-theme --mode \"\$mode\" --accent \"\$accent\" --no-wallpaper' /usr/share/simpleos/edition/migrations/user/160-gtk-accent"
+check "Setup Wizard always dark / mode not live (#158)" \
+      "env SIMPLEOS_WIZARD_DRYRUN=1 python3 -c \"$WIZC; import inspect; src = inspect.getsource(w.Wizard.on_mode) + inspect.getsource(w.Wizard.apply_css); assert 'apply_css()' in src and 'if light else' in src and w.PALETTES['light']['BASE'] == '#eff1f5' and 'Arc-Dark' not in inspect.getsource(w.main)\" 2>/dev/null"
 theme_home
 tcase "--xsettings at login" "DISPLAY=:0" "--xsettings" 'grep -qx "Net/ThemeName \"Arc-Dark\"" '"$XSD"' && waitfor $S/xsd && grep -q "^xsettingsd -c " $S/xsd'
 check "skel: gtk-application-prefer-dark-theme not 0 (GTK reads the value only at start -> no live switch to light)" \
@@ -5192,10 +5296,15 @@ WEL=/usr/share/simpleos/welcome.html
 for id in start keys tools; do
     check "welcome.html: section #$id missing" "grep -q 'id=\"$id\"' $WEL"
 done
-for txt in '<code>simpleos-wifi</code>' '<code>simpleos-setup</code>' 'Control Center → Appearance → Taskbar' \
-           '<code>simpleos-taskbar-select</code>' '<code>obconf</code>' '<code>simpleos-netinfo --text</code>' \
-           '<kbd>Enter</kbd>' '<kbd>B</kbd>' '<kbd>E</kbd>' '<kbd>H</kbd>' '<kbd>X</kbd>' '<kbd>N</kbd>'; do
+for txt in 'Menu → Help → Setup Wizard' 'Menu → Software Center' 'Settings → Appearance &amp; Wallpaper → Taskbar' \
+           '<code>simpleos-netinfo --text</code>' \
+           '<kbd>Enter</kbd>' '<kbd>B</kbd>' '<kbd>E</kbd>' '<kbd>H</kbd>' '<kbd>I</kbd>' '<kbd>X</kbd>' '<kbd>N</kbd>'; do
     check "welcome.html: '$txt' missing" "grep -qF '$txt' $WEL"
+done
+# #162: beginners were told to type commands (simpleos-wifi, simpleos-setup) for things that work with clicks
+for w in $WEL /usr/share/simpleos/welcome.de.html /usr/share/simpleos/welcome.fr.html; do
+    check "$w: terminal commands for beginners (#162)" \
+          "! grep -qE '<code>(simpleos-wifi|simpleos-setup|simpleos-taskbar-select|obconf)</code>' $w && [ \$(grep -o '<code>' $w | wc -l) -le 3 ] && [ \$(grep -c '</ol>' $w) = 1 ]"
 done
 check "welcome.html: keyboard shortcuts not as a table" "grep -q '<table>' $WEL && grep -q '<th scope=\"col\">' $WEL"
 check "welcome.html: not Catppuccin Mocha (#1e1e2e/#cdd6f4)" "grep -q -- '--base:#1e1e2e' $WEL && grep -q -- '--text:#cdd6f4' $WEL"

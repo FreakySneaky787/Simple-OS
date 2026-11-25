@@ -5,7 +5,7 @@
 #   simpleos-theme --xsettings   Openbox autostart: start the XSETTINGS service (xsettingsd) with the current design
 #   simpleos-theme --openbox-theme   only write the Openbox theme copy again (simpleos-scale after a change of the scale)
 #   simpleos-theme … --no-wallpaper   do not touch the wallpaper (simpleos-wallpaper-schedule sets it itself)
-# --mode   light (Catppuccin Latte) / dark (Mocha) – immediately in the running session:
+# --mode   light (Catppuccin Latte, GTK theme Arc-Lighter) / dark (Mocha, Arc-Dark) – immediately in the running session:
 #            a) GTK: settings.ini (gtk-theme-name, gtk-application-prefer-dark-theme), GTK2, gsettings
 #               (libadwaita/Flatpaks via the portal) and XSETTINGS (xsettingsd, SIGHUP -> running GTK3 windows
 #               switch without a restart; without a settings service they read the theme only at startup)
@@ -15,7 +15,9 @@
 #            d) Rofi: Latte/Mocha colors in config.rasi (applies from the next opening); taskbar with "Match theme"
 #               (simpleos-taskbar-select) light/dark, tint2 reloads via SIGUSR1
 #          Window borders and the right-click menu stay Mocha (Openbox theme SimpleOS).
-# --accent colors Rofi, the taskbar (tint2) and window borders/menus (Openbox theme).
+# --accent colors Rofi, the taskbar (tint2) and window borders/menus (Openbox theme), and GTK 3 apps (#158: radio
+#          buttons, switches, progress bars, the selected row … – /usr/local/lib/simpleos/gtk-accent, a block in
+#          ~/.config/gtk-3.0/gtk.css; running apps take a new accent at their next start).
 # Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
 if [ -r /usr/local/lib/simpleos/i18n.sh ]; then . /usr/local/lib/simpleos/i18n.sh; else _t() { printf '%s' "$1"; }; fi
 set -e
@@ -58,7 +60,7 @@ while [ $# -gt 0 ]; do
         --show)   echo "mode=$mode"; echo "accent=$accent"; exit 0 ;;
         --no-wallpaper) set_wallpaper=0; shift ;;
         --xsettings)
-            case "$mode" in light) write_xsettings Arc Papirus-Light ;; *) write_xsettings Arc-Dark Papirus-Dark ;; esac
+            case "$mode" in light) write_xsettings Arc-Lighter Papirus-Light ;; *) write_xsettings Arc-Dark Papirus-Dark ;; esac
             reload_xsettings
             exit 0 ;;
         --openbox-theme) openbox_only=1; shift ;;
@@ -139,7 +141,9 @@ fi
 # XSETTINGS); libadwaita/Flatpaks follow color-scheme (gsettings, live via the portal).
 case "$mode" in
     dark)  gtk_theme=Arc-Dark; icons=Papirus-Dark; prefer=0; scheme=prefer-dark ;;
-    light) gtk_theme=Arc;      icons=Papirus-Light; prefer=0; scheme=prefer-light ;;
+    # Arc-Lighter, not Arc (#158): Arc draws the sidebars of Thunar and the file dialogs dark – a dark "Save" window
+    # in a light LibreOffice
+    light) gtk_theme=Arc-Lighter; icons=Papirus-Light; prefer=0; scheme=prefer-light ;;
     *) echo "Unknown mode: $mode" >&2; exit 2 ;;
 esac
 
@@ -162,6 +166,10 @@ fi
 
 # XSETTINGS: running GTK3 programs switch immediately (xsettingsd rereads the file on SIGHUP)
 write_xsettings "$gtk_theme" "$icons"
+# The accent in GTK 3 apps (#158); blue = Arc's own color, nothing written
+if [ -x /usr/local/lib/simpleos/gtk-accent ]; then
+    /usr/local/lib/simpleos/gtk-accent --accent "$accent" --mode "$mode" || true
+fi
 
 # ---- Rofi: colors Mocha (dark) / Latte (light) + accent ----
 rasi="$HOME/.config/rofi/config.rasi"

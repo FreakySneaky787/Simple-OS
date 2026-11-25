@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Simple OS SOS Bridge menu
+Comment=Keeps the menu entries of SOS Bridge's Windows programs up to date
+# #156/#165: at every sign-in – Bottles' launcher shown as "SOS Bridge" (also when SOS Bridge came from the Software
+# Store or Bazaar), the Windows programs' menu entries (TryExec hides them while SOS Bridge is removed), an empty
+# ~/Games/umu of earlier Bottles starts removed (#154). Fast when SOS Bridge was never used.
+Exec=/usr/local/bin/simpleos-windows-app --sync-menu
+NoDisplay=true

@@ -73,7 +73,7 @@ OFFICE = [
      "libreoffice-writer.desktop"),
     ("onlyoffice", "ONLYOFFICE", _("Modern alternative, very compatible with Microsoft Office. Installed from Flathub."),
      "org.onlyoffice.desktopeditors.desktop"),
-    ("none", _("Minimal"), _("No office suite. You can install one later from the Software Store."), None),
+    ("none", _("Minimal"), _("No office suite. You can install one later from the Software Center."), None),
 ]
 # Optional components (#126): (key, name, description, download, helper argument). All off by default; plain words,
 # no package names. The Software Center offers the same bundles under the same names.
@@ -96,29 +96,40 @@ STEPS = [N_("Welcome"), N_("Internet"), N_("Browser"), N_("Appearance"), N_("Off
 NETWORK_PAGE = STEPS.index("Internet")
 EXTRAS_PAGE = STEPS.index("Extras")
 
+# The wizard shows the mode and accent you pick right away (#158: it stayed dark after choosing "Light"): Catppuccin
+# Mocha (dark) or Latte (light) colors, Latte's stronger accents on the light background
 CSS = """
-window.simpleos { background-color: #1e1e2e; }
-.simpleos label { color: #cdd6f4; }
+window.simpleos { background-color: @BASE@; }
+.simpleos label { color: @TEXT@; }
 .simpleos .title { font-size: 20pt; font-weight: 700; }
-.simpleos .subtitle, .simpleos .dim { color: #a6adc8; }
-.simpleos .step { color: #6c7086; font-weight: 600; }
+.simpleos .subtitle, .simpleos .dim { color: @SUB@; }
+.simpleos .step { color: @OVERLAY@; font-weight: 600; }
 .simpleos .step.active { color: @ACCENT@; }
-.simpleos .card { background-color: #181825; border: 1px solid #313244; border-radius: 12px; padding: 16px 20px; }
+.simpleos .card { background-color: @MANTLE@; border: 1px solid @SURFACE@; border-radius: 12px; padding: 16px 20px; }
 .simpleos .key { color: @ACCENT@; font-weight: 600; }
 .simpleos .option-name { font-weight: 600; }
 .simpleos .swatch { min-width: 34px; min-height: 34px; padding: 0; border-radius: 17px;
-                    border: 3px solid #1e1e2e; background-image: none; box-shadow: none; }
-.simpleos .swatch:checked { border-color: #cdd6f4; }
+                    border: 3px solid @BASE@; background-image: none; box-shadow: none; }
+.simpleos .swatch:checked { border-color: @TEXT@; }
 .simpleos button.suggested-action { background-image: none; background-color: @ACCENT@;
-                                   border-color: @ACCENT@; color: #11111b; font-weight: 600; }
-.simpleos button.suggested-action label { color: #11111b; }
-.simpleos .footer { border-top: 1px solid #313244; padding: 12px 20px; background-color: #181825; }
-.simpleos .online { color: #a6e3a1; }
-.simpleos .offline { color: #fab387; }
-.simpleos list { background-color: #181825; }
+                                   border-color: @ACCENT@; color: @ONACCENT@; font-weight: 600; }
+.simpleos button.suggested-action label { color: @ONACCENT@; }
+.simpleos .footer { border-top: 1px solid @SURFACE@; padding: 12px 20px; background-color: @MANTLE@; }
+.simpleos .online { color: @ONLINE@; }
+.simpleos .offline { color: @OFFLINE@; }
+.simpleos list { background-color: @MANTLE@; }
 .simpleos list row { padding: 8px 10px; }
-.simpleos list row:selected { background-color: #313244; }
+.simpleos list row:selected { background-color: @SURFACE@; }
 """
+PALETTES = {
+    "dark": {"BASE": "#1e1e2e", "MANTLE": "#181825", "SURFACE": "#313244", "TEXT": "#cdd6f4", "SUB": "#a6adc8",
+             "OVERLAY": "#6c7086", "ONACCENT": "#11111b", "ONLINE": "#a6e3a1", "OFFLINE": "#fab387"},
+    "light": {"BASE": "#eff1f5", "MANTLE": "#e6e9ef", "SURFACE": "#ccd0da", "TEXT": "#4c4f69", "SUB": "#6c6f85",
+              "OVERLAY": "#8c8fa1", "ONACCENT": "#ffffff", "ONLINE": "#40a02b", "OFFLINE": "#fe640b"},
+}
+LATTE_ACCENTS = {"blue": "#1e66f5", "mauve": "#8839ef", "pink": "#ea76cb", "green": "#40a02b", "peach": "#fe640b",
+                 "teal": "#179299"}
+GTK_ACCENT = "/usr/local/lib/simpleos/gtk-accent"
 
 
 # ---------------------------------------------------------------- System info
@@ -215,7 +226,8 @@ def component_installed(key):
     if key == "gaming":
         return gaming_installed()
     if key == "bridge":
-        return is_installed("com.usebottles.bottles.desktop")
+        # Flatpak's own file: SOS Bridge's renamed copy in ~/.local/share (#156) stays while Bottles is removed
+        return Path("/var/lib/flatpak/exports/share/applications/com.usebottles.bottles.desktop").is_file()
     if key == "devtools":
         return bool(shutil.which("gcc")) and is_installed("com.vscodium.codium.desktop")
     return False
@@ -408,6 +420,10 @@ class Wizard(Gtk.Window):
         self.css = Gtk.CssProvider()
         Gtk.StyleContext.add_provider_for_screen(
             Gdk.Screen.get_default(), self.css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        # radio buttons, switches, progress bar in the accent (gtk-accent's rules, below the wizard's own)
+        self.accent_css = Gtk.CssProvider()
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(), self.accent_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION - 1)
         self.apply_css()
 
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -466,7 +482,28 @@ class Wizard(Gtk.Window):
 
     # ------------------------------------------------------------ Helpers
     def apply_css(self):
-        self.css.load_from_data(CSS.replace("@ACCENT@", dict(ACCENTS)[self.accent]).encode())
+        """the chosen mode and accent, live (#158)"""
+        light = self.mode == "light"
+        colors = dict(PALETTES["light" if light else "dark"],
+                      ACCENT=LATTE_ACCENTS[self.accent] if light else dict(ACCENTS)[self.accent])
+        css = CSS
+        for key, value in colors.items():
+            css = css.replace(f"@{key}@", value)
+        self.css.load_from_data(css.encode())
+        settings = Gtk.Settings.get_default()
+        settings.set_property("gtk-theme-name", "Arc-Lighter" if light else "Arc-Dark")
+        settings.set_property("gtk-application-prefer-dark-theme", not light)
+        rules = ""
+        if os.access(GTK_ACCENT, os.X_OK) and not DRYRUN:
+            try:
+                rules = subprocess.run([GTK_ACCENT, "--accent", self.accent, "--mode", self.mode, "--show"],
+                                       capture_output=True, text=True, timeout=10).stdout
+            except (OSError, subprocess.TimeoutExpired):
+                rules = ""
+        try:
+            self.accent_css.load_from_data(rules.encode())
+        except GLib.Error:
+            self.accent_css.load_from_data(b"")
 
     @staticmethod
     def page_box(title, subtitle):
@@ -874,22 +911,23 @@ class Wizard(Gtk.Window):
         return box
 
     def page_apps(self):
+        # #155: one name for the place to get apps – the Software Center (it opens Bazaar/GNOME Software for more)
         box = self.page_box(_("Get more apps"),
-                            _("The Software Store (Bazaar) gives you thousands of apps from Flathub."))
+                            _("The Software Center installs popular apps like Steam, Spotify or Zoom with one click."))
         card = self.card()
         row = Gtk.Box(spacing=16)
         text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-        n = Gtk.Label(label=_("Open the Software Store after setup"), xalign=0)
+        n = Gtk.Label(label=_("Open the Software Center after setup"), xalign=0)
         n.get_style_context().add_class("option-name")
         text.pack_start(n, False, False, 0)
-        text.pack_start(self.dim(_("The store is downloaded once on first use (several hundred MB).")), False, False, 0)
+        text.pack_start(self.dim(_("Its button \"More apps\" leads to thousands more from Flathub.")), False, False, 0)
         row.pack_start(text, True, True, 0)
         switch = Gtk.Switch(valign=Gtk.Align.CENTER)
         switch.connect("notify::active", lambda sw, _p: setattr(self, "open_store", sw.get_active()))
         row.pack_end(switch, False, False, 0)
         card.pack_start(row, False, False, 0)
         box.pack_start(card, False, False, 0)
-        box.pack_start(self.dim(_("GNOME Software is also in the menu and works right away.\n"
+        box.pack_start(self.dim(_("You find the Software Center in the menu any time.\n"
                                 "Run this wizard again any time from Menu → Help → Setup Wizard.")), False, False, 0)
         return box
 
@@ -940,8 +978,9 @@ class Wizard(Gtk.Window):
                                    if self.removes_firefox() else "")
 
     def on_mode(self, radio, mode):
-        if radio.get_active():
+        if radio.get_active() and self.mode != mode:
             self.mode = mode
+            self.apply_css()
 
     def on_accent(self, swatch, name):
         if swatch.get_active():
@@ -1089,11 +1128,14 @@ class Wizard(Gtk.Window):
             run(["simpleos-browser-select", "--set", self.browser])
         # Office entries in this account's menu for whatever is installed now (also when the suite was there already)
         run([OFFICE_MENU])
+        # SOS Bridge just installed: its launcher as "SOS Bridge" in the menu right away (#156)
+        if component_installed("bridge"):
+            run(["/usr/local/bin/simpleos-windows-app", "--sync-menu"])
         run(["openbox", "--reconfigure"])  # reload the menu (e.g. without the Firefox entry, with the office entries)
         if done:
             self.mark_done()
         if self.open_store:
-            run(["simpleos-software"], wait=False)
+            run(["simpleos-software-center"], wait=False)
         Gtk.main_quit()
 
 def remaining_text(pct, t0):
@@ -1119,9 +1161,7 @@ def failure_text(lines):
 
 
 def main():
-    # The wizard is part of the Simple OS interface and always stays dark
-    Gtk.Settings.get_default().set_property("gtk-theme-name", "Arc-Dark")
-    Gtk.Settings.get_default().set_property("gtk-application-prefer-dark-theme", True)
+    # Dark or light like the chosen mode (Wizard.apply_css) – before 1.2 it always stayed dark
     Wizard()
     Gtk.main()
 

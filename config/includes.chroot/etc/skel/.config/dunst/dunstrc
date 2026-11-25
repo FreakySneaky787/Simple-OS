@@ -72,6 +72,23 @@
     frame_color = "#f38ba8"
     timeout = 0
 
+# #161: Thunar's "Eject" made two notifications – Simple OS's "“STICK” can now be removed safely." (simpleos-usb-notify,
+# names the stick) and gvfs' "<drive model> can be safely unplugged / Device can be removed." (names the hardware,
+# e.g. "QEMU QEMU HARDDISK"). gvfs' is dropped by its body (English, German, French); its "Writing data to …, Device
+# should not be unplugged." while the stick is still being written stays.
+[simpleos-drop-gvfs-unplugged]
+    body = "*Device can be removed.*"
+    format = ""
+    history_ignore = yes
+[simpleos-drop-gvfs-unplugged-de]
+    body = "*Das Gerät kann ausgesteckt werden.*"
+    format = ""
+    history_ignore = yes
+[simpleos-drop-gvfs-unplugged-fr]
+    body = "*Le périphérique peut être retiré.*"
+    format = ""
+    history_ignore = yes
+
 # OSD for the Fn keys (simpleos-osd): replaces itself (stack tag), briefly visible, not in the history,
 # bar in Catppuccin blue on Surface0
 [simpleos-osd]
