@@ -3420,9 +3420,9 @@ for l in de fr; do
     check "installer: slideshow translation $l missing (#160)" \
           "[ -s /etc/calamares/branding/simpleos/lang/calamares-simpleos_$l.qm ] && grep -q 'qsTr(\"Welcome to Simple OS.<br/>\"' /etc/calamares/branding/simpleos/show.qml"
 done
-# #160: Calamares started at America/New_York (Debian's built-in default) – GeoIP, otherwise Europe/Berlin
-check "installer: time zone default New York / no GeoIP (#160)" \
-      "grep -qx 'region: \"Europe\"' /etc/calamares/modules/locale.conf && grep -qx 'zone: \"Berlin\"' /etc/calamares/modules/locale.conf && grep -q 'url: \"https://geoip.kde.org/v1/calamares\"' /etc/calamares/modules/locale.conf"
+# #160: Calamares started at America/New_York (Debian's built-in default) – Europe/Berlin, no GeoIP (privacy)
+check "installer: time zone default New York / GeoIP request to an outside server (#160)" \
+      "grep -qx 'region: \"Europe\"' /etc/calamares/modules/locale.conf && grep -qx 'zone: \"Berlin\"' /etc/calamares/modules/locale.conf && ! grep -q '^geoip' /etc/calamares/modules/locale.conf"
 check "$IR: imports something only after the window (could not be loaded after the stick is pulled)" \
       "! sed -n '/^def restart/,/^def ask/p' $IR | grep -q 'import'"
 check "simpleos-post-install does not remove $IR" "grep -qx 'rm -f $IR' /usr/local/sbin/simpleos-post-install"

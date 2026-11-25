@@ -67,7 +67,7 @@ sign in afterwards, "What's new" shows the highlights.
   file manager shows one message, not two.
 - **One name for the app store** (issue #155): the Setup Wizard always points to the Software Center; GNOME Software
   is no longer a third store in the menu (it is still under "More apps" in the Software Center).
-- **Installer** (issue #160): the time zone starts where you are (or at Berlin without internet) instead of New York,
+- **Installer** (issue #160): the time zone starts at Berlin instead of New York (no location lookup on the internet),
   and the last window ("remove the USB stick") and the slideshow are in the language you chose.
 - **Welcome window without terminal commands** (issue #162): everything it explains works with clicks.
 - **Small things** (issue #147): the calculator in the search understands `round(3.14159,2)`, `max(1,2)` and German
