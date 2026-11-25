@@ -3359,6 +3359,8 @@ $LS SIMPLEOS_LIVE=0 $LV --setup
 check "installed: desktop icon 'Install Simple OS' still there" "[ ! -e $lt/home/Desktop/simpleos-install.desktop ]"
 check "installed: installer entry still in the menu" \
       "! grep -q 'simpleos-install' $lt/home/.config/openbox/menu.xml && python3 -c 'import sys, xml.dom.minidom as m; m.parse(sys.argv[1])' $lt/home/.config/openbox/menu.xml"
+check "installer: USB drives stay mounted / udiskie mounts them again during the install (#166)" \
+      "grep -qF 'pkill -u \"\$(id -u)\" -x udiskie' /usr/local/bin/simpleos-install && grep -q 'run install-debian; udiskie_again' /usr/local/bin/simpleos-install"
 check "installer launcher: wrong Exec" "grep -qx 'Exec=/usr/local/bin/simpleos-install' /usr/share/applications/simpleos-install.desktop"
 check "installer launcher: icon missing" "[ -n \"\$(ls /usr/share/icons/Papirus-Dark/*/apps/system-os-installer.svg 2>/dev/null)\" ]"
 check "simpleos-post-install does not remove the installer launcher" "grep -q '/usr/share/applications/simpleos-install.desktop' /usr/local/sbin/simpleos-post-install"

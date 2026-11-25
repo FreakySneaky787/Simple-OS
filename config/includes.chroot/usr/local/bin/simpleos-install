@@ -10,6 +10,10 @@
 #   - partitions of this computer's drives that are mounted (opened in the file manager) are unmounted first:
 #     Calamares cannot shrink, replace or format a mounted partition. If one is in use: a clear hint instead
 #     of an installation that stops right after it started
+#   - USB drives too (installing to an external SSD: udiskie had mounted it, Calamares offered only manual
+#     partitioning and then failed with "failed to create partition"). One still in use is left alone – it may
+#     just be a stick with files that is not the target. udiskie pauses while the installer runs, otherwise it
+#     mounts the drive again and every partition the installer creates; it starts again when the installer closes
 #   - shutting down, sleep (also closing the laptop lid) and the idle screen are blocked (systemd-inhibit);
 #     the power button and the power menu ask first (simpleos-powermenu)
 # Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
@@ -34,19 +38,34 @@ if pgrep -x calamares >/dev/null 2>&1; then
     exit 0
 fi
 
-# Mounted partitions of internal drives (not USB: HOTPLUG 0) under /media – the live medium itself is in
-# /run/live and stays. Output: names of those that could not be unmounted.
+# udiskie (Openbox autostart) mounts every drive that appears – paused until the installer is closed
+udiskie_cmd=
+if pgrep -u "$(id -u)" -x udiskie >/dev/null 2>&1; then
+    udiskie_cmd=1
+    pkill -u "$(id -u)" -x udiskie 2>/dev/null
+fi
+udiskie_again() {
+    [ -n "$udiskie_cmd" ] && command -v udiskie >/dev/null || return 0
+    pgrep -u "$(id -u)" -x udiskie >/dev/null 2>&1 && return 0
+    # same command as in ~/.config/openbox/autostart
+    udiskie --automount --no-notify --smart-tray --file-manager thunar \
+        --notify-command "/usr/local/bin/simpleos-usb-notify {event} {mount_path} {id_label} {drive_label}" \
+        >/dev/null 2>&1 9>&- &
+}
+# Mounted partitions under /media – the live medium itself is in /run/live and stays. Output: names of internal
+# drives' partitions (HOTPLUG 0) that could not be unmounted; USB ones in use are skipped.
 busy=$(findmnt -rn -o SOURCE,TARGET 2>/dev/null | while read -r src target; do
     case "$src" in /dev/*) ;; *) continue ;; esac
     case "$target" in /media/*|/run/media/*) ;; *) continue ;; esac
-    [ "$(lsblk -ndo HOTPLUG "$src" 2>/dev/null | tr -d ' ')" = 0 ] || continue
     udisksctl unmount -b "$src" --no-user-interaction >/dev/null 2>&1 || umount "$src" 2>/dev/null && continue
+    [ "$(lsblk -ndo HOTPLUG "$src" 2>/dev/null | tr -d ' ')" = 0 ] || continue
     name=$(lsblk -ndo LABEL "$src" 2>/dev/null)
     echo "${name:-${src#/dev/}}"
 done)
 if [ -n "$busy" ]; then
     drives=$(printf '%s' "$busy" | sed ':a;N;$!ba;s/\n/, /g')
     note "$(printf "$(_t 'A drive of this computer is still in use: %s. Close the windows that show its files, then start the installer again.')" "$drives")"
+    udiskie_again
     exit 0
 fi
 
@@ -59,7 +78,8 @@ run() {
         "$@"
     fi
 }
-if command -v install-debian >/dev/null; then run install-debian; exit 0; fi
-if command -v calamares >/dev/null && command -v pkexec >/dev/null; then run pkexec calamares; exit 0; fi
+if command -v install-debian >/dev/null; then run install-debian; udiskie_again; exit 0; fi
+if command -v calamares >/dev/null && command -v pkexec >/dev/null; then run pkexec calamares; udiskie_again; exit 0; fi
 note "$(_t 'The installer is missing on this system.')"
+udiskie_again
 exit 0

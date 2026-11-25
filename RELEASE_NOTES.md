@@ -69,6 +69,9 @@ sign in afterwards, "What's new" shows the highlights.
   is no longer a third store in the menu (it is still under "More apps" in the Software Center).
 - **Installer** (issue #160): the time zone starts at Berlin instead of New York (no location lookup on the internet),
   and the last window ("remove the USB stick") and the slideshow are in the language you chose.
+- **Installing to an external SSD or USB drive** (issue #166): the live session opened the drive by itself, so the
+  installer only offered manual partitioning for it and then stopped with "failed to create partition". USB drives
+  are now closed before the installer starts, and nothing is opened by itself while it runs.
 - **Welcome window without terminal commands** (issue #162): everything it explains works with clicks.
 - **Small things** (issue #147): the calculator in the search understands `round(3.14159,2)`, `max(1,2)` and German
   numbers like `1.234,5`, and shows German results with a decimal comma; the first restore point checks the space it
