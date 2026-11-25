@@ -3439,9 +3439,9 @@ hcase "$INS" "live -> install-debian" "" "SIMPLEOS_LIVE=1" "" 'grep -qx install-
 hcase "$INS" "installer already running -> hint" "" "SIMPLEOS_LIVE=1 PGREP_RC=0" "" 'grep -q "already open" $S/notify && [ ! -e $S/installer ]'
 hcase "$INS" "without install-debian -> pkexec calamares" "install-debian" "SIMPLEOS_LIVE=1" "" 'grep -qx calamares $S/pkexec'
 hcase "$INS" "no installer -> hint" "install-debian calamares" "SIMPLEOS_LIVE=1" "" 'grep -q "installer is missing" $S/notify'
-# #62/#64: shutdown/sleep blocked while it runs; mounted partitions of internal drives (HOTPLUG 0) unmounted first,
-# USB drives and the live medium stay; one in use -> hint, no installer; a second start while the first one is
-# still starting (lock) -> hint
+# #62/#64: shutdown/sleep blocked while it runs; mounted partitions under /media unmounted first – internal drives
+# and (#166) USB drives, the live medium stays; an internal one in use -> hint, no installer; a USB one in use is left
+# alone; a second start while the first one is still starting (lock) -> hint
 cat > "$wt/mock/systemd-inhibit" <<'MOCK'
 #!/bin/sh
 echo "$*" >> "$WT/inhibit"
@@ -3463,17 +3463,21 @@ exit 0
 MOCK
 printf '#!/bin/sh
 echo "udisksctl $*" >> "$WT/unmount"
+case "$*" in *"${UNMOUNT_FAIL:-none}"*) exit 1 ;; esac
 exit ${UNMOUNT_RC:-0}
 ' > "$wt/mock/udisksctl"
 printf '#!/bin/sh
 echo "umount $*" >> "$WT/unmount"
+case "$*" in *"${UNMOUNT_FAIL:-none}"*) exit 1 ;; esac
 exit ${UNMOUNT_RC:-0}
 ' > "$wt/mock/umount"
 chmod 0755 "$wt/mock/systemd-inhibit" "$wt/mock/findmnt" "$wt/mock/lsblk" "$wt/mock/udisksctl" "$wt/mock/umount"
 hcase "$INS" "installer runs with shutdown/sleep/lid blocked" "" "SIMPLEOS_LIVE=1" "" \
     'grep -qx install-debian $S/installer && grep -q -- "--what=shutdown:sleep:idle:handle-power-key:.*handle-lid-switch .*--mode=block install-debian" $S/inhibit'
-hcase "$INS" "internal partition unmounted, USB and live medium not" "" "SIMPLEOS_LIVE=1" "" \
-    '[ "$(cat $S/unmount)" = "udisksctl unmount -b /dev/sda5 --no-user-interaction" ] && grep -qx install-debian $S/installer'
+hcase "$INS" "internal and USB partitions unmounted, live medium not (#166)" "" "SIMPLEOS_LIVE=1" "" \
+    '[ "$(cat $S/unmount | tr "\n" " ")" = "udisksctl unmount -b /dev/sda5 --no-user-interaction udisksctl unmount -b /dev/sdb1 --no-user-interaction " ] && grep -qx install-debian $S/installer'
+hcase "$INS" "USB partition in use -> installer starts anyway, no hint (#166)" "" "SIMPLEOS_LIVE=1 UNMOUNT_FAIL=sdb1" "" \
+    'grep -qx install-debian $S/installer && [ ! -s $S/notify ]'
 hcase "$INS" "internal partition in use -> hint, no installer" "" "SIMPLEOS_LIVE=1 UNMOUNT_RC=1" "" \
     'grep -q "still in use: Data\." $S/notify && [ ! -e $S/installer ]'
 ln -s "$(command -v flock)" "$wt/sys/flock"
