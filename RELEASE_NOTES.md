@@ -30,7 +30,7 @@ sign in afterwards, "What's new" shows the highlights.
   straight away – no Bottles window, no "bottle" to choose (the first time SOS Bridge sets itself up, about a minute).
   Programs you install with their setup file appear in the menu afterwards like any other app, and their
   Documents, Downloads, Pictures, Music and Videos are your own folders (issue #153: tested with 21 programs –
-  7-Zip, Notepad++, WinSCP, PuTTY, KeePass, GIMP, Inkscape, LibreOffice, Python and more work). The Windows
+  7-Zip, Notepad++, WinSCP, PuTTY, KeePass, GIMP, Inkscape, LibreOffice, Python and more work; the full list is in [docs/SOS-BRIDGE-APPS.md](docs/SOS-BRIDGE-APPS.md)). The Windows
   installer of an app that has its own Simple OS version (Steam, Discord, Spotify, VLC …) points you to that version
   in the Software Center instead. Menu → Help → Windows
   Programs says honestly what usually works, what doesn't (Microsoft 365, current Adobe apps, games with anti-cheat,
@@ -247,8 +247,8 @@ repository that installed systems use. You don't need to download them yourself.
 - **Windows programs** run with SOS Bridge only if Wine supports them: many older programs and lots of games do,
   Microsoft 365, current Adobe apps and games with kernel anti-cheat don't. Programs made for Windows itself –
   Windows installation media and setup tools, drivers, antivirus – never do. Electron apps such as the Windows
-  versions of Visual Studio Code and Obsidian don't work in our test (#153). Menu → Help → Windows Programs has
-  alternatives.
+  versions of Visual Studio Code and Obsidian don't work in our test (#153) – see the
+  [list of tested programs](docs/SOS-BRIDGE-APPS.md). Menu → Help → Windows Programs has alternatives.
 - **Installer:** a few texts of the installer itself stay English in a German installation (the summary's "Erase
   disk … and install Simple OS 1.2"), and it suggests a computer name made of your name and the model number
   (e.g. "lena-21tf…") – change it on the "Users" page if you like. Both come from the installer (Calamares 3.2).
