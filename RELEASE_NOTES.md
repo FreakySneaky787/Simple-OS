@@ -249,6 +249,9 @@ repository that installed systems use. You don't need to download them yourself.
   Windows installation media and setup tools, drivers, antivirus – never do. Electron apps such as the Windows
   versions of Visual Studio Code and Obsidian don't work in our test (#153) – see the
   [list of tested programs](docs/SOS-BRIDGE-APPS.md). Menu → Help → Windows Programs has alternatives.
+- **Formats in English installations:** the installer preselects the time zone Europe/Berlin (no location lookup,
+  for privacy), so an English installation gets German number and date formats. Change them in Control Center →
+  Language & Region.
 - **Installer:** a few texts of the installer itself stay English in a German installation (the summary's "Erase
   disk … and install Simple OS 1.2"), and it suggests a computer name made of your name and the model number
   (e.g. "lena-21tf…") – change it on the "Users" page if you like. Both come from the installer (Calamares 3.2).
