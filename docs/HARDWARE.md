@@ -5,7 +5,7 @@ tested by us or reported by people who use it – and what didn't work. Your com
 Try the live session from the USB stick first, it changes nothing on the computer. Then
 [tell us how it went](#report-your-computer), so the next person knows.
 
-Last updated: 18 November 2026 (Simple OS 1.1.2).
+Last updated: 26 November 2026 (Simple OS 1.1.2).
 
 ## Tested computers
 
@@ -17,6 +17,7 @@ Last updated: 18 November 2026 (Simple OS 1.1.2).
 | Self-built desktop – AMD Ryzen 5 5600X, NVIDIA GeForce RTX 3050 (8 GB), 16 GB DDR4, Wi-Fi | UEFI, Secure Boot off, next to Windows | 1.1.1 | Yes | Yes | Yes | Yes | – | Yes | Yes |
 | Acer Predator – gaming desktop, Intel Core i7 (13th gen), NVIDIA GeForce RTX 4070 Super, 32 GB RAM | UEFI, Secure Boot off, next to Windows | 1.0.7, 1.1.2 | Yes | Yes | Yes | – | Yes | Yes | Yes |
 | Samsung Galaxy Book 4 – Intel Core 7 150U, 16 GB RAM | UEFI, Secure Boot on, whole disk | 1.1.2 | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| ASUS K42JA – laptop from 2010, Intel Core i5-460M, ATI Mobility Radeon HD 5730 | legacy BIOS | 1.1.2 | Yes | – | – | Yes | – | – | – |
 | Dell OptiPlex 9020 – desktop | legacy BIOS, MBR, next to another system | 1.0.3 | No | – | – | – | – | – | – |
 
 **ThinkPad E16 Gen 3:** in daily use since Simple OS 1.0. Wi-Fi: with one router the 5 GHz connection (a wide 160 MHz
@@ -35,6 +36,10 @@ Updates → Hardware & Drivers (Secure Boot off) and Wi-Fi. The first report of 
 
 **Samsung Galaxy Book 4:** installed to the whole disk (512 GB M.2 SSD, automatic partitioning) with 1.1.2, Secure Boot on, and used as a daily computer from now on. Installing, Wi-Fi, sound, graphics, brightness, suspend and waking up work. Chromium, LibreOffice and Steam installed from the Software Store without problems, and updates from Control Center ran cleanly. An external monitor on HDMI (1920×1080) works, and so do all ports: two USB-A, USB-C, HDMI, network cable, headphone jack and the microSD slot. A Bluetooth mouse, the number pad and the Fn keys for brightness, keyboard backlight and volume work. The Fn keys for CPU level, touchpad off and settings, and the Copilot key, do nothing; they often have no standard mapping on Linux ([#146](https://github.com/FreakySneaky787/Simple-OS/issues/146)).
 
+**ASUS K42JA:** a laptop from 2010, reported by a user on YouTube. It runs well on the old hardware: low memory use, the
+desktop looks good and browsers start faster than on other Linux systems they tried. No problems so far, and Simple OS
+stays on the laptop. The single parts (Wi-Fi, sound, brightness, suspend) weren't reported one by one yet.
+
 **Dell OptiPlex 9020:** with 1.0.3 the installer could leave the disk unable to start (issues
 [#62](https://github.com/FreakySneaky787/Simple-OS/issues/62) and
 [#64](https://github.com/FreakySneaky787/Simple-OS/issues/64)). Fixed in 1.0.4 and tested in a virtual machine set up
@@ -50,7 +55,7 @@ follows the window and copy & paste works between the virtual machine and your c
 ## Not tested yet – help wanted
 
 - **Games** (Steam, Proton) and heavy load with the NVIDIA driver – the driver itself works (RTX 3050, see above)
-- A laptop with **AMD** graphics
+- A newer laptop with **AMD** graphics (the 2010 ASUS K42JA with ATI Radeon works, see above)
 - Older **Mac** laptops (Intel) – they usually need the Broadcom Wi-Fi driver
 
 ## Known limitations
