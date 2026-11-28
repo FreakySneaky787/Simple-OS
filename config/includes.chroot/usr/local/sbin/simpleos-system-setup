@@ -173,7 +173,9 @@ apt_get_update() {
 # counts as success: Debian's lists are fresh, and Debian's (security) updates must never wait for Simple OS.
 SOS_SOURCE=/etc/apt/sources.list.d/simpleos.sources
 apt_update_once() {
-    _out=$(${APT_GET:-apt-get} -o DPkg::Lock::Timeout=300 update 2>&1)
+    # in English like aptget(): the test below needs apt's English summary line – in German it has another text and
+    # no URI, so a failure of only the Simple OS source stopped the Debian (security) updates too
+    _out=$(LANGUAGE= LC_ALL=C.UTF-8 ${APT_GET:-apt-get} -o DPkg::Lock::Timeout=300 update 2>&1)
     _rc=$?
     [ -n "$_out" ] && printf '%s\n' "$_out" >&2
     [ "$_rc" -eq 0 ] && return 0
