@@ -1,0 +1,17 @@
+# Simple OS – automatic boot test of the ISO (tools/qemu-test.sh, #124): only in a live session inside QEMU/KVM, report
+# on the serial port when the desktop runs and which system services failed (/usr/local/lib/simpleos/boot-test-report).
+# Anywhere else – real hardware, installed systems, other virtual machines – the conditions keep it from starting.
+[Unit]
+Description=Simple OS boot test report (live session in QEMU only)
+ConditionKernelCommandLine=boot=live
+ConditionVirtualization=|qemu
+ConditionVirtualization=|kvm
+After=display-manager.service
+
+[Service]
+# simple, not oneshot: it waits for the desktop and must not hold up graphical.target
+Type=simple
+ExecStart=/usr/local/lib/simpleos/boot-test-report
+
+[Install]
+WantedBy=graphical.target

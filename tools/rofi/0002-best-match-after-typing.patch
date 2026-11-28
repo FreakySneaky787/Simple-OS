@@ -1,0 +1,29 @@
+Description: Select the best match again when the typed text changes
+ While typing, the selection kept its index and was only clamped to the shorter list, so a row selected before (by
+ the arrow keys or the mouse) turned into whichever entry ended up at that place. Every change of the text now selects
+ the first row – the best match with sorting – like other launchers do.
+Author: Simple OS <https://github.com/FreakySneaky787/Simple-OS>
+Bug: https://github.com/FreakySneaky787/Simple-OS/issues/144
+Forwarded: no
+Last-Update: 2026-11-21
+
+--- a/source/view.c	2026-11-21 09:45:33.227716894 +0100
++++ b/source/view.c	2026-11-21 09:45:33.240351683 +0100
+@@ -1237,7 +1237,16 @@
+  * This function should be called when the input of the entry is changed.
+  * TODO: Evaluate if this needs to be a 'signal' on textbox?
+  */
+-static void rofi_view_input_changed() { rofi_view_take_action("inputchange"); }
++static void rofi_view_input_changed() {
++  // Simple OS: typed or deleted text -> the best match (the first row) is selected again. The selection used to keep
++  // its index while the list was filtered, so a row picked before (or by the mouse) became whichever entry ended up
++  // at that place (Simple OS issue #144).
++  RofiViewState *state = rofi_view_get_active();
++  if (state != NULL && state->list_view != NULL) {
++    listview_set_selected(state->list_view, 0);
++  }
++  rofi_view_take_action("inputchange");
++}
+ 
+ static void rofi_view_trigger_global_action(KeyBindingAction action) {
+   RofiViewState *state = rofi_view_get_active();

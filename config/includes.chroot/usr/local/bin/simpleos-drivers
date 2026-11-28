@@ -35,6 +35,10 @@ import re
 import subprocess
 import sys
 import tempfile
+import gettext
+
+# Translations (#43): the system language from /usr/share/locale/<lang>/LC_MESSAGES/simpleos.mo, else English
+_ = gettext.translation("simpleos", fallback=True).gettext
 
 PCI_HEAD = re.compile(r"^(\S+) (.+?) \[([0-9a-f]{4})\]: (.+?) \[([0-9a-f]{4}):([0-9a-f]{4})\](?: \(rev \w+\))?$")
 USB_LINE = re.compile(r"^Bus \d+ Device \d+: ID ([0-9a-f]{4}):([0-9a-f]{4}) ?(.*)$")
@@ -197,30 +201,30 @@ def scan(raw):
         name, ven, dev = short_name(d["name"]), d["vendor"], int(d["device"], 16)
         g = {"name": name, "driver": d["driver"] or "none", "packages": []}
         if ven in VIRTUAL_GPU_VENDORS or in_vm:
-            g["status"] = "Virtual graphics – no driver needed"
+            g["status"] = _("Virtual graphics – no driver needed")
         elif ven == "10de":
             if d["driver"] == "nvidia":
-                g["status"] = "NVIDIA driver active"
+                g["status"] = _("NVIDIA driver active")
             elif dev >= BLACKWELL_FIRST:
-                g["status"] = "Too new for the NVIDIA driver of Debian 12 – no driver is installed for it"
-                notes.append("Your NVIDIA graphics card is newer than the NVIDIA driver in Debian 12 supports, so "
+                g["status"] = _("Too new for the NVIDIA driver of Debian 12 – no driver is installed for it")
+                notes.append(_("Your NVIDIA graphics card is newer than the NVIDIA driver in Debian 12 supports, so "
                              "Simple OS does not install one (it would stop the graphical login). The screen works "
-                             "with the basic driver; full 3D speed has to wait for a newer Simple OS.")
+                             "with the basic driver; full 3D speed has to wait for a newer Simple OS."))
             elif dev >= MAXWELL_FIRST:
                 g["packages"] = need("nvidia-driver", "firmware-misc-nonfree", HEADERS)
-                g["status"] = ("Open-source driver – the NVIDIA driver is faster" if g["packages"]
-                               else "NVIDIA driver installed – active after a restart")
+                g["status"] = (_("Open-source driver – the NVIDIA driver is faster") if g["packages"]
+                               else _("NVIDIA driver installed – active after a restart"))
             elif any(a <= dev <= b for a, b in KEPLER):
                 g["packages"] = need("nvidia-tesla-470-driver", "firmware-misc-nonfree", HEADERS)
-                g["status"] = ("Open-source driver – NVIDIA 470 driver available for this card" if g["packages"]
-                               else "NVIDIA 470 driver installed – active after a restart")
+                g["status"] = (_("Open-source driver – NVIDIA 470 driver available for this card") if g["packages"]
+                               else _("NVIDIA 470 driver installed – active after a restart"))
             else:
-                g["status"] = "Open-source driver (nouveau) – no newer NVIDIA driver supports this card"
+                g["status"] = _("Open-source driver (nouveau) – no newer NVIDIA driver supports this card")
             if g["packages"] and (raw.get("secureboot") or "").strip() == "1":
                 # Debian's dkms signs the module with /var/lib/dkms/mok.key but does not enroll the key
                 # (the prompt via update-secureboot-policy only exists on Ubuntu) -> without a hint it would stay silent
-                notes.append("Secure Boot is on: the NVIDIA driver only works after you turn Secure Boot off "
-                             "in your computer's firmware settings (BIOS/UEFI).")
+                notes.append(_("Secure Boot is on: the NVIDIA driver only works after you turn Secure Boot off "
+                             "in your computer's firmware settings (BIOS/UEFI)."))
         elif ven == "8086" and intel_gen12(dev):
             fam, prefixes = intel_gen12(dev)
             g["name"] = g["name"] if fam.split()[0] in g["name"] else f"{g['name']} ({fam})"
@@ -233,22 +237,21 @@ def scan(raw):
                     if KERNEL not in want:
                         want.append(KERNEL)
                     g["packages"] = [KERNEL]
-                    g["status"] = (f"No driver for this graphics chip in kernel {kver} – the screen stays at a low "
-                                   "resolution until the newer kernel is installed")
+                    g["status"] = (_('No driver for this graphics chip in kernel {kver} – the screen stays at a low resolution '
+                                     'until the newer kernel is installed').format(kver=kver))
                 else:
-                    g["status"] = (f"No driver for this graphics chip yet (kernel {kver or '?'}) – the screen "
-                                   "stays at a low resolution")
+                    g["status"] = (_('No driver for this graphics chip yet (kernel {kernel}) – the screen stays at a low resolution').format(kernel=kver or '?'))
             elif not have_fw or "firmware-misc-nonfree" not in installed:
                 g["packages"] = need("firmware-misc-nonfree", "firmware-intel-graphics")
-                g["status"] = ("Firmware missing (power saving, video decoding)" if g["packages"]
-                               else "Firmware installed – active after a restart")
+                g["status"] = (_("Firmware missing (power saving, video decoding)") if g["packages"]
+                               else _("Firmware installed – active after a restart"))
             else:
-                g["status"] = f"Working ({d['driver']})"
+                g["status"] = _('Working ({driver})').format(driver=d['driver'])
         elif ven == "1002":
             g["packages"] = need("firmware-amd-graphics")
-            g["status"] = "Firmware missing" if g["packages"] else f"Working ({d['driver'] or 'amdgpu'})"
+            g["status"] = _("Firmware missing") if g["packages"] else _('Working ({driver})').format(driver=d['driver'] or 'amdgpu')
         else:
-            g["status"] = f"Working ({d['driver']})" if d["driver"] else "No driver in use"
+            g["status"] = _('Working ({driver})').format(driver=d['driver']) if d["driver"] else _("No driver in use")
         gpus.append(g)
 
     # Wi-Fi (PCI + USB)
@@ -260,46 +263,46 @@ def scan(raw):
         iface = next((w for w in wireless if len(w) > 1 and w[1] == d["driver"]), None) if d["driver"] else None
         w = {"name": short_name(d["name"]), "driver": d["driver"] or "none", "packages": []}
         if d["driver"] and (iface or not wireless and in_vm):
-            w["status"] = f"Working ({iface[0] if iface else d['driver']})"
+            w["status"] = _('Working ({driver})').format(driver=iface[0] if iface else d['driver'])
         elif ven == "14e4":
             w["packages"] = need("broadcom-sta-dkms", HEADERS) if dev in BROADCOM_WL else need("firmware-brcm80211")
-            w["status"] = "Driver missing" if w["packages"] else "Driver installed – active after a restart"
+            w["status"] = _("Driver missing") if w["packages"] else _("Driver installed – active after a restart")
         elif ven in WIFI_FIRMWARE:
             w["packages"] = need(WIFI_FIRMWARE[ven])
-            w["status"] = "Firmware missing" if w["packages"] else (
-                "Driver loaded, but no Wi-Fi interface – try a restart" if d["driver"] else "No driver found")
+            w["status"] = _("Firmware missing") if w["packages"] else (
+                _("Driver loaded, but no Wi-Fi interface – try a restart") if d["driver"] else _("No driver found"))
         else:
-            w["status"] = "No driver found"
+            w["status"] = _("No driver found")
         wifi.append(w)
     for line in (raw.get("lsusb") or "").splitlines():
         m = USB_LINE.match(line.strip())
         # only Wi-Fi sticks – not wireless mice/keyboards ("Wireless Mouse", "Wireless Receiver")
         if not m or not re.search(r"802\.11|wlan|wi-?fi|wireless (network|lan|adapter)", m.group(3), re.I):
             continue
-        w = {"name": m.group(3) or f"USB Wi-Fi {m.group(1)}:{m.group(2)}", "driver": "", "packages": []}
+        w = {"name": m.group(3) or _('USB Wi-Fi {vendor}:{product}').format(vendor=m.group(1), product=m.group(2)), "driver": "", "packages": []}
         if wireless:
-            w["status"] = "Working"
+            w["status"] = _("Working")
         elif m.group(1) in USB_WIFI_FIRMWARE:
             w["packages"] = need(USB_WIFI_FIRMWARE[m.group(1)])
-            w["status"] = "Firmware missing" if w["packages"] else "No Wi-Fi interface – try a restart"
+            w["status"] = _("Firmware missing") if w["packages"] else _("No Wi-Fi interface – try a restart")
         else:
-            w["status"] = "No driver found"
+            w["status"] = _("No driver found")
         wifi.append(w)
 
     # CPU microcode
     cpu_vendor = re.search(r"^Vendor ID:\s*(\S+)", raw.get("lscpu") or "", re.M)
     cpu_model = re.search(r"^Model name:\s*(.+)$", raw.get("lscpu") or "", re.M)
-    cpu = {"name": cpu_model.group(1).strip() if cpu_model else "Unknown CPU", "packages": []}
+    cpu = {"name": cpu_model.group(1).strip() if cpu_model else _("Unknown CPU"), "packages": []}
     mc = {"GenuineIntel": "intel-microcode", "AuthenticAMD": "amd64-microcode"}.get(
         cpu_vendor.group(1) if cpu_vendor else "")
     if in_vm:
-        cpu["status"] = "Microcode is handled by the host (virtual machine)"
+        cpu["status"] = _("Microcode is handled by the host (virtual machine)")
     elif not mc:
-        cpu["status"] = "No microcode package for this CPU"
+        cpu["status"] = _("No microcode package for this CPU")
     else:
         cpu["packages"] = need(mc)
-        cpu["status"] = "Microcode update missing (security and stability fixes)" if cpu["packages"] \
-            else "Microcode up to date"
+        cpu["status"] = _("Microcode update missing (security and stability fixes)") if cpu["packages"] \
+            else _("Microcode up to date")
 
     # Base firmware
     if not in_vm:
@@ -310,21 +313,21 @@ def scan(raw):
 
 def summary(rep):
     out = []
-    for g in rep["gpu"] or [{"name": "No graphics card found", "status": ""}]:
-        out.append(f"Graphics: {g['name']} – {g['status']}")
-    for w in rep["wifi"] or [{"name": "No Wi-Fi adapter found", "status": ""}]:
+    for g in rep["gpu"] or [{"name": _("No graphics card found"), "status": ""}]:
+        out.append(_('Graphics: {name} – {status}').format(name=g['name'], status=g['status']))
+    for w in rep["wifi"] or [{"name": _("No Wi-Fi adapter found"), "status": ""}]:
         out.append(f"Wi-Fi: {w['name']} – {w['status']}".rstrip(" –"))
-    out.append(f"CPU: {rep['cpu']['name']} – {rep['cpu']['status']}")
-    out += [f"Note: {n}" for n in rep["notes"]]
-    out.append("Recommended: " + (" ".join(rep["recommended"]) or "nothing – all drivers are installed"))
+    out.append(_('CPU: {name} – {status}').format(name=rep['cpu']['name'], status=rep['cpu']['status']))
+    out += [_('Note: {n}').format(n=n) for n in rep["notes"]]
+    out.append(_("Recommended: ") + (" ".join(rep["recommended"]) or _("nothing – all drivers are installed")))
     return "\n".join(out)
 
 
 # ---------------------------------------------------------------- Installation
 def notify(text, urgency="normal"):
     try:
-        subprocess.run(["notify-send", "-u", urgency, "-c", "x-simpleos", "-a", "Hardware & Drivers",
-                        "-i", "preferences-system", "Hardware & Drivers", text], timeout=5,
+        subprocess.run(["notify-send", "-u", urgency, "-c", "x-simpleos", "-a", _("Hardware & Drivers"),
+                        "-i", "preferences-system", _("Hardware & Drivers"), text], timeout=5,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except (OSError, subprocess.SubprocessError):
         pass
@@ -333,7 +336,7 @@ def notify(text, urgency="normal"):
 def install(rep):
     pkgs = [p for p in rep["recommended"] if p in ALLOWED]
     if not pkgs:
-        notify("All recommended drivers are already installed.", "low")
+        notify(_("All recommended drivers are already installed."), "low")
         return 0
     log = os.path.join(os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache"), "simpleos-drivers.log")
     os.makedirs(os.path.dirname(log), exist_ok=True)
@@ -341,9 +344,9 @@ def install(rep):
         feed = out.name
     prog = None
     if os.access("/usr/local/bin/simpleos-progress", os.X_OK):
-        prog = subprocess.Popen(["/usr/local/bin/simpleos-progress", "--follow", feed, "--title", "Installing drivers",
-                                 "--done", "Drivers installed", "--hint", "Restart afterwards to use them",
-                                 "--app", "Hardware & Drivers", "--icon-name", "preferences-system",
+        prog = subprocess.Popen(["/usr/local/bin/simpleos-progress", "--follow", feed, "--title", _("Installing drivers"),
+                                 "--done", _("Drivers installed"), "--hint", _("Restart afterwards to use them"),
+                                 "--app", _("Hardware & Drivers"), "--icon-name", "preferences-system",
                                  "--pid", str(os.getpid())], stderr=subprocess.DEVNULL)
     with open(feed, "a") as fo, open(log, "a") as fl:
         rc = subprocess.call(["pkexec", "/usr/local/sbin/simpleos-system-setup", "--drivers", *pkgs],
@@ -353,11 +356,11 @@ def install(rep):
         prog.wait()
     os.unlink(feed)
     if rc == 0:
-        notify("Drivers installed. Restart the computer to use them.")
+        notify(_("Drivers installed. Restart the computer to use them."))
     elif rc in (126, 127):
-        notify("No password entered – nothing was changed.", "low")
+        notify(_("No password entered – nothing was changed."), "low")
     else:
-        notify("The drivers could not be installed. Details: ~/.cache/simpleos-drivers.log", "critical")
+        notify(_("The drivers could not be installed. Details: ~/.cache/simpleos-drivers.log"), "critical")
     return 0
 
 

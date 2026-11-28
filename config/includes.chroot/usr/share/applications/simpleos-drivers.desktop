@@ -1,7 +1,11 @@
 [Desktop Entry]
 Type=Application
 Name=Hardware & Drivers
+Name[de]=Hardware & Treiber
+Name[fr]=Matériel et pilotes
 Comment=Check graphics, Wi-Fi and CPU drivers and install missing ones
+Comment[de]=Grafik-, WLAN- und CPU-Treiber prüfen und fehlende installieren
+Comment[fr]=Vérifier les pilotes graphiques, Wi-Fi et processeur et installer ceux qui manquent
 Exec=/usr/local/bin/simpleos-drivers
 Icon=preferences-system
 Categories=Settings;HardwareSettings;

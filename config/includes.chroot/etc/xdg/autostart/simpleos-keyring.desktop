@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Simple OS keyring
+Comment=Keeps the login keyring of this session running
+# Issue #148: pam_gnome_keyring starts gnome-keyring-daemon with --login at sign-in, and that daemon quits by itself
+# after 120 seconds (LOGIN_TIMEOUT in gnome-keyring) unless the session calls "gnome-keyring-daemon --start". GNOME,
+# MATE … do that through Debian's gnome-keyring-*.desktop, but those are OnlyShowIn=GNOME;… and never run under
+# Openbox – so Chromium, started later, met a fresh daemon and asked for a password for a new keyring.
+# --start joins the daemon PAM started (unlocked with the login password); hook 17 (#32) keeps the systemd socket off.
+TryExec=gnome-keyring-daemon
+Exec=gnome-keyring-daemon --start --components=pkcs11,secrets
+NoDisplay=true
+X-GNOME-Autostart-Phase=PreDisplayServer

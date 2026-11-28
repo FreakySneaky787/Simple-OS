@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!-- Simple OS – Control Center → Users (#68): create, delete and change accounts, administrator or standard user,
+     account pictures of others, automatic sign-in (/usr/local/sbin/simpleos-users-helper via pkexec): always an
+     administrator's password. Your own name and picture go through AccountsService without a password, your own
+     password through passwd (asks for the old one). -->
+<policyconfig>
+  <vendor>Simple OS</vendor>
+  <action id="org.simpleos.users">
+    <description>Manage the user accounts of this computer</description>
+    <description xml:lang="de">Die Benutzerkonten dieses Computers verwalten</description>
+    <description xml:lang="fr">Gérer les comptes utilisateurs de cet ordinateur</description>
+    <message>Simple OS needs an administrator's password to change user accounts.</message>
+    <message xml:lang="de">Simple OS braucht das Passwort eines Administrators, um Benutzerkonten zu ändern.</message>
+    <message xml:lang="fr">Simple OS a besoin du mot de passe d’un administrateur pour modifier les comptes utilisateurs.</message>
+    <icon_name>system-users</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/local/sbin/simpleos-users-helper</annotate>
+  </action>
+</policyconfig>

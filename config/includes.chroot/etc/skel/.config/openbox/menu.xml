@@ -122,6 +122,9 @@
       <item label="Setup Wizard" icon="/usr/share/simpleos/menu-icons/wizard.svg">
         <action name="Execute"><command>simpleos-welcome-wizard</command></action>
       </item>
+      <item label="Windows Programs" icon="/usr/share/simpleos/menu-icons/windows.svg">
+        <action name="Execute"><command>/usr/local/bin/simpleos-windows-app --help-page</command></action>
+      </item>
       <item label="Report a Problem" icon="/usr/share/simpleos/menu-icons/report.svg">
         <action name="Execute"><command>/usr/local/bin/simpleos-report</command></action>
       </item>

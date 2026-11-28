@@ -74,16 +74,16 @@ advanced() {
     if command -v pavucontrol >/dev/null; then
         pavucontrol >/dev/null 2>&1 &
     else
-        sos_notify "The advanced sound settings are not installed (pavucontrol missing)." critical
+        sos_notify "$(_t 'The advanced sound settings are not installed (pavucontrol missing).')" critical
     fi
     exit 0
 }
 sos_rofi_failed() {
-    sos_notify "The sound menu could not open. Opening the advanced sound settings instead."
+    sos_notify "$(_t 'The sound menu could not open. Opening the advanced sound settings instead.')"
     advanced
 }
 
-command -v pactl >/dev/null || { sos_notify "Sound control is not available (pactl missing)." critical; exit 0; }
+command -v pactl >/dev/null || { sos_notify "$(_t 'Sound control is not available (pactl missing).')" critical; exit 0; }
 command -v rofi >/dev/null || { sos_log "rofi missing"; sos_rofi_failed; }
 
 # Volume of the default output in percent (first channel)
@@ -93,7 +93,7 @@ volume() {
 muted() { LC_ALL=C pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null | grep -q 'yes'; }
 set_volume() {
     pactl set-sink-mute @DEFAULT_SINK@ 0 >&2 2>&1
-    pactl set-sink-volume @DEFAULT_SINK@ "$1" >&2 2>&1 || sos_notify "The volume could not be changed." critical
+    pactl set-sink-volume @DEFAULT_SINK@ "$1" >&2 2>&1 || sos_notify "$(_t 'The volume could not be changed.')" critical
 }
 # ±10 % (the Fn keys step 5 %, simpleos-osd), never above 100 % (distorts otherwise) and never below 0 %
 step_volume() {  # $1 = +10 | -10
@@ -135,13 +135,13 @@ outputs() {
         END { flush() }'
 }
 switch_output() {
-    pactl set-default-sink "$1" >&2 2>&1 || { sos_notify "This output could not be selected." critical; return; }
-    [ -n "$2" ] && { pactl set-sink-port "$1" "$2" >&2 2>&1 || sos_notify "This output could not be selected." critical; }
+    pactl set-default-sink "$1" >&2 2>&1 || { sos_notify "$(_t 'This output could not be selected.')" critical; return; }
+    [ -n "$2" ] && { pactl set-sink-port "$1" "$2" >&2 2>&1 || sos_notify "$(_t 'This output could not be selected.')" critical; }
     # Move running playback (browser, music) along
     pactl list short sink-inputs 2>/dev/null | cut -f1 | while read -r id; do
         sos_is_num "$id" && pactl move-sink-input "$id" "$1" >&2 2>&1
     done
-    sos_notify "Sound now plays on $3." low
+    sos_notify "$(printf "$(_t 'Sound now plays on %s.')" "$3")" low
 }
 
 # FontAwesome 4: volume-up U+F028, volume-down U+F027, volume-off U+F026, sliders U+F1DE, check U+F00C,
@@ -153,22 +153,22 @@ I_PHONES='\357\200\245' I_COG='\357\200\223' I_BACK='\357\201\240'
 # that come back – the window stays open (until 1.1.1 every "Volume up" closed the menu and opened a new one: a flicker
 # and a short wait each time). Row = "text\0info\x1faction<TAB>data"; no rows = Rofi closes.
 vrow() { printf '%s\000info\037%s\n' "$1" "$2"; }
-vhead() { printf '\000prompt\037Sound\n\000markup-rows\037true\n\000no-custom\037true\n\000message\037%s\n' "$1"; }
+vhead() { printf '\000prompt\037%s\n\000markup-rows\037true\n\000no-custom\037true\n\000message\037%s\n' "$(_t 'Sound')" "$1"; }
 main_rows() {
     vol=$(volume); sos_is_num "$vol" || vol=0
     out_list=$(outputs)
     current=$(printf '%s\n' "$out_list" | awk -F'\t' '$4 == 1 { print $3; exit }')
-    state="$vol%"; muted && state="Muted"
-    vhead "<b>Sound</b>   $(sos_dim "${current:-No output} · $state")"
-    vrow "$(sos_fa "$I_UP")  Volume up  $(sos_dim "$state")" "up"
-    vrow "$(sos_fa "$I_DOWN")  Volume down" "down"
-    vrow "$(sos_fa "$I_SLIDERS")  Set volume…" "level"
-    if muted; then vrow "$(sos_fa "$I_UP")  Unmute" "mute"; else vrow "$(sos_fa "$I_OFF")  Mute" "mute"; fi
+    state="$vol%"; muted && state=$(_t Muted)
+    vhead "<b>$(_t 'Sound')</b>   $(sos_dim "${current:-$(_t 'No output')} · $state")"
+    vrow "$(sos_fa "$I_UP")  $(_t 'Volume up')  $(sos_dim "$state")" "up"
+    vrow "$(sos_fa "$I_DOWN")  $(_t 'Volume down')" "down"
+    vrow "$(sos_fa "$I_SLIDERS")  $(_t 'Set volume…')" "level"
+    if muted; then vrow "$(sos_fa "$I_UP")  $(_t 'Unmute')" "mute"; else vrow "$(sos_fa "$I_OFF")  $(_t 'Mute')" "mute"; fi
     if [ -n "$out_list" ]; then
         while IFS="$TAB" read -r sink port label active; do
             [ -n "$sink" ] || continue
             if [ "$active" = 1 ]; then
-                vrow "$(sos_fa "$I_CHECK")  $(sos_esc "$label")  $(sos_dim "Active")" "noop"
+                vrow "$(sos_fa "$I_CHECK")  $(sos_esc "$label")  $(sos_dim "$(_t 'Active')")" "noop"
             else
                 vrow "$(sos_fa "$I_PHONES")  $(sos_esc "$label")" "output$TAB$sink$TAB$port"
             fi
@@ -176,15 +176,15 @@ main_rows() {
 $out_list
 EOF
     else
-        vrow "$(sos_fa "$I_OFF")  No sound output found" "noop"
+        vrow "$(sos_fa "$I_OFF")  $(_t 'No sound output found')" "noop"
     fi
-    vrow "$(sos_fa "$I_COG")  Advanced Audio Settings" "advanced"
+    vrow "$(sos_fa "$I_COG")  $(_t 'Advanced Audio Settings')" "advanced"
 }
 level_rows() {
-    state="$(volume)%"; muted && state="Muted"
-    vhead "<b>Set volume</b>   $(sos_dim "now $state")"
+    state="$(volume)%"; muted && state=$(_t Muted)
+    vhead "<b>$(_t 'Set volume')</b>   $(sos_dim "$(printf "$(_t 'now %s')" "$state")")"
     for l in 100 80 60 50 40 30 20 10 0; do vrow "$l%" "set$TAB$l"; done
-    vrow "$(sos_fa "$I_BACK")  Back" "back"
+    vrow "$(sos_fa "$I_BACK")  $(_t 'Back')" "back"
 }
 
 if [ "${1:-}" = --rofi ]; then
@@ -194,7 +194,7 @@ if [ "${1:-}" = --rofi ]; then
     case "$action" in
         up)       step_volume 10 ;;
         down)     step_volume -10 ;;
-        mute)     pactl set-sink-mute @DEFAULT_SINK@ toggle >&2 2>&1 || sos_notify "Mute could not be changed." critical ;;
+        mute)     pactl set-sink-mute @DEFAULT_SINK@ toggle >&2 2>&1 || sos_notify "$(_t 'Mute could not be changed.')" critical ;;
         level)    level_rows; exit 0 ;;
         set)      sos_is_num "$arg1" && set_volume "$arg1%" ;;
         output)

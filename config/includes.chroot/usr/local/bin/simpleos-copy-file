@@ -4,23 +4,25 @@
 #   text file (one file)    -> its content (up to 1 MB)
 #   otherwise / several files -> the paths, one line per file
 # Via xclip; a notification says what was copied.
-note() { notify-send -c x-simpleos -i edit-copy "Clipboard" "$1" 2>/dev/null; }
+# Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
+if [ -r /usr/local/lib/simpleos/i18n.sh ]; then . /usr/local/lib/simpleos/i18n.sh; else _t() { printf '%s' "$1"; }; fi
+note() { notify-send -c x-simpleos -i edit-copy "$(_t 'Clipboard')" "$1" 2>/dev/null; }
 [ $# -gt 0 ] || { echo "Usage: simpleos-copy-file FILE…" >&2; exit 2; }
-command -v xclip >/dev/null || { note "Copying is not available (xclip missing)."; exit 0; }
+command -v xclip >/dev/null || { note "$(_t 'Copying is not available (xclip missing).')"; exit 0; }
 if [ $# -eq 1 ] && [ -f "$1" ]; then
     mime=$(file -b --mime-type "$1" 2>/dev/null)
     case "$mime" in
         image/png|image/jpeg|image/gif|image/webp|image/bmp|image/svg+xml)
             xclip -selection clipboard -t "$mime" -i "$1" >/dev/null 2>&1 </dev/null &&
-                { note "Picture copied: ${1##*/}"; exit 0; } ;;
+                { note "$(printf "$(_t 'Picture copied: %s')" "${1##*/}")"; exit 0; } ;;
         text/*|application/json|application/xml|application/x-shellscript)
             if [ "$(wc -c < "$1")" -le 1048576 ]; then
                 xclip -selection clipboard -i "$1" >/dev/null 2>&1 </dev/null &&
-                    { note "Text copied: ${1##*/}"; exit 0; }
+                    { note "$(printf "$(_t 'Text copied: %s')" "${1##*/}")"; exit 0; }
             fi ;;
     esac
 fi
 printf '%s\n' "$@" | xclip -selection clipboard >/dev/null 2>&1 &&
-    { if [ $# -eq 1 ]; then note "Path copied: $1"; else note "$# paths copied."; fi; exit 0; }
-note "Nothing could be copied."
+    { if [ $# -eq 1 ]; then note "$(printf "$(_t 'Path copied: %s')" "$1")"; else note "$(printf "$(_t '%s paths copied.')" "$#")"; fi; exit 0; }
+note "$(_t 'Nothing could be copied.')"
 exit 0

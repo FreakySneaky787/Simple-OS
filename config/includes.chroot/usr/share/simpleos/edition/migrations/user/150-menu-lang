@@ -1,0 +1,16 @@
+#!/bin/sh
+# Simple OS 1.2 – the Openbox menu in the system language (#43). Runs once per account at sign-in, after "edition
+# --user" merged ~/.config/openbox/rc.xml. An account whose rc.xml was not merged (own keyboard shortcuts or other
+# changes next to the menu lines) still gets the translated menu file: the line <file>menu-simpleos.xml</file> before
+# <file>menu.xml</file> – Openbox keeps the first definition of each menu, so the copy from menu-lang wins and the
+# English menu.xml fills in when it is missing. Never fails (exit 0).
+rc=${XDG_CONFIG_HOME:-$HOME/.config}/openbox/rc.xml
+[ -f "$rc" ] && [ -w "$rc" ] || exit 0
+grep -q 'menu-simpleos.xml' "$rc" && exit 0
+grep -q '<file>menu.xml</file>' "$rc" || exit 0
+tmp=$rc.simpleos-new.$$
+cp -p "$rc" "$tmp" 2>/dev/null || exit 0
+sed 's|^\([[:space:]]*\)<file>menu.xml</file>[[:space:]]*$|\1<file>menu-simpleos.xml</file>\n&|' "$rc" > "$tmp" &&
+    grep -q 'menu-simpleos.xml' "$tmp" && mv -f "$tmp" "$rc"
+rm -f "$tmp"
+exit 0

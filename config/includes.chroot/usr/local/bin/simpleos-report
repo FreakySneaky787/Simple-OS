@@ -281,13 +281,13 @@ command -v rofi >/dev/null || { sos_log "rofi missing"; sos_rofi_failed; }
 # FontAwesome 4: file-text U+F15C, lock U+F023, globe U+F0AC, arrow-left U+F060
 I_FILE='\357\205\234' I_LOCK='\357\200\243' I_GLOBE='\357\202\254' I_BACK='\357\201\240'
 url=$(issue_url)
-sos_add "$(sos_fa "$I_LOCK")  Create report  $(sos_dim "includes system logs – asks for your password")" "report${TAB}1"
-sos_add "$(sos_fa "$I_FILE")  Create report without system logs" "report${TAB}0"
-[ -n "$url" ] && sos_add "$(sos_fa "$I_GLOBE")  Open the issue page only" "web"
-sos_add "$(sos_fa "$I_BACK")  Cancel" "cancel"
-sos_pick "<b>Report a problem</b>
-$(sos_dim "Saves details about this computer to a text file you can attach.")
-$(sos_dim "Your name, user name, network names and addresses are removed.")" 560
+sos_add "$(sos_fa "$I_LOCK")  $(_t 'Create report')  $(sos_dim "$(_t 'includes system logs – asks for your password')")" "report${TAB}1"
+sos_add "$(sos_fa "$I_FILE")  $(_t 'Create report without system logs')" "report${TAB}0"
+[ -n "$url" ] && sos_add "$(sos_fa "$I_GLOBE")  $(_t 'Open the issue page only')" "web"
+sos_add "$(sos_fa "$I_BACK")  $(_t 'Cancel')" "cancel"
+sos_pick "<b>$(_t 'Report a problem')</b>
+$(sos_dim "$(_t 'Saves details about this computer to a text file you can attach.')")
+$(sos_dim "$(_t 'Your name, user name, network names and addresses are removed.')")" 560
 
 case "$action" in
     web) open_url "$url"; exit 0 ;;
@@ -297,11 +297,11 @@ esac
 
 dir=$(desktop_dir)
 file="$dir/simpleos-report-$(date +%Y%m%d-%H%M).txt"
-sos_notify "Collecting details… this takes a few seconds." low
+sos_notify "$(_t 'Collecting details… this takes a few seconds.')" low
 SOS_NOPW=0
 if ! report "$arg1" > "$file" || [ ! -s "$file" ]; then
     rm -f "$file"
-    sos_notify "The report could not be created. Details: ~/.cache/simpleos-report.log" critical
+    sos_notify "$(_t 'The report could not be created. Details: ~/.cache/simpleos-report.log')" critical
     exit 0
 fi
 sos_log "saved $file"
@@ -315,6 +315,6 @@ if [ -n "$url" ]; then
 Drag this file into the issue page that just opened."
 else
     command -v thunar >/dev/null && { setsid thunar "$dir" >/dev/null 2>&1 & }
-    sos_notify "Saved to your $where: $name"
+    sos_notify "$(printf "$(_t 'Saved to your %s: %s')" "$where" "$name")"
 fi
 exit 0

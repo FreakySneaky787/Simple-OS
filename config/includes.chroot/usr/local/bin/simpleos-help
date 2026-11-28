@@ -11,15 +11,112 @@ LIB=/usr/local/lib/simpleos/common.sh
 sos_log_init "$@"
 
 sos_rofi_failed() {
-    sos_notify "Super: apps · Super+Enter: terminal · Super+B: browser · Super+E: files · Super+X: power menu"
+    sos_notify "$(_t 'Super: apps · Super+Enter: terminal · Super+B: browser · Super+E: files · Super+X: power menu')"
     exit 0
 }
 
-sos_rofi -dmenu -i -no-custom -markup-rows -p "Filter" \
-    -mesg "<b>Simple OS – Keyboard shortcuts</b>   ·   type to filter   ·   Esc to close" -markup \
-    -theme-str 'window { width: 760px; location: center; anchor: center; } listview { lines: 18; }
-                element-icon { enabled: false; } element-text { font: "JetBrains Mono 10"; }' \
-    >/dev/null <<'LIST'
+# The list in the system language (#43): German, French or English
+shortcuts() {
+    case "${SOS_LANG:-}" in
+        de*) cat <<'LIST'
+<b>── Apps ─────────────────────────────────────────────────</b>
+Super / Super+Leertaste     Suche – Apps, Dateien, Rechnungen (42*12), Ein/Aus
+Super+Enter                 Terminal
+Super+B                     Webbrowser
+Super+E                     Dateien
+Super+H / Super+Shift+?     Diese Übersicht
+<b>── Fenster ──────────────────────────────────────────────</b>
+Super+Q / Alt+F4            Die aktive App schließen
+Alt+Tab / Alt+Shift+Tab     Zwischen Fenstern wechseln
+Super+D                     Desktop anzeigen
+Super+Links / Super+Rechts  Fenster an die linke / rechte Hälfte (noch einmal: nächster Bildschirm)
+Super+Hoch / Super+Runter   Maximieren / wiederherstellen oder minimieren
+Super+Alt+Pfeiltasten       Fenster in ein Viertel des Bildschirms
+Alt+Leertaste               Fenstermenü (maximieren, verschieben …)
+Alt+Esc                     Fenster nach hinten schicken
+Doppelklick Titelleiste     Maximieren / wiederherstellen
+Alt+Ziehen mit links        Fenster verschieben
+Alt+Ziehen mit rechts       Fenstergröße ändern
+<b>── Arbeitsflächen ───────────────────────────────────────</b>
+Super+F1 … Super+F4         Zu Arbeitsfläche 1–4 wechseln
+Strg+Alt+Links/Rechts       Vorherige / nächste Arbeitsfläche
+Shift+Alt+Links/Rechts      Fenster auf die vorherige / nächste Arbeitsfläche
+<b>── System ───────────────────────────────────────────────</b>
+Super+L                     Bildschirm sperren
+Super+X                     Ein/Aus-Menü – sperren, Energie sparen, neu starten, herunterfahren, abmelden
+Super+N                     Netzwerkinfo – LAN-IP, Gateway, VPN, öffentliche IP
+Super+I                     Einstellungen – alle Einstellungen in einem Fenster
+Strg+Shift+Esc              Task-Manager – CPU/RAM sehen, hängende Apps beenden
+Super+V                     Verlauf der Zwischenablage – etwas früher Kopiertes wählen
+Super+A                     Ton – Lautstärke, Lautsprecher / Kopfhörer / HDMI
+Super+P                     Bildschirm – Auflösung, Bildwiederholrate, duplizieren / erweitern
+Druck                       Bildschirmfoto – gespeichert unter Bilder/Screenshots und kopiert
+Shift+Druck                 Bildschirmfoto eines Bereichs – mit der Maus aufziehen
+Lautstärketasten            Lauter / leiser / stumm
+Medientasten                Abspielen / Pause, nächster, vorheriger (Browser, Spotify …)
+USB-Stick eingesteckt       Nachricht mit Öffnen / Sicher entfernen
+Update-Nachricht            Anklicken, um Updates zu installieren (fragt nach deinem Passwort)
+<b>── Maus ─────────────────────────────────────────────────</b>
+Rechtsklick auf Desktop     Simple-OS-Menü (Apps, Einstellungen, Werkzeuge, Hilfe, Ein/Aus)
+Leiste: linker Knopf        Apps
+Leiste: Netzwerkanzeige     Netzwerk-Menü – WLAN, Kabel, Details
+Leiste: roter Knopf rechts  Ein/Aus-Menü
+Leiste: Uhr                 Kalender des Monats (noch einmal klicken zum Schließen)
+Software-Aktualisierung     Im Menü unter Werkzeuge: Updates suchen und installieren
+Einstellungen → Aussehen    Taskleiste: verschieben oder anders gestalten
+Dateien: Rechtsklick        Als Hintergrundbild setzen, In Zwischenablage kopieren, Als Administrator öffnen, Hier entpacken
+LIST
+            ;;
+        fr*) cat <<'LIST'
+<b>── Applications ─────────────────────────────────────────</b>
+Super / Super+Espace        Recherche – applis, fichiers, calculs (42*12), alimentation
+Super+Entrée                Terminal
+Super+B                     Navigateur web
+Super+E                     Fichiers
+Super+H / Super+Maj+?       Cet aperçu
+<b>── Fenêtres ─────────────────────────────────────────────</b>
+Super+Q / Alt+F4            Fermer l’application active
+Alt+Tab / Alt+Maj+Tab       Passer d’une fenêtre à l’autre
+Super+D                     Afficher le bureau
+Super+Gauche / Droite       Moitié gauche / droite de l’écran (encore : écran suivant)
+Super+Haut / Super+Bas      Agrandir / restaurer ou réduire
+Super+Alt+Flèches           Fenêtre sur un quart de l’écran
+Alt+Espace                  Menu de la fenêtre (agrandir, déplacer …)
+Alt+Échap                   Envoyer la fenêtre à l’arrière-plan
+Double-clic barre de titre  Agrandir / restaurer
+Alt+glisser (gauche)        Déplacer la fenêtre
+Alt+glisser (droit)         Redimensionner la fenêtre
+<b>── Bureaux virtuels ─────────────────────────────────────</b>
+Super+F1 … Super+F4         Aller au bureau 1–4
+Ctrl+Alt+Gauche/Droite      Bureau précédent / suivant
+Maj+Alt+Gauche/Droite       Déplacer la fenêtre vers le bureau précédent / suivant
+<b>── Système ──────────────────────────────────────────────</b>
+Super+L                     Verrouiller l’écran
+Super+X                     Alimentation – verrouiller, veille, redémarrer, éteindre …
+Super+N                     Infos réseau – IP locale, passerelle, VPN, IP publique
+Super+I                     Centre de contrôle – tous les réglages dans une fenêtre
+Ctrl+Maj+Échap              Gestionnaire des tâches – arrêter une appli bloquée
+Super+V                     Historique du presse-papiers – recoller une copie précédente
+Super+A                     Son – volume, haut-parleurs / casque / HDMI
+Super+P                     Écran – résolution, fréquence, dupliquer / étendre
+Impr. écran                 Capture d’écran – dans Images/Screenshots et copiée
+Maj+Impr. écran             Capture d’une zone – à tracer avec la souris
+Touches de volume           Plus fort / moins fort / couper le son
+Touches multimédia          Lecture / pause, suivant, précédent (navigateur, Spotify …)
+Clé USB branchée            Message avec Ouvrir / Retirer en toute sécurité
+Message de mise à jour      Cliquez pour installer (demande votre mot de passe)
+<b>── Souris ───────────────────────────────────────────────</b>
+Clic droit sur le bureau    Menu Simple OS (applis, réglages, outils, aide, alimentation)
+Barre : bouton gauche       Applications
+Barre : affichage réseau    Menu réseau – Wi-Fi, câble, détails
+Barre : bouton rouge        Menu d’alimentation (à droite)
+Barre : horloge             Calendrier du mois (cliquez encore pour fermer)
+Outils → Mises à jour       Rechercher et installer les mises à jour
+Centre de contrôle          Apparence → Barre des tâches : la déplacer ou la modifier
+Fichiers : clic droit       Définir comme fond d’écran, Copier dans le presse-papiers, Ouvrir en tant qu’administrateur, Extraire ici
+LIST
+            ;;
+        *) cat <<'LIST'
 <b>── Apps ─────────────────────────────────────────────────</b>
 Super (tap) / Super+Space   Search – apps, files, calculations (42*12), power options
 Super+Enter                 Terminal
@@ -67,4 +164,13 @@ Tools → Software Updates    Check for and install updates
 Control Center → Appearance Taskbar: move or restyle it
 Files: right-click          Set as Wallpaper, Copy to Clipboard, Open as Administrator, Extract Here
 LIST
+            ;;
+    esac
+}
+
+shortcuts | sos_rofi -dmenu -i -no-custom -markup-rows -p "$(_t 'Filter')" \
+    -mesg "<b>$(_t 'Simple OS – Keyboard shortcuts')</b>   ·   $(_t 'type to filter')   ·   $(_t 'Esc to close')" -markup \
+    -theme-str 'window { width: 760px; location: center; anchor: center; } listview { lines: 18; }
+                element-icon { enabled: false; } element-text { font: "JetBrains Mono 10"; }' \
+    >/dev/null
 exit 0

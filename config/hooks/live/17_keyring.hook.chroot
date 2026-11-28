@@ -7,6 +7,8 @@ set -e
 # dialog often did not even appear). Without the socket pam_gnome_keyring starts the daemon itself (auto_start) and
 # the keyring works right away, unlocked with the login password – also at every later login. Only the socket is
 # masked: where no login started a daemon (a text console), D-Bus can still start the service.
+# The PAM daemon quits after 120 s unless the session runs "gnome-keyring-daemon --start":
+# /etc/xdg/autostart/simpleos-keyring.desktop does that (#148).
 systemctl --global mask gnome-keyring-daemon.socket >/dev/null 2>&1 ||
     ln -sf /dev/null /etc/systemd/user/gnome-keyring-daemon.socket
 [ "$(readlink /etc/systemd/user/gnome-keyring-daemon.socket)" = /dev/null ]

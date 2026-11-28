@@ -48,13 +48,13 @@ if [ "${1:-}" = --hide-launcher ]; then
     exit 0
 fi
 
-command -v flatpak >/dev/null || fail "The Software Store is not available (Flatpak is missing)."
+command -v flatpak >/dev/null || fail "$(_t 'The Software Store is not available (Flatpak is missing).')"
 if flatpak info "$APP" >/dev/null 2>&1; then
     hide_launcher
     exec flatpak run "$APP" "$@"
 fi
 flatpak remotes --system --columns=name 2>/dev/null | grep -qx flathub ||
-    fail "The Software Store can't be installed: the Flathub source is not set up."
+    fail "$(_t "The Software Store can't be installed: the Flathub source is not set up.")"
 
 # ---- Space
 if flatpak list --system --runtime --columns=application 2>/dev/null | grep -qx org.gnome.Platform; then
@@ -66,9 +66,9 @@ free=${SIMPLEOS_SW_FREE_MB:-$(df -Pm /var/lib/flatpak 2>/dev/null | awk 'NR == 2
 sos_is_num "$free" || free=999999
 if [ "$free" -lt "$need" ]; then
     if [ -x /usr/local/bin/simpleos-live ] && /usr/local/bin/simpleos-live --check; then
-        fail "In Live mode, apps are kept in memory – only $free MB are free, the Software Store needs about $(( (need + 99) / 100 * 100 )) MB. Install Simple OS (icon on the desktop), then open the Software Store."
+        fail "$(printf "$(_t 'In Live mode, apps are kept in memory – only %s MB are free, the Software Store needs about %s MB. Install Simple OS (icon on the desktop), then open the Software Store.')" "$free" "$(( (need + 99) / 100 * 100 ))")"
     fi
-    fail "Not enough free disk space for the Software Store: $free MB free, about $need MB needed. Free up space with the Storage Cleaner."
+    fail "$(printf "$(_t 'Not enough free disk space for the Software Store: %s MB free, about %s MB needed. Free up space with the Storage Cleaner.')" "$free" "$need")"
 fi
 
 # ---- Network (fast, instead of failing at a timeout after minutes)
@@ -80,27 +80,27 @@ if [ -z "$net" ]; then
         net=0
     fi
 fi
-[ "$net" = 1 ] || fail "Flathub can't be reached. Check your internet connection and try again."
+[ "$net" = 1 ] || fail "$(_t "Flathub can't be reached. Check your internet connection and try again.")"
 
 # ---- Installation with a progress window
-feed=$(mktemp) || fail "The Software Store could not be installed (no temporary file)."
+feed=$(mktemp) || fail "$(_t 'The Software Store could not be installed (no temporary file).')"
 PROGRESS=/usr/local/bin/simpleos-progress
 ppid=
 if [ -x "$PROGRESS" ]; then
-    "$PROGRESS" --follow "$feed" --title "Installing the Software Store" --done "Software Store installed" \
-        --hint "One time only · about $(( (need + 99) / 100 * 100 )) MB from Flathub" --app "$SOS_TITLE" \
+    "$PROGRESS" --follow "$feed" --title "$(_t 'Installing the Software Store')" --done "$(_t 'Software Store installed')" \
+        --hint "$(printf "$(_t 'One time only · about %s MB from Flathub')" "$(( (need + 99) / 100 * 100 ))")" --app "$SOS_TITLE" \
         --icon-name "$SOS_ICON" --pid $$ 2>>"$SOS_LOG" &
     ppid=$!
 else
-    sos_notify "Installing the Software Store from Flathub – this takes a few minutes, one time only." low
+    sos_notify "$(_t 'Installing the Software Store from Flathub – this takes a few minutes, one time only.')" low
 fi
-echo "STEP: Installing the Software Store" >> "$feed"
+echo "STEP: $(_t 'Installing the Software Store')" >> "$feed"
 rcf=$feed.rc
 # without --noninteractive (otherwise no progress; -y answers all questions); the filter turns it into
 # PROGRESS/STAGE for the progress window and passes error texts through
 FP_PROGRESS=/usr/local/lib/simpleos/flatpak-progress
 [ -x "$FP_PROGRESS" ] || FP_PROGRESS=cat
-{ flatpak install --system -y flathub "$APP" </dev/null 2>&1; echo $? > "$rcf"; } | "$FP_PROGRESS" | tee -a "$SOS_LOG" >> "$feed"
+{ LANGUAGE= LC_ALL=C.UTF-8 flatpak install --system -y flathub "$APP" </dev/null 2>&1; echo $? > "$rcf"; } | "$FP_PROGRESS" | tee -a "$SOS_LOG" >> "$feed"
 rc=$(cat "$rcf" 2>/dev/null); rc=${rc:-1}
 echo "EXIT: $rc" >> "$feed"
 [ -n "$ppid" ] && wait "$ppid" 2>/dev/null
@@ -114,8 +114,8 @@ if [ "$rc" -eq 0 ] && flatpak info "$APP" >/dev/null 2>&1; then
 fi
 case "$out" in
     *min-free-space*|*"No space left"*|*"not enough space"*|*"Not enough space"*)
-        fail "Not enough free space to install the Software Store. In Live mode, install Simple OS first." ;;
+        fail "$(_t 'Not enough free space to install the Software Store. In Live mode, install Simple OS first.')" ;;
     *"Could not resolve"*|*"Could not connect"*|*"Timeout was reached"*|*"Network is unreachable"*|*"Failed to connect"*)
-        fail "Flathub can't be reached. Check your internet connection and try again." ;;
+        fail "$(_t "Flathub can't be reached. Check your internet connection and try again.")" ;;
 esac
-fail "The Software Store could not be installed. Details: ~/.cache/simpleos-software.log"
+fail "$(_t 'The Software Store could not be installed. Details: ~/.cache/simpleos-software.log')"

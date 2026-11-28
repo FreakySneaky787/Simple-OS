@@ -4,6 +4,8 @@
 #   simpleos-netinfo --text    the same info as text (terminal)
 #   simpleos-netinfo --panel   for tint2: short display on stdout, tooltip on stderr (without network access)
 # Only the info window/--text asks for the public IP (api.ipify.org, 3 s timeout).
+# Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
+if [ -r /usr/local/lib/simpleos/i18n.sh ]; then . /usr/local/lib/simpleos/i18n.sh; else _t() { printf '%s' "$1"; }; fi
 
 # LAN = interface of the default route of the main table. OpenVPN (0/1 + 128/1) and WireGuard via
 # NetworkManager (own table) leave it unchanged, so the LAN IP stays visible with a VPN too.
@@ -29,10 +31,10 @@ vpn_status() {
           awk -F: '$1 == "vpn" || $1 == "wireguard" { print $2; exit }')
     [ -n "$vpn" ] || vpn=$(ip -o link show up 2>/dev/null |
           awk -F': ' '$2 ~ /^(tun|tap|wg|ppp|tailscale)/ { sub("@.*", "", $2); print $2; exit }')
-    if [ -n "$vpn" ]; then echo "active ($vpn)"; else echo "off"; fi
+    if [ -n "$vpn" ]; then printf "$(_t 'active (%s)')\n" "$vpn"; else _t off; echo; fi
 }
 public_ip() {
-    python3 - <<'PY' 2>/dev/null || echo "not reachable"
+    python3 - <<'PY' 2>/dev/null || { _t 'not reachable'; echo; }
 import urllib.request
 print(urllib.request.urlopen("https://api.ipify.org", timeout=3).read().decode().strip())
 PY
@@ -41,19 +43,19 @@ PY
 if [ "$mode" = "--panel" ]; then
     # FontAwesome 4: wifi (U+F1EB), sitemap (U+F0E8), chain-broken (U+F127)
     if [ -z "$ip" ]; then
-        icon=$(printf '\357\204\247'); label="Offline"
+        icon=$(printf '\357\204\247'); label=$(_t Offline)
     elif [ "$kind" = "Wi-Fi" ]; then
         icon=$(printf '\357\207\253'); label=$ip
     else
         icon=$(printf '\357\203\250'); label=$ip
     fi
     printf '<span font_desc="FontAwesome 11">%s</span>  %s\n' "$icon" "$label"
-    hint='Click: Wi-Fi · Right-click: Details (Super+N)'
+    hint=$(_t 'Click: Wi-Fi · Right-click: Details (Super+N)')
     if [ -n "$ip" ]; then
-        printf 'Network\nLAN IP:  %s\nDevice:  %s (%s)\nGateway: %s\nHost:    %s\n%s' \
-            "$ip" "$dev" "$kind" "${gw:-none}" "$host" "$hint" >&2
+        printf "$(_t 'Network\nLAN IP:  %s\nDevice:  %s (%s)\nGateway: %s\nHost:    %s\n%s')" \
+            "$ip" "$dev" "$kind" "${gw:-$(_t none)}" "$host" "$hint" >&2
     else
-        printf 'No network connection\nHost:    %s\n%s' "$host" "$hint" >&2
+        printf "$(_t 'No network connection\nHost:    %s\n%s')" "$host" "$hint" >&2
     fi
     exit 0
 fi
@@ -62,13 +64,13 @@ info() {
     conn=
     [ -n "$dev" ] && conn=$(LC_ALL=C.UTF-8 nmcli -t -g GENERAL.CONNECTION device show "$dev" 2>/dev/null)
     printf '%-12s %s\n' \
-        "LAN IP"     "${ip:-not connected}" \
-        "Interface"  "${dev:-none}${dev:+ ($kind${conn:+, $conn})}" \
-        "Gateway"    "${gw:-none}" \
-        "Hostname"   "$host" \
+        "$(_t 'LAN IP')"     "${ip:-$(_t 'not connected')}" \
+        "$(_t 'Interface')"  "${dev:-$(_t none)}${dev:+ ($kind${conn:+, $conn})}" \
+        "$(_t 'Gateway')"    "${gw:-$(_t none)}" \
+        "$(_t 'Hostname')"   "$host" \
         "VPN"        "$(vpn_status)"
     # last, because it goes over the network (Rofi already shows the other rows before)
-    printf '%-12s %s\n' "Public IP" "$(public_ip)"
+    printf '%-12s %s\n' "$(_t 'Public IP')" "$(public_ip)"
 }
 
 if [ "$mode" = "--text" ] || [ -z "$DISPLAY" ]; then
@@ -79,17 +81,17 @@ fi
 # Rofi missing or does not start -> the same info as a notification; grab errors (Super+N held down,
 # click in the taskbar) or "Rofi already running" (click in the start menu) -> up to 6 attempts. Rofi reads the rows streamed, the public IP follows.
 show_as_notification() {
-    command -v notify-send >/dev/null && notify-send -a Network -i network-workgroup "Network" "$(info)" 2>/dev/null
+    command -v notify-send >/dev/null && notify-send -a "$(_t Network)" -i network-workgroup "$(_t Network)" "$(info)" 2>/dev/null
     exit 0
 }
 command -v rofi >/dev/null || show_as_notification
-settings="Wi-Fi & network settings"
+settings=$(_t 'Wi-Fi & network settings')
 err=$(mktemp 2>/dev/null) || err=/dev/null
 try=0 rc=1
 while [ "$try" -lt 6 ]; do
     try=$((try + 1))
-    choice=$({ info; echo "$settings"; } | rofi -dmenu -i -no-custom -async-pre-read 0 -p "Network" \
-        -mesg "<b>Network information</b>" -markup \
+    choice=$({ info; echo "$settings"; } | rofi -dmenu -i -no-custom -async-pre-read 0 -p "$(_t 'Network')" \
+        -mesg "<b>$(_t 'Network information')</b>" -markup \
         -theme-str 'window { width: 560px; } listview { lines: 7; } element-icon { enabled: false; } element-text { font: "JetBrains Mono 10"; }' \
         2>"$err"); rc=$?
     [ "$rc" -eq 0 ] && break

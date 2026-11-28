@@ -4,16 +4,18 @@
 #   simpleos-wallpaper --default  the Simple OS wallpaper
 # pcmanfm draws the desktop (desktop icons) – it stores the picture itself in
 # ~/.config/pcmanfm/default/desktop-items-0.conf. feh as well, in case pcmanfm --desktop is not running.
+# Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
+if [ -r /usr/local/lib/simpleos/i18n.sh ]; then . /usr/local/lib/simpleos/i18n.sh; else _t() { printf '%s' "$1"; }; fi
 DEFAULT=/usr/share/backgrounds/simpleos/wallpaper.png
-note() { notify-send -c x-simpleos -i preferences-desktop-wallpaper "Wallpaper" "$1" 2>/dev/null; }
+note() { notify-send -c x-simpleos -i preferences-desktop-wallpaper "$(_t 'Wallpaper')" "$1" 2>/dev/null; }
 file=${1:-}
 [ "$file" = --default ] && file=$DEFAULT
 [ -n "$file" ] || { echo "Usage: simpleos-wallpaper PICTURE | --default" >&2; exit 2; }
 case "$file" in file://*) file=${file#file://} ;; esac
 case "$file" in /*) ;; *) file=$PWD/$file ;; esac
-[ -r "$file" ] || { note "This picture could not be opened."; exit 0; }
+[ -r "$file" ] || { note "$(_t 'This picture could not be opened.')"; exit 0; }
 # A picture? (header instead of extension: photos without or with a wrong extension work too)
-case "$(file -b --mime-type "$file" 2>/dev/null)" in image/*|"") ;; *) note "This file is not a picture."; exit 0 ;; esac
+case "$(file -b --mime-type "$file" 2>/dev/null)" in image/*|"") ;; *) note "$(_t 'This file is not a picture.')"; exit 0 ;; esac
 ok=0
 command -v pcmanfm >/dev/null && timeout 5 pcmanfm --set-wallpaper="$file" --wallpaper-mode=crop >/dev/null 2>&1 && ok=1
 command -v feh >/dev/null && feh --no-fehbg --bg-fill "$file" >/dev/null 2>&1 && ok=1
@@ -27,6 +29,6 @@ if [ "$ok" = 1 ]; then
         sed -i 's/^wallpaper_mode=.*/wallpaper_mode=crop/' "$conf"
     fi
 else
-    note "The wallpaper could not be changed."
+    note "$(_t 'The wallpaper could not be changed.')"
 fi
 exit 0

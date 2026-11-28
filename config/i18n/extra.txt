@@ -1,0 +1,70 @@
+# Simple OS – texts for translation that are not in a Python or shell tool (tools/i18n.py extract reads this file).
+# One text per line, exactly as it appears in its file. Used by:
+#   /usr/local/lib/simpleos/menu-lang   the Openbox menu (label="…" of ~/.config/openbox/menu.xml)
+#   /usr/local/lib/simpleos/common.sh   the names of the shell tools in notifications and menus (SOS_TITLE, SOS_PROMPT)
+Appearance
+Backups
+Bluetooth
+Browser Selector
+Display
+Do Not Disturb
+Keyboard
+Keyboard layout
+Keyboard shortcuts
+Mouse & Touchpad
+Network
+Night light
+Power
+Report
+Report a Problem
+Software Store
+Software Updates
+Sound
+Storage
+Storage Cleaner
+Taskbar
+Updates
+USB drive
+Welcome
+#   /usr/local/lib/simpleos/menu-lang   the Openbox right-click menu (label="…" of /etc/skel/.config/openbox/menu.xml)
+Simple OS
+Install Simple OS
+Search (Super+Space)
+Files
+Web Browser (Super+B)
+Software Center
+Terminal
+Apps
+PDF Viewer
+Text Editor
+Calculator
+Media Player
+Image Viewer
+Camera
+Settings
+All Settings (Super+I)
+Wi-Fi & Network
+Bluetooth
+Sound
+Display
+Appearance & Wallpaper
+Keyboard
+Printers & Scanners
+Default & Startup Apps
+Night Light
+Do Not Disturb (on/off)
+Tools
+Software Updates
+Task Manager (Ctrl+Shift+Esc)
+Backups
+Storage Cleaner
+Disks & USB Sticks
+Network Info (Super+N)
+Help
+Welcome to Simple OS
+What's New
+Keyboard Shortcuts (Super+H)
+Setup Wizard
+Windows Programs
+Report a Problem
+Power (Super+X)

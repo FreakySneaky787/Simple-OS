@@ -1,0 +1,43 @@
+#!/bin/sh
+# Simple OS – boot test report (simpleos-boot-test.service, tools/qemu-test.sh, #124). Runs as root in a live session
+# inside QEMU/KVM only (the service's conditions) and writes lines to the first serial port, which the test reads:
+#   SIMPLEOS-BOOT-TEST: desktop <version> <seconds since boot>   the live user's Openbox, taskbar (tint2) and desktop
+#                                                                (pcmanfm) run
+#   SIMPLEOS-BOOT-TEST: state <state>                            systemctl is-system-running once start-up is over
+#   SIMPLEOS-BOOT-TEST: failed <unit>                            one line per failed unit
+#   SIMPLEOS-BOOT-TEST: done failed=<n>                          the end; n = 0 is a pass
+#   SIMPLEOS-BOOT-TEST: timeout <what is missing>                no desktop within 5 minutes
+# Tests: SIMPLEOS_BOOT_TEST_TTY (output instead of /dev/ttyS0), SIMPLEOS_BOOT_TEST_WAIT (seconds to wait for the
+# desktop), SIMPLEOS_BOOT_TEST_SETTLE (seconds after it), SIMPLEOS_BOOT_TEST_USER (the live user). Never fails.
+TTY=${SIMPLEOS_BOOT_TEST_TTY:-/dev/ttyS0}
+WAIT=${SIMPLEOS_BOOT_TEST_WAIT:-300}
+SETTLE=${SIMPLEOS_BOOT_TEST_SETTLE:-20}
+USER_NAME=${SIMPLEOS_BOOT_TEST_USER:-simple}
+[ -w "$TTY" ] || exit 0
+say() { printf 'SIMPLEOS-BOOT-TEST: %s\r\n' "$*" >> "$TTY" 2>/dev/null; }
+running() { pgrep -x -u "$USER_NAME" "$1" >/dev/null 2>&1; }
+
+t=0
+while :; do
+    missing=
+    for p in openbox tint2 pcmanfm; do running "$p" || missing="$missing $p"; done
+    [ -z "$missing" ] || [ "$t" -ge "$WAIT" ] && break
+    sleep 2; t=$((t + 2))
+done
+if [ -n "$missing" ]; then
+    say "timeout$missing"
+    exit 0
+fi
+version=$(. /usr/lib/os-release 2>/dev/null; echo "${VERSION_ID:-unknown}")
+up=$(cut -d. -f1 /proc/uptime 2>/dev/null)
+say "desktop $version ${up:-?}"
+# Units that fail a little later (after the sign-in) count too
+sleep "$SETTLE"
+state=$(timeout 120 systemctl is-system-running --wait 2>/dev/null)
+say "state ${state:-unknown}"
+n=0
+for u in $(systemctl list-units --state=failed --plain --no-legend 2>/dev/null | awk '{print $1}'); do
+    say "failed $u"; n=$((n + 1))
+done
+say "done failed=$n"
+exit 0

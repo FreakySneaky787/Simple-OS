@@ -1,0 +1,157 @@
+#!/usr/bin/env python3
+"""Simple OS – the standard folders of a new account in its language (#157), and the file manager's sidebar.
+
+Runs from ~/.config/openbox/autostart at every sign-in and does something only at an account's FIRST sign-in (no
+~/.config/gtk-3.0/bookmarks yet, Setup Wizard not done, ~/.config/user-dirs.locale still /etc/skel's "en_US", not the
+live session):
+  - language not English: the folders /etc/skel brought (Desktop, Documents, Downloads, Music, Pictures, Videos,
+    Templates – with what is inside, e.g. Pictures/Screenshots) get the names of xdg-user-dirs' translation
+    (Schreibtisch, Dokumente, Bilder …; Bureau, Documents, Images …), ~/.config/user-dirs.dirs and user-dirs.locale
+    follow. A folder whose new name exists already keeps its English name. Thunar, file dialogs, the desktop, the
+    screenshots and SOS Bridge find them through user-dirs.dirs.
+  - the sidebar of Thunar and the file dialogs: Documents, Downloads, Pictures, Music, Videos (their real names).
+An account that signed in before is never touched (its folders may hold files, programs may remember the paths).
+Never fails (exit 0). Tests: SIMPLEOS_HF_HOME (home folder), SIMPLEOS_HF_LANG (language instead of $LANG),
+SIMPLEOS_HF_LIVE=0/1.
+"""
+import gettext
+import os
+import sys
+from pathlib import Path
+
+HOME = Path(os.environ.get("SIMPLEOS_HF_HOME") or Path.home())
+CONFIG = HOME / ".config"
+DIRS_FILE = CONFIG / "user-dirs.dirs"
+LOCALE_FILE = CONFIG / "user-dirs.locale"
+BOOKMARKS = CONFIG / "gtk-3.0/bookmarks"
+WIZARD_DONE = CONFIG / "simpleos/wizard-done"
+# user-dirs.dirs key, English name (= xdg-user-dirs' text to translate)
+FOLDERS = [("DESKTOP", "Desktop"), ("DOWNLOAD", "Downloads"), ("TEMPLATES", "Templates"), ("DOCUMENTS", "Documents"),
+           ("MUSIC", "Music"), ("PICTURES", "Pictures"), ("VIDEOS", "Videos")]
+SIDEBAR = ["DOCUMENTS", "DOWNLOAD", "PICTURES", "MUSIC", "VIDEOS"]
+
+
+def log(text):
+    try:
+        path = HOME / ".cache/simpleos-home-folders.log"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a") as f:
+            f.write(text + "\n")
+    except OSError:
+        pass
+
+
+def is_live():
+    forced = os.environ.get("SIMPLEOS_HF_LIVE")
+    if forced in ("0", "1"):
+        return forced == "1"
+    try:
+        return "boot=live" in Path("/proc/cmdline").read_text().split()
+    except OSError:
+        return False
+
+
+def language():
+    lang = os.environ.get("SIMPLEOS_HF_LANG") or os.environ.get("LC_MESSAGES") or os.environ.get("LANG") or ""
+    return lang.split(".")[0].split("@")[0]
+
+
+def read_dirs():
+    """{key: path} from user-dirs.dirs ("$HOME/x" -> HOME/x)"""
+    try:
+        return read_dirs_from(DIRS_FILE.read_text())
+    except OSError:
+        return {}
+
+
+def read_dirs_from(text):
+    found = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if line.startswith("XDG_") and "_DIR=" in line:
+            key, value = line[4:].split("_DIR=", 1)
+            value = value.strip().strip('"')
+            if value.startswith("$HOME"):
+                value = str(HOME) + value[5:]
+            found[key] = value.rstrip("/")
+    return found
+
+
+def localize(lang):
+    translation = gettext.translation("xdg-user-dirs", "/usr/share/locale", languages=[lang, lang.split("_")[0]],
+                                      fallback=True)
+    try:
+        text = DIRS_FILE.read_text()
+    except OSError:
+        log("no user-dirs.dirs")
+        return
+    renamed = 0
+    for key, english in FOLDERS:
+        name = translation.gettext(english)
+        if not name or name == english or "/" in name or name.startswith("."):
+            continue
+        src, dst = HOME / english, HOME / name
+        line = f'XDG_{key}_DIR="$HOME/{english}"'
+        if line not in text or not src.is_dir() or src.is_symlink():
+            continue
+        if dst.exists() or dst.is_symlink():
+            log(f"{english}: {name} exists already – keeps its English name")
+            continue
+        try:
+            src.rename(dst)
+        except OSError as err:
+            log(f"{english} -> {name}: {err}")
+            continue
+        text = text.replace(line, f'XDG_{key}_DIR="$HOME/{name}"')
+        renamed += 1
+        log(f"{english} -> {name}")
+    # Thunar's "Create Document" lists the templates by file name: the empty text file from /etc/skel too
+    ours = gettext.translation("simpleos", "/usr/share/locale", languages=[lang, lang.split("_")[0]], fallback=True)
+    templates = Path(read_dirs_from(text).get("TEMPLATES", ""))
+    plain = templates / "Text Document.txt"
+    _ = ours.gettext
+    local = templates / (_("Text Document") + ".txt")
+    if str(templates) and plain.is_file() and plain != local and not local.exists():
+        try:
+            plain.rename(local)
+        except OSError as err:
+            log(f"template: {err}")
+    if renamed:
+        tmp = DIRS_FILE.with_suffix(".tmp")
+        tmp.write_text(text)
+        tmp.replace(DIRS_FILE)
+        LOCALE_FILE.write_text(lang + "\n")
+
+
+def write_bookmarks():
+    dirs = read_dirs()
+    lines = []
+    for key in SIDEBAR:
+        path = Path(dirs.get(key) or "")
+        if str(path) and path.is_dir() and path != HOME:
+            lines.append(f"{path.as_uri()} {path.name}")
+    BOOKMARKS.parent.mkdir(parents=True, exist_ok=True)
+    BOOKMARKS.write_text("".join(line + "\n" for line in lines))
+
+
+def main():
+    if BOOKMARKS.exists():
+        return 0        # signed in before
+    try:
+        first = (not WIZARD_DONE.exists() and not is_live()
+                 and LOCALE_FILE.read_text().strip() == "en_US")
+    except OSError:
+        first = False
+    lang = language()
+    if first and lang and not lang.startswith("en") and lang not in ("C", "POSIX"):
+        localize(lang)
+    write_bookmarks()
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except Exception as err:  # noqa: BLE001 – a sign-in must never fail because of the folders
+        log(f"error: {err}")
+        sys.exit(0)

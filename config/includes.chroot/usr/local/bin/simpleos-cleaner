@@ -99,11 +99,11 @@ scan_thumbnails() {
 ITEMS="apt-cache autoremove flatpak journal thumbnails"
 label() {
     case "$1" in
-        apt-cache)  echo "Downloaded package files" ;;
-        autoremove) echo "Packages no longer needed" ;;
-        flatpak)    echo "Unused Flatpak runtimes" ;;
-        journal)    echo "System logs older than 7 days" ;;
-        thumbnails) echo "Thumbnail cache" ;;
+        apt-cache)  _t "Downloaded package files" ;;
+        autoremove) _t "Packages no longer needed" ;;
+        flatpak)    _t "Unused Flatpak runtimes" ;;
+        journal)    _t "System logs older than 7 days" ;;
+        thumbnails) _t "Thumbnail cache" ;;
     esac
 }
 scan() {
@@ -131,13 +131,13 @@ clean() {
     fi
     if [ -n "$flags" ]; then
         if ! command -v pkexec >/dev/null; then
-            sos_notify "System files can't be cleaned (pkexec missing)." critical
+            sos_notify "$(_t "System files can't be cleaned (pkexec missing).")" critical
         else
             # shellcheck disable=SC2086
             pkexec "$HELPER" $flags >&2 2>&1; rc=$?
             case "$rc" in
                 0) ;;
-                126|127) sos_notify "No password entered – system files were not cleaned."; return ;;
+                126|127) sos_notify "$(_t 'No password entered – system files were not cleaned.')"; return ;;
                 *) failed=1 ;;
             esac
         fi
@@ -147,9 +147,9 @@ clean() {
     [ "$gained" -lt 0 ] && gained=0
     # exactly one result notification (before, "Done – … freed" also came after the error)
     if [ "$failed" = 1 ]; then
-        sos_notify "Some items could not be cleaned ($(human "$gained") freed). Details: ~/.cache/simpleos-cleaner.log" critical
+        sos_notify "$(printf "$(_t 'Some items could not be cleaned (%s freed). Details: ~/.cache/simpleos-cleaner.log')" "$(human "$gained")")" critical
     else
-        sos_notify "Done – $(human "$gained") freed." low
+        sos_notify "$(printf "$(_t 'Done – %s freed.')" "$(human "$gained")")" low
     fi
 }
 
@@ -183,14 +183,14 @@ I_BACK='\357\201\240'
 usage_menu() {
     df_line=$(df -B1 --output=size,used,avail / 2>/dev/null | tail -n 1)
     set -- $df_line
-    head="<b>Disk usage</b>   $(sos_dim "$(human "${3:-0}") free of $(human "${1:-0}")")"
+    head="<b>$(_t 'Disk usage')</b>   $(sos_dim "$(printf "$(_t '%s free of %s')" "$(human "${3:-0}")" "$(human "${1:-0}")")")"
     # Largest folders in the home folder (one level, same file system)
     du -x -d1 -B1 "$HOME" 2>/dev/null | sort -rn | sed -n '2,11p' > "$SOS_LOG_DIR/simpleos-cleaner.du"
     while IFS="$TAB" read -r bytes dir; do
         [ -n "$dir" ] || continue
         sos_add "$(sos_fa "$I_FOLDER")  $(sos_esc "${dir#"$HOME"/}")  $(sos_dim "$(human "$bytes")")" "open$TAB$dir"
     done < "$SOS_LOG_DIR/simpleos-cleaner.du"
-    sos_add "$(sos_fa "$I_BACK")  Back" "back"
+    sos_add "$(sos_fa "$I_BACK")  $(_t 'Back')" "back"
     sos_pick "$head" 520
     if [ "$action" = open ]; then
         if command -v thunar >/dev/null; then thunar "$arg1" >/dev/null 2>&1 &
@@ -199,8 +199,8 @@ usage_menu() {
     fi
 }
 confirm() {  # $1 text, $2 size -> exit 0 on "Clean up"
-    sos_add "$(sos_fa "$I_TRASH")  Clean up – free $2" "yes"
-    sos_add "$(sos_fa "$I_BACK")  Cancel" "no"
+    sos_add "$(sos_fa "$I_TRASH")  $(printf "$(_t 'Clean up – free %s')" "$2")" "yes"
+    sos_add "$(sos_fa "$I_BACK")  $(_t 'Cancel')" "no"
     sos_pick "<b>$(sos_esc "$1")</b>" 460
     [ "$action" = yes ]
 }
@@ -215,29 +215,29 @@ while :; do
 $data
 EOF
     if [ "$total" -gt 0 ]; then
-        sos_add "$(sos_fa "$I_MAGIC")  Clean everything  $(sos_dim "$(human "$total")")" "clean${TAB}all"
+        sos_add "$(sos_fa "$I_MAGIC")  $(_t 'Clean everything')  $(sos_dim "$(human "$total")")" "clean${TAB}all"
     else
-        sos_add "$(sos_fa "$I_CHECK")  Nothing to clean right now" "noop"
+        sos_add "$(sos_fa "$I_CHECK")  $(_t 'Nothing to clean right now')" "noop"
     fi
     while IFS="$TAB" read -r it bytes n desc; do
         [ -n "$it" ] || continue
         if [ "${bytes:-0}" -gt 0 ]; then
             sos_add "$(sos_fa "$I_TRASH")  $desc  $(sos_dim "$(human "$bytes")")" "clean$TAB$it"
         else
-            sos_add "$(sos_fa "$I_CHECK")  $desc  $(sos_dim "clean")" "noop"
+            sos_add "$(sos_fa "$I_CHECK")  $desc  $(sos_dim "$(_t 'clean')")" "noop"
         fi
     done <<EOF
 $data
 EOF
-    sos_add "$(sos_fa "$I_PIE")  Disk usage" "usage"
-    sos_pick "<b>Storage Cleaner</b>   $(sos_dim "$(human "$(free_bytes)") free on the system disk")" 520
+    sos_add "$(sos_fa "$I_PIE")  $(_t 'Disk usage')" "usage"
+    sos_pick "<b>$(_t 'Storage Cleaner')</b>   $(sos_dim "$(printf "$(_t '%s free on the system disk')" "$(human "$(free_bytes)")")")" 520
     case "$action" in
         clean)
             # Save the item before asking: confirm calls sos_pick and resets $arg1
             item=$arg1
             if [ "$item" = all ]; then
                 # shellcheck disable=SC2086
-                confirm "Clean everything?" "$(human "$total")" && clean $all
+                confirm "$(_t 'Clean everything?')" "$(human "$total")" && clean $all
             else
                 bytes=$(printf '%s\n' "$data" | awk -F'\t' -v k="$item" '$1 == k { print $2 }')
                 confirm "$(label "$item")?" "$(human "$bytes")" && clean "$item"

@@ -11,6 +11,9 @@ python3-xdg
 # Login manager with GTK greeter
 lightdm
 lightdm-gtk-greeter
+# Account pictures and names for the login screen (Control Center → Users, #68): new accounts' home folders are
+# private, so the greeter can't read ~/.face – LightDM asks AccountsService (accounts-daemon, a small service).
+accountsservice
 tint2
 feh
 picom

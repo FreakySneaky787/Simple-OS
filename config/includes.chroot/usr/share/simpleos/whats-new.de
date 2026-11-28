@@ -1,0 +1,22 @@
+# Simple OS 1.2
+## Neu in 1.2
+- **Simple OS spricht Deutsch und Französisch.** Alle Fenster, Menüs und Meldungen von Simple OS folgen der Sprache,
+  die du unter Einstellungen → Sprache & Region wählst.
+- **Benutzer.** Einstellungen → Benutzer: Konten anlegen und entfernen, Namen, Bilder und Passwörter ändern, jemanden
+  zum Administrator machen, automatisch anmelden – und „Benutzer wechseln“ im Ein/Aus-Menü.
+- **Windows-Programme.** Doppelklicke auf eine .exe oder .msi: SOS Bridge (Bottles) startet viele Windows-Programme.
+  Beim ersten Mal wird es mit einem Klick installiert. Menü → Hilfe → Windows-Programme erklärt, was läuft und was nicht.
+- **Extras im Einrichtungsassistenten.** Der neue Schritt „Extras“ fügt SOS Bridge, Gaming-Unterstützung (jetzt mit
+  Gamecontrollern) oder Entwicklerwerkzeuge hinzu – alles aus, bis du es einschaltest.
+- **AppArmor.** Die Sicherheitsprofile, die deine Apps mitbringen (Drucken, LibreOffice …), sind jetzt aktiv.
+## Behoben in 1.2
+- **Die Suche nimmt den besten Treffer,** auch wenn der Mauszeiger dort ruht, wo das Menü aufgeht.
+- **Chromium fragt nicht mehr nach einem neuen Schlüsselbund-Passwort,** ein paar Minuten nach der ersten Anmeldung.
+- **Chromium in deiner Sprache** – seine Übersetzungen werden mit der Sprache installiert.
+- **Der Rechner versteht** „round(3.14159,2)“, „max(1,2)“ und deutsche Zahlen wie „1.234,5“.
+- **Der erste Wiederherstellungspunkt** prüft vor dem Start den Platz, den er wirklich braucht.
+## Frühere Versionen
+- 1.1.2: bessere Menüs (Hervorhebung unter der Maus, bester Treffer zuerst, Einstellungen in der Suche) und
+  Korrekturen für Bildschirmsperre, „Nicht stören“ und das Update-Fenster.
+- 1.1.1 und 1.1: Skalierung für hochauflösende Bildschirme, Sprache & Region, Kamera, größere Taskleiste, schnellerer
+  Start.

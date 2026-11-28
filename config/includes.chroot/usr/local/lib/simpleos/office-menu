@@ -80,6 +80,8 @@ cp -p "$menu" "$tmp" 2>/dev/null || exit 0
 strip "$menu" | awk -v add="$add" '{ print } /<!-- simpleos-office:/ { while ((getline l < add) > 0) print l }' > "$tmp" || exit 0
 cmp -s "$menu" "$tmp" && exit 0
 mv -f "$tmp" "$menu" 2>/dev/null || exit 0
+# the translated copy that Openbox shows (menu-lang, #43) follows the change
+[ -x /usr/local/lib/simpleos/menu-lang ] && /usr/local/lib/simpleos/menu-lang "$menu" >/dev/null 2>&1
 if [ "$reconfigure" = 1 ] && [ -n "${DISPLAY:-}" ] && command -v openbox >/dev/null; then
     openbox --reconfigure >/dev/null 2>&1
 fi

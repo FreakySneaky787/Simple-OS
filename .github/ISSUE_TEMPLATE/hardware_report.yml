@@ -22,7 +22,7 @@ body:
     attributes:
       label: Simple OS version
       description: Control Center → System & Updates, or `cat /etc/os-release`.
-      placeholder: e.g. 1.0.7
+      placeholder: e.g. 1.1.2
     validations:
       required: true
   - type: dropdown

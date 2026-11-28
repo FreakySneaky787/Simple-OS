@@ -1,0 +1,13 @@
+#!/bin/sh
+# Simple OS 1.2 – light mode and accent color in the apps too (#158). Runs once per account at sign-in:
+#   - light mode: the GTK theme becomes Arc-Lighter (Arc drew the sidebars of Thunar and the file dialogs dark)
+#   - an accent other than blue: radio buttons, switches, progress bars and the selected row get it (gtk-accent)
+# Both by running simpleos-theme again with the account's own choice (no wallpaper change). An account in dark mode
+# with the blue accent (the default) gets nothing. Never fails (exit 0).
+state=$HOME/.config/simpleos/theme
+mode=dark accent=blue
+# shellcheck disable=SC1090
+[ -r "$state" ] && . "$state"
+[ "$mode" = dark ] && [ "$accent" = blue ] && exit 0
+[ -x /usr/local/bin/simpleos-theme ] && /usr/local/bin/simpleos-theme --mode "$mode" --accent "$accent" --no-wallpaper >/dev/null 2>&1
+exit 0

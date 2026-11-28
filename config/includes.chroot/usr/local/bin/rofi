@@ -11,6 +11,12 @@
 REAL=${SIMPLEOS_ROFI:-/usr/bin/rofi}
 CACHE=${SIMPLEOS_SCALE_CACHE:-${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}/simpleos/scale}
 [ -x "$REAL" ] || { echo "rofi: error: $REAL is not installed" >&2; exit 127; }
+# The input field's "Search" (config.rasi) in the system language (#43); first, so a menu's own -theme-str still wins.
+# English: nothing added. Quotes and backslashes are left out – the text goes into a theme string.
+if [ -r /usr/local/lib/simpleos/i18n.sh ]; then
+    ph=$(. /usr/local/lib/simpleos/i18n.sh; _t 'Search' | tr -d '"\\')
+    [ -n "$ph" ] && [ "$ph" != Search ] && set -- -theme-str "entry { placeholder: \"$ph\"; }" "$@"
+fi
 p=$(sed -n 's/^percent=\([0-9][0-9]*\)$/\1/p' "$CACHE" 2>/dev/null | head -n 1)
 case "$p" in 125|150|200) ;; *) exec "$REAL" "$@" ;; esac
 

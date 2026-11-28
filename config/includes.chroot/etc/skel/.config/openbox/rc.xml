@@ -28,6 +28,9 @@
        when the button is released. 1500 ms (#104, 1.1.1): with 200 a slow click (or a firm touchpad click) of 0.3 s
        closed the desktop and window menus again as soon as the button was let go. -->
   <menu>
+    <!-- the same menus in the system language first (#43, /usr/local/lib/simpleos/menu-lang at sign-in): Openbox keeps
+         the first definition of a menu; without that file the English menu.xml is used -->
+    <file>menu-simpleos.xml</file>
     <file>menu.xml</file>
     <hideDelay>1500</hideDelay>
     <middle>no</middle>

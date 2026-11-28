@@ -21,6 +21,7 @@ import ast
 import math
 import operator
 import os
+import pwd
 import re
 import shlex
 import shutil
@@ -29,6 +30,10 @@ import sys
 import time
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
+import gettext
+
+# Translations (#43): the system language from /usr/share/locale/<lang>/LC_MESSAGES/simpleos.mo, else English
+_ = gettext.translation("simpleos", fallback=True).gettext
 
 SEP = "\x1f"
 HOME = Path(os.environ.get("SIMPLEOS_SEARCH_ROOT") or Path.home())
@@ -36,39 +41,42 @@ MAX_FILES = 60
 FILE_TIMEOUT = 3.0   # seconds for the file search
 LIVE = "/usr/local/bin/simpleos-live"
 SYSTEM = [  # (key, name, icon, keywords incl. German synonyms for German speakers, confirmation)
-    ("lock", "Lock", "system-lock-screen", "lock screen sperren", None),
-    ("sleep", "Sleep", "system-suspend", "sleep suspend standby ruhezustand", None),
-    ("restart", "Restart", "system-reboot", "restart reboot neustart", "Restart now"),
-    ("shutdown", "Shut down", "system-shutdown", "shut down shutdown power off poweroff herunterfahren", "Shut down now"),
-    ("logout", "Sign out", "system-log-out", "sign out log out logout abmelden", "Sign out now"),
+    ("lock", _("Lock"), "system-lock-screen", "lock screen sperren", None),
+    ("sleep", _("Sleep"), "system-suspend", "sleep suspend standby ruhezustand", None),
+    ("restart", _("Restart"), "system-reboot", "restart reboot neustart", _("Restart now")),
+    ("shutdown", _("Shut down"), "system-shutdown", "shut down shutdown power off poweroff herunterfahren", _("Shut down now")),
+    ("switch", _("Switch user"), "system-switch-user", "switch user change user other account benutzer wechseln", None),
+    ("logout", _("Sign out"), "system-log-out", "sign out log out logout abmelden", _("Sign out now")),
 ]
 # Pages of the Control Center (1.1.2): "display settings" opens Control Center → Display, like Windows' search does.
 # (page key of simpleos-control-center, name, icon as in its sidebar, keywords incl. German synonyms)
 SETTINGS = [
-    ("wifi", "Wi-Fi settings", "network-wireless", "wifi wlan wireless network internet netzwerk"),
-    ("bluetooth", "Bluetooth settings", "bluetooth", "bluetooth pair pairing headphones kopfhörer"),
-    ("sound", "Sound settings", "audio-volume-high", "sound audio volume speaker output microphone mikrofon ton lautstärke"),
-    ("display", "Display settings", "video-display",
+    ("wifi", _("Wi-Fi settings"), "network-wireless", "wifi wlan wireless network internet netzwerk"),
+    ("bluetooth", _("Bluetooth settings"), "bluetooth", "bluetooth pair pairing headphones kopfhörer"),
+    ("sound", _("Sound settings"), "audio-volume-high", "sound audio volume speaker output microphone mikrofon ton lautstärke"),
+    ("display", _("Display settings"), "video-display",
      "display screen monitor resolution refresh rate brightness night light scale scaling bildschirm anzeige auflösung "
      "helligkeit nachtlicht skalierung"),
-    ("appearance", "Appearance settings", "preferences-desktop-theme",
+    ("appearance", _("Appearance settings"), "preferences-desktop-theme",
      "appearance theme dark light mode accent color wallpaper background design aussehen hintergrund"),
-    ("notifications", "Notification settings", "preferences-system-notifications",
+    ("notifications", _("Notification settings"), "preferences-system-notifications",
      "notifications do not disturb dnd benachrichtigungen nicht stören"),
-    ("input", "Mouse & touchpad settings", "input-mouse", "mouse touchpad pointer speed tap scrolling maus"),
-    ("keyboard", "Keyboard settings", "input-keyboard", "keyboard layout shortcuts tastatur tastaturlayout"),
-    ("printers", "Printer & scanner settings", "printer", "printer printing scanner scan drucker drucken"),
-    ("power", "Power settings", "battery",
+    ("input", _("Mouse & touchpad settings"), "input-mouse", "mouse touchpad pointer speed tap scrolling maus"),
+    ("keyboard", _("Keyboard settings"), "input-keyboard", "keyboard layout shortcuts tastatur tastaturlayout"),
+    ("printers", _("Printer & scanner settings"), "printer", "printer printing scanner scan drucker drucken"),
+    ("power", _("Power settings"), "battery",
      "power battery sleep screen off lock charge limit power mode energie akku bildschirmsperre"),
-    ("apps", "Default & startup app settings", "preferences-desktop-default-applications",
+    ("apps", _("Default & startup app settings"), "preferences-desktop-default-applications",
      "apps default applications startup autostart standard programme"),
-    ("datetime", "Date & time settings", "preferences-system-time", "date time clock time zone datum uhrzeit uhr zeitzone"),
-    ("language", "Language & region settings", "preferences-desktop-locale",
+    ("datetime", _("Date & time settings"), "preferences-system-time", "date time clock time zone datum uhrzeit uhr zeitzone"),
+    ("language", _("Language & region settings"), "preferences-desktop-locale",
      "language region formats locale sprache region formate"),
-    ("storage", "Storage & backup settings", "drive-harddisk",
+    ("storage", _("Storage & backup settings"), "drive-harddisk",
      "storage disk space clean backup restore point speicher festplatte sicherung wiederherstellung"),
-    ("security", "Password & security settings", "security-high", "password security firewall passwort sicherheit"),
-    ("system", "System & update settings", "computer", "system about version updates drivers hardware info über"),
+    ("security", _("Password & security settings"), "security-high", "password security firewall passwort sicherheit"),
+    ("users", _("User account settings"), "system-users",
+     "users user accounts account add user administrator picture automatic login benutzer konto konten anmelden"),
+    ("system", _("System & update settings"), "computer", "system about version updates drivers hardware info über"),
 ]
 
 
@@ -84,8 +92,10 @@ def _round(x, digits=0):
 
 
 _FUNCS = {"sqrt": math.sqrt, "sin": math.sin, "cos": math.cos, "tan": math.tan, "log": math.log10,
-          "ln": math.log, "abs": abs, "round": _round, "floor": math.floor, "ceil": math.ceil}
+          "ln": math.log, "abs": abs, "round": _round, "floor": math.floor, "ceil": math.ceil,
+          "min": min, "max": max}
 _CONST = {"pi": math.pi, "e": math.e}
+_MULTI_ARG = {"min", "max", "round"}     # functions that take two (or more) numbers
 # Largest integer (bits, ~1200 digits): larger results brought Python to the limit of number-to-text conversion
 # (4300 digits, search crashed) or kept the calculator busy for minutes ("((9^999)^999)^999")
 _MAX_BITS = 4000
@@ -139,14 +149,62 @@ _COMMA_DECIMAL = {"de", "fr", "es", "it", "pt", "nl", "pl", "cs", "sk", "ru", "u
                   "fi", "hu", "ro", "bg", "hr", "sl", "el"}
 
 
-def _decimal_commas(expr):
-    """Comma between digits: decimal comma (3,5 = 3.5); outside decimal-comma languages groups of exactly three digits
-    ("1,000", "12,345,678") are thousands separators."""
+def _comma_language():
     lang = (os.environ.get("LC_ALL") or os.environ.get("LC_NUMERIC") or os.environ.get("LANG") or "")[:2].lower()
-    if lang not in _COMMA_DECIMAL:
+    return lang in _COMMA_DECIMAL
+
+
+def _enclosing_call(expr, pos):
+    """Name of the function whose brackets are around position pos ("" for none or a plain bracket)"""
+    calls = []
+    for i, ch in enumerate(expr[:pos]):
+        if ch == "(":
+            calls.append(re.search(r"([A-Za-z_]*)\s*$", expr[:i]).group(1))
+        elif ch == ")" and calls:
+            calls.pop()
+    return calls[-1] if calls else ""
+
+
+def _decimal_commas(expr):
+    """Commas, dots and semicolons the way people write numbers (#147).
+
+    - A comma between digits is a decimal comma ("3,5" = 3.5) – except inside a function call outside
+      decimal-comma languages, where it separates the arguments ("round(3.14159,2)", "max(1,2)").
+    - Outside decimal-comma languages, groups of exactly three digits ("1,000", "12,345,678") are thousands.
+    - In decimal-comma languages a dot followed by groups of exactly three digits is a thousands separator
+      ("1.000" = 1000, "1.234,5" = 1234.5); a comma followed by a space or a semicolon separates the arguments
+      ("round(3,14159; 2)"), and so does a comma after a number written with a decimal dot ("round(3.14159,2)")
+      and every comma in min/max ("max(1,2)")."""
+    comma_decimal = _comma_language()
+    if comma_decimal:
+        expr = re.sub(r"(?<![\d.,])[1-9]\d{0,2}(?:\.\d{3})+(?:,\d+)?(?![\d.]|,\d)",
+                      lambda m: m.group(0).replace(".", ""), expr)
+    else:
+        # not inside min/max/round: there every comma separates the arguments ("max(1,234)" = 234, not 1234);
+        # "sqrt(1,000,000)" stays one million
         expr = re.sub(r"(?<![\d,.])\d{1,3}(?:,\d{3})+(?![\d,])(?!\.)",
-                      lambda m: m.group(0).replace(",", ""), expr)
-    return re.sub(r"(\d),(\d)", r"\1.\2", expr)
+                      lambda m: m.group(0) if _enclosing_call(expr, m.start()) in _MULTI_ARG
+                      else m.group(0).replace(",", ""), expr)
+    out, calls = [], []      # calls: one entry per open bracket – the function's name, "" for a plain bracket
+    for i, ch in enumerate(expr):
+        if ch == "(":
+            name = re.search(r"([A-Za-z_]*)\s*$", expr[:i]).group(1)
+            calls.append(name)
+        elif ch == ")":
+            if calls:
+                calls.pop()
+        elif ch in ",;":
+            func = calls[-1] if calls else ""
+            between_digits = expr[i - 1:i].isdigit() and expr[i + 1:i + 2].isdigit()
+            if ch == ";":
+                ch = "," if func else ch
+            elif between_digits:
+                number_before = re.search(r"[\d.]*$", expr[:i]).group(0)
+                separator = func and (not comma_decimal or func in ("min", "max") or "." in number_before)
+                if not separator:
+                    ch = "."
+        out.append(ch)
+    return "".join(out)
 
 
 def calculate(text):
@@ -156,7 +214,7 @@ def calculate(text):
     words = set(re.findall(r"[A-Za-z_]+", expr))
     if not expr or not re.search(r"\d", expr) or words - set(_FUNCS) - set(_CONST):
         return None
-    if not re.fullmatch(r"[\d\s.,+\-*/%^()×÷A-Za-z_]+", expr) or not re.search(r"[+\-*/%^(×÷]", expr):
+    if not re.fullmatch(r"[\d\s.,;+\-*/%^()×÷A-Za-z_]+", expr) or not re.search(r"[+\-*/%^(×÷]", expr):
         return None
     # Dates and phone numbers are names to look for, not subtractions (#82): "2026-10-20" (screenshots are called
     # Screenshot_2026-10-20_14-03-11.png), "2026-10", "079-123-45-67" = digits joined by "-" without spaces, more than
@@ -167,25 +225,27 @@ def calculate(text):
     try:
         value = _eval(ast.parse(py, mode="eval"))
     except ZeroDivisionError:
-        return f"{expr} – can't divide by zero", None
+        return _("{expr} – can't divide by zero").format(expr=expr), None
     except TooLarge:
-        return f"{expr} – the number is too large", None
+        return _('{expr} – the number is too large').format(expr=expr), None
     except NoResult:
-        return f"{expr} – no result", None
+        return _('{expr} – no result').format(expr=expr), None
     except (ValueError, TypeError, SyntaxError, OverflowError, RecursionError, ArithmeticError):
         return None
     # a negative base with a fractional exponent ((-8)^(1/3)) gives a complex number in Python
     if isinstance(value, complex):
-        return f"{expr} – no result", None
+        return _('{expr} – no result').format(expr=expr), None
     if isinstance(value, float):
         if math.isnan(value) or math.isinf(value):
-            return f"{expr} – no result", None
+            return _('{expr} – no result').format(expr=expr), None
         value = int(value) if value.is_integer() and abs(value) < 1e15 else float(f"{value:.12g}")
     pretty = re.sub(r"\s*(//|[+\-*/%^×÷])\s*", r" \1 ", expr).strip()
     pretty = re.sub(r"\s+", " ", pretty).replace("( ", "(").replace(" )", ")")
     # Sign (at the start, after "(" or after an operator) without a space: "(-8)" instead of "(- 8)"
     pretty = re.sub(r"(^|[(,+\-*/%^×÷] ?)([+-]) (?=[\d(.a-z])", r"\1\2", pretty)
-    return f"{pretty} = {value}", str(value)
+    # In decimal-comma languages the result is written (and copied) with a decimal comma too: 1235,5
+    shown = str(value).replace(".", ",") if _comma_language() and isinstance(value, float) else str(value)
+    return f"{pretty} = {shown}", shown
 
 
 # ------------------------------------------------------------------ Apps (.desktop files)
@@ -324,7 +384,8 @@ def spawn(argv):
 
 def notify(text, urgency="normal"):
     if shutil.which("notify-send"):
-        spawn(["notify-send", "-u", urgency, "-c", "x-simpleos", "-a", "Search", "-i", "system-search", "Search", text])
+        spawn(["notify-send", "-u", urgency, "-c", "x-simpleos", "-a", _("Search"), "-i", "system-search", _("Search"),
+               text])
 
 
 def clean(text):
@@ -341,13 +402,13 @@ def row(text, info, icon=None, meta=None):
 
 
 def header(message):
-    print(f"\0prompt{SEP}Search")
+    print(f"\0prompt{SEP}" + _("Search"))
     print(f"\0message{SEP}{clean(message)}")
     print(f"\0markup-rows{SEP}false")
     print(f"\0no-custom{SEP}false")
 
 
-HINT = "Apps, settings and power options · type a calculation or a file name and press Enter"
+HINT = _("Apps, settings and power options · type a calculation or a file name and press Enter")
 
 
 def start_page():
@@ -366,25 +427,55 @@ def search_page(text):
     calc = calculate(text)
     if calc:
         shown, value = calc
-        header("Enter copies the result" if value is not None else "That calculation has no result")
+        header(_("Enter copies the result") if value is not None else _("That calculation has no result"))
         row(shown, f"calc:{value}" if value is not None else "back:", "accessories-calculator")
-        row("Back", "back:", "go-previous")
+        row(_("Back"), "back:", "go-previous")
         return
     hits = find_files(text)
     if not hits:
-        header(f"Nothing found for “{text}” in your files")
-        row("Back", "back:", "go-previous")
+        header(_('Nothing found for “{text}” in your files').format(text=text))
+        row(_("Back"), "back:", "go-previous")
         return
-    header(f"{len(hits)} file{'s' if len(hits) != 1 else ''} and folder{'s' if len(hits) != 1 else ''} "
-           f"matching “{text}” · Enter opens")
+    header((_("1 file or folder matching “{text}” · Enter opens") if len(hits) == 1 else
+            _("{count} files and folders matching “{text}” · Enter opens")).format(count=len(hits), text=text))
     for p in hits:
         try:
             where = str(p.parent.relative_to(HOME))
         except ValueError:
             where = str(p.parent)
-        where = "Home" if where == "." else f"~/{where}"
+        where = _("Home") if where == "." else f"~/{where}"
         row(f"{p.name}   —   {where}", f"file:{p}", file_icon(p))
-    row("Back", "back:", "go-previous")
+    row(_("Back"), "back:", "go-previous")
+
+
+def signed_in_others():
+    """The other people signed in right now, by full name (", " between them): restarting ends their sessions too"""
+    forced = os.environ.get("SIMPLEOS_SIGNED_IN")
+    if forced is not None:
+        return forced
+    try:
+        sessions = subprocess.run(["loginctl", "list-sessions", "--no-legend"], capture_output=True, text=True,
+                                  timeout=5).stdout.split("\n")
+        me, names = pwd.getpwuid(os.getuid()).pw_name, []
+        for line in sessions:
+            parts = line.split()
+            if len(parts) < 3 or not parts[1].isdigit() or not 1000 <= int(parts[1]) <= 60000:
+                continue
+            props = dict(l.split("=", 1) for l in subprocess.run(
+                ["loginctl", "show-session", parts[0], "-p", "Name", "-p", "State", "-p", "Class"],
+                capture_output=True, text=True, timeout=5).stdout.splitlines() if "=" in l)
+            user = props.get("Name", "")
+            if props.get("Class") != "user" or props.get("State") == "closing" or not user or user == me:
+                continue
+            try:
+                full = pwd.getpwnam(user).pw_gecos.split(",")[0]
+            except KeyError:
+                full = ""
+            if (full or user) not in names:
+                names.append(full or user)
+        return ", ".join(names)
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return ""
 
 
 def run_system(key):
@@ -398,26 +489,33 @@ def run_system(key):
     # lock before sleeping – not in the live session (password unknown, like system-sleep/simpleos-lock)
     live = os.access(LIVE, os.X_OK) and subprocess.run([LIVE, "--check"], stdout=subprocess.DEVNULL,
                                                         stderr=subprocess.DEVNULL).returncode == 0
+    if key == "switch":
+        if live:
+            notify(_("Switching users is not available in Live Mode."))
+            return
+        os.environ.setdefault("XDG_SEAT_PATH", "/org/freedesktop/DisplayManager/Seat0")   # dm-tool finds LightDM by it
     ok = {"lock": lambda: first(*lock),
           "sleep": lambda: ((live or first(*lock)), first(["systemctl", "suspend"], ["loginctl", "suspend"]))[1],
           "restart": lambda: first(["systemctl", "reboot"], ["loginctl", "reboot"]),
           "shutdown": lambda: first(["systemctl", "poweroff"], ["loginctl", "poweroff"]),
-          "logout": lambda: first(["openbox", "--exit"])}[key]()
+          "logout": lambda: first(["openbox", "--exit"]),
+          # the login screen next to this session (#68); not in the live session: nobody else can sign in there
+          "switch": lambda: first(["dm-tool", "switch-to-greeter"])}[key]()
     if not ok:
-        notify("That did not work. Please try again.", "critical")
+        notify(_("That did not work. Please try again."), "critical")
 
 
 def selected(info, text):
-    kind, _, value = info.partition(":")
+    kind, _sep, value = info.partition(":")
     if kind == "app":
         if not launch_app(Path(value)):
-            notify(f"{text} could not be started.", "critical")
+            notify(_('{text} could not be started.').format(text=text), "critical")
     elif kind == "file":
         if not open_path(value):
-            notify("The file could not be opened.", "critical")
+            notify(_("The file could not be opened."), "critical")
     elif kind == "cc":
         if not spawn(["simpleos-control-center", value]):
-            notify("The Control Center could not be opened.", "critical")
+            notify(_("The Control Center could not be opened."), "critical")
     elif kind == "calc":
         if shutil.which("xclip"):
             try:
@@ -425,13 +523,15 @@ def selected(info, text):
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             except (OSError, subprocess.SubprocessError):
                 pass
-        notify(f"{value} copied to the clipboard.", "low")
+        notify(_('{value} copied to the clipboard.').format(value=value), "low")
     elif kind == "sys":
         confirm = next((c for k, _n, _i, _w, c in SYSTEM if k == value), None)
         if confirm:   # restart/off/sign out: ask first (a search for "sh…" should never switch off)
-            header("Save your work first.")
+            others = signed_in_others() if value in ("restart", "shutdown") else ""
+            header(_("Also signed in: {names} – anything they have not saved is lost.").format(names=others)
+                   if others else _("Save your work first."))
             row(confirm, f"do:{value}", next(i for k, _n, i, _w, _c in SYSTEM if k == value))
-            row("Cancel", "back:", "go-previous")
+            row(_("Cancel"), "back:", "go-previous")
             return
         run_system(value)
     elif kind == "do":
@@ -442,13 +542,14 @@ def selected(info, text):
 
 def open_window():
     if not shutil.which("rofi"):
-        notify("Search is not available (rofi missing). Press Super+Space again later.", "critical")
+        notify(_("Search is not available (rofi missing). Press Super+Space again later."), "critical")
         return 0
     theme = ("window { width: 680px; location: center; anchor: center; } listview { lines: 9; } "
-             "element-icon { size: 24px; } entry { placeholder: \"Search apps, files, or calculate\"; }")
+             "element-icon { size: 24px; } entry { placeholder: \"" +
+             _("Search apps, files, or calculate").replace('"', "'") + "\"; }")
     cmd = ["rofi", "-show", "search", "-modi", f"search:{os.path.abspath(sys.argv[0])}", "-show-icons",
            "-i", "-matching", "normal", "-sort", "-sorting-method", "fzf", "-theme-str", theme]
-    for _ in range(40):
+    for _attempt in range(40):
         proc = subprocess.run(cmd, stderr=subprocess.PIPE, text=True)
         err = proc.stderr.lower()
         if proc.returncode == 0 or not ("grab" in err or "already running" in err or "pidfile" in err):
@@ -457,7 +558,7 @@ def open_window():
         # (every 0.05 s, at most about 2 s; a fixed 0.3 s before 1.1.2)
         time.sleep(0.05)
     else:
-        notify("Search could not open. Please try again.", "critical")
+        notify(_("Search could not open. Please try again."), "critical")
     return 0
 
 

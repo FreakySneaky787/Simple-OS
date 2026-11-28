@@ -2,7 +2,7 @@
 # Simple OS – configure live-build.
 # Runs in the build container in the working directory build/, into which build_iso.sh has copied the
 # source configuration (../config) beforehand. Only adds what is not stored as a file in the repo:
-# the lb config basics, the branding graphics and the fastfetch package.
+# the lb config basics, the branding graphics, the fastfetch package and our rofi build (tools/build_rofi.sh).
 set -euo pipefail
 TOOLS=$(cd "$(dirname "$0")" && pwd)
 
@@ -40,6 +40,10 @@ lb config \
 # Generate the branding graphics (Calamares, wallpaper, wizard logo, Plymouth, ISO boot menu) in the Catppuccin look
 python3 "$TOOLS/gen_branding.py" config/includes.chroot config/bootloaders/isolinux
 
+# Translations of Simple OS's own tools (#43): po/<lang>.po -> usr/share/locale/<lang>/LC_MESSAGES/simpleos.mo (in the
+# image and, through includes.chroot, in the edition package). Untranslated texts simply stay English.
+python3 "$TOOLS/i18n.py" build config/includes.chroot
+
 # fastfetch: not in bookworm/-backports -> the official upstream .deb (version + SHA256 fixed).
 # Cached in build/downloads so not every build downloads it again.
 FASTFETCH_VERSION=2.69.0
@@ -52,6 +56,9 @@ if ! echo "$FASTFETCH_SHA256  $FASTFETCH_DEB" | sha256sum -c --quiet >/dev/null 
     echo "$FASTFETCH_SHA256  $FASTFETCH_DEB" | sha256sum -c --quiet
 fi
 cp "$FASTFETCH_DEB" config/packages.chroot/
+
+# rofi: Debian's package with Simple OS's patches (#144: no selection under a resting pointer, best match after typing)
+"$TOOLS/build_rofi.sh"
 
 # Edition package "simpleos" (installed into the image, updates installed systems) + repository files in output/repo
 "$TOOLS/build_deb.sh"

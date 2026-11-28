@@ -1,0 +1,25 @@
+Description: Do not select the row under a resting pointer when the window opens
+ With hover-select, rofi_view_ping_mouse() made the row under the mouse pointer the selection as soon as the window
+ was created. The pointer had not moved, and typing kept that row instead of the best match: with the pointer resting
+ in the middle of the screen, typing "display settings" + Enter opened another entry. The position and the cursor are
+ still taken over; the first real motion event selects as before.
+Author: Simple OS <https://github.com/FreakySneaky787/Simple-OS>
+Bug: https://github.com/FreakySneaky787/Simple-OS/issues/144
+Forwarded: no
+Last-Update: 2026-11-21
+
+--- a/source/view.c	2026-11-21 09:45:33.209165654 +0100
++++ b/source/view.c	2026-11-21 09:45:33.222809099 +0100
+@@ -1980,8 +1980,11 @@
+     return;
+   }
+ 
++  // Simple OS: only set the pointer position and cursor here, never select the row under a resting pointer. With
++  // hover-select the row under the pointer became the selection when the window opened, and typing kept that row
++  // instead of the best match (Simple OS issue #144). The first real pointer motion selects as before.
+   rofi_view_handle_mouse_motion(state, pointer_reply->win_x,
+-                                pointer_reply->win_y, config.hover_select);
++                                pointer_reply->win_y, FALSE);
+ 
+   free(pointer_reply);
+ }

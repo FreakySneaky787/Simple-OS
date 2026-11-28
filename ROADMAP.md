@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Last updated 2026-11-15 (this copy on the branch `trixie` follows the work on 2.0 "Rigi"). Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
+Last updated 2026-11-28 (this copy on the branch `trixie` follows the work on 2.0 "Rigi"). Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -18,20 +18,19 @@ Rules that keep it small: no new always-running process without a good reason (t
 on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook.chroot`; anything that mocks can hide
 (night light in 1.0.3!) is run for real once, e.g. in a container with Xvfb; nothing is published untested on hardware.
 
-## 1.2 – feature release after 1.1
+## Next releases
 
-- **Translations** of Simple OS's own tools (all English today) (#43).
-- **Users & accounts page** in Control Center: create, delete and switch users, change passwords and pictures, administrator or standard user, automatic login (#68).
-- **AppArmor** profiles (#48).
-- **Windows programs** (#85): double-click on a `.exe`/`.msi` offers to run it with Bottles (installed from the Software
-  Store if missing), a plain help page on what works (older programs, many games through Steam/Proton) and what doesn't
-  (Microsoft 365, current Adobe apps, kernel anti-cheat) with alternatives, and a hint to Steam's own "Steam Play for
-  all titles" switch. The Setup Wizard gets a page "Optional Components" (#126) with **SOS Bridge**:
-  one checkbox, off by default, that installs Bottles at the end of the wizard ("Additional downloads required. You
-  can install it later from the Software Store."). SOS Bridge is only the name of this bundle, not our own Windows layer.
-  Not planned: automatic Windows VMs, CrossOver, our own configs for Windows apps.
-- **Optional Components** in the Setup Wizard (#126): a short list, all off by default – SOS Bridge, Gaming Support
-  (Steam, launchers, controllers) and Developer Tools. Simple Health (#127) and Remote Support (#128) are ideas with low priority.
+| Release | When | Condition |
+|---|---|---|
+| **1.2** (feature release) | **released 2026-11-28** | the last feature release of 1.x (`RELEASE_NOTES.md`) |
+| **1.2.1** (bugfix release) | about 2–3 weeks after 1.2 | what comes in after 1.2 (milestone 1.2.1) |
+
+Dates are a target, not a promise (see the first paragraph). Nothing is published untested on hardware.
+
+## 1.2.1 – bugfix release after 1.2
+
+- Restart: a Firefox window flashes up before the computer restarts (#167).
+- What comes in after 1.2 (milestone 1.2.1); hardware tests (#49).
 
 ## After 1.2 – bugfixes only, the port starts slowly
 
@@ -144,6 +143,13 @@ grows with every release (#49, the hardware compatibility page).
   reports, and maybe a stand-alone tool for other distributions.
 - **RGB lighting and game controllers** (#112, optional): no own RGB tool – OpenRGB recommended in the Software Store;
   controllers work out of the box and show their battery level.
+
+### 2.4 – UI update
+
+- **A cleaner, smoother and faster interface** for the whole desktop and the Simple OS tools: *cleaner* – fewer elements,
+  the same spacing, fonts and icons everywhere; *smoother* – calm transitions, nothing that flickers or jumps when
+  windows, menus and pages open; *faster* – Control Center, menus, the Software Store and the taskbar react without a
+  noticeable delay. Polish of what exists, no new features: the pages are tidied, not rebuilt.
 
 ### Three areas
 

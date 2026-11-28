@@ -17,12 +17,12 @@ So if nothing happens here for a while, installed systems stay safe until Debian
 
 ## 2. Releasing an edition (1.0.x, 1.x)
 
-The details are in [TESTING.md](../TESTING.md) (checklist) and the README section
-[Updates to new Simple OS editions](../README.md#updates-to-new-simple-os-editions). In short:
+The details are in [TESTING.md](../TESTING.md) (checklist) and the developer overview, section
+[Updates to new Simple OS editions](DEVELOPING.md#updates-to-new-simple-os-editions). In short:
 
 1. **Plan:** a milestone per release on GitHub (e.g. "1.0.7"), the date in [ROADMAP.md](../ROADMAP.md) and on the
    website's roadmap page. Cadence: bugfix every 2–3 weeks, feature release every 2–3 months (ROADMAP "How we release"); 1.2 is the last feature release of 1.x, after it only bugfixes (ROADMAP "After 1.2").
-2. **Work:** everything for the next release on `next` (section 7) – at the moment the fixes for 1.1.2. `main` is
+2. **Work:** everything for the next release on `next` (section 7) – at the moment 1.2. `main` is
    pushed only on release day, so it always matches the published edition; `next` is pushed as the work goes on. Close issues when
    the work is done and tested ("done, ships in X.Y.Z"), project board item → Done; things that need real hardware stay
    open with the label `verify`.
@@ -36,8 +36,11 @@ The details are in [TESTING.md](../TESTING.md) (checklist) and the README sectio
    needed: the package version carries the build time (`X.Y.Z+YYYYMMDDHHMMSS`), so machines installed from an earlier
    test build still get the published build. Careful: `./build_iso.sh --config-only` also rebuilds `output/repo` –
    never run it between the final build and `publish`.
-6. **Test:** TESTING.md – at least a fresh VM install (BIOS and UEFI) and an **update from the previous release**
-   through Software Updates (a VM installed from the old ISO).
+6. **Test:** first `./tools/qemu-test.sh` (#124): it boots the new ISO headless in QEMU, BIOS and UEFI, presses
+   Enter in the boot menu and waits for the live session's report on the serial port – the desktop runs and no system
+   service failed (about 2–3 minutes per mode, screenshots in `output/qemu-test/`). `publish` refuses an ISO without
+   a passed test of both modes. Then TESTING.md – at least a fresh VM install (BIOS and UEFI) and an **update from the
+   previous release** through Software Updates (a VM installed from the old ISO).
 7. **Publish:** `./tools/release.sh sign && ./tools/release.sh publish` (asks for the key's passphrase). **Every
    release comes with a new ISO** (#114): `publish` marks the release as "latest", and README and website send new
    users to the latest release for the ISO – one without an ISO would leave them without a download. `--no-iso` is
@@ -119,7 +122,7 @@ every release – and only after `publish`, because the links point to the new r
 
 - `main` – the published Simple OS 1.x edition on Debian 12. Releases are tagged `vX.Y.Z` on it; it changes only on
   release day (when `next` is merged into it) or for an urgent hotfix.
-- `next` – **the branch for the next release**, bugfix or feature release: at the moment **1.1.2**, after it 1.2, then
+- `next` – **the branch for the next release**, bugfix or feature release: at the moment **1.2**, then
   the 1.2.x fixes. Pushed as the work goes on, so others can follow it. Test ISOs are built from it like from `main`
   (the package version carries the build time, so test systems still get the published build later).
   - Release: when `next` is tested (TESTING.md), `git switch main && git merge next` (a fast-forward), then release from

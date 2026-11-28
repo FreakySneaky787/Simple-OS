@@ -1,6 +1,6 @@
 #!/bin/sh
 # Simple OS – power menu (Super+X, red button on the right of the taskbar, Menu → Power)
-# Rofi flyout: Lock, Sleep, Restart, Shut down, Sign out. Esc closes without an action.
+# Rofi flyout: Lock, Sleep, Restart, Shut down, (Switch user,) Sign out. Esc closes without an action.
 #   simpleos-powermenu --lock    lock the screen right away (Super+L)
 # Robust like simpleos-wifi: no set -e, every path ends with exit 0, errors as a clear notification,
 # details in ~/.cache/simpleos-powermenu.log. If Rofi does not start, a notification explains the way via the menu.
@@ -13,7 +13,7 @@ LIB=/usr/local/lib/simpleos/common.sh
 sos_log_init "$@"
 
 sos_rofi_failed() {
-    sos_notify "The power menu could not open. Right-click the desktop and choose Power instead." critical
+    sos_notify "$(_t 'The power menu could not open. Right-click the desktop and choose Power instead.')" critical
     exit 0
 }
 
@@ -24,12 +24,33 @@ is_live() { [ -x /usr/local/bin/simpleos-live ] && /usr/local/bin/simpleos-live 
 # time right after it (#96)
 lock_screen() {
     if is_live; then
-        sos_notify "The screen is not locked in Live Mode – there is nothing to protect, and unlocking would ask for the live password."
+        sos_notify "$(_t 'The screen is not locked in Live Mode – there is nothing to protect, and unlocking would ask for the live password.')"
         return 0
     fi
     [ -x /usr/local/bin/simpleos-power ] && /usr/local/bin/simpleos-power --lock-now >&2 2>&1 && return 0
     command -v loginctl >/dev/null && loginctl lock-session >&2 2>&1 && return 0
     return 1
+}
+# Another person's account on this computer? (UID_MIN..UID_MAX with a login shell; test: SIMPLEOS_OTHER_USERS=0/1)
+others() {
+    case "${SIMPLEOS_OTHER_USERS:-}" in 0) return 1 ;; 1) return 0 ;; esac
+    [ "$(id -u)" -ge 1000 ] || return 1    # root or a system account has no login screen to switch from
+    getent passwd | awk -F: -v me="$(id -un)" '$3 >= 1000 && $3 <= 60000 && $1 != me && $7 !~ /(nologin|false)$/ { f = 1 }
+        END { exit !f }'
+}
+# The other people signed in right now (their full names, ", " between them; empty if nobody): restarting or shutting
+# down ends their sessions too, and logind does not ask (test: SIMPLEOS_SIGNED_IN="Max")
+signed_in_others() {
+    if [ -n "${SIMPLEOS_SIGNED_IN+x}" ]; then printf '%s' "$SIMPLEOS_SIGNED_IN"; return 0; fi
+    command -v loginctl >/dev/null || return 0
+    me=$(id -un)
+    for s in $(loginctl list-sessions --no-legend 2>/dev/null | awk '$2 >= 1000 && $2 <= 60000 { print $1 }'); do
+        loginctl show-session "$s" -p Name -p State -p Class 2>/dev/null |
+            awk -F= -v me="$me" '{ v[$1] = $2 } END { if (v["Class"] == "user" && v["State"] != "closing" && v["Name"] != me) print v["Name"] }'
+    done | sort -u | while read -r u; do
+        n=$(getent passwd "$u" | cut -d: -f5 | cut -d, -f1)
+        printf '%s\n' "${n:-$u}"
+    done | awk 'NR > 1 { printf ", " } { printf "%s", $0 }'
 }
 # $1 = systemctl verb, $2 = notification on error
 power() {
@@ -38,17 +59,19 @@ power() {
 
 # Super+L: lock at once, without the menu
 if [ "${1:-}" = --lock ]; then
-    lock_screen || sos_notify "The screen could not be locked." critical
+    lock_screen || sos_notify "$(_t 'The screen could not be locked.')" critical
     exit 0
 fi
 
 # FontAwesome 4: lock U+F023, moon U+F186, refresh U+F021, power-off U+F011, sign-out U+F08B
-sos_add "$(sos_fa '\357\200\243')  Lock" "lock"
-sos_add "$(sos_fa '\357\206\206')  Sleep" "sleep"
-sos_add "$(sos_fa '\357\200\241')  Restart" "restart"
-sos_add "$(sos_fa '\357\200\221')  Shut down" "shutdown"
-sos_add "$(sos_fa '\357\202\213')  Sign out" "logout"
-sos_pick "<b>Power</b>" 300
+sos_add "$(sos_fa '\357\200\243')  $(_t 'Lock')" "lock"
+sos_add "$(sos_fa '\357\206\206')  $(_t 'Sleep')" "sleep"
+sos_add "$(sos_fa '\357\200\241')  $(_t 'Restart')" "restart"
+sos_add "$(sos_fa '\357\200\221')  $(_t 'Shut down')" "shutdown"
+# Switch user (#68, FontAwesome users U+F0C0): only when another person has an account here, never in the live session
+others && ! is_live && sos_add "$(sos_fa '\357\203\200')  $(_t 'Switch user')" "switch"
+sos_add "$(sos_fa '\357\202\213')  $(_t 'Sign out')" "logout"
+sos_pick "<b>$(_t 'Power options')</b>" 300
 
 # The installer is working (#62, #64): switching off while it resizes or formats a partition can leave every system
 # on the disk unable to start. logind's inhibitor (simpleos-install) does not stop us – the live user may override
@@ -57,21 +80,37 @@ case "$action" in restart|shutdown|sleep|logout)
     if pgrep -x calamares >/dev/null 2>&1; then
         sos_log "installer running, asking before $action"
         case "$action" in
-            restart) anyway="Restart anyway" ;;
-            shutdown) anyway="Shut down anyway" ;;
-            sleep) anyway="Sleep anyway" ;;
-            logout) anyway="Sign out anyway" ;;
+            restart) anyway=$(_t 'Restart anyway') ;;
+            shutdown) anyway=$(_t 'Shut down anyway') ;;
+            sleep) anyway=$(_t 'Sleep anyway') ;;
+            logout) anyway=$(_t 'Sign out anyway') ;;
         esac
-        sos_add "$(sos_fa '\357\200\214')  Keep installing" "keep"
+        sos_add "$(sos_fa '\357\200\214')  $(_t 'Keep installing')" "keep"
         sos_add "$(sos_fa '\357\201\261')  $anyway" "$action"
-        sos_pick "<b>The installer is still working</b>
-Wait until it is finished. Stopping it now can leave
-the systems on this disk unable to start." 420
+        sos_pick "<b>$(_t 'The installer is still working')</b>
+$(_t 'Wait until it is finished. Stopping it now can leave
+the systems on this disk unable to start.')" 420
+    fi ;;
+esac
+# Someone else is still signed in (#68 made several accounts common): their unsaved work would be lost without a word
+case "$action" in restart|shutdown)
+    who=$(signed_in_others)
+    if [ -n "$who" ]; then
+        sos_log "others signed in ($who), asking before $action"
+        if [ "$action" = restart ]; then
+            anyway="$(sos_fa '\357\200\241')  $(_t 'Restart anyway')"
+        else
+            anyway="$(sos_fa '\357\200\221')  $(_t 'Shut down anyway')"
+        fi
+        sos_add "$(sos_fa '\357\200\215')  $(_t 'Cancel')" "cancel"
+        sos_add "$anyway" "$action"
+        sos_pick "<b>$(printf "$(_t 'Also signed in: %s')" "$(sos_esc "$who")")</b>
+$(_t 'Anything they have not saved is lost.')" 420
     fi ;;
 esac
 
 case "$action" in
-    lock)     lock_screen || sos_notify "The screen could not be locked." critical ;;
+    lock)     lock_screen || sos_notify "$(_t 'The screen could not be locked.')" critical ;;
     # locked when waking up, like on Windows – but not in the live session: nobody knows the password there
     # (like /usr/lib/systemd/system-sleep/simpleos-lock)
     sleep)    if is_live; then
@@ -79,9 +118,12 @@ case "$action" in
               else
                   lock_screen || sos_log "lock before suspend failed"
               fi
-              power suspend "Sleep is not available on this computer." ;;
-    restart)  power reboot "The computer could not restart. Please save your work and try again." ;;
-    shutdown) power poweroff "The computer could not shut down. Please save your work and try again." ;;
-    logout)   openbox --exit >&2 2>&1 || sos_notify "Could not sign out. Please try again." critical ;;
+              power suspend "$(_t 'Sleep is not available on this computer.')" ;;
+    restart)  power reboot "$(_t 'The computer could not restart. Please save your work and try again.')" ;;
+    shutdown) power poweroff "$(_t 'The computer could not shut down. Please save your work and try again.')" ;;
+    logout)   openbox --exit >&2 2>&1 || sos_notify "$(_t 'Could not sign out. Please try again.')" critical ;;
+    # the login screen next to this session; dm-tool finds LightDM through XDG_SEAT_PATH (only the session has it)
+    switch)   XDG_SEAT_PATH=${XDG_SEAT_PATH:-/org/freedesktop/DisplayManager/Seat0} dm-tool switch-to-greeter >&2 2>&1 ||
+                  sos_notify "$(_t 'Could not switch to the login screen.')" critical ;;
 esac
 exit 0

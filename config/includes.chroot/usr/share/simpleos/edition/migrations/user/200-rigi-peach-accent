@@ -12,6 +12,7 @@
 #   Openbox: the account's own theme copy (~/.themes/SimpleOS, only made for a non-default accent) is removed –
 #            the shipped theme is peach
 #   state:   ~/.config/simpleos/theme = the old mode (dark/light) + accent=peach
+#   GTK:     gtk-accent with peach (1.2, #158)
 # Never fails (exit 0): a file that is missing is simply skipped.
 cfg=${XDG_CONFIG_HOME:-$HOME/.config}
 state=$cfg/simpleos/theme
@@ -44,4 +45,7 @@ fi
 rm -rf "$HOME/.themes/SimpleOS" 2>/dev/null
 
 mkdir -p "${state%/*}" 2>/dev/null && printf 'mode=%s\naccent=peach\n' "$mode" > "$state" 2>/dev/null
+# GTK apps (1.2, #158): radio buttons, switches, progress bars and the selected row in peach too – 1.x wrote
+# nothing for its default blue (Arc's own color), so without this they stay blue
+[ -x /usr/local/lib/simpleos/gtk-accent ] && /usr/local/lib/simpleos/gtk-accent --accent peach --mode "$mode" >/dev/null 2>&1
 exit 0

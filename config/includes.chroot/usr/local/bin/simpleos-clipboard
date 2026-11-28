@@ -20,10 +20,14 @@ import os
 import shutil
 import subprocess
 import sys
+import gettext
+
+# Translations (#43): the system language from /usr/share/locale/<lang>/LC_MESSAGES/simpleos.mo, else English
+_ = gettext.translation("simpleos", fallback=True).gettext
 
 MAX_ITEMS = 50
 MAX_CHARS = 100_000
-TITLE = "Clipboard"
+TITLE = _("Clipboard")
 CACHE = os.environ.get("XDG_CACHE_HOME") or os.path.join(os.environ.get("HOME") or "/tmp", ".cache")
 HISTORY = os.environ.get("SIMPLEOS_CLIPBOARD_FILE") or os.path.join(CACHE, "simpleos", "clipboard.json")
 ROFI_RETRY = "/usr/local/lib/simpleos/rofi-retry"
@@ -88,12 +92,12 @@ def set_clipboard(text):
 def pick():
     items = load()
     if not items:
-        notify("Nothing copied yet. Copy some text and press Super+V again.")
+        notify(_("Nothing copied yet. Copy some text and press Super+V again."))
         return
-    rows = [label(i) for i in items] + ["Clear history"]
+    rows = [label(i) for i in items] + [_("Clear history")]
     rofi = ROFI_RETRY if os.access(ROFI_RETRY, os.X_OK) else shutil.which("rofi")
     if not rofi:
-        notify("The clipboard history could not open (rofi missing).", "critical")
+        notify(_("The clipboard history could not open (rofi missing)."), "critical")
         return
     env = dict(os.environ, SOS_NAME="simpleos-clipboard", SOS_TITLE=TITLE)
     out = subprocess.run(
@@ -107,12 +111,12 @@ def pick():
     idx = int(out)
     if idx == len(items):
         save([])
-        notify("Clipboard history cleared.", "low")
+        notify(_("Clipboard history cleared."), "low")
     elif 0 <= idx < len(items):
         if set_clipboard(items[idx]):
             add(items[idx])
         else:
-            notify("The text could not be copied (xclip missing).", "critical")
+            notify(_("The text could not be copied (xclip missing)."), "critical")
 
 
 def daemon():
@@ -173,5 +177,5 @@ if __name__ == "__main__":
     try:
         sys.exit(main(sys.argv))
     except Exception as e:  # never abort silently
-        notify(f"The clipboard history ran into a problem: {e}", "critical")
+        notify(_('The clipboard history ran into a problem: {e}').format(e=e), "critical")
         sys.exit(0)

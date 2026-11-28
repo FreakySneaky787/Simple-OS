@@ -1,7 +1,11 @@
 [Desktop Entry]
 Type=Application
 Name=Default & Startup Apps
+Name[de]=Standard- und Autostart-Apps
+Name[fr]=Applications par défaut et au démarrage
 Comment=Choose which app opens links, PDFs, pictures, music and videos – and which apps start when you sign in
+Comment[de]=Wählen, welche App Links, PDFs, Bilder, Musik und Videos öffnet – und welche Apps beim Anmelden starten
+Comment[fr]=Choisir quelle application ouvre les liens, PDF, images, musique et vidéos – et quelles applications démarrent à la connexion
 Exec=/usr/local/bin/simpleos-control-center apps
 Icon=preferences-desktop-default-applications
 Categories=Settings;

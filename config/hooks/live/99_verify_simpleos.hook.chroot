@@ -75,6 +75,7 @@ check "Openbox session missing" "[ -f /usr/share/xsessions/openbox.desktop ]"
 check "wallpaper missing" "[ -s /usr/share/backgrounds/simpleos/wallpaper.png ]"
 check "Openbox theme SimpleOS missing" "[ -f /usr/share/themes/SimpleOS/openbox-3/themerc ]"
 check "GTK theme Arc-Dark missing" "[ -d /usr/share/themes/Arc-Dark/gtk-3.0 ]"
+check "GTK theme Arc-Lighter missing (light mode, #158)" "[ -s /usr/share/themes/Arc-Lighter/gtk-3.0/gtk.gresource ] && [ -d /usr/share/themes/Arc-Lighter/gtk-2.0 ]"
 check "icon theme Papirus-Dark missing" "[ -d /usr/share/icons/Papirus-Dark ]"
 for home in /etc/skel /home/simple; do
     check "Openbox theme not active in $home" "grep -q '<name>SimpleOS</name>' '$home/.config/openbox/rc.xml'"
@@ -111,6 +112,8 @@ for pkg in systemd-timesyncd python3-xdg libpam-gnome-keyring tumbler gvfs-fuse 
     check "package $pkg not installed (a Recommends the desktop needs)" "dpkg-query -W -f='\${Status}' $pkg 2>/dev/null | grep -q 'install ok installed'"
 done
 check "openbox-xdg-autostart cannot import PyXDG" "python3 -c 'from xdg import BaseDirectory; from xdg.DesktopEntry import DesktopEntry'"
+check "keyring: /etc/xdg/autostart/simpleos-keyring.desktop missing – the login keyring quits 2 minutes after sign-in (#148)" \
+      "grep -qx 'Exec=gnome-keyring-daemon --start --components=pkcs11,secrets' /etc/xdg/autostart/simpleos-keyring.desktop"
 check "systemd-timesyncd not enabled" "systemctl is-enabled systemd-timesyncd >/dev/null 2>&1"
 # What every beginner's tutorial assumes (curl/wget/unzip/ssh), audio profiles of current laptops (libasound2-data only
 # Recommends alsa-ucm-conf), fonts for all writing systems, OpenVPN in the network menu
@@ -131,19 +134,19 @@ printf '#!/bin/sh\ngrep -qx "$2" "$LT/known"\n' > "$LT/bin/apt-cache"
 chmod 0755 "$LT/bin/apt-cache"
 printf '%s\n' hunspell-de-de firefox-esr-l10n-de libreoffice-l10n-de hunspell-fr firefox-esr-l10n-fr libreoffice-l10n-fr \
     hunspell-pt-br firefox-esr-l10n-pt-br libreoffice-l10n-pt-br libreoffice-l10n-pt hunspell-en-us hunspell-en-gb firefox-esr-l10n-en-gb \
-    libreoffice-l10n-en-gb libreoffice-l10n-en-us firefox-esr-l10n-zh-cn libreoffice-l10n-zh-cn > "$LT/known"
+    libreoffice-l10n-en-gb libreoffice-l10n-en-us firefox-esr-l10n-zh-cn libreoffice-l10n-zh-cn chromium-l10n > "$LT/known"
 awk '/^sys_locale\(\)/ { p = 1 } p { print } /^language_install\(\)/ { q = 1 } q && /^}/ { exit }' /usr/local/sbin/simpleos-system-setup > "$LT/lang.sh"
 cat > "$LT/run.sh" <<'LSH'
 step() { :; }
-installed() { case "$1" in firefox-esr|libreoffice-common) return 0 ;; esac; return 1; }
+installed() { case "$1" in firefox-esr|libreoffice-common|chromium) return 0 ;; esac; return 1; }
 . "$LT/lang.sh"
 echo "LANG=$1" > "$LT/locale"
 SIMPLEOS_LOCALE_FILE=$LT/locale lang_pkgs | tr '\n' ' '
 LSH
-for t in 'de_DE.UTF-8|hunspell-de-de firefox-esr-l10n-de libreoffice-l10n-de ' 'fr_CA.UTF-8|hunspell-fr firefox-esr-l10n-fr libreoffice-l10n-fr ' \
-         'pt_BR.UTF-8|hunspell-pt-br firefox-esr-l10n-pt-br libreoffice-l10n-pt-br ' 'pt_PT.UTF-8|libreoffice-l10n-pt ' \
-         'en_US.UTF-8|hunspell-en-us ' 'en_GB.UTF-8|hunspell-en-gb firefox-esr-l10n-en-gb libreoffice-l10n-en-gb ' 'en_IE.UTF-8|hunspell-en-us ' \
-         'zh_CN.UTF-8|firefox-esr-l10n-zh-cn libreoffice-l10n-zh-cn fonts-noto-cjk ' 'ja_JP.UTF-8|fonts-noto-cjk ' 'C.UTF-8|' ; do
+for t in 'de_DE.UTF-8|hunspell-de-de firefox-esr-l10n-de libreoffice-l10n-de chromium-l10n ' 'fr_CA.UTF-8|hunspell-fr firefox-esr-l10n-fr libreoffice-l10n-fr chromium-l10n ' \
+         'pt_BR.UTF-8|hunspell-pt-br firefox-esr-l10n-pt-br libreoffice-l10n-pt-br chromium-l10n ' 'pt_PT.UTF-8|libreoffice-l10n-pt chromium-l10n ' \
+         'en_US.UTF-8|hunspell-en-us ' 'en_GB.UTF-8|hunspell-en-gb firefox-esr-l10n-en-gb libreoffice-l10n-en-gb chromium-l10n ' 'en_IE.UTF-8|hunspell-en-us chromium-l10n ' \
+         'zh_CN.UTF-8|firefox-esr-l10n-zh-cn libreoffice-l10n-zh-cn chromium-l10n fonts-noto-cjk ' 'ja_JP.UTF-8|chromium-l10n fonts-noto-cjk ' 'C.UTF-8|' ; do
     lt_loc=${t%%|*} lt_want=${t#*|}
     lt_got=$(LT=$LT PATH="$LT/bin:$PATH" sh "$LT/run.sh" "$lt_loc" 2>&1)
     check "language packs for $lt_loc: got [$lt_got] instead of [$lt_want]" "[ '$lt_got' = '$lt_want' ]"
@@ -251,10 +254,153 @@ check "polkit action: XML invalid" "python3 -c 'import sys, xml.dom.minidom as m
 check "polkit action does not point to the helper" "grep -q '>/usr/local/sbin/simpleos-system-setup<' $POLICY"
 check "helper: shell syntax error" "sh -n /usr/local/sbin/simpleos-system-setup"
 check "helper does not reject invalid options" "! /usr/local/sbin/simpleos-system-setup --office evil >/dev/null 2>&1"
-for fn in page_network refresh_network connect_wifi page_office page_gaming page_progress system_changes; do
+for fn in page_network refresh_network connect_wifi page_office page_components page_progress system_changes; do
     check "wizard: $fn missing" "grep -q 'def $fn(' /usr/local/bin/simpleos-welcome-wizard"
 done
 check "wizard does not use the helper via pkexec" "grep -q '\"pkexec\", HELPER' /usr/local/bin/simpleos-welcome-wizard"
+# #126: optional components – all off by default, one helper call, a failed extra is no error screen (exit 3)
+WIZC="import importlib.machinery as m; w = m.SourceFileLoader('w', '/usr/local/bin/simpleos-welcome-wizard').load_module()"
+check "wizard: optional components not SOS Bridge, Gaming Support, Developer Tools with their helper arguments" \
+      "env SIMPLEOS_WIZARD_DRYRUN=1 python3 -c \"$WIZC; assert [(k, n, a) for k, n, _d, _s, a in w.COMPONENTS] == [('bridge', 'SOS Bridge', '--bridge'), ('gaming', 'Gaming Support', '--gaming'), ('devtools', 'Developer Tools', '--devtools')]; assert w.STEPS[w.EXTRAS_PAGE] == 'Extras' and len(w.STEPS) == 7\" 2>/dev/null"
+check "wizard: a component is preselected" "grep -q 'self.components = {key: False for key, \*_ in COMPONENTS}' /usr/local/bin/simpleos-welcome-wizard"
+check "wizard: a failed optional component ends in the error screen (helper exit 3)" \
+      "grep -q 'if code == 3:' /usr/local/bin/simpleos-welcome-wizard && grep -q 'OPTIONAL-FAILED: ' /usr/local/bin/simpleos-welcome-wizard"
+check "helper: optional components not reported or not exit 3" \
+      "grep -q '^optional_fail() {' /usr/local/sbin/simpleos-system-setup && grep -q 'echo \"OPTIONAL-FAILED: \$1\"' /usr/local/sbin/simpleos-system-setup &&
+       grep -q 'optional_fail \"SOS Bridge\"' /usr/local/sbin/simpleos-system-setup && grep -q 'optional_fail \"Developer Tools\"' /usr/local/sbin/simpleos-system-setup &&
+       grep -q 'optional_fail \"Gaming Support\"' /usr/local/sbin/simpleos-system-setup && grep -q '^    exit 3\$' /usr/local/sbin/simpleos-system-setup"
+check "helper: Gaming Support without game controllers (steam-devices)" "grep -q 'aptget install steam-installer steam-libs-i386 steam-devices' /usr/local/sbin/simpleos-system-setup"
+# #85: .exe/.msi -> SOS Bridge (simpleos-windows-app), the help page, the right-click action
+WA=/usr/local/bin/simpleos-windows-app
+wexe=$(mktemp --suffix=.exe)
+check "Windows programs: tool missing or Python error" "[ -x $WA ] && python3 -m py_compile $WA 2>/dev/null; rm -rf /usr/local/bin/__pycache__; [ -x $WA ]"
+check "Windows programs: Bottles installed -> not opened there" "[ \"\$(SIMPLEOS_WA_INSTALLED=1 python3 $WA --decide $wexe)\" = open ]"
+check "Windows programs: Bottles missing -> SOS Bridge not offered" "[ \"\$(SIMPLEOS_WA_INSTALLED=0 python3 $WA --decide $wexe)\" = offer ]"
+check "Windows programs: missing file not reported" "SIMPLEOS_WA_INSTALLED=1 python3 $WA --decide /nonexistent.exe | grep -q '^error:'"
+wdir=$(mktemp -d); : > "$wdir/SteamSetup.exe"; : > "$wdir/MediaCreationTool_22H2.exe"; : > "$wdir/npp.8.7.Installer.x64.exe"
+check "Windows programs: SteamSetup.exe not pointed to the Simple OS Steam" "[ \"\$(SIMPLEOS_WA_INSTALLED=1 python3 $WA --decide $wdir/SteamSetup.exe)\" = 'native steam' ]"
+check "Windows programs: Media Creation Tool not called Windows-only" "[ \"\$(SIMPLEOS_WA_INSTALLED=1 python3 $WA --decide $wdir/MediaCreationTool_22H2.exe)\" = windows-only ]"
+check "Windows programs: an ordinary installer (Notepad++) not run with SOS Bridge" "[ \"\$(SIMPLEOS_WA_INSTALLED=1 python3 $WA --decide $wdir/npp.8.7.Installer.x64.exe)\" = open ]"
+check "Windows programs: a catalog key of the native list missing in the Software Center" \
+      "python3 -c \"import importlib.machinery as m, subprocess; a = m.SourceFileLoader('a', '$WA').load_module(); keys = {l.split(chr(9))[0] for l in subprocess.run(['/usr/local/bin/simpleos-software-center', '--list'], capture_output=True, text=True).stdout.splitlines()}; missing = {k for _p, _n, k in a.NATIVE} - keys; assert not missing, missing\""
+rm -rf "$wdir"
+check "Windows programs: does not start the program in the bottle Windows (no bottle choice)" \
+      "SIMPLEOS_WA_INSTALLED=1 SIMPLEOS_WA_DRYRUN=1 python3 $WA $wexe | grep -qx \"DRYRUN: run \$(readlink -f $wexe) in bottle Windows of com.usebottles.bottles\""
+check "Windows programs: sandbox gets the home folder for a program lying directly in it" \
+      "python3 -c \"import importlib.machinery as m, pathlib; a = m.SourceFileLoader('a', '$WA').load_module(); h = str(pathlib.Path.home()); assert a.sandbox_access(h + '/x.exe') == h + '/x.exe'; assert a.sandbox_access(h + '/Downloads/x.exe') == h + '/Downloads'\""
+check "Windows programs: too little space in Live mode not explained" \
+      "SIMPLEOS_WA_FREE_MB=100 python3 -c \"import importlib.machinery as m; a = m.SourceFileLoader('a', '$WA').load_module(); a.is_live = lambda: True; t = a.space_problem(); assert t and 'Live mode' in t, t\""
+rm -f "$wexe"
+for t in application/x-ms-dos-executable application/x-msi application/x-msdownload; do
+    check "Windows programs: $t does not open SOS Bridge (archive manager?)" \
+          "env -i HOME=/nonexistent XDG_DATA_DIRS=/usr/local/share:/usr/share XDG_CONFIG_DIRS=/etc/xdg xdg-mime query default $t | grep -qx simpleos-windows-app.desktop"
+done
+check "Windows programs: launcher without the .exe/.msi types" \
+      "grep -q '^MimeType=application/x-ms-dos-executable;.*application/x-msi;' /usr/share/applications/simpleos-windows-app.desktop && grep -qx 'NoDisplay=true' /usr/share/applications/simpleos-windows-app.desktop"
+check "Windows programs: help page missing or not in the Help menu / search" \
+      "[ -f /usr/share/simpleos/windows-programs.html ] && grep -q '<title>Windows programs on Simple OS</title>' /usr/share/simpleos/windows-programs.html &&
+       grep -q 'simpleos-windows-app --help-page' /etc/skel/.config/openbox/menu.xml && grep -q '^Exec=/usr/local/bin/simpleos-windows-app --help-page' /usr/share/applications/simpleos-windows-help.desktop"
+check "Windows programs: help page promises that everything runs" "! grep -qiE 'all windows programs|every windows program' /usr/share/simpleos/windows-programs.html"
+check "welcome-viewer: bare page name not looked up in /usr/share/simpleos or no own title" \
+      "grep -q 'if \"/\" not in page:' /usr/local/lib/simpleos/welcome-viewer && grep -q 'def window_title(path):' /usr/local/lib/simpleos/welcome-viewer"
+check "Thunar: right-click 'Run with SOS Bridge' missing" \
+      "grep -q '<command>/usr/local/bin/simpleos-windows-app %f</command>' /etc/skel/.config/Thunar/uca.xml && grep -q '<patterns>\*.exe;\*.EXE;\*.msi;\*.MSI</patterns>' /etc/skel/.config/Thunar/uca.xml"
+# progress-filter reads the English lines of flatpak/apt/timeshift: on a German system Flatpak printed "1 wird installiert/3 …"
+# and no progress window got a percentage. Every parsed call runs with LANGUAGE= LC_ALL=C.UTF-8 (LANGUAGE alone wins over
+# LC_ALL, i18n.sh sets it); our own texts stay translated. And simpleos-progress knows the translated "Done".
+check "Progress: a tool whose output progress-filter reads runs in the system language (no percentages in German)" \
+      "[ \$(grep -c 'LANGUAGE= LC_ALL=C.UTF-8 \\(apt-get\\|\\\$APT_GET\\|flatpak\\|timeout 1800 fwupdmgr\\)' /usr/local/sbin/simpleos-system-setup) -eq 5 ] &&
+       grep -q 'LANGUAGE= LC_ALL=C.UTF-8 \$unbuf timeshift' /usr/local/sbin/simpleos-backup-helper &&
+       grep -q 'LANGUAGE= LC_ALL=C.UTF-8 flatpak install' /usr/local/bin/simpleos-software &&
+       grep -q 'LC_ALL=\"C.UTF-8\", LANGUAGE=\"\"' /usr/local/bin/simpleos-windows-app /usr/local/bin/simpleos-software-center &&
+       grep -q 'words = {\"Done\", _(\"Done\")}' /usr/local/bin/simpleos-progress && grep -q '^DONE_WORDS = _done_words()' /usr/local/bin/simpleos-progress"
+# #151: a failed first setup left a half-made bottle "Windows" -> the next try made "Windows__123" and every double-click
+# ended in Bottles' bottle picker. Now: half-made bottle removed, one retry, a plain "could not be set up" window.
+check "SOS Bridge: a half-made bottle blocks every later try / failure opens Bottles' bottle picker (#151)" \
+      "python3 -c \"import importlib.machinery as m; w = m.SourceFileLoader('w', '/usr/local/bin/simpleos-windows-app').load_module()
+import inspect; src = inspect.getsource(w.create_bottle); o = inspect.getsource(w.open_in_bottles)
+assert w.CREATE_TRIES >= 2 and 'remove_half_made_bottle()' in src and '--setup-failed' in o and 'open_in_bottles_window' not in o.split('create_bottle()')[1].split('notify-send')[0]\""
+# #153: Windows programs started from the menu saw none of the person's folders (Bottles' sandbox, the bottle's own
+# Documents/Downloads … in ~/.var/app); shortcuts directly in "Start Menu" (SumatraPDF) got no menu entry; repair and
+# variant shortcuts (VLC reset/skinned, LibreOffice troubleshoot mode) cluttered the menu.
+wa153=$(mktemp -d)
+cat > "$wa153/t.py" <<'PY'
+import importlib.machinery as m, os, sys
+from pathlib import Path
+h = Path(sys.argv[1])
+w = m.SourceFileLoader("w", "/usr/local/bin/simpleos-windows-app").load_module()
+real = {n: h / n for n in ("Documents", "Downloads", "Pictures", "Music", "Videos", "Desktop")}
+assert {r for _w, r, _p in w.user_folders()} == {str(p) for p in real.values()}, w.user_folders()
+cli = w.bottles_cli("run", "-b", "Windows")
+assert all(f"--filesystem={p}" in cli for p in ("xdg-documents", "xdg-download", "xdg-desktop")) and "--filesystem=home" not in cli, cli
+prof = w.BOTTLES_DATA / "bottles/Windows/drive_c/users/t"
+for n in ("Documents/Music", "Documents/Templates", "Pictures/Screenshots", "Downloads", "Desktop"):
+    (prof / n).mkdir(parents=True, exist_ok=True)
+(prof / "Documents/brief.txt").write_text("new")
+(real["Documents"] / "brief.txt").write_text("old")
+w.link_user_folders(); w.link_user_folders()
+for n in ("Documents", "Downloads", "Pictures", "Music", "Videos"):
+    assert os.readlink(prof / n) == str(real[n]), n
+assert not (prof / "Desktop").is_symlink()
+assert (real["Documents"] / "brief.txt").read_text() == "old" and (real["Documents"] / "brief (2).txt").read_text() == "new"
+assert not (real["Documents"] / "Music").exists() and not (real["Pictures"] / "Screenshots").exists()
+menu = w.BOTTLES_DATA / "bottles/Windows/drive_c/users/t/AppData/Roaming/Microsoft/Windows/Start Menu"
+for n in ("SumatraPDF.lnk", "Programs/VideoLAN/VLC media player.lnk", "Programs/VideoLAN/VLC media player skinned.lnk",
+          "Programs/VideoLAN/VLC media player - reset preferences and cache files.lnk",
+          "Programs/LibreOffice/LibreOffice (Troubleshoot Mode).lnk", "Programs/LibreOffice/LibreOffice Writer.lnk"):
+    (menu / n).parent.mkdir(parents=True, exist_ok=True); (menu / n).write_text("lnk")
+names = sorted(v[0] for v in w.start_menu_shortcuts().values())
+assert names == ["LibreOffice Writer", "SumatraPDF", "VLC media player"], names
+PY
+mkdir -p "$wa153/h/.config" && for n in Documents Downloads Pictures Music Videos Desktop; do mkdir -p "$wa153/h/$n"; done
+printf 'XDG_%s_DIR="$HOME/%s"\n' DOCUMENTS Documents DOWNLOAD Downloads PICTURES Pictures MUSIC Music VIDEOS Videos DESKTOP Desktop > "$wa153/h/.config/user-dirs.dirs"
+check "SOS Bridge: Windows programs don't get the person's folders / Start Menu shortcuts missed / repair entries in the menu (#153)" \
+      "env -i PATH=/usr/bin:/bin HOME=$wa153/h USER=t XDG_CONFIG_HOME=$wa153/h/.config XDG_CACHE_HOME=$wa153/h/.cache python3 $wa153/t.py $wa153/h"
+rm -rf "$wa153"
+# #154/#156/#165: Bottles made an empty ~/Games/umu; the menu said "Bottles", not "SOS Bridge"; the Windows programs'
+# entries stayed in the menu after SOS Bridge was removed and did nothing when clicked.
+check "SOS Bridge: Bottles may still create ~/Games/umu (#154)" \
+      "grep -qx 'filesystems=!~/Games/umu;' /var/lib/flatpak/overrides/com.usebottles.bottles && [ -x /usr/share/simpleos/edition/migrations/system/120-bottles-games ]"
+check "SOS Bridge: the menu entries are not updated at sign-in (#156)" \
+      "grep -qx 'Exec=/usr/local/bin/simpleos-windows-app --sync-menu' /etc/xdg/autostart/simpleos-windows-app.desktop"
+wa156=$(mktemp -d)
+cat > "$wa156/t.py" <<'PY'
+import importlib.machinery as m, os, sys
+from pathlib import Path
+h = Path(sys.argv[1])
+w = m.SourceFileLoader("w", "/usr/local/bin/simpleos-windows-app").load_module()
+exports = Path(os.environ["SIMPLEOS_WA_EXPORTS"])
+(exports / "com.usebottles.bottles.desktop").write_text(
+    "[Desktop Entry]\nName=Bottles\nName[de]=Bottles\nKeywords=wine;\nKeywords[de]=wine;\n"
+    "Exec=/usr/bin/flatpak run --branch=stable --command=bottles com.usebottles.bottles %u\nIcon=com.usebottles.bottles\n"
+    "[Desktop Action new]\nName=New bottle\n")
+lnk = w.BOTTLES_DATA / "bottles/Windows/drive_c/ProgramData/Microsoft/Windows/Start Menu/Programs/7-Zip/7-Zip File Manager.lnk"
+lnk.parent.mkdir(parents=True); lnk.write_text("lnk")
+(h / "Games/umu").mkdir(parents=True)
+w.sync_menu()
+launcher = (w.MENU_DIR / "com.usebottles.bottles.desktop").read_text()
+assert "Name=SOS Bridge\n" in launcher and "Name[de]" not in launcher and "Keywords[de]" not in launcher, launcher
+assert f"TryExec={w.BOTTLES_BIN}" in launcher and "Exec=/usr/bin/flatpak run" in launcher and "Name=New bottle" in launcher
+entry = (w.MENU_DIR / "simpleos-bridge-7-zip-7-zip-file-manager.desktop").read_text()
+assert f"TryExec={w.BOTTLES_BIN}\n" in entry, entry
+assert not (h / "Games").exists()
+(h / "Games/umu").mkdir(parents=True); (h / "Games/mine").mkdir()
+w.sync_menu()
+assert not (h / "Games/umu").exists() and (h / "Games/mine").is_dir()
+(exports / "com.usebottles.bottles.desktop").unlink()
+w.sync_menu()
+assert not (w.MENU_DIR / "com.usebottles.bottles.desktop").exists()
+assert (w.MENU_DIR / "simpleos-bridge-7-zip-7-zip-file-manager.desktop").is_file()
+PY
+mkdir -p "$wa156/h" "$wa156/exports"
+check "SOS Bridge: launcher not named SOS Bridge / program entries without TryExec / empty ~/Games/umu kept (#154 #156 #165)" \
+      "env -i PATH=/usr/bin:/bin HOME=$wa156/h USER=t XDG_CACHE_HOME=$wa156/h/.cache SIMPLEOS_WA_EXPORTS=$wa156/exports python3 $wa156/t.py $wa156/h"
+rm -rf "$wa156"
+check "SOS Bridge: a program entry clicked without SOS Bridge does nothing / no second try (#165)" \
+      "python3 -c \"import importlib.machinery as m, inspect; w = m.SourceFileLoader('w', '/usr/local/bin/simpleos-windows-app').load_module()
+s = inspect.getsource(w.start_shortcut); r = inspect.getsource(w.run_and_watch)
+assert 'bottles_installed()' in s.split('isfile')[0] and 'ask(lnk, start=True)' in s and 'retry=' in s and 'for attempt in (1, 2)' in r
+assert 'start.exe' in w.WINE_SERVICES and 'services.exe' in w.WINE_SERVICES\""
 for home in /etc/skel /home/simple; do
     check "office marker missing in the menu in $home" "grep -q '<!-- simpleos-office:' '$home/.config/openbox/menu.xml'"
 done
@@ -448,7 +594,7 @@ for home in /etc/skel /home/simple; do
     check "menu.xml: Reconfigure still in the menu in $home" "! grep -q 'name=\"Reconfigure\"' '$menu'"
     check "menu.xml: installer marker missing in $home" "grep -q 'simpleos-installer-begin' '$menu' && grep -q 'simpleos-installer-end' '$menu'"
 done
-for id in arandr lxappearance obconf tint2conf pcmanfm; do
+for id in arandr lxappearance obconf tint2conf pcmanfm org.gnome.Software; do
     [ -f /usr/share/applications/$id.desktop ] || continue
     check "launcher: $id not hidden" "grep -qx 'NoDisplay=true' /usr/local/share/applications/$id.desktop"
 done
@@ -469,7 +615,7 @@ check "simpleos-theme does not pull the taskbar along (Match theme)" "grep -q 's
 check "keyboard shortcut overview without groups" "grep -q -- '-markup-rows' /usr/local/bin/simpleos-help"
 # Monospace list: every description starts in column 29 (#80: "Software Updates" / "Files: right-click" were off)
 check "keyboard shortcut overview: a row is out of line" "python3 -c 'import sys; t = open(sys.argv[1]).read()
-rows = [l for l in t.split(\"<<\\x27LIST\\x27\\n\", 1)[1].split(\"\\nLIST\\n\", 1)[0].splitlines() if not l.startswith(\"<b>\")]
+rows = [l for part in t.split(\"<<\\x27LIST\\x27\\n\")[1:] for l in part.split(\"\\nLIST\\n\", 1)[0].splitlines() if not l.startswith(\"<b>\")]
 bad = [l for l in rows if not (len(l) > 28 and l[27] == \" \" and l[28] != \" \")]
 print(bad) if bad else None; sys.exit(1 if bad or len(rows) < 20 else 0)' /usr/local/bin/simpleos-help"
 # Since 1.0.5 there is no "System" menu or Control Center page (Tools, System & Updates, Storage & Backups …)
@@ -727,7 +873,7 @@ done
 # "You're online" + Next, the Wi-Fi list only after "Use a different network"; offline = list with numbered steps,
 # no "Disconnect" in the wizard. The same dummies, call the functions without a screen.
 WIZ=/usr/local/bin/simpleos-welcome-wizard
-check "wizard: step Internet missing" "grep -q 'STEPS = \[\"Welcome\", \"Internet\"' $WIZ"
+check "wizard: step Internet missing" "grep -q 'STEPS = \[N_(\"Welcome\"), N_(\"Internet\")' $WIZ"
 check "wizard: 'You're all set' without a list" "! grep -q \"You're all set\" $WIZ"
 WZ="import importlib.machinery as m; w = m.SourceFileLoader('w', '$WIZ').load_module()"
 mkdir -p "$wt/py" && ln -s "$(command -v python3)" "$wt/py/python3"   # only python3, no real nmcli
@@ -830,6 +976,7 @@ check "helper: the update could remove packages (upgrade --with-new-pkgs, full-u
 uw=$(mktemp -d)
 sed -n '/^REBOOT_PKGS=/p;/^mark_reboot() {/,/^}/p;/^sim_pkgs() /p;/^step() /p;/^upgrade_mode() {/,/^}/p;/^report_held() {/,/^}/p;/^upgrade_sim() {/,/^}/p;/^install_drivers() {/,/^}/p;/^SPACE_[A-Z_]*=/p;/^apt_need_mb() {/,/^}/p;/^free_mb() /p;/^is_mb() /p;/^space_ok() {/,/^}/p;/^space_still_ok() {/,/^}/p' \
     /usr/local/sbin/simpleos-system-setup > "$uw/fn.sh"
+echo '_t() { printf "%s" "$1"; }   # translations (#43): English in the test' >> "$uw/fn.sh"
 cat > "$uw/apt-get" <<'MOCK'
 #!/bin/sh
 case "$*" in -s*) [ "$APTSIM" = none ] && exit 0 ;; esac
@@ -922,7 +1069,7 @@ check "helper: --refresh missing or can be mixed" \
       "grep -q -- '--refresh)' /usr/local/sbin/simpleos-system-setup && ! /usr/local/sbin/simpleos-system-setup --refresh --gaming >/dev/null 2>&1"
 rm -rf "${uw:?}"
 check "helper: --upgrade runs completely with a progress bar even without pending updates" \
-      "grep -q 'flatpak remote-ls --updates --system' /usr/local/sbin/simpleos-system-setup && grep -q 'echo \"DONE: Already up to date\"' /usr/local/sbin/simpleos-system-setup"
+      "grep -q 'flatpak remote-ls --updates --system' /usr/local/sbin/simpleos-system-setup && grep -qF 'echo \"DONE: \$(_t '\\''Already up to date'\\'')\"' /usr/local/sbin/simpleos-system-setup"
 check "simpleos-progress: a new STEP keeps the old description (#129)" \
       "python3 -c \"from importlib.machinery import SourceFileLoader as L; m = L('p', '/usr/local/bin/simpleos-progress').load_module(); st = m.State('x'); [st.feed(l) for l in ('STEP: Creating a restore point', 'STAGE: Finishing up', 'STEP: Installing updates')]; assert st.message == '' and st.title == 'Installing updates'\" 2>/dev/null"
 check "simpleos-progress: the helper's final text DONE: is not taken over" \
@@ -932,6 +1079,7 @@ check "simpleos-progress: the helper's final text DONE: is not taken over" \
 aw=$(mktemp -d)
 mkdir -p "$aw/bin"
 sed -n '/^apt_busy() {/,/^}/p;/^apt_wait() {/,/^}/p;/^apt_get_update() {/,/^}/p;/^SOS_SOURCE=/p;/^apt_update_once() {/,/^}/p' /usr/local/sbin/simpleos-system-setup > "$aw/fn.sh"
+echo '_t() { printf "%s" "$1"; }   # translations (#43): English in the test' >> "$aw/fn.sh"
 printf '#!/bin/sh\nn=$(cat $T/sc 2>/dev/null || echo 0); echo $((n+1)) > $T/sc; [ "$n" -lt "${BUSY:-0}" ]\n' > "$aw/bin/systemctl"
 printf '#!/bin/sh\nexit 1\n' > "$aw/bin/systemd-detect-virt"   # an installed system, not the installer's chroot
 printf '#!/bin/sh\nexit 1\n' > "$aw/bin/pgrep"
@@ -1038,13 +1186,15 @@ check "helper: --upgrade can be mixed with other actions" "! /usr/local/sbin/sim
 # wrong combination check once rejected EVERY update as an invalid call (exit 2)
 for a in "--upgrade" "--refresh" "--repos" "--firewall on" "--firewall off" "--drivers intel-microcode nvidia-driver" \
          "--browser chromium --purge-firefox" "--browser mullvad --office onlyoffice --gaming" "--office libreoffice" "--gaming" \
+         "--bridge" "--devtools" "--gaming --bridge --devtools" \
          "--locale de_CH.UTF-8" "--locale en_US.UTF-8 --formats de_DE.UTF-8" "--locale sr_RS@latin"; do
     check "helper: valid call '$a' rejected" \
           "SIMPLEOS_SETUP_ARGCHECK=1 /usr/local/sbin/simpleos-system-setup $a 2>/dev/null | grep -qx 'ARGS: ok'"
 done
 for a in "--upgrade --refresh" "--repos --upgrade" "--refresh --browser mullvad" "--upgrade --office libreoffice" "--drivers" \
          "--locale" "--locale de_DE" "--locale xx_XX.UTF-8" "--locale ../de_DE.UTF-8" "--formats de_DE.UTF-8" \
-         "--locale de_CH.UTF-8 --upgrade" "--locale de_CH.UTF-8 --formats de_DE" "--locale de_CH.UTF-8 --gaming"; do
+         "--locale de_CH.UTF-8 --upgrade" "--locale de_CH.UTF-8 --formats de_DE" "--locale de_CH.UTF-8 --gaming" \
+         "--upgrade --bridge" "--devtools --firewall on" "--refresh --devtools"; do
     check "helper: invalid call '$a' accepted" "! SIMPLEOS_SETUP_ARGCHECK=1 /usr/local/sbin/simpleos-system-setup $a >/dev/null 2>&1"
 done
 check "simpleos-update does not call the helper with --upgrade" "grep -q 'pkexec \"\$HELPER\" --upgrade' /usr/local/bin/simpleos-update"
@@ -1139,6 +1289,10 @@ hcase "$P" "Sleep in the live session does not lock (password unknown)" "" "SIMP
 hcase "$P" "Restart" "" "" "2" 'grep -qx "systemctl reboot" $S/power'
 hcase "$P" "Shut down" "" "" "3" 'grep -qx "systemctl poweroff" $S/power'
 hcase "$P" "Sign out" "" "" "4" 'grep -qx "openbox --exit" $S/power'
+# #68: "Switch user" only when another person has an account here, never in the live session
+hcase "$P" "Switch user with a second account" "" "SIMPLEOS_OTHER_USERS=1 SIMPLEOS_LIVE=0" "4" \
+    '[ "$(row 0 5)" = "Switch user" ] && [ "$(row 0 6)" = "Sign out" ] && grep -qx "dm-tool switch-to-greeter" $S/power'
+hcase "$P" "Switch user in the live session" "" "SIMPLEOS_OTHER_USERS=1 SIMPLEOS_LIVE=1" "-" '! grep -q "Switch user" $S/rofi.0'
 hcase "$P" "Restart fails -> notification" "" "POWER_RC=1" "2" 'grep -q "could not restart" $S/notify'
 hcase "$P" "Lock without dm-tool -> loginctl" "dm-tool" "SIMPLEOS_LIVE=0" "0" 'grep -qx "loginctl lock-session" $S/power'
 hcase "$P" "rofi missing -> notification" "rofi" "" "" 'grep -q "Right-click the desktop" $S/notify'
@@ -1284,16 +1438,21 @@ hcase "$U --watch" "watch: a second one runs next to the first" "" "UPDATES=1 SI
 rm -f "$wt/home/.cache/simpleos-update-watch.pid" "$wt/mock/flatpak"
 USB=/usr/local/bin/simpleos-usb-notify
 hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "stick plugged in, Open clicked" "" "NOTIFY_ACTION=yes USER=simple" "" \
-    'grep -q "\"STICK\" is ready" $S/notify && grep -q "yes=Open" $S/notify && grep -qx "thunar /media/simple/STICK" $S/opened'
+    'grep -q "“STICK” is ready" $S/notify && grep -q "yes=Open" $S/notify && grep -qx "thunar /media/simple/STICK" $S/opened'
 hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "click on the notification itself" "" "NOTIFY_ACTION=default USER=simple" "" \
     'grep -qx "thunar /media/simple/STICK" $S/opened'
 hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "notification dismissed" "" "USER=simple" "" '[ ! -e $S/opened ]'
-hcase "$USB device_mounted /media/simple/X None None" "without a name" "" "USER=simple" "" 'grep -q "\"USB drive\" is ready" $S/notify'
+hcase "$USB device_mounted /media/simple/X None None" "without a name" "" "USER=simple" "" 'grep -q "“USB drive” is ready" $S/notify'
 hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "without thunar -> xdg-open" "thunar" "NOTIFY_ACTION=yes USER=simple" "" \
     'grep -qx "xdg-open /media/simple/STICK" $S/opened'
 hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "without a file manager -> notification" "thunar xdg-open" "NOTIFY_ACTION=yes USER=simple" "" \
     'grep -q "Your files are in /media/simple/STICK" $S/notify'
-hcase "$USB device_unmounted None STICK Kingston" "safely remove" "" "" "" 'grep -q "\"STICK\" can now be removed safely" $S/notify'
+hcase "$USB device_unmounted None STICK Kingston" "safely remove" "" "" "" 'grep -q "“STICK” can now be removed safely" $S/notify'
+# #159: "is ready" vanished after 8 s (a late click did nothing) – it stays now, and "can be removed safely" replaces it
+hcase "$USB device_mounted /media/simple/URLAUB URLAUB Kingston" "ready notification expires / no stack tag (#159)" "" "USER=simple" "" \
+    'grep -q -- "-t 0 -h string:x-dunst-stack-tag:simpleos-usb-URLAUB .*“URLAUB” is ready" $S/notify'
+hcase "$USB device_unmounted None URLAUB Kingston" "removed notification does not replace the ready one (#159)" "" "" "" \
+    'grep -q -- "-h string:x-dunst-stack-tag:simpleos-usb-URLAUB .*“URLAUB” can now be removed safely" $S/notify'
 hcase "$USB job_failed None STICK Kingston" "error" "" "" "" 'grep -q "could not be opened" $S/notify'
 hcase "$USB device_added None STICK Kingston" "other events silent" "" "" "" '[ ! -s $S/notify ]'
 # The installer's own mounts (Calamares: /tmp/calamares-root-…) are no USB drive – no "ready"/"Safely remove" during the
@@ -1309,7 +1468,7 @@ hcase "$USB device_mounted /media/root/A391-8FED None None" "root's mount (fwupd
     '[ ! -s $S/notify ] && [ ! -s $S/umount ]'
 hcase "$USB device_mounted /media/other/STICK STICK Kingston" "another user's mount announced" "" "USER=simple" "" '[ ! -s $S/notify ]'
 hcase "$USB device_mounted /run/media/simple/STICK STICK Kingston" "stick below /run/media/<user>" "" "USER=simple" "" \
-    'grep -q "\"STICK\" is ready" $S/notify'
+    'grep -q "“STICK” is ready" $S/notify'
 printf '#!/bin/sh
 case "$*" in *" /media/simple/Data") echo /dev/sda5 ;; *" /media/simple/STICK") echo /dev/sdb1 ;; esac
 ' > "$wt/mock/findmnt"
@@ -1321,7 +1480,7 @@ chmod 0755 "$wt/mock/findmnt" "$wt/mock/lsblk"
 hcase "$USB device_mounted /media/simple/Data Data None" "partition of an internal disk announced as a drive" "" "USER=simple NOTIFY_ACTION=eject" "" \
     '[ ! -s $S/notify ] && [ ! -s $S/umount ]'
 hcase "$USB device_mounted /media/simple/STICK STICK Kingston" "USB stick (HOTPLUG 1)" "" "USER=simple NOTIFY_ACTION=yes" "" \
-    'grep -q "\"STICK\" is ready" $S/notify && grep -qx "thunar /media/simple/STICK" $S/opened'
+    'grep -q "“STICK” is ready" $S/notify && grep -qx "thunar /media/simple/STICK" $S/opened'
 rm -f "$wt/mock/findmnt" "$wt/mock/lsblk"
 
 # Rofi errors and missing tools: never end silently. Grab error -> new attempt, rofi missing/does not start
@@ -1611,7 +1770,7 @@ for home in /etc/skel /home/simple; do
     check "autostart: simpleos-input --watch is missing in $home" "grep -qx 'simpleos-input --watch &' '$home/.config/openbox/autostart'"
 done
 check "package xinput not installed" "dpkg-query -W -f='\${Status}' xinput 2>/dev/null | grep -q 'install ok installed'"
-check "Control Center: Mouse & Touchpad page missing" "grep -qF '(\"input\", \"Mouse & Touchpad\", \"input-mouse\")' /usr/local/bin/simpleos-control-center"
+check "Control Center: Mouse & Touchpad page missing" "grep -qF '(\"input\", _(\"Mouse & Touchpad\"), \"input-mouse\")' /usr/local/bin/simpleos-control-center"
 check "Control Center: Wi-Fi band selector missing" "grep -qF '\"802-11-wireless.band\"' /usr/local/bin/simpleos-control-center && grep -qF 'self.set_band(state' /usr/local/bin/simpleos-control-center"
 check "Control Center: Date & Time missing" "grep -qF 'cmd(\"timedatectl\", \"set-timezone\", zone, timeout=120)' /usr/local/bin/simpleos-control-center &&
       grep -qF 'cmd(\"timedatectl\", \"set-ntp\"' /usr/local/bin/simpleos-control-center"
@@ -2044,6 +2203,7 @@ check "Control Center: the firewall switch does not use the helper" "grep -q '\"
 fw=$(mktemp -d)
 mkdir -p "$fw/bin"
 sed -n '/^FWUPD_OPTS=/p;/^fw_pending() {/,/^}/p;/^fw_update() {/,/^}/p' $SSU > "$fw/fn.sh"
+echo '_t() { printf "%s" "$1"; }   # translations (#43): English in the test' >> "$fw/fn.sh"
 cat > "$fw/bin/fwupdmgr" <<'MOCK'
 #!/bin/sh
 echo "fwupdmgr $*" >> "$R/calls"
@@ -2081,7 +2241,7 @@ for home in /etc/skel /home/simple; do
     for kv in DESKTOP=Desktop DOWNLOAD=Downloads DOCUMENTS=Documents MUSIC=Music PICTURES=Pictures VIDEOS=Videos TEMPLATES=Templates; do
         check "user-dirs.dirs: XDG_${kv%%=*}_DIR missing in $home" "grep -qx 'XDG_${kv%%=*}_DIR=\"\$HOME/${kv#*=}\"' '$home/.config/user-dirs.dirs'"
     done
-    check "autostart: sidebar without standard folders in $home" "grep -q 'for d in Documents Downloads Pictures Music Videos' '$home/.config/openbox/autostart'"
+    check "autostart: sidebar without standard folders in $home" "grep -qx '/usr/local/lib/simpleos/home-folders' '$home/.config/openbox/autostart'"
     check "bookmarks with a placeholder path in $home (GTK needs the real home path)" "[ ! -e '$home/.config/gtk-3.0/bookmarks' ]"
 done
 uh=$(mktemp -d)
@@ -2089,15 +2249,26 @@ cp -a /etc/skel/. "$uh/"
 check "xdg-user-dirs-update changes the Simple OS folders (e.g. creates Public)" \
       "env -i HOME=$uh PATH=/usr/bin:/bin LANG=en_US.UTF-8 xdg-user-dirs-update >/dev/null 2>&1 &&
        [ \"\$(env -i HOME=$uh PATH=/usr/bin:/bin xdg-user-dir DOWNLOAD)\" = '$uh/Downloads' ] && [ ! -e $uh/Public ]"
-# Sidebar: the autostart block creates bookmarks with the real path at the first login, a second login
-# leaves your own changes alone
-sed -n '/^mkdir -p ~\/.config\/gtk-3.0$/,/^done > ~\/.config\/gtk-3.0\/bookmarks$/p' /etc/skel/.config/openbox/autostart > "$uh/block"
-check "autostart: bookmarks block not found" "grep -q 'gtk-3.0/bookmarks' $uh/block"
-check "autostart: bookmarks wrong" \
-      "env -i HOME=$uh PATH=/usr/bin:/bin sh $uh/block && grep -qx 'file://$uh/Downloads Downloads' $uh/.config/gtk-3.0/bookmarks && [ \$(wc -l < $uh/.config/gtk-3.0/bookmarks) -eq 5 ]"
+# Sidebar: home-folders (autostart) creates bookmarks with the real path at the first login, a second login
+# leaves your own changes alone. #157: a new German/French account gets Dokumente, Bilder … / Documents, Images …
+HF=/usr/local/lib/simpleos/home-folders
+check "home-folders missing" "[ -x $HF ]"
+hf() { rm -rf "${uh:?}"; mkdir -p "$uh"; cp -a /etc/skel/. "$uh/"; env -i HOME=$uh PATH=/usr/bin:/bin SIMPLEOS_HF_HOME=$uh SIMPLEOS_HF_LIVE=0 "$@" $HF; }
+check "home-folders: English bookmarks wrong" \
+      "hf LANG=en_US.UTF-8 && grep -qx 'file://$uh/Downloads Downloads' $uh/.config/gtk-3.0/bookmarks && [ \$(wc -l < $uh/.config/gtk-3.0/bookmarks) -eq 5 ] && [ -d $uh/Documents ] && [ -f '$uh/Templates/Text Document.txt' ]"
+check "home-folders: a new German account keeps English folder names (#157)" \
+      "hf LANG=de_DE.UTF-8 && [ -d $uh/Dokumente ] && [ -d $uh/Bilder/Screenshots ] && [ -f $uh/Schreibtisch/simpleos-welcome.desktop ] && [ ! -e $uh/Documents ] &&
+       [ \"\$(env -i HOME=$uh PATH=/usr/bin:/bin xdg-user-dir PICTURES)\" = '$uh/Bilder' ] && grep -qx 'file://$uh/Dokumente Dokumente' $uh/.config/gtk-3.0/bookmarks &&
+       grep -qx de_DE $uh/.config/user-dirs.locale && [ -d $uh/Downloads ] && [ -d $uh/Vorlagen ]"
+check "home-folders: a new French account keeps English folder names (#157)" \
+      "hf LANG=fr_FR.UTF-8 && [ -d $uh/Images ] && [ -d '$uh/Téléchargements' ] && grep -q 'T%C3%A9l%C3%A9chargements Téléchargements' $uh/.config/gtk-3.0/bookmarks"
+check "home-folders: renames the folders of an account that signed in before (#157)" \
+      "rm -rf $uh && mkdir -p $uh && cp -a /etc/skel/. $uh/ && mkdir -p $uh/.config/simpleos && touch $uh/.config/simpleos/wizard-done &&
+       env -i HOME=$uh PATH=/usr/bin:/bin SIMPLEOS_HF_HOME=$uh SIMPLEOS_HF_LIVE=0 LANG=de_DE.UTF-8 $HF && [ -d $uh/Documents ] && [ ! -e $uh/Dokumente ]"
+check "home-folders: renames folders in the live session" "hf LANG=de_DE.UTF-8 SIMPLEOS_HF_LIVE=1 && [ -d $uh/Documents ]"
 echo 'file:///mnt Mine' > "$uh/.config/gtk-3.0/bookmarks"
-check "autostart: overwrites your own bookmarks" \
-      "env -i HOME=$uh PATH=/usr/bin:/bin sh $uh/block && [ \"\$(cat $uh/.config/gtk-3.0/bookmarks)\" = 'file:///mnt Mine' ]"
+check "home-folders: overwrites your own bookmarks" \
+      "env -i HOME=$uh PATH=/usr/bin:/bin SIMPLEOS_HF_HOME=$uh LANG=de_DE.UTF-8 $HF && [ \"\$(cat $uh/.config/gtk-3.0/bookmarks)\" = 'file:///mnt Mine' ]"
 rm -rf "${uh:?}"
 
 # ---- Thunar right-click: wallpaper, copy to clipboard, open as administrator (+ extract
@@ -2526,7 +2697,7 @@ assert len(set(keys)) == len(keys) and all(v in keys for v in c.ALIASES.values()
 rm -rf "$ap"
 # #75: two apps for a type and nothing chosen (LibreOffice + ONLYOFFICE) -> "Choose an app…" instead of an empty field
 check "Control Center → Apps: empty choice field with two office suites (#75)" \
-      "grep -qF 'combo.prepend(CHOOSE, \"Choose an app…\")' $CC && grep -qF 'if not app_id or app_id == CHOOSE:' $CC"
+      "grep -qF 'combo.prepend(CHOOSE, _(\"Choose an app…\"))' $CC && grep -qF 'if not app_id or app_id == CHOOSE:' $CC"
 printf 'VERSION_ID="9.9.9"\n' > "$wt/osr"
 check "Control Center: Simple OS version not read" "ccpy SIMPLEOS_OS_RELEASE=$wt/osr python3 -c \"$CCL; assert c.os_version() == '9.9.9'\""
 # Callers that open a page by name: every name must be a page or an alias (otherwise the window opens on Wi-Fi)
@@ -2747,6 +2918,8 @@ for k in ('steam', 'libreoffice', 'discord', 'spotify', 'vlc'):
 assert s.status(by['discord']) == 'installed' and s.status(by['spotify']) == 'available'
 assert s.status(by['libreoffice']) == 'installed' and s.status(by['steam']) == 'available'
 assert s.install_cmd(by['steam']) == ['pkexec', '/usr/local/sbin/simpleos-system-setup', '--gaming']
+assert s.install_cmd(by['devtools']) == ['pkexec', '/usr/local/sbin/simpleos-system-setup', '--devtools']
+assert by['steam'][1] == 'Gaming Support' and by['bottles'][1] == 'SOS Bridge' and by['devtools'][1] == 'Developer Tools'
 assert s.install_cmd(by['libreoffice']) == ['pkexec', '/usr/local/sbin/simpleos-system-setup', '--office', 'libreoffice']
 assert s.install_cmd(by['spotify']) == ['flatpak', 'install', '--system', '-y', 'flathub', 'com.spotify.Client']
 assert s.remove_cmd(by['discord'])[:2] == ['flatpak', 'uninstall'] and s.remove_cmd(by['steam']) is None
@@ -2808,7 +2981,7 @@ if command -v broadwayd >/dev/null && command -v dbus-run-session >/dev/null; th
     wait "$bwpid" 2>/dev/null || true
     check "Software Center: closed during an installation -> installation stopped halfway or program never ends (#83, exit $rc)" \
           "[ $rc -eq 0 ] && [ -e $S/sc-finished ] && grep -q -- '--gaming' $S/pkexec &&
-           grep -q 'Installing Steam continues in the background' $S/notify && grep -q 'Steam is installed' $S/notify"
+           grep -q 'Installing Gaming Support continues in the background' $S/notify && grep -q 'Gaming Support is installed' $S/notify"
     rm -rf "$wt/scmock"
 else
     check "broadwayd/dbus-run-session missing (libgtk-3-bin) – GUI self-test not possible" "false"
@@ -2846,6 +3019,9 @@ check "fontconfig: system-ui is not Inter" "fc-match -f '%{family[0]}' system-ui
 check "fontconfig: monospace is not JetBrains Mono" "fc-match -f '%{family[0]}' monospace | grep -qx 'JetBrains Mono'"
 check "Papirus-Dark: SVG icons cannot be displayed (gdk-pixbuf SVG loader missing)" \
       "ls /usr/lib/*/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-svg.so >/dev/null 2>&1"
+# #144: Rofi with Simple OS's patches (tools/build_rofi.sh) – a resting pointer does not pick the row when a menu opens,
+# typing selects the best match again; with Debian's own build "display settings" + Enter opened another entry
+check "Rofi: Debian's build instead of Simple OS's (patches for #144)" "dpkg-query -W -f '\${Version}' rofi 2>/dev/null | grep -q '+simpleos'"
 for home in /etc/skel /home/simple; do
     c=$home/.config
     for gtk in gtk-3.0 gtk-4.0; do
@@ -2981,6 +3157,11 @@ done
 #      notification with Battery/Akku/Power (title, text, icon, sender). dunst itself needs X -> the rules
 #      are recomputed with the same logic as dunst 1.9 (sections in order, shell globs,
 #      all conditions of a section must match, format = "" -> "Skipping notification").
+# #161: Thunar's eject showed gvfs' "Device can be removed." next to Simple OS's own "“STICK” can now be removed safely."
+for home in /etc/skel /home/simple; do
+    check "dunst: gvfs' second eject notification not dropped in $home (#161)" \
+          "grep -q '^\[simpleos-drop-gvfs-unplugged\]' $home/.config/dunst/dunstrc && grep -qF 'body = \"*Das Gerät kann ausgesteckt werden.*\"' $home/.config/dunst/dunstrc"
+done
 FLT=/etc/xdg/dunst/simpleos-battery-filter.conf
 SD=/usr/local/bin/simpleos-dunst
 check "dunst battery filter $FLT missing" "[ -s $FLT ]"
@@ -3201,6 +3382,8 @@ $LS SIMPLEOS_LIVE=0 $LV --setup
 check "installed: desktop icon 'Install Simple OS' still there" "[ ! -e $lt/home/Desktop/simpleos-install.desktop ]"
 check "installed: installer entry still in the menu" \
       "! grep -q 'simpleos-install' $lt/home/.config/openbox/menu.xml && python3 -c 'import sys, xml.dom.minidom as m; m.parse(sys.argv[1])' $lt/home/.config/openbox/menu.xml"
+check "installer: USB drives stay mounted / udiskie mounts them again during the install (#166)" \
+      "grep -qF 'pkill -u \"\$(id -u)\" -x udiskie' /usr/local/bin/simpleos-install && grep -q 'run install-debian; udiskie_again' /usr/local/bin/simpleos-install"
 check "installer launcher: wrong Exec" "grep -qx 'Exec=/usr/local/bin/simpleos-install' /usr/share/applications/simpleos-install.desktop"
 check "installer launcher: icon missing" "[ -n \"\$(ls /usr/share/icons/Papirus-Dark/*/apps/system-os-installer.svg 2>/dev/null)\" ]"
 check "simpleos-post-install does not remove the installer launcher" "grep -q '/usr/share/applications/simpleos-install.desktop' /usr/local/sbin/simpleos-post-install"
@@ -3247,6 +3430,24 @@ printf '%s\n' '/dev/sr0 /run/live/medium iso9660 ro 0 0' '/dev/sda1 /tmp/calamar
 check "$IR: does not unmount exactly the new system's root left by Calamares" \
       "[ \"\$(env -i SIMPLEOS_RESTART_DRYRUN=1 SIMPLEOS_MOUNTS=$irm SIMPLEOS_LIVE_MEDIUM_DEV= python3 $IR --no-dialog | tr '\n' ' ')\" = 'unmount: /tmp/calamares-root-ab12 restart: systemctl ' ]"
 rm -f "$irm"
+# #160: the window was English after a German installation (the live session is English) – the new system's language
+irr=$(mktemp -d)
+mkdir -p "$irr/tmp/calamares-root-x9/etc/default"
+echo 'LANG=de_DE.UTF-8' > "$irr/tmp/calamares-root-x9/etc/default/locale"
+printf '%s\n' "/dev/sda1 $irr/tmp/calamares-root-x9 ext4 rw 0 0" > "$irr/mounts"
+sed "s#\"/tmp/calamares-root-\")\(.*\)target.count(\"/\") == 2#\"$irr/tmp/calamares-root-\")\1True#" $IR > "$irr/ir.py"
+check "$IR: the restart window is not in the new system's language (#160)" \
+      "env -i SIMPLEOS_RESTART_DRYRUN=1 SIMPLEOS_MOUNTS=$irr/mounts SIMPLEOS_LIVE_MEDIUM_DEV= python3 $irr/ir.py --no-dialog 2>&1 >/dev/null | grep -qx 'language: de_DE | Simple OS ist installiert' &&
+       env -i SIMPLEOS_RESTART_DRYRUN=1 SIMPLEOS_MOUNTS=/dev/null SIMPLEOS_RESTART_LANG=fr_FR.UTF-8 SIMPLEOS_LIVE_MEDIUM_DEV= python3 $IR --no-dialog 2>&1 >/dev/null | grep -q '^language: fr_FR | Simple OS est install'"
+rm -rf "$irr"
+# #160: the slideshow stayed English in a German/French installation (no branding translations)
+for l in de fr; do
+    check "installer: slideshow translation $l missing (#160)" \
+          "[ -s /etc/calamares/branding/simpleos/lang/calamares-simpleos_$l.qm ] && grep -q 'qsTr(\"Welcome to Simple OS.<br/>\"' /etc/calamares/branding/simpleos/show.qml"
+done
+# #160: Calamares started at America/New_York (Debian's built-in default) – Europe/Berlin, no GeoIP (privacy)
+check "installer: time zone default New York / GeoIP request to an outside server (#160)" \
+      "grep -qx 'region: \"Europe\"' /etc/calamares/modules/locale.conf && grep -qx 'zone: \"Berlin\"' /etc/calamares/modules/locale.conf && ! grep -q '^geoip' /etc/calamares/modules/locale.conf"
 check "$IR: imports something only after the window (could not be loaded after the stick is pulled)" \
       "! sed -n '/^def restart/,/^def ask/p' $IR | grep -q 'import'"
 check "simpleos-post-install does not remove $IR" "grep -qx 'rm -f $IR' /usr/local/sbin/simpleos-post-install"
@@ -3261,9 +3462,9 @@ hcase "$INS" "live -> install-debian" "" "SIMPLEOS_LIVE=1" "" 'grep -qx install-
 hcase "$INS" "installer already running -> hint" "" "SIMPLEOS_LIVE=1 PGREP_RC=0" "" 'grep -q "already open" $S/notify && [ ! -e $S/installer ]'
 hcase "$INS" "without install-debian -> pkexec calamares" "install-debian" "SIMPLEOS_LIVE=1" "" 'grep -qx calamares $S/pkexec'
 hcase "$INS" "no installer -> hint" "install-debian calamares" "SIMPLEOS_LIVE=1" "" 'grep -q "installer is missing" $S/notify'
-# #62/#64: shutdown/sleep blocked while it runs; mounted partitions of internal drives (HOTPLUG 0) unmounted first,
-# USB drives and the live medium stay; one in use -> hint, no installer; a second start while the first one is
-# still starting (lock) -> hint
+# #62/#64: shutdown/sleep blocked while it runs; mounted partitions under /media unmounted first – internal drives
+# and (#166) USB drives, the live medium stays; an internal one in use -> hint, no installer; a USB one in use is left
+# alone; a second start while the first one is still starting (lock) -> hint
 cat > "$wt/mock/systemd-inhibit" <<'MOCK'
 #!/bin/sh
 echo "$*" >> "$WT/inhibit"
@@ -3285,17 +3486,21 @@ exit 0
 MOCK
 printf '#!/bin/sh
 echo "udisksctl $*" >> "$WT/unmount"
+case "$*" in *"${UNMOUNT_FAIL:-none}"*) exit 1 ;; esac
 exit ${UNMOUNT_RC:-0}
 ' > "$wt/mock/udisksctl"
 printf '#!/bin/sh
 echo "umount $*" >> "$WT/unmount"
+case "$*" in *"${UNMOUNT_FAIL:-none}"*) exit 1 ;; esac
 exit ${UNMOUNT_RC:-0}
 ' > "$wt/mock/umount"
 chmod 0755 "$wt/mock/systemd-inhibit" "$wt/mock/findmnt" "$wt/mock/lsblk" "$wt/mock/udisksctl" "$wt/mock/umount"
 hcase "$INS" "installer runs with shutdown/sleep/lid blocked" "" "SIMPLEOS_LIVE=1" "" \
     'grep -qx install-debian $S/installer && grep -q -- "--what=shutdown:sleep:idle:handle-power-key:.*handle-lid-switch .*--mode=block install-debian" $S/inhibit'
-hcase "$INS" "internal partition unmounted, USB and live medium not" "" "SIMPLEOS_LIVE=1" "" \
-    '[ "$(cat $S/unmount)" = "udisksctl unmount -b /dev/sda5 --no-user-interaction" ] && grep -qx install-debian $S/installer'
+hcase "$INS" "internal and USB partitions unmounted, live medium not (#166)" "" "SIMPLEOS_LIVE=1" "" \
+    '[ "$(cat $S/unmount | tr "\n" " ")" = "udisksctl unmount -b /dev/sda5 --no-user-interaction udisksctl unmount -b /dev/sdb1 --no-user-interaction " ] && grep -qx install-debian $S/installer'
+hcase "$INS" "USB partition in use -> installer starts anyway, no hint (#166)" "" "SIMPLEOS_LIVE=1 UNMOUNT_FAIL=sdb1" "" \
+    'grep -qx install-debian $S/installer && [ ! -s $S/notify ]'
 hcase "$INS" "internal partition in use -> hint, no installer" "" "SIMPLEOS_LIVE=1 UNMOUNT_RC=1" "" \
     'grep -q "still in use: Data\." $S/notify && [ ! -e $S/installer ]'
 ln -s "$(command -v flock)" "$wt/sys/flock"
@@ -3452,7 +3657,7 @@ touch "$st/home/Documents/report-2026.pdf" "$st/home/Documents/.secret/report-hi
 printf '#!/bin/sh\necho "gtk-launch $*" > "$WT/opened"\n' > "$wt/mock/gtk-launch"
 chmod 0755 "$wt/mock/gtk-launch"
 srch() { rm -rf "${S:?}"; mkdir -p "$S"; $ENV -i HOME="$st/home" WT="$S" XDG_DATA_HOME="$st/none" XDG_DATA_DIRS="$st/share" \
-         PATH="$wt/mock:$wt/py:$wt/sys" "$@" python3 $SR "${SARG:-x}" 2>/dev/null </dev/null | tr '\000\037' '|~' > "$S/out"; }
+         PATH="$wt/mock:$wt/py:$wt/sys" SIMPLEOS_SIGNED_IN= "$@" python3 $SR "${SARG:-x}" 2>/dev/null </dev/null | tr '\000\037' '|~' > "$S/out"; }
 SARG=x srch ROFI_RETV=0
 check "Search: start page without app/system commands or with hidden apps" \
       "grep -q '^Calculator|info~app:.*galculator.desktop~icon~accessories-calculator~meta~math calc' $S/out &&
@@ -3491,6 +3696,16 @@ done
 # "1,000" is one thousand outside decimal-comma languages, "3,5" stays 3.5; German keeps the decimal comma
 check "Calculator: '1,000+5' in English" "[ \"\$(env -u LC_ALL -u LC_NUMERIC LANG=en_US.UTF-8 python3 $SR --calc '1,000+5')\" = '1,000 + 5 = 1005' ]"
 check "Calculator: '1,000+5' in German (decimal comma)" "[ \"\$(env -u LC_ALL -u LC_NUMERIC LANG=de_DE.UTF-8 python3 $SR --calc '1,000+5')\" = '1,000 + 5 = 6' ]"
+# #147: commas between function arguments, German thousands dots, the result with a decimal comma in German
+for c in 'en_US|round(3.14159,2)|round(3.14159,2) = 3.14' 'en_US|max(1,2)|max(1,2) = 2' 'en_US|min(4, 2)|min(4, 2) = 2' \
+         'en_US|3,5*2|3,5 * 2 = 7' 'en_US|round(1234,-2)|round(1234, -2) = 1200' 'en_US|max(1,234)|max(1,234) = 234' \
+         'en_US|min(10,500)|min(10,500) = 10' 'en_US|sqrt(1,000,000)|sqrt(1,000,000) = 1000' \
+         'de_DE|1.234,5+1|1.234,5 + 1 = 1235,5' 'de_DE|1.000+1|1.000 + 1 = 1001' 'de_DE|round(3,14159; 2)|round(3,14159; 2) = 3,14' \
+         'de_DE|round(3,14159, 2)|round(3,14159, 2) = 3,14' 'de_DE|round(3.14159,2)|round(3.14159,2) = 3,14' \
+         'de_DE|round(2,5)|round(2,5) = 3' 'de_DE|max(1,2)|max(1,2) = 2' 'de_DE|1.5+1|1.5 + 1 = 2,5' 'de_DE|0.125*8|0.125 * 8 = 1'; do
+    l=${c%%|*}; r=${c#*|}; e=${r%%|*}; want=${r#*|}
+    check "Calculator ($l): '$e' does not give '$want'" "[ \"\$(env -u LC_ALL -u LC_NUMERIC LANG=$l.UTF-8 python3 $SR --calc '$e')\" = '$want' ]"
+done
 check "Calculator: division by zero without an understandable message" "python3 $SR --calc '1/0' | grep -q \"can't divide by zero\""
 for c in '9^999*9^999*9^999*9^999*9^999' '((9^999)^999)^999'; do
     check "Calculator: '$c' crashes or calculates forever instead of 'too large'" "timeout 5 python3 $SR --calc '$c' | grep -q 'the number is too large'"
@@ -3522,6 +3737,8 @@ SARG=x srch ROFI_RETV=1 "ROFI_INFO=file:$st/home/Music/Report.mp3"
 check "Search: file not opened with the default app" "waitfor $S/opened && grep -qx 'xdg-open $st/home/Music/Report.mp3' $S/opened"
 SARG="Shut down" srch ROFI_RETV=1 ROFI_INFO=sys:shutdown
 check "Search: 'Shut down' without asking" "grep -q '^Shut down now|info~do:shutdown' $S/out && grep -q '^Cancel|info~back:' $S/out && [ ! -e $S/power ]"
+SARG="Shut down" srch ROFI_RETV=1 ROFI_INFO=sys:shutdown "SIMPLEOS_SIGNED_IN=Max Müller"
+check "Search: 'Shut down' while someone else is signed in does not say so" "grep -q 'Also signed in: Max Müller' $S/out && grep -q '^Shut down now|info~do:shutdown' $S/out && [ ! -e $S/power ]"
 SARG=x srch ROFI_RETV=1 ROFI_INFO=do:shutdown
 check "Search: confirmed shutdown not carried out" "grep -qx 'systemctl poweroff' $S/power"
 SARG=x srch ROFI_RETV=1 ROFI_INFO=sys:lock
@@ -3622,8 +3839,102 @@ check "Game Mode: leftovers of simpleos-gamemode/simpleos-governor" \
 check "DND: launcher missing/wrong" \
       "grep -qx 'Name=Do Not Disturb' /usr/share/applications/simpleos-dnd.desktop && grep -qx 'Exec=/usr/local/bin/simpleos-dnd --toggle' /usr/share/applications/simpleos-dnd.desktop"
 check "DND: Control Center switch missing" \
-      "grep -qF '(\"Do Not Disturb\", \"Pause notifications until you turn it off\", dnd)' /usr/local/bin/simpleos-control-center &&
+      "grep -qF '(_(\"Do Not Disturb\"), _(\"Pause notifications until you turn it off\"), dnd)' /usr/local/bin/simpleos-control-center &&
        grep -qF 'cmd(\"simpleos-dnd\", \"--status\")' /usr/local/bin/simpleos-control-center"
+# #68: user accounts – root helper (test mode: own passwd/group, commands only printed), polkit action, CC page
+UH=/usr/local/sbin/simpleos-users-helper
+UPOL=/usr/share/polkit-1/actions/org.simpleos.users.policy
+check "Users: helper missing/syntax error or polkit action wrong" \
+      "[ -x $UH ] && sh -n $UH && python3 -c 'import sys, xml.etree.ElementTree as E
+a = E.parse(sys.argv[1]).getroot().find(\"action\")
+assert a.get(\"id\") == \"org.simpleos.users\" and a.find(\"annotate\").text == \"/usr/local/sbin/simpleos-users-helper\"
+assert a.find(\"defaults\").findtext(\"allow_active\") == \"auth_admin_keep\"' $UPOL"
+ue=$(mktemp -d)
+mkdir -p "$ue/lightdm/lightdm.conf.d"
+printf 'root:x:0:0:root:/root:/bin/bash\nlightdm:x:110:115::/var/lib/lightdm:/bin/false\npax:x:1000:1000:Pax,,,:/home/pax:/bin/bash\nanna:x:1001:1001:Anna:/home/anna:/bin/bash\nsvc:x:1002:1002::/home/svc:/usr/sbin/nologin\n' > "$ue/passwd"
+printf 'root:x:0:\nsudo:x:27:pax\naudio:x:29:pax\nlpadmin:x:113:pax\npax:x:1000:\nanna:x:1001:\n' > "$ue/group"
+printf 'UID_MIN 1000\nUID_MAX 60000\n' > "$ue/login.defs"
+printf '[Seat:*]\nautologin-user=pax\n' > "$ue/lightdm/lightdm.conf"
+uh() { env SIMPLEOS_USERS_TEST=1 SIMPLEOS_USERS_ETC="$ue" SIMPLEOS_USERS_CALLER=pax "$@" > "$ue/out" 2>&1; }
+check "Users: new account not created with its groups (password via stdin, never on the command line)" \
+      "echo secret | uh $UH --create bob 'Bob Müller' standard && grep -qx 'RUN: adduser --quiet --disabled-password --comment Bob Müller bob' $ue/out &&
+       grep -qx 'RUN: chpasswd (bob)' $ue/out && grep -qx 'RUN: adduser --quiet bob audio' $ue/out && ! grep -q 'bob sudo' $ue/out && ! grep -q secret $ue/out"
+check "Users: an administrator not put into sudo" "echo secret | uh $UH --create carl Carl admin && grep -qx 'RUN: adduser --quiet carl sudo' $ue/out"
+for c in "6|--create anna Anna standard" "2|--create Bob Bob standard" "2|--create bob Bob:x standard" "3|--delete pax remove" \
+         "2|--delete svc remove" "2|--delete root remove" "3|--admin pax off" "2|--autologin svc" "2|--picture anna /etc/hostname" \
+         "2|--frobnicate anna"; do
+    check "Users: '${c#*|}' not refused with exit ${c%%|*}" "echo pw | uh $UH ${c#*|}; [ \$? -eq ${c%%|*} ]"
+done
+check "Users: the last administrator can be demoted by someone else" "env SIMPLEOS_USERS_TEST=1 SIMPLEOS_USERS_ETC=$ue SIMPLEOS_USERS_CALLER=anna $UH --admin pax off >/dev/null 2>&1; [ \$? -eq 3 ]"
+check "Users: a signed-in account deleted" "env SIMPLEOS_USERS_SIGNED_IN=anna SIMPLEOS_USERS_TEST=1 SIMPLEOS_USERS_ETC=$ue SIMPLEOS_USERS_CALLER=pax $UH --delete anna keep >/dev/null 2>&1; [ \$? -eq 5 ]"
+check "Users: delete keeps the home folder unless asked / kept folder still open to the next account with the same ID" "uh $UH --delete anna keep && grep -qx 'RUN: deluser --quiet anna' $ue/out && grep -qx 'RUN: chown -R root:root /home/anna' $ue/out && grep -qx 'RUN: chmod 0700 /home/anna' $ue/out && uh $UH --delete anna remove && grep -qx 'RUN: deluser --quiet --remove-home anna' $ue/out && ! grep -q 'RUN: chown' $ue/out"
+check "Users: automatic sign-in does not take the installer's line in lightdm.conf out of the way" \
+      "uh $UH --autologin anna && grep -q '^RUN: sed -i -E .*autologin-user' $ue/out && grep -q 'RUN: write .*50-simpleos-autologin.conf autologin-user=anna' $ue/out"
+check "Control Center → Users: accounts, administrators or automatic sign-in read wrong" \
+      "env SIMPLEOS_USERS_ETC=$ue python3 -c \"import importlib.machinery as m; c = m.SourceFileLoader('c', '/usr/local/bin/simpleos-control-center').load_module()
+u = c.users_list(); assert [(x['name'], x['full'], x['admin']) for x in u] == [('anna', 'Anna', False), ('pax', 'Pax', True)], u
+assert c.autologin_user() == 'pax'
+assert c.suggest_username('Jürgen Müller') == 'juergen' and c.suggest_username('Anna', {'anna'}) == 'anna2'
+assert c.valid_username('anna') and not c.valid_username('Anna') and not c.valid_fullname('a:b')
+assert c.password_message('passwd: Authentication token manipulation error') == 'The current password is wrong.'
+assert ('users', 'Users', 'system-users') in c.PAGES and c.ALIASES['accounts'] == 'users'\" 2>/dev/null"
+# #150: a destroyed Gtk.Entry returns "" – the passwords must be read before the dialog is destroyed
+check "Control Center → Users: password read after the dialog is destroyed (new accounts get no password, #150)" \
+      "! grep -A2 -F 'd.destroy()' /usr/local/bin/simpleos-control-center | grep -q 'password=pw.get_text()'"
+check "Users: an empty password is accepted" "printf '\\n' | env SIMPLEOS_USERS_TEST=1 SIMPLEOS_USERS_ETC=$ue SIMPLEOS_USERS_CALLER=pax $UH --create bob Bob standard >/dev/null 2>&1; [ \$? -eq 2 ]"
+check "Password & Security: password still changed in a terminal" "! grep -q '\"kitty\", \"--title\", \"Change password\"' /usr/local/bin/simpleos-control-center"
+rm -rf "${ue:?}"
+check "accountsservice missing (account pictures on the login screen, #68)" "dpkg -s accountsservice >/dev/null 2>&1"
+# #43: Simple OS's own texts in German (tools/i18n.py build -> simpleos.mo); English systems keep the English text
+MO=/usr/share/locale/de/LC_MESSAGES/simpleos.mo
+check "Translations: German catalog missing or not readable" \
+      "[ -s $MO ] && python3 -c 'import gettext; t = gettext.translation(\"simpleos\", languages=[\"de\"]); assert t.gettext(\"Software Center\") == \"Software-Center\" and t.gettext(\"Users\") == \"Benutzer\"'"
+check "Translations: Python tools translate through gettext (wizard, Control Center, Software Center)" \
+      "env -i LANGUAGE=de PATH=/usr/bin:/bin python3 -c \"import importlib.machinery as m; c = m.SourceFileLoader('c', '/usr/local/bin/simpleos-control-center').load_module(); assert ('users', 'Benutzer', 'system-users') in c.PAGES, c.PAGES\" 2>/dev/null"
+check "Translations: an English system shows translated texts" \
+      "env -i LANGUAGE=en LANG=en_US.UTF-8 PATH=/usr/bin:/bin python3 -c \"import importlib.machinery as m; c = m.SourceFileLoader('c', '/usr/local/bin/simpleos-control-center').load_module(); assert ('users', 'Users', 'system-users') in c.PAGES\" 2>/dev/null"
+check "Translations: i18n.sh missing or _t changes English text" \
+      "[ \"\$(env -i PATH=/usr/bin:/bin LANG=en_US.UTF-8 sh -c '. /usr/local/lib/simpleos/i18n.sh; _t \"Backups\"')\" = Backups ] && command -v gettext >/dev/null"
+check "Translations: a shell tool uses _t without i18n.sh or common.sh" \
+      "for f in \$(grep -l '\\\$(_t ' /usr/local/bin/* /usr/local/sbin/* 2>/dev/null); do head -1 \$f | grep -q python && continue; grep -q 'common.sh\\|i18n.sh' \$f || { echo \$f >&2; exit 1; }; done"
+check "Translations: an own launcher without a German name (Name[de])" \
+      "for f in /usr/share/applications/simpleos-*.desktop; do grep -q '^Name\\[de\\]=' \$f || { echo \$f >&2; exit 1; }; done"
+mlt=$(mktemp -d)
+printf '<openbox_menu>\n  <menu id="root-menu" label="Simple OS">\n    <item label="Files"/>\n    <item label="What&apos;s New"/>\n  </menu>\n</openbox_menu>\n' > "$mlt/menu.xml"
+check "Translations: the Openbox menu is not translated (menu-lang)" \
+      "env -i LANGUAGE=de PATH=/usr/bin:/bin /usr/local/lib/simpleos/menu-lang $mlt/menu.xml && grep -q 'label=\"Dateien\"' $mlt/menu-simpleos.xml &&
+       grep -q 'label=\"Neuigkeiten\"' $mlt/menu-simpleos.xml && python3 -c 'import sys, xml.dom.minidom as m; m.parse(sys.argv[1])' $mlt/menu-simpleos.xml"
+rm -rf "${mlt:?}"
+for home in /etc/skel /home/simple; do
+    check "Translations: rc.xml does not load the translated menu first in $home" \
+          "awk '/<file>menu-simpleos.xml<\\/file>/{a=NR} /<file>menu.xml<\\/file>/{b=NR} END{exit !(a && b && a < b)}' '$home/.config/openbox/rc.xml'"
+done
+check "Translations: German welcome/Windows help pages missing or not chosen" \
+      "[ -s /usr/share/simpleos/welcome.de.html ] && [ -s /usr/share/simpleos/windows-programs.de.html ] &&
+       grep -q 'def localized(path):' /usr/local/lib/simpleos/welcome-viewer && grep -q '<html lang=\"de\">' /usr/share/simpleos/welcome.de.html"
+check "Translations: polkit asks in English only" "[ \$(grep -l 'message xml:lang=\"de\"' /usr/share/polkit-1/actions/org.simpleos.*.policy | wc -l) -eq \$(ls /usr/share/polkit-1/actions/org.simpleos.*.policy | wc -l) ]"
+check "Translations: Rofi's \"Search\" placeholder stays English in German/French menus" \
+      "grep -q \"_t 'Search'\" /usr/local/bin/rofi && grep -q 'fr\\*) cat' /usr/local/bin/simpleos-help"
+# French (1.2): the same pieces as German – catalog, launchers, polkit, menu, the three pages, Thunar's right-click actions
+check "Translations: French catalog missing or not readable" \
+      "[ -s /usr/share/locale/fr/LC_MESSAGES/simpleos.mo ] && python3 -c 'import gettext; t = gettext.translation(\"simpleos\", languages=[\"fr\"]); assert t.gettext(\"Users\") == \"Utilisateurs\" and t.gettext(\"Done\") == \"Terminé\"'"
+check "Translations: an own launcher without a French name (Name[fr])" \
+      "for f in /usr/share/applications/simpleos-*.desktop; do grep -q '^Name\\[fr\\]=' \$f || { echo \$f >&2; exit 1; }; done"
+check "Translations: polkit asks in French nowhere" "[ \$(grep -l 'message xml:lang=\"fr\"' /usr/share/polkit-1/actions/org.simpleos.*.policy | wc -l) -eq \$(ls /usr/share/polkit-1/actions/org.simpleos.*.policy | wc -l) ]"
+check "Translations: French welcome/Windows help pages or What's new missing" \
+      "[ -s /usr/share/simpleos/welcome.fr.html ] && [ -s /usr/share/simpleos/windows-programs.fr.html ] && [ -s /usr/share/simpleos/whats-new.fr ] &&
+       grep -q '<html lang=\"fr\">' /usr/share/simpleos/welcome.fr.html && [ \$(grep -c 'xml:lang=\"fr\"' /etc/skel/.config/Thunar/uca.xml) -eq \$(grep -c 'xml:lang=\"de\"' /etc/skel/.config/Thunar/uca.xml) ]"
+mlt=$(mktemp -d)
+printf '<openbox_menu>\n  <menu id="root-menu" label="Simple OS">\n    <item label="Files"/>\n  </menu>\n</openbox_menu>\n' > "$mlt/menu.xml"
+check "Translations: the Openbox menu is not translated into French (menu-lang)" \
+      "env -i LANGUAGE=fr PATH=/usr/bin:/bin /usr/local/lib/simpleos/menu-lang $mlt/menu.xml && grep -q 'label=\"Fichiers\"' $mlt/menu-simpleos.xml"
+rm -rf "${mlt:?}"
+# #48: AppArmor loads the profiles of the installed packages at boot (the kernel module alone loaded none)
+check "AppArmor: package missing or its boot service not enabled" \
+      "dpkg -s apparmor >/dev/null 2>&1 && [ -x /sbin/apparmor_parser ] && systemctl is-enabled apparmor.service >/dev/null 2>&1"
+check "AppArmor: a profile in /etc/apparmor.d does not compile (it would not load at boot)" \
+      "for f in /etc/apparmor.d/*; do [ -f \"\$f\" ] || continue; /sbin/apparmor_parser -Q -K \"\$f\" >/dev/null 2>&1 || { echo \"\$f\" >&2; exit 1; }; done"
+check "AppArmor: extra profile sets installed (untested confinement)" "! dpkg -s apparmor-profiles >/dev/null 2>&1 && ! dpkg -s apparmor-profiles-extra >/dev/null 2>&1"
 POL=/usr/share/polkit-1/actions/org.simpleos.power-tools.policy
 check "Polkit: power tools invalid" "python3 -c 'import sys, xml.dom.minidom as m; m.parse(sys.argv[1])' $POL 2>/dev/null"
 check "Polkit: actions wrong (governor still there / backup, cleaner without a password)" \
@@ -4290,6 +4601,13 @@ cp "$bt/ts.list" "$bt/ts.list.keep"; : > "$bt/ts.list"
 check "Space: the first point does not need 5 GB" \
       "out=\$(env SIMPLEOS_FAKE_DISK='/=600000000000:3000000000' $SPACE 2>/dev/null); [ \$? -eq 6 ] && printf '%s\n' \"\$out\" | grep -qx 'NEED: 5000000000'"
 check "Space: 6 GB not enough for the first point" "env SIMPLEOS_FAKE_DISK='/=600000000000:6000000000' $SPACE >/dev/null 2>&1"
+# #147: the first point needs what the system really uses (+10 %), at least 1 GB; 5 GB only when not measurable
+check "Space: first point not sized from the system (8 GB used -> 8.8 GB)" \
+      "out=\$(env SIMPLEOS_FAKE_USED=8000000000 SIMPLEOS_FAKE_DISK='/=600000000000:6000000000' $SPACE 2>/dev/null); [ \$? -eq 6 ] && printf '%s\n' \"\$out\" | grep -qx 'NEED: 8800000000'"
+check "Space: a small system's first point needs less than 1 GB" \
+      "out=\$(env SIMPLEOS_FAKE_USED=300000000 SIMPLEOS_FAKE_DISK='/=600000000000:3000000000' $SPACE 2>/dev/null) && printf '%s\n' \"\$out\" | grep -qx 'NEED: 1000000000'"
+check "Space: unmeasurable system size -> not 5 GB" \
+      "out=\$(env SIMPLEOS_FAKE_USED=x SIMPLEOS_FAKE_DISK='/=600000000000:3000000000' $SPACE 2>/dev/null); [ \$? -eq 6 ] && printf '%s\n' \"\$out\" | grep -qx 'NEED: 5000000000'"
 mv "$bt/ts.list.keep" "$bt/ts.list"
 check "Space: live session not rejected" "env SIMPLEOS_BACKUP_ROOT=$bt BT=$bt SIMPLEOS_LIVE=1 $BH --space >/dev/null 2>&1; [ \$? -eq 4 ]"
 for c in 'livecd|4' 'nodevice|5' 'space|6' 'other|1'; do
@@ -4397,6 +4715,18 @@ check "APT: configuration/pinning broken (PackageKit would abort silently)" \
       "! apt-cache policy 2>&1 >/dev/null | grep -qE '^(E|W):' && apt-config dump >/dev/null 2>&1"
 check "AppStream: appstreamcli missing" "command -v appstreamcli >/dev/null"
 # Live tuning: overlay 85 % of RAM, Flatpak reserve 100 MB (live only; existing value replaced, not duplicated)
+# #124: report for the automatic boot test (tools/qemu-test.sh) – only live + QEMU/KVM, never on real hardware or an
+# installed system; it waits for the desktop and lists failed units on the serial port
+BTR=/usr/local/lib/simpleos/boot-test-report BTS=/etc/systemd/system/simpleos-boot-test.service
+check "Boot test: report script or service missing / not enabled" \
+      "[ -x $BTR ] && sh -n $BTR && [ -L /etc/systemd/system/graphical.target.wants/simpleos-boot-test.service ] &&
+       grep -qx 'ConditionKernelCommandLine=boot=live' $BTS && grep -qx 'ConditionVirtualization=|qemu' $BTS &&
+       grep -qx 'ConditionVirtualization=|kvm' $BTS && grep -qx 'Type=simple' $BTS"
+bt_out=$(mktemp)
+check "Boot test: no desktop not reported as a timeout" \
+      "env SIMPLEOS_BOOT_TEST_TTY=$bt_out SIMPLEOS_BOOT_TEST_WAIT=0 $BTR && grep -q '^SIMPLEOS-BOOT-TEST: timeout openbox tint2 pcmanfm' $bt_out"
+rm -f "$bt_out"; bt_out=/nonexistent/tty
+check "Boot test: fails without a serial port" "env SIMPLEOS_BOOT_TEST_TTY=$bt_out $BTR"
 LT=/usr/local/sbin/simpleos-live-tune
 check "simpleos-live-tune: missing/syntax error or service not active (only boot=live)" \
       "[ -x $LT ] && sh -n $LT && grep -qx 'ConditionKernelCommandLine=boot=live' /etc/systemd/system/simpleos-live-tune.service &&
@@ -4523,8 +4853,8 @@ check "progress-filter flatpak: speed/remaining time or weight for (partial) wro
        [ \"\$(printf '%s\n' \"\$out\" | grep '^PROGRESS' | tr '\n' '|')\" = 'PROGRESS: 14|PROGRESS: 52|' ] &&
        printf '%s\n' \"\$out\" | grep -qx 'STAGE: Downloading part 2 of 2 · 82 kB/s' && ! printf '%s\n' \"\$out\" | grep -q '1.7 kB/s'"
 check "Wizard/Software Center: PROGRESS with remaining text not readable (the bar would stand still)" \
-      "grep -q 'num, _, rest = line\[10:\].partition' /usr/local/bin/simpleos-welcome-wizard &&
-       grep -q 'num, _, rest = line\[10:\].partition' /usr/local/bin/simpleos-software-center"
+      "grep -q 'num, _sep, rest = line\[10:\].partition' /usr/local/bin/simpleos-welcome-wizard &&
+       grep -q 'num, _sep, rest = line\[10:\].partition' /usr/local/bin/simpleos-software-center"
 check "progress-filter apt: download/installation mapped wrong" \
       "[ \"\$(printf 'dlstatus:1:50:x\npmstatus:sl:50:y\nE: Failure\n' | $PF apt | tr '\n' '|')\" = 'STAGE: Downloading|PROGRESS: 20|STAGE: Installing|PROGRESS: 70|E: Failure|' ] &&
        [ \"\$(printf 'dlstatus:1:100:x\n' | $PF apt --dl 5 40 | grep PROGRESS)\" = 'PROGRESS: 40' ]"
@@ -4646,7 +4976,7 @@ for home in /etc/skel /home/simple; do
     check "autostart: keyboard layout is not applied at login in $home" "grep -qx 'simpleos-keyboard-setup --apply' '$home/.config/openbox/autostart'"
     check "menu.xml: Keyboard missing in $home" "grep -qF '<command>/usr/local/bin/simpleos-control-center keyboard</command>' '$home/.config/openbox/menu.xml'"
 done
-check "Control Center: keyboard layout selection missing" "grep -qF '(\"Keyboard layout\", \"Applies right away – also on the login screen\", kb)' /usr/local/bin/simpleos-control-center"
+check "Control Center: keyboard layout selection missing" "grep -qF '(_(\"Keyboard layout\"), _(\"Applies right away – also on the login screen\"), kb)' /usr/local/bin/simpleos-control-center"
 check "Keyboard layout: launcher missing" "grep -qx 'Exec=/usr/local/bin/simpleos-keyboard-setup' /usr/share/applications/simpleos-keyboard.desktop"
 check "localectl does not write /etc/default/keyboard (systemd-localed without the Debian patch)" "grep -qa '/etc/default/keyboard' /lib/systemd/systemd-localed"
 
@@ -4815,11 +5145,11 @@ tcase() {
 G3=$th/.config/gtk-3.0/settings.ini RASI=$th/.config/rofi/config.rasi XSD=$th/.config/xsettingsd/xsettingsd.conf
 theme_home
 tcase "light, running session" "DISPLAY=:0 XSD_RUNNING=1" "--mode light" \
-    'grep -qx "gtk-theme-name=Arc" '"$G3"' && grep -qx "gtk-application-prefer-dark-theme=0" '"$G3"' &&
-     grep -qx "gtk-theme-name=Arc" '"$th"'/.config/gtk-4.0/settings.ini && grep -qx "gtk-theme-name=\"Arc\"" '"$th"'/.gtkrc-2.0 &&
+    'grep -qx "gtk-theme-name=Arc-Lighter" '"$G3"' && grep -qx "gtk-application-prefer-dark-theme=0" '"$G3"' &&
+     grep -qx "gtk-theme-name=Arc-Lighter" '"$th"'/.config/gtk-4.0/settings.ini && grep -qx "gtk-theme-name=\"Arc-Lighter\"" '"$th"'/.gtkrc-2.0 &&
      grep -qx "gsettings set org.gnome.desktop.interface color-scheme prefer-light" $S/gsettings &&
-     grep -qx "gsettings set org.gnome.desktop.interface gtk-theme Arc" $S/gsettings &&
-     grep -qx "Net/ThemeName \"Arc\"" '"$XSD"' && grep -qx "Net/IconThemeName \"Papirus-Light\"" '"$XSD"' && grep -qx "Gtk/FontName \"Inter 10\"" '"$XSD"' &&
+     grep -qx "gsettings set org.gnome.desktop.interface gtk-theme Arc-Lighter" $S/gsettings &&
+     grep -qx "Net/ThemeName \"Arc-Lighter\"" '"$XSD"' && grep -qx "Net/IconThemeName \"Papirus-Light\"" '"$XSD"' && grep -qx "Gtk/FontName \"Inter 10\"" '"$XSD"' &&
      grep -qx "pkill -HUP -x xsettingsd" $S/pkill && [ ! -e $S/xsd ] &&
      grep -qx "openbox --reconfigure" $S/power &&
      grep -qx "/usr/share/backgrounds/simpleos/wallpaper-day.png" $S/wallpaper &&
@@ -4841,7 +5171,7 @@ tcase "Dynamic Wallpaper on -> the background stays with the schedule" "DISPLAY=
 tcase "--no-wallpaper" "DISPLAY=:0 XSD_RUNNING=1" "--mode dark --no-wallpaper" '[ ! -e $S/wallpaper ] && grep -qx "gtk-theme-name=Arc-Dark" '"$G3"
 theme_home
 tcase "without a screen: files only, no signals" "" "--mode light" \
-    'grep -qx "gtk-theme-name=Arc" '"$G3"' && [ ! -e $S/power ] && ! grep -q "HUP\|USR1" $S/pkill 2>/dev/null && [ ! -e $S/xsd ]'
+    'grep -qx "gtk-theme-name=Arc-Lighter" '"$G3"' && [ ! -e $S/power ] && ! grep -q "HUP\|USR1" $S/pkill 2>/dev/null && [ ! -e $S/xsd ]'
 tcase "accent pink in light mode: Latte shade in Rofi" "DISPLAY=:0 XSD_RUNNING=1" "--accent pink" 'grep -qE "^ *accent: *#ea76cb;" '"$RASI"' && grep -qE "^ *sel: *#ea76cb40;" '"$RASI"
 # 1.1.2: a config.rasi from before (no "sel" line) gets it after the accent
 sed -i '/^ *sel: *#/d' "$RASI"
@@ -4857,6 +5187,26 @@ tcase "accent mauve: active task + app button, badge unchanged" "DISPLAY=:0" "--
 tcase "accent green after mauve: badge still mauve/pink" "DISPLAY=:0" "--accent green" \
     'grep -qx "background_color = #a6e3a1 25" '"$TRC"' && grep -qx "button_font_color = #a6e3a1 100" '"$TRC"' &&
      grep -qx "background_color = #cba6f7 100" '"$TRC"' && grep -qx "border_color_pressed = #f5c2e7 0" '"$TRC"
+# #158: radio buttons, switches, progress bars, the selected row stayed Arc's blue whatever the accent
+GA=/usr/local/lib/simpleos/gtk-accent
+gah=$(mktemp -d)
+mkdir -p "$gah/.config/gtk-3.0" && printf '/* mine */\nlabel { font-weight: bold; }\n' > "$gah/.config/gtk-3.0/gtk.css"
+check "gtk-accent: green accent not in GTK apps / own gtk.css lines lost (#158)" \
+      "env -i HOME=$gah PATH=/usr/bin:/bin $GA --accent green --mode light && c=$gah/.config/gtk-3.0/gtk.css &&
+       grep -q '^/\* simpleos-accent begin' \$c && grep -q 'label { font-weight: bold; }' \$c && ! grep -qi '#5294e2' \$c &&
+       grep -q '^progressbar progress' \$c && grep -q 'radio:checked.*gtk-accent/green-light/radio-checked.png' \$c &&
+       [ -s $gah/.local/share/simpleos/gtk-accent/green-light/switch-active.png ]"
+check "gtk-accent: switching to dark keeps the light images / two blocks (#158)" \
+      "env -i HOME=$gah PATH=/usr/bin:/bin $GA --accent green --mode dark && c=$gah/.config/gtk-3.0/gtk.css &&
+       [ \$(grep -c 'simpleos-accent begin' \$c) = 1 ] && grep -q 'gtk-accent/green-dark/' \$c && [ ! -e $gah/.local/share/simpleos/gtk-accent/green-light ]"
+check "gtk-accent: blue (Arc's own) still writes a block / removes your own lines (#158)" \
+      "env -i HOME=$gah PATH=/usr/bin:/bin $GA --accent blue --mode dark && c=$gah/.config/gtk-3.0/gtk.css &&
+       ! grep -q simpleos-accent \$c && grep -q 'label { font-weight: bold; }' \$c"
+rm -rf "$gah"
+check "simpleos-theme / migration 160 do not apply the accent to GTK apps (#158)" \
+      "grep -q 'gtk-accent --accent \"\$accent\" --mode \"\$mode\"' /usr/local/bin/simpleos-theme && [ -x /usr/share/simpleos/edition/migrations/user/160-gtk-accent ] && grep -qF 'simpleos-theme --mode \"\$mode\" --accent \"\$accent\" --no-wallpaper' /usr/share/simpleos/edition/migrations/user/160-gtk-accent"
+check "Setup Wizard always dark / mode not live (#158)" \
+      "env SIMPLEOS_WIZARD_DRYRUN=1 python3 -c \"$WIZC; import inspect; src = inspect.getsource(w.Wizard.on_mode) + inspect.getsource(w.Wizard.apply_css); assert 'apply_css()' in src and 'if light else' in src and w.PALETTES['light']['BASE'] == '#eff1f5' and 'Arc-Dark' not in inspect.getsource(w.main)\" 2>/dev/null"
 theme_home
 tcase "--xsettings at login" "DISPLAY=:0" "--xsettings" 'grep -qx "Net/ThemeName \"Arc-Dark\"" '"$XSD"' && waitfor $S/xsd && grep -q "^xsettingsd -c " $S/xsd'
 check "skel: gtk-application-prefer-dark-theme not 0 (GTK reads the value only at start -> no live switch to light)" \
@@ -4975,10 +5325,15 @@ WEL=/usr/share/simpleos/welcome.html
 for id in start keys tools; do
     check "welcome.html: section #$id missing" "grep -q 'id=\"$id\"' $WEL"
 done
-for txt in '<code>simpleos-wifi</code>' '<code>simpleos-setup</code>' 'Control Center → Appearance → Taskbar' \
-           '<code>simpleos-taskbar-select</code>' '<code>obconf</code>' '<code>simpleos-netinfo --text</code>' \
-           '<kbd>Enter</kbd>' '<kbd>B</kbd>' '<kbd>E</kbd>' '<kbd>H</kbd>' '<kbd>X</kbd>' '<kbd>N</kbd>'; do
+for txt in 'Menu → Help → Setup Wizard' 'Menu → Software Center' 'Settings → Appearance &amp; Wallpaper → Taskbar' \
+           '<code>simpleos-netinfo --text</code>' \
+           '<kbd>Enter</kbd>' '<kbd>B</kbd>' '<kbd>E</kbd>' '<kbd>H</kbd>' '<kbd>I</kbd>' '<kbd>X</kbd>' '<kbd>N</kbd>'; do
     check "welcome.html: '$txt' missing" "grep -qF '$txt' $WEL"
+done
+# #162: beginners were told to type commands (simpleos-wifi, simpleos-setup) for things that work with clicks
+for w in $WEL /usr/share/simpleos/welcome.de.html /usr/share/simpleos/welcome.fr.html; do
+    check "$w: terminal commands for beginners (#162)" \
+          "! grep -qE '<code>(simpleos-wifi|simpleos-setup|simpleos-taskbar-select|obconf)</code>' $w && [ \$(grep -o '<code>' $w | wc -l) -le 3 ] && [ \$(grep -c '</ol>' $w) = 1 ]"
 done
 check "welcome.html: keyboard shortcuts not as a table" "grep -q '<table>' $WEL && grep -q '<th scope=\"col\">' $WEL"
 check "welcome.html: not Catppuccin Mocha (#1e1e2e/#cdd6f4)" "grep -q -- '--base:#1e1e2e' $WEL && grep -q -- '--text:#cdd6f4' $WEL"
@@ -5073,7 +5428,7 @@ for f in $RP $RPH; do
     check "$f: shell syntax error" "sh -n $f"
 done
 check "Polkit: action org.simpleos.report missing" \
-      "grep -A12 'action id=\"org.simpleos.report\"' /usr/share/polkit-1/actions/org.simpleos.power-tools.policy | grep -q 'exec.path\">$RPH<'"
+      "sed -n '/action id=\"org.simpleos.report\"/,/<\/action>/p' /usr/share/polkit-1/actions/org.simpleos.power-tools.policy | grep -q 'exec.path\">$RPH<'"
 check "Report helper: no exit 0 as root or sections missing" "out=\$($RPH 2>&1) && echo \"\$out\" | grep -q '^--- Errors, this boot:' && echo \"\$out\" | grep -q '^--- Recent package changes:'"
 check "Report helper: accepts arguments" "$RPH --x >/dev/null 2>&1; [ \$? -eq 2 ]"
 check "launcher simpleos-report.desktop missing" "grep -qx 'Exec=$RP' /usr/share/applications/simpleos-report.desktop"
@@ -5117,7 +5472,9 @@ usb 1-2: SerialNumber: 4C530001230817116183 mail aaron.example@example.org
 keep: Simple OS v1.0 simple-os /home/simple alsa-topology-conf 1.2.5.1-2 v1.2.3.4 127.0.0.1 ::1
 keep: 12:34:56 00:02.0 VGA [8086:a7a0] Mesa 22.3.6 Wired connection 1 aaronson firmware 1.2.3.4.5
 IN
-HOME=/home/aaron PATH="$rt/mock:/usr/bin:/bin" $RP --redact < "$rt/in" > "$rt/out" 2>/dev/null
+# HOME=/home/aaron only for the redaction (the path must disappear) – its log goes to $rt: with ~/.cache it created
+# /home/aaron/.cache (root's) in every image since 1.0, and an account named "aaron" could never sign in (migration 110)
+XDG_CACHE_HOME=$rt/cache HOME=/home/aaron PATH="$rt/mock:/usr/bin:/bin" $RP --redact < "$rt/in" > "$rt/out" 2>/dev/null
 for bad in aaron Aaron aarons-thinkbook FRITZ a4:5E 00-1A-7D 90_7A_58 192.168.178.23 10.0.0.1 192.168.1.1 fe80:: 2a02:8106 \
            4C530001230817116183 example.org; do
     check "Report redaction: '$bad' still there" "! grep -v '^keep:' $rt/out | grep -qF '$bad'"
@@ -5235,6 +5592,7 @@ check "helper: new packages of an edition not installed after the upgrade" \
 # A failing Simple OS source (GitHub) must not stop Debian's updates; any other error still counts
 ew=$(mktemp -d)
 sed -n '/^SOS_SOURCE=/p;/^apt_update_once() {/,/^}/p' /usr/local/sbin/simpleos-system-setup > "$ew/fn.sh"
+echo '_t() { printf "%s" "$1"; }   # translations (#43): English in the test' >> "$ew/fn.sh"
 printf 'URIs: https://github.com/x/y/releases/latest/download/\n' > "$ew/src"
 cat > "$ew/apt-get" <<'MOCK'
 #!/bin/sh
@@ -5253,6 +5611,7 @@ rm -rf "${ew:?}"
 et=$(mktemp -d)
 sed -n '/^KEPT=/p;/^log() /p;/^sha() /p;/^install_file() {/,/^}/p;/^merge_file() {/,/^}/p;/^save_base() {/,/^}/p;/^sync_files() {/,/^}/p;/^run_migrations() {/,/^}/p' \
     /usr/local/lib/simpleos/edition > "$et/fn.sh"
+echo '_t() { printf "%s" "$1"; }   # translations (#43): English in the test' >> "$et/fn.sh"
 mkdir -p "$et/src" "$et/dst" "$et/old" "$et/mig"
 for n in same mine gone new pre; do echo "v2 $n" > "$et/src/$n"; done
 echo "v1 same" > "$et/dst/same"; echo "my own" > "$et/dst/mine"; echo "pre" > "$et/dst/pre"; echo "pre" > "$et/old/pre"
@@ -5383,6 +5742,32 @@ check "Update to 1.0.7 keeps the bytecode of older images, or removes more (migr
       "[ -x /usr/share/simpleos/edition/migrations/system/090-python-bytecode ] && [ ! -e $pb/bin/__pycache__ ] &&
        [ ! -e $pb/lib/simpleos/__pycache__ ] && [ -e $pb/bin/simpleos-calendar ]"
 rm -rf "${pb:?}"
+
+# Nothing of the tests in a home folder of the image: /home holds only the live account (a test once left /home/aaron,
+# and an account of that name could never sign in); the tests' logs in /root/.cache are removed
+rm -f /root/.cache/simpleos-*.log 2>/dev/null || true
+check "A test left a folder in /home of the image (only the live account 'simple' belongs there)" \
+      "[ \"\$(ls -A /home)\" = simple ]"
+sh_home=$(mktemp -d); mkdir -p "$sh_home/home/aaron/.cache" "$sh_home/skel/.config"
+touch "$sh_home/home/aaron/.cache/simpleos-report.log" "$sh_home/skel/.bashrc"
+printf 'root:x:0:0::/root:/bin/bash\n' > "$sh_home/passwd"
+env -i SIMPLEOS_HOME="$sh_home/home" SIMPLEOS_PASSWD="$sh_home/passwd" SIMPLEOS_SKEL="$sh_home/skel" SIMPLEOS_TEST=1 \
+    sh /usr/share/simpleos/edition/migrations/system/110-stray-home >/dev/null 2>&1 || true
+check "Update: the image's /home/aaron is not removed (migration 110)" "[ ! -e $sh_home/home/aaron ]"
+mkdir -p "$sh_home/home/aaron/.cache" && touch "$sh_home/home/aaron/.cache/simpleos-report.log"
+printf 'aaron:x:1001:1001:Aaron,,,:%s/home/aaron:/bin/bash\n' "$sh_home" > "$sh_home/passwd"
+out=$(env -i SIMPLEOS_HOME="$sh_home/home" SIMPLEOS_PASSWD="$sh_home/passwd" SIMPLEOS_SKEL="$sh_home/skel" SIMPLEOS_TEST=1 \
+      sh /usr/share/simpleos/edition/migrations/system/110-stray-home 2>&1)
+check "Update: an account 'aaron' with root's home is not repaired (migration 110)" \
+      "printf '%s' \"\$out\" | grep -q 'RUN: chown -R 1001:1001' && [ -e $sh_home/home/aaron/.bashrc ] && [ ! -e $sh_home/home/aaron/.cache/simpleos-report.log ]"
+rm -rf "${sh_home:?}"
+uh_home=$(mktemp -d); mkdir -p "$uh_home/etc/home/olga"
+printf 'root:x:0:0::/root:/bin/bash\npax:x:1000:1000:Pax:/home/pax:/bin/bash\n' > "$uh_home/etc/passwd"
+printf 'sudo:x:27:pax\n' > "$uh_home/etc/group"; printf 'UID_MIN 1000\nUID_MAX 60000\n' > "$uh_home/etc/login.defs"
+check "Users: a new account takes over an existing folder in /home (it could never sign in)" \
+      "printf 'pw\\n' | env SIMPLEOS_USERS_TEST=1 SIMPLEOS_USERS_ETC=$uh_home/etc SIMPLEOS_USERS_CALLER=pax /usr/local/sbin/simpleos-users-helper --create olga Olga standard >/dev/null 2>&1; [ \$? -eq 6 ] &&
+       printf 'pw\\n' | env SIMPLEOS_USERS_TEST=1 SIMPLEOS_USERS_ETC=$uh_home/etc SIMPLEOS_USERS_CALLER=pax /usr/local/sbin/simpleos-users-helper --create max Max standard >/dev/null 2>&1"
+rm -rf "${uh_home:?}"
 
 [ "$fail" -eq 0 ]
 echo "Simple OS verify: OK"

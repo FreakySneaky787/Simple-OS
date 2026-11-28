@@ -14,7 +14,7 @@
 #   system.history            every version of every /etc file (conffiles + system/): an unchanged older copy is
 #                             replaced – also when dpkg kept it as "changed" (systems from before the package)
 #   hooks/                    build hooks marked "Re-run on Simple OS updates" (derived system settings)
-#   migrations/{system,user}  from config/includes.chroot (one-time steps of an edition, see README)
+#   migrations/{system,user}  from config/includes.chroot (one-time steps of an edition, see docs/DEVELOPING.md)
 # Output: config/packages.chroot/simpleos_<version>_all.deb (installed into the image by live-build) and
 # ../output/repo/ (debs + Packages + Release; tools/release.sh signs and publishes it).
 set -euo pipefail
@@ -46,6 +46,14 @@ if [ "$(head -n1 "$INC/usr/share/simpleos/whats-new" 2>/dev/null)" != "# Simple 
     echo "  Write the highlights of $VERSION there – a few plain bullets, not the changelog." >&2
     exit 1
 fi
+# … and so are its translations (#43: whats-new.de …), or a German system would show the notes of an older version
+for notes in "$INC"/usr/share/simpleos/whats-new.*; do
+    [ -f "$notes" ] || continue
+    if [ "$(head -n1 "$notes")" != "# Simple OS $VERSION" ]; then
+        echo "build_deb: $notes is not for $VERSION (first line must be '# Simple OS $VERSION')." >&2
+        exit 1
+    fi
+done
 KEYRING=$INC/usr/share/keyrings/simpleos-archive-keyring.asc
 if ! grep -q 'BEGIN PGP PUBLIC KEY BLOCK' "$KEYRING" 2>/dev/null; then
     echo "build_deb: release key missing ($KEYRING)." >&2
@@ -211,7 +219,8 @@ mkdir -p config/packages.chroot
 rm -f config/packages.chroot/simpleos_*.deb
 dpkg-deb --root-owner-group -Zxz --build "$ROOT" "config/packages.chroot/$DEB" >/dev/null
 
-# APT repository (flat): the edition package and the other own packages (fastfetch, not in Debian)
+# APT repository (flat): the edition package and the other own packages (fastfetch, not in Debian; rofi with our
+# patches, tools/build_rofi.sh – installed systems get it as an ordinary update)
 rm -rf "$REPO_OUT"
 mkdir -p "$REPO_OUT"
 cp config/packages.chroot/*.deb "$REPO_OUT/"

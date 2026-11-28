@@ -24,6 +24,10 @@ One window for all settings, the sections on the left, the page on the right:
                (locale-gen, /etc/default/locale, language packs), applies after signing out (#42)
   Storage & Backups  free space, simpleos-cleaner, disks (gnome-disks), restore points (simpleos-backup)
   Password & Security  password, firewall (ufw via the root helper)
+  Users        people's accounts with picture and type: add, delete (keep or delete the files), full name, picture,
+               password, administrator or standard user, sign in automatically, switch user (#68; root parts through
+               pkexec simpleos-users-helper, your own name/picture through AccountsService, your own password through
+               passwd in a pseudo terminal)
   System & Updates  Simple OS version, What's new (simpleos-whats-new), Software Updates, Hardware & Drivers
                (simpleos-drivers: graphics, Wi-Fi, CPU microcode; "Install Recommended Drivers"), Task Manager,
                Setup Wizard, report a problem (simpleos-report)
@@ -45,38 +49,43 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
+import gettext
+
+# Translations (#43): the system language from /usr/share/locale/<lang>/LC_MESSAGES/simpleos.mo, else English
+_ = gettext.translation("simpleos", fallback=True).gettext
 
 # rfkill and iw live in /usr/sbin, which a normal user's PATH on Debian does not contain
 os.environ["PATH"] = os.environ.get("PATH", "") + ":" + os.environ.get("SIMPLEOS_SBIN", "/usr/sbin:/sbin")
 
 # Sidebar in groups (a line between them): connections – screen & sound – devices – apps & system
-PAGES = [("wifi", "Wi-Fi", "network-wireless"), ("bluetooth", "Bluetooth", "bluetooth"),
-         ("sound", "Sound", "audio-volume-high"), ("display", "Display", "video-display"),
-         ("appearance", "Appearance", "preferences-desktop-theme"),
-         ("notifications", "Notifications", "preferences-system-notifications"),
-         ("input", "Mouse & Touchpad", "input-mouse"), ("keyboard", "Keyboard", "input-keyboard"),
-         ("printers", "Printers & Scanners", "printer"), ("power", "Power", "battery"),
-         ("apps", "Apps", "preferences-desktop-default-applications"),
-         ("datetime", "Date & Time", "preferences-system-time"),
-         ("language", "Language & Region", "preferences-desktop-locale"),
-         ("storage", "Storage & Backups", "drive-harddisk"), ("security", "Password & Security", "security-high"),
-         ("system", "System & Updates", "computer")]
+PAGES = [("wifi", _("Wi-Fi"), "network-wireless"), ("bluetooth", _("Bluetooth"), "bluetooth"),
+         ("sound", _("Sound"), "audio-volume-high"), ("display", _("Display"), "video-display"),
+         ("appearance", _("Appearance"), "preferences-desktop-theme"),
+         ("notifications", _("Notifications"), "preferences-system-notifications"),
+         ("input", _("Mouse & Touchpad"), "input-mouse"), ("keyboard", _("Keyboard"), "input-keyboard"),
+         ("printers", _("Printers & Scanners"), "printer"), ("power", _("Power"), "battery"),
+         ("apps", _("Apps"), "preferences-desktop-default-applications"),
+         ("datetime", _("Date & Time"), "preferences-system-time"),
+         ("language", _("Language & Region"), "preferences-desktop-locale"),
+         ("storage", _("Storage & Backups"), "drive-harddisk"), ("security", _("Password & Security"), "security-high"),
+         ("users", _("Users"), "system-users"), ("system", _("System & Updates"), "computer")]
 GROUP_STARTS = {"sound", "input", "apps"}
 # Older names and what they open now (simpleos-control-center PAGE from scripts, taskbar clicks …)
 ALIASES = {"dnd": "notifications", "time": "datetime", "date": "datetime", "printer": "printers", "backup": "storage",
            "backups": "storage", "firewall": "security", "password": "security", "default-apps": "apps",
            "startup": "apps", "network": "wifi", "about": "system", "updates": "system",
-           "region": "language", "locale": "language", "formats": "language"}
+           "region": "language", "locale": "language", "formats": "language", "accounts": "users",
+           "user": "users"}
 WIZARD = "/usr/local/bin/simpleos-welcome-wizard"
 HELPER = "/usr/local/sbin/simpleos-system-setup"
 UFW_CONF = Path(os.environ.get("SIMPLEOS_UFW_CONF", "/etc/ufw/ufw.conf"))
-PROFILES = [("power-saver", "Power saver", "Longer battery life, a bit slower"),
-            ("balanced", "Balanced", "Recommended"),
-            ("performance", "Performance", "Fastest – uses more power, fans get louder")]
+PROFILES = [("power-saver", _("Power saver"), _("Longer battery life, a bit slower")),
+            ("balanced", _("Balanced"), _("Recommended")),
+            ("performance", _("Performance"), _("Fastest – uses more power, fans get louder"))]
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "simpleos"
 ACCENTS = ["blue", "mauve", "pink", "green", "peach", "teal"]
-SCREEN_OFF = [(0, "Never"), (5, "5 minutes"), (10, "10 minutes"), (15, "15 minutes"), (30, "30 minutes"),
-              (60, "1 hour")]
+SCREEN_OFF = [(0, _("Never")), (5, _("5 minutes")), (10, _("10 minutes")), (15, _("15 minutes")), (30, _("30 minutes")),
+              (60, _("1 hour"))]
 
 
 def cmd(*args, timeout=15, env=None):
@@ -229,9 +238,9 @@ def rate_labels(rates, cur=""):
 def pretty(name):
     num = name.rsplit("-", 1)[-1]
     num = f" {num}" if num.isdigit() else ""
-    for prefixes, label in ((("eDP", "LVDS", "DSI"), "Built-in display"), (("HDMI",), "HDMI"),
+    for prefixes, label in ((("eDP", "LVDS", "DSI"), _("Built-in display")), (("HDMI",), "HDMI"),
                             (("DP", "DisplayPort"), "DisplayPort"), (("DVI",), "DVI"), (("VGA",), "VGA"),
-                            (("Virtual", "qxl", "default", "XWAYLAND"), "Screen")):
+                            ((_("Virtual"), "qxl", "default", "XWAYLAND"), _("Screen"))):
         if name.startswith(prefixes):
             return label if label == "Built-in display" else label + num
     return name
@@ -315,36 +324,36 @@ def wifi_view(state, nets):
     has_wifi, radio, kind = bool(state.get("wifi")), bool(state.get("radio", True)), state.get("kind")
     current = next((n[0] for n in nets if n[3]), "")
     if kind == "wifi":
-        status = f"Connected to {current or state.get('name') or 'Wi-Fi'}"
+        status = _('Connected to {network}').format(network=current or state.get('name') or 'Wi-Fi')
     elif kind == "ethernet":
-        status = "Connected with a network cable"
+        status = _("Connected with a network cable")
     else:
-        status = "Not connected"
+        status = _("Not connected")
     rows = []
     if has_wifi and radio:
         for ssid, signal, secured, in_use in nets:
-            word = "Strong signal" if signal >= 70 else "Good signal" if signal >= 40 else "Weak signal"
-            rows.append((ssid, "Connected" if in_use else word + (" · needs password" if secured else " · open"),
-                         secured, in_use, "Disconnect" if in_use else "Connect"))
+            word = _("Strong signal") if signal >= 70 else _("Good signal") if signal >= 40 else _("Weak signal")
+            rows.append((ssid, _("Connected") if in_use else word + (_(" · needs password") if secured else _(" · open")),
+                         secured, in_use, _("Disconnect") if in_use else _("Connect")))
     if not has_wifi:
-        hint = ("This computer has no Wi-Fi." if kind else
-                "This computer has no Wi-Fi. Plug in a network cable – it connects by itself.")
+        hint = (_("This computer has no Wi-Fi.") if kind else
+                _("This computer has no Wi-Fi. Plug in a network cable – it connects by itself."))
     elif not radio:
-        hint = "Wi-Fi is turned off. Turn it on with the switch to see the networks around you."
+        hint = _("Wi-Fi is turned off. Turn it on with the switch to see the networks around you.")
     elif not rows:
-        hint = "No Wi-Fi networks found nearby. Move closer to your router and click Refresh."
+        hint = _("No Wi-Fi networks found nearby. Move closer to your router and click Refresh.")
     elif any(r[3] for r in rows):
-        hint = "To switch, click Connect next to another network."
+        hint = _("To switch, click Connect next to another network.")
     else:
-        hint = ("Click Connect next to your network and type its password if it asks for one "
-                "(often on a sticker on your router).")
+        hint = (_("Click Connect next to your network and type its password if it asks for one "
+                "(often on a sticker on your router)."))
     return {"status": status, "hint": hint, "rows": rows}
 
 
 def disconnect_wifi(nmcli, dev):
     """(ok, message) – nmcli = the wizard's nmcli() (English messages, never raises)."""
     ok = nmcli("device", "disconnect", dev, timeout=30).returncode == 0
-    return ok, "Disconnected." if ok else "Could not disconnect. Please try again."
+    return ok, _("Disconnected.") if ok else _("Could not disconnect. Please try again.")
 
 
 # ------------------------------------------------------------------ Bluetooth (bluetoothctl)
@@ -359,9 +368,9 @@ def bt_state():
     return True, "Powered: yes" in bt("show").stdout
 
 
-BT_KINDS = {"audio-headset": "Headphones", "audio-headphones": "Headphones", "audio-card": "Speaker",
-            "audio-speakers": "Speaker", "input-mouse": "Mouse", "input-keyboard": "Keyboard",
-            "input-gaming": "Gamepad", "input-tablet": "Tablet", "phone": "Phone", "computer": "Computer"}
+BT_KINDS = {"audio-headset": _("Headphones"), "audio-headphones": _("Headphones"), "audio-card": _("Speaker"),
+            "audio-speakers": _("Speaker"), "input-mouse": _("Mouse"), "input-keyboard": _("Keyboard"),
+            "input-gaming": _("Gamepad"), "input-tablet": _("Tablet"), "phone": _("Phone"), "computer": _("Computer")}
 
 
 def bt_devices(paired=True):
@@ -387,7 +396,7 @@ def bt_scan(seconds=10):
 
 
 def bt_subtitle(kind, connected, battery):
-    return kind + (" · Connected" if connected else "") + (f" · Battery {battery} %" if connected and battery is not None else "")
+    return kind + (_(" · Connected") if connected else "") + (_(' · Battery {battery} %').format(battery=battery) if connected and battery is not None else "")
 
 
 def _agent_running():
@@ -693,7 +702,9 @@ def battery_text():
         try:
             cap = (bat / "capacity").read_text().strip()
             status = (bat / "status").read_text().strip()
-            return f"{cap}% · {status.replace('Discharging', 'On battery').replace('Not charging', 'Plugged in')}"
+            shown = {"Charging": _("Charging"), "Discharging": _("On battery"), "Full": _("Full"),
+                     "Not charging": _("Plugged in")}.get(status, status)
+            return f"{cap}% · {shown}"
         except OSError:
             continue
     return ""
@@ -792,18 +803,18 @@ PRESENTATIONS = ("application/vnd.oasis.opendocument.presentation",
                  "application/vnd.ms-powerpoint.presentation.macroEnabled.12")
 # (key, title, subtitle, main type, family: a prefix ("image/") or a tuple of types – the whole family follows the choice;
 # "" = the types Simple OS opens with the same app as the main type)
-DEFAULT_APPS = [("browser", "Web browser", "Links and web pages", "x-scheme-handler/https", ""),
-                ("mail", "Email", "Opens “send an email” links", "x-scheme-handler/mailto", ""),
-                ("pdf", "PDF documents", None, "application/pdf", ""),
-                ("image", "Pictures", None, "image/jpeg", "image/"),
-                ("audio", "Music", None, "audio/mpeg", "audio/"),
-                ("video", "Videos", None, "video/mp4", "video/"),
-                ("text", "Text files", None, "text/plain", ""),
-                ("documents", "Documents", "Word and Writer files (.docx, .odt, .doc …)", OOXML + "wordprocessingml.document",
+DEFAULT_APPS = [("browser", _("Web browser"), _("Links and web pages"), "x-scheme-handler/https", ""),
+                ("mail", _("Email"), _("Opens “send an email” links"), "x-scheme-handler/mailto", ""),
+                ("pdf", _("PDF documents"), None, "application/pdf", ""),
+                ("image", _("Pictures"), None, "image/jpeg", "image/"),
+                ("audio", _("Music"), None, "audio/mpeg", "audio/"),
+                ("video", _("Videos"), None, "video/mp4", "video/"),
+                ("text", _("Text files"), None, "text/plain", ""),
+                ("documents", _("Documents"), _("Word and Writer files (.docx, .odt, .doc …)"), OOXML + "wordprocessingml.document",
                  DOCUMENTS),
-                ("spreadsheets", "Spreadsheets", "Excel and Calc files (.xlsx, .ods, .csv …)", OOXML + "spreadsheetml.sheet",
+                ("spreadsheets", _("Spreadsheets"), _("Excel and Calc files (.xlsx, .ods, .csv …)"), OOXML + "spreadsheetml.sheet",
                  SPREADSHEETS),
-                ("presentations", "Presentations", "PowerPoint and Impress files (.pptx, .odp …)",
+                ("presentations", _("Presentations"), _("PowerPoint and Impress files (.pptx, .odp …)"),
                  OOXML + "presentationml.presentation", PRESENTATIONS)]
 SYSTEM_MIMEAPPS = os.environ.get("SIMPLEOS_SYSTEM_MIMEAPPS", "/etc/xdg/mimeapps.list")
 CHOOSE = "simpleos-choose"   # combo id of "Choose an app…" (desktop ids end in .desktop)
@@ -916,7 +927,8 @@ def set_default(group, app_id, apps):
 # Autostart entries Simple OS starts or switches off itself (~/.config/openbox/autostart, /etc/skel overrides) – not
 # shown: switching them here would start them twice or break the desktop
 AUTOSTART_OWN = {"blueman.desktop", "calamares-desktop-icon.desktop", "nm-applet.desktop", "spice-vdagent.desktop",
-                 "xdg-user-dirs.desktop", "xfce4-power-manager.desktop", "lxpolkit.desktop"}
+                 "xdg-user-dirs.desktop", "xfce4-power-manager.desktop", "lxpolkit.desktop",
+                 "simpleos-keyring.desktop"}
 
 
 def autostart_dirs():
@@ -1004,6 +1016,197 @@ def remove_startup(app_id):
 
 
 # ================================================================== Window
+# ------------------------------------------------------------------ Users (#68)
+USERS_HELPER = "/usr/local/sbin/simpleos-users-helper"
+USERS_ETC = Path(os.environ.get("SIMPLEOS_USERS_ETC", "/etc"))
+AS_ICONS = Path(os.environ.get("SIMPLEOS_AS_ICONS", "/var/lib/AccountsService/icons"))
+
+
+def _login_defs():
+    lo, hi = 1000, 60000
+    try:
+        for line in (USERS_ETC / "login.defs").read_text().splitlines():
+            parts = line.split()
+            if len(parts) >= 2 and parts[0] == "UID_MIN" and parts[1].isdigit():
+                lo = int(parts[1])
+            if len(parts) >= 2 and parts[0] == "UID_MAX" and parts[1].isdigit():
+                hi = int(parts[1])
+    except OSError:
+        pass
+    return lo, hi
+
+
+def users_list():
+    """People's accounts (like simpleos-users-helper): [{name, full, uid, home, admin}], sorted by full name"""
+    lo, hi = _login_defs()
+    try:
+        admins = set()
+        for line in (USERS_ETC / "group").read_text().splitlines():
+            f = line.split(":")
+            if len(f) >= 4 and f[0] == "sudo":
+                admins = set(filter(None, f[3].split(",")))
+        out = []
+        for line in (USERS_ETC / "passwd").read_text().splitlines():
+            f = line.split(":")
+            if len(f) < 7 or not f[2].isdigit() or not lo <= int(f[2]) <= hi:
+                continue
+            if f[6].endswith(("nologin", "false")):
+                continue
+            out.append({"name": f[0], "full": f[4].split(",")[0].strip() or f[0], "uid": int(f[2]), "home": f[5],
+                        "admin": f[0] in admins})
+    except OSError:
+        return []
+    return sorted(out, key=lambda u: u["full"].lower())
+
+
+def autologin_user():
+    """Who signs in automatically (the last file LightDM reads wins: lightdm.conf.d in order, then lightdm.conf)"""
+    files = sorted((USERS_ETC / "lightdm/lightdm.conf.d").glob("*.conf")) + [USERS_ETC / "lightdm/lightdm.conf"]
+    who = ""
+    for f in files:
+        try:
+            for line in f.read_text().splitlines():
+                m = re.match(r"\s*autologin-user\s*=\s*(\S*)\s*$", line)
+                if m:
+                    who = m.group(1)
+        except OSError:
+            continue
+    return who
+
+
+_TRANSLIT = {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss", "é": "e", "è": "e", "ê": "e", "à": "a", "á": "a", "â": "a",
+             "ç": "c", "ñ": "n", "ó": "o", "ò": "o", "ô": "o", "í": "i", "ì": "i", "ú": "u", "ù": "u", "ø": "o",
+             "å": "a", "æ": "ae", "œ": "oe"}
+
+
+def suggest_username(full, taken=()):
+    """'Anna Müller' -> 'anna'; taken -> 'anna2' … (small letters, digits, - and _, starts with a letter)"""
+    first = (full.strip().split() or [""])[0].lower()
+    base = re.sub(r"[^a-z0-9_-]", "", "".join(_TRANSLIT.get(c, c) for c in first))
+    base = re.sub(r"^[^a-z]+", "", base)[:28] or "user"
+    name, n = base, 2
+    while name in taken:
+        name, n = f"{base}{n}", n + 1
+    return name
+
+
+def valid_username(name):
+    return bool(re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", name))
+
+
+def valid_fullname(full):
+    return bool(full.strip()) and len(full) <= 80 and not re.search(r"[:,=\x00-\x1f\x7f]", full)
+
+
+def user_picture(user):
+    """Account picture: AccountsService's copy, else the account's own ~/.face (only readable for its owner)"""
+    for p in (AS_ICONS / user["name"], Path(user["home"]) / ".face"):
+        try:
+            if p.is_file() and os.access(p, os.R_OK) and p.stat().st_size > 0:
+                return str(p)
+        except OSError:
+            continue
+    return None
+
+
+def password_message(output):
+    """passwd's answer in plain words"""
+    text = output.lower()
+    if "authentication token manipulation" in text or "authentication failure" in text:
+        return _("The current password is wrong.")
+    if "too short" in text or "shorter than" in text or "longer password" in text:
+        return _("The new password is too short – please use at least 8 characters.")
+    if ("too simple" in text or "bad password" in text or "palindrome" in text or "too similar" in text
+            or "unchanged" in text or "has not been changed" in text):
+        return _("The new password is too simple or too close to the old one – please choose another one.")
+    if "do not match" in text or "don't match" in text:
+        return _("The two new passwords don't match.")
+    return _("The password could not be changed.")
+
+
+def change_own_password(old, new, timeout=30):
+    """passwd in a pseudo terminal (it asks for the current password itself): (ok, message)"""
+    import pty
+    import select
+    import time
+    try:
+        pid, fd = pty.fork()
+    except OSError as err:
+        return False, str(err)
+    if pid == 0:   # child: English prompts and messages
+        os.environ.update(LC_ALL="C", LANG="C")
+        try:
+            os.execvp("passwd", ["passwd"])
+        finally:
+            os._exit(127)
+    answers, sent, out = [old, new, new], 0, b""
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        ready, _w, _x = select.select([fd], [], [], 0.5)
+        if fd not in ready:
+            continue
+        try:
+            data = os.read(fd, 4096)
+        except OSError:
+            break
+        if not data:
+            break
+        out += data
+        while sent < len(answers) and out.lower().count(b"password:") > sent:
+            os.write(fd, answers[sent].encode() + b"\n")
+            sent += 1
+        # a fourth question: PAM refused the new password (too short, too simple …) and asks again – stop now
+        # instead of leaving the window on "Changing the password …" until the timeout
+        if out.lower().count(b"password:") > len(answers):
+            break
+    try:
+        os.close(fd)
+    except OSError:
+        pass
+    try:
+        _p, status = os.waitpid(pid, 0)
+    except ChildProcessError:
+        status = 1
+    text = out.decode(errors="replace")
+    ok = os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0
+    return ok, "" if ok else password_message(text)
+
+
+def accounts_set_own(method, value):
+    """Your own full name / picture through AccountsService (no password for your own data). True if it worked."""
+    try:
+        import gi
+        gi.require_version("Gio", "2.0")
+        from gi.repository import Gio, GLib
+        bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+        path = bus.call_sync("org.freedesktop.Accounts", "/org/freedesktop/Accounts", "org.freedesktop.Accounts",
+                             "FindUserByName", GLib.Variant("(s)", (os.environ.get("USER") or Path.home().name,)),
+                             GLib.VariantType("(o)"), Gio.DBusCallFlags.NONE, 5000, None).unpack()[0]
+        bus.call_sync("org.freedesktop.Accounts", path, "org.freedesktop.Accounts.User", method,
+                      GLib.Variant("(s)", (value,)), None, Gio.DBusCallFlags.NONE, 30000, None)
+        return True
+    except Exception:  # noqa: BLE001 – no AccountsService, not allowed … -> the caller uses the root helper
+        return False
+
+
+def square_picture(src, dst, size=256):
+    """Any picture -> a centred square PNG (size px) for the login screen. True if it worked."""
+    try:
+        import gi
+        gi.require_version("GdkPixbuf", "2.0")
+        from gi.repository import GdkPixbuf
+        pb = GdkPixbuf.Pixbuf.new_from_file(src)
+        pb = pb.apply_embedded_orientation() or pb
+        side = min(pb.get_width(), pb.get_height())
+        pb = pb.new_subpixbuf((pb.get_width() - side) // 2, (pb.get_height() - side) // 2, side, side)
+        pb = pb.scale_simple(size, size, GdkPixbuf.InterpType.BILINEAR)
+        pb.savev(dst, "png", [], [])
+        os.chmod(dst, 0o644)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def load_gtk():
     import gi
     gi.require_version("Gtk", "3.0")
@@ -1094,12 +1297,12 @@ def main(argv):
             self.box.show_all()
 
     class SoundPage(Page):
-        title = "Sound"
+        title = _("Sound")
 
         def refresh(self):
             self.clear()
             if not shutil.which("pactl"):
-                self.note("Sound control is not available (pactl missing).")
+                self.note(_("Sound control is not available (pactl missing)."))
                 return self.show_all_now()
             vol = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 5)
             vol.set_value(volume())
@@ -1142,16 +1345,16 @@ def main(argv):
             mic.set_value(volume("source"))
             mic.set_size_request(260, -1)
             mic.connect("value-changed", lambda s: debounced(s, "source"))
-            self.put(card([("Volume", None, vol), ("Mute", None, mute),
-                           ("Output", "Speakers, headphones, HDMI, Bluetooth" if outs else "No sound output found",
+            self.put(card([(_("Volume"), None, vol), (_("Mute"), None, mute),
+                           (_("Output"), _("Speakers, headphones, HDMI, Bluetooth") if outs else _("No sound output found"),
                             combo if outs else None)]))
-            self.put(card([("Microphone", None, mic)]))
-            self.put(card([("Advanced Audio Settings", "Per-app volume, inputs, profiles",
-                            button("Open", lambda: spawn("pavucontrol")))]))
+            self.put(card([(_("Microphone"), None, mic)]))
+            self.put(card([(_("Advanced Audio Settings"), _("Per-app volume, inputs, profiles"),
+                            button(_("Open"), lambda: spawn("pavucontrol")))]))
             self.show_all_now()
 
     class DisplayPage(Page):
-        title = "Display"
+        title = _("Display")
 
         def refresh(self):
             self.clear()
@@ -1159,15 +1362,15 @@ def main(argv):
             st = scale_status()
             if st.get("setting"):
                 sc = Gtk.ComboBoxText()
-                sc.append("auto", f"Automatic ({st.get('recommended', '100')} %)")
+                sc.append("auto", _('Automatic ({percent} %)').format(percent=st.get('recommended', '100')))
                 for key, text in SCALES:
                     sc.append(key, text)
                 sc.set_active_id(st["setting"])
                 sc.connect("changed", lambda c: self.set_scale(c.get_active_id(), st["setting"]))
-                self.put(card([("Scale", "Size of text, taskbar, menus and the mouse pointer", sc)]))
+                self.put(card([(_("Scale"), _("Size of text, taskbar, menus and the mouse pointer"), sc)]))
             scr = screens()
             if not scr:
-                self.note("No display found (xrandr missing or not running in a desktop session).")
+                self.note(_("No display found (xrandr missing or not running in a desktop session)."))
             for s in scr:
                 res = Gtk.ComboBoxText()
                 for m, _r in s["modes"]:
@@ -1190,20 +1393,20 @@ def main(argv):
                     if rate.get_active_id():
                         args += ["--rate", rate.get_active_id()]
                     self.apply(args)
-                state = ("Main · " if s["primary"] and len(scr) > 1 else "") + (s["mode"] or "Off")
+                state = (_("Main · ") if s["primary"] and len(scr) > 1 else "") + (s["mode"] or _("Off"))
                 self.put(label(f"<b>{GLib.markup_escape_text(pretty(s['name']))}</b>  "
                                f"<span alpha='55%'>{state}</span>", markup=True))
-                self.put(card([("Resolution", None, res), ("Refresh rate", None, rate),
-                               ("", None, button("Apply", apply, "suggested-action"))]))
+                self.put(card([(_("Resolution"), None, res), (_("Refresh rate"), None, rate),
+                               ("", None, button(_("Apply"), apply, "suggested-action"))]))
             if len(scr) > 1:
                 main = next((s["name"] for s in scr if s["primary"]), scr[0]["name"])
                 lay = Gtk.ComboBoxText()
-                for key, text in (("right", "Extend right"), ("left", "Extend left"), ("dup", "Duplicate"),
-                                  ("only", f"Only {pretty(main)}")):
+                for key, text in (("right", _("Extend right")), ("left", _("Extend left")), ("dup", _("Duplicate")),
+                                  ("only", _('Only {screen}').format(screen=pretty(main)))):
                     lay.append(key, text)
                 lay.set_active_id("right")
-                self.put(card([("Multiple displays", "Like Windows+P",
-                                lay), ("", None, button("Apply", lambda: self.apply(
+                self.put(card([(_("Multiple displays"), _("Like Windows+P"),
+                                lay), ("", None, button(_("Apply"), lambda: self.apply(
                                     layout_args(scr, main, lay.get_active_id() or "right")), "suggested-action"))]))
             # Brightness of the built-in screen (not every keyboard has brightness keys)
             level = brightness_get()
@@ -1223,12 +1426,12 @@ def main(argv):
                         GLib.source_remove(bpending[0])
                     bpending[0] = GLib.timeout_add(150, apply_brightness)
                 bright.connect("value-changed", bright_changed)
-                self.put(label("<b>Brightness</b>", markup=True))
-                self.put(card([("Screen brightness", "The brightness keys do the same", bright)]))
+                self.put(label("<b>" + _("Brightness") + "</b>", markup=True))
+                self.put(card([(_("Screen brightness"), _("The brightness keys do the same"), bright)]))
             # Night light
             mode, temp = nightlight_status()
             nl = Gtk.ComboBoxText()
-            for key, text in (("off", "Off"), ("on", "On"), ("auto", "Automatic (20:00–07:00)")):
+            for key, text in (("off", _("Off")), ("on", _("On")), ("auto", _("Automatic (20:00–07:00)"))):
                 nl.append(key, text)
             nl.set_active_id(mode)
             nl.connect("changed", lambda c: cmd("simpleos-nightlight", f"--{c.get_active_id()}", timeout=20))
@@ -1249,21 +1452,21 @@ def main(argv):
                     GLib.source_remove(pending[0])
                 pending[0] = GLib.timeout_add(400, apply_warmth)
             warm.connect("value-changed", warm_changed)
-            self.put(label("<b>Night light</b>", markup=True))
-            self.put(card([("Night light", "Warmer colors in the evening", nl),
-                           ("Warmth", "Right = warmer", warm)]))
-            self.put(card([("Advanced Display Settings", "Drag screens into place",
-                            button("Open", lambda: spawn("arandr") or spawn("lxrandr")))]))
+            self.put(label(_("<b>Night light</b>"), markup=True))
+            self.put(card([(_("Night light"), _("Warmer colors in the evening"), nl),
+                           (_("Warmth"), _("Right = warmer"), warm)]))
+            self.put(card([(_("Advanced Display Settings"), _("Drag screens into place"),
+                            button(_("Open"), lambda: spawn("arandr") or spawn("lxrandr")))]))
             self.show_all_now()
 
         def apply(self, args):
             before = snapshot(screens())
             if cmd("xrandr", *args).returncode != 0:
-                self.win.error("This display setting is not supported.")
+                self.win.error(_("This display setting is not supported."))
                 return
             dialog = Gtk.MessageDialog(transient_for=self.win, modal=True, message_type=Gtk.MessageType.QUESTION,
-                                       text="Keep these display settings?")
-            dialog.add_buttons("Revert", Gtk.ResponseType.CANCEL, "Keep changes", Gtk.ResponseType.OK)
+                                       text=_("Keep these display settings?"))
+            dialog.add_buttons(_("Revert"), Gtk.ResponseType.CANCEL, _("Keep changes"), Gtk.ResponseType.OK)
             left = [15]
 
             def tick():
@@ -1271,9 +1474,9 @@ def main(argv):
                 if left[0] <= 0:
                     dialog.response(Gtk.ResponseType.CANCEL)
                     return False
-                dialog.format_secondary_text(f"Reverting in {left[0]} seconds…")
+                dialog.format_secondary_text(_('Reverting in {seconds} seconds…').format(seconds=left[0]))
                 return True
-            dialog.format_secondary_text("Reverting in 15 seconds…")
+            dialog.format_secondary_text(_("Reverting in 15 seconds…"))
             timer = GLib.timeout_add_seconds(1, tick)
             resp = dialog.run()
             GLib.source_remove(timer) if left[0] > 0 else None
@@ -1292,29 +1495,29 @@ def main(argv):
             def done(res):
                 self.refresh()
                 if getattr(res, "returncode", 1) != 0:
-                    return self.win.error("The scale could not be changed.")
+                    return self.win.error(_("The scale could not be changed."))
                 d = Gtk.MessageDialog(transient_for=self.win, modal=True, message_type=Gtk.MessageType.INFO,
-                                      text="The scale has changed")
-                d.format_secondary_text("Apps that are open, like Firefox or the Terminal, use the new size after you "
-                                        "close and open them again. Signing out applies it everywhere.")
-                d.add_buttons("OK", Gtk.ResponseType.CANCEL, "Sign out", Gtk.ResponseType.OK)
+                                      text=_("The scale has changed"))
+                d.format_secondary_text(_("Apps that are open, like Firefox or the Terminal, use the new size after you "
+                                        "close and open them again. Signing out applies it everywhere."))
+                d.add_buttons("OK", Gtk.ResponseType.CANCEL, _("Sign out"), Gtk.ResponseType.OK)
                 if d.run() == Gtk.ResponseType.OK:
                     spawn("openbox", "--exit")
                 d.destroy()
             bg(lambda: cmd("simpleos-scale", "--set", value, timeout=60), done)
 
     class WifiPage(Page):
-        title = "Wi-Fi"
+        title = _("Wi-Fi")
 
         def refresh(self):
             self.clear()
             self.w = wizard_module()
             if not self.w:
-                self.note("Wi-Fi settings are not available (Simple OS setup wizard missing).")
+                self.note(_("Wi-Fi settings are not available (Simple OS setup wizard missing)."))
                 return self.show_all_now()
             spin = Gtk.Spinner(active=True)
             self.put(spin)
-            self.note("Searching for networks…")
+            self.note(_("Searching for networks…"))
             self.show_all_now()
             w = self.w
 
@@ -1329,7 +1532,7 @@ def main(argv):
         def show(self, res):
             self.clear()
             if isinstance(res, Exception):
-                self.note(f"Wi-Fi could not be read: {res}")
+                self.note(_('Wi-Fi could not be read: {res}').format(res=res))
                 return self.show_all_now()
             state, nets, band = res
             self.dev = state["wifi"]
@@ -1342,21 +1545,21 @@ def main(argv):
                 # Some routers' 5 GHz channel (wide, with radar detection) is unstable: downloads drop to a few kB/s although
                 # signal and link rate look perfect; 2.4 GHz is slower at best but steady (found on a Sunrise router)
                 combo = Gtk.ComboBoxText()
-                for key, text in (("auto", "Automatic"), ("a", "5 GHz only"), ("bg", "2.4 GHz only")):
+                for key, text in (("auto", _("Automatic")), ("a", _("5 GHz only")), ("bg", _("2.4 GHz only"))):
                     combo.append(key, text)
                 combo.set_active_id(band if band in ("a", "bg") else "auto")
                 combo.connect("changed", lambda c: self.set_band(state["name"], c.get_active_id()))
-                self.put(card([("Wi-Fi band", "If downloads keep dropping to a crawl although the signal is strong, try "
-                                "2.4 GHz – the 5 GHz channel of some routers is unstable", combo)]))
+                self.put(card([(_("Wi-Fi band"), _("If downloads keep dropping to a crawl although the signal is strong, try "
+                                "2.4 GHz – the 5 GHz channel of some routers is unstable"), combo)]))
             rows = []
             for ssid, info, secured, in_use, act in view["rows"]:
                 rows.append((ssid, info, button(act, lambda s=ssid, sec=secured, u=in_use: self.click(s, sec, u),
                                                 None if in_use else "suggested-action")))
             if rows:
                 self.put(card(rows))
-            self.put(card([("Search again", None, button("Refresh", self.refresh)),
-                           ("More network options", "Wired, VPN, hidden networks",
-                            button("Open", lambda: spawn("nm-connection-editor")))]))
+            self.put(card([(_("Search again"), None, button(_("Refresh"), self.refresh)),
+                           (_("More network options"), _("Wired, VPN, hidden networks"),
+                            button(_("Open"), lambda: spawn("nm-connection-editor")))]))
             self.show_all_now()
 
         def set_band(self, name, key):
@@ -1368,7 +1571,7 @@ def main(argv):
                 if r.returncode != 0:
                     return False
                 return self.w.nmcli("--wait", "30", "connection", "up", name, timeout=45).returncode == 0
-            bg(work, lambda ok: (None if ok is True else self.win.error("The Wi-Fi band could not be changed.")) or self.refresh())
+            bg(work, lambda ok: (None if ok is True else self.win.error(_("The Wi-Fi band could not be changed."))) or self.refresh())
 
         def click(self, ssid, secured, in_use, ask=False):
             dev = self.dev   # the Wi-Fi device of the shown list (rows only exist when there is one)
@@ -1394,12 +1597,12 @@ def main(argv):
             self.refresh()
 
     class BluetoothPage(Page):
-        title = "Bluetooth"
+        title = _("Bluetooth")
 
         def refresh(self):
             self.clear()
             if not shutil.which("bluetoothctl"):
-                self.note("Bluetooth is not available (bluez missing).")
+                self.note(_("Bluetooth is not available (bluez missing)."))
                 return self.show_all_now()
             self.show_all_now()
             bg(lambda: (bt_state(), bt_devices()), self.show)
@@ -1407,40 +1610,40 @@ def main(argv):
         def show(self, res):
             self.clear()
             if isinstance(res, Exception):
-                self.note(f"Bluetooth could not be read: {res}")
+                self.note(_('Bluetooth could not be read: {res}').format(res=res))
                 return self.show_all_now()
             (adapter, powered), devs = res
             if not adapter:
-                self.note("No Bluetooth adapter found. Virtual machines and many desktop PCs have none – "
-                          "a USB Bluetooth stick adds it.")
+                self.note(_("No Bluetooth adapter found. Virtual machines and many desktop PCs have none – "
+                          "a USB Bluetooth stick adds it."))
                 return self.show_all_now()
             sw = Gtk.Switch(active=powered)
             sw.connect("notify::active", lambda s, _p: bg(
                 lambda: (cmd("rfkill", "unblock", "bluetooth") if s.get_active() else None,
                          bt("power", "on" if s.get_active() else "off")), lambda _r: self.refresh()))
-            self.put(card([("Bluetooth", "On" if powered else "Off", sw)]))
+            self.put(card([(_("Bluetooth"), _("On") if powered else _("Off"), sw)]))
             if powered:
                 rows = []
                 for mac, name, conn, kind, _p, battery in devs:
                     acts = Gtk.Box(spacing=6)
-                    acts.pack_start(button("Disconnect" if conn else "Connect", lambda m=mac, c=conn: bg(
+                    acts.pack_start(button(_("Disconnect") if conn else _("Connect"), lambda m=mac, c=conn: bg(
                         lambda: bt("disconnect" if c else "connect", m, timeout=30), lambda _r: self.refresh())),
                         False, False, 0)
-                    acts.pack_start(button("Remove", lambda m=mac: bg(lambda: bt("remove", m), lambda _r: self.refresh()),
+                    acts.pack_start(button(_("Remove"), lambda m=mac: bg(lambda: bt("remove", m), lambda _r: self.refresh()),
                                            "destructive-action"), False, False, 0)
                     rows.append((name, bt_subtitle(kind, conn, battery), acts))
                 if rows:
-                    self.put(label("<b>Your devices</b>", markup=True))
+                    self.put(label(_("<b>Your devices</b>"), markup=True))
                     self.put(card(rows))
-                self.put(card([("Add device", "Put your device in pairing mode first",
-                                button("Search", self.scan, "suggested-action"))]))
-            self.put(card([("More Bluetooth settings", None, button("Open", lambda: spawn("blueman-manager")))]))
+                self.put(card([(_("Add device"), _("Put your device in pairing mode first"),
+                                button(_("Search"), self.scan, "suggested-action"))]))
+            self.put(card([(_("More Bluetooth settings"), None, button(_("Open"), lambda: spawn("blueman-manager")))]))
             self.show_all_now()
 
         def scan(self):
             self.clear()
             self.put(Gtk.Spinner(active=True))
-            self.note("Searching for devices (10 seconds)…")
+            self.note(_("Searching for devices (10 seconds)…"))
             self.show_all_now()
             bg(lambda: bt_scan(10), self.found)
 
@@ -1448,53 +1651,57 @@ def main(argv):
             self.clear()
             devs = [] if isinstance(res, Exception) else res
             if not devs:
-                self.note("Nothing found. Make sure the device is in pairing mode and nearby.")
+                self.note(_("Nothing found. Make sure the device is in pairing mode and nearby."))
             else:
-                self.put(card([(name, kind, button("Pair", lambda m=mac, n=name: bg(
+                self.put(card([(name, kind, button(_("Pair"), lambda m=mac, n=name: bg(
                     lambda: bt_pair(m), lambda ok, n=n: (None if ok is True else self.win.error(
-                        f"Could not pair with {n}. Put it in pairing mode and try again."), self.refresh())),
+                        _('Could not pair with {n}. Put it in pairing mode and try again.').format(n=n)), self.refresh())),
                     "suggested-action")) for mac, name, _c, kind, _p, _b in devs]))
-            self.put(card([("Search again", None, button("Search", self.scan)),
-                           ("Back", None, button("Back", self.refresh))]))
+            self.put(card([(_("Search again"), None, button(_("Search"), self.scan)),
+                           (_("Back"), None, button(_("Back"), self.refresh))]))
             self.show_all_now()
 
     class AppearancePage(Page):
-        title = "Appearance"
+        title = _("Appearance")
 
         def refresh(self):
             self.clear()
             mode, accent = theme_state()
             dark = Gtk.ComboBoxText()
-            dark.append("dark", "Dark")
-            dark.append("light", "Light")
+            dark.append("dark", _("Dark"))
+            dark.append("light", _("Light"))
             dark.set_active_id(mode)
             acc = Gtk.ComboBoxText()
+            names = {"blue": _("Blue"), "mauve": _("Mauve"), "pink": _("Pink"), "green": _("Green"),
+                     "peach": _("Peach"), "teal": _("Teal")}
             for a in ACCENTS:
-                acc.append(a, a.capitalize())
+                acc.append(a, names.get(a, a.capitalize()))     # in the system language, like the Setup Wizard
             acc.set_active_id(accent)
 
             def apply_theme(*_):
-                bg(lambda: cmd("simpleos-theme", "--mode", dark.get_active_id() or "dark",
-                               "--accent", acc.get_active_id() or "peach", timeout=60), lambda _r: None)
+                # read the choices here, in the GTK thread – not inside the background job
+                mode_now, accent_now = dark.get_active_id() or "dark", acc.get_active_id() or "peach"
+                bg(lambda: cmd("simpleos-theme", "--mode", mode_now, "--accent", accent_now, timeout=60),
+                   lambda _r: None)
             dark.connect("changed", apply_theme)
             acc.connect("changed", apply_theme)
-            self.put(card([("Apps", "Dark or light windows", dark),
-                           ("Accent color", "Menus, taskbar, window borders", acc)]))
-            chooser = Gtk.FileChooserButton(title="Choose a picture", action=Gtk.FileChooserAction.OPEN)
+            self.put(card([(_("Apps"), _("Dark or light windows"), dark),
+                           (_("Accent color"), _("Menus, taskbar, window borders"), acc)]))
+            chooser = Gtk.FileChooserButton(title=_("Choose a picture"), action=Gtk.FileChooserAction.OPEN)
             filt = Gtk.FileFilter()
-            filt.set_name("Pictures")
+            filt.set_name(_("Pictures"))
             filt.add_mime_type("image/*")
             chooser.add_filter(filt)
             wp = current_wallpaper()
             if wp and os.path.exists(wp):
                 chooser.set_filename(wp)
-            pics = Path.home() / "Pictures"
+            pics = Path(GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_PICTURES) or Path.home() / "Pictures")
             if pics.is_dir():
                 chooser.set_current_folder(str(pics))
             chooser.connect("file-set", lambda c: cmd("simpleos-wallpaper", c.get_filename() or "", timeout=20))
-            self.put(card([("Wallpaper", "Or right-click a picture in Files → Set as Wallpaper", chooser),
-                           ("Default wallpaper", None,
-                            button("Restore", lambda: (cmd("simpleos-wallpaper", "--default"), self.refresh())))]))
+            self.put(card([(_("Wallpaper"), _("Or right-click a picture in Files → Set as Wallpaper"), chooser),
+                           (_("Default wallpaper"), None,
+                            button(_("Restore"), lambda: (cmd("simpleos-wallpaper", "--default"), self.refresh())))]))
             dyn = Gtk.Switch(active=dynamic_wallpaper_on())
             dyn.connect("notify::active", lambda s, _p: bg(
                 lambda: cmd("simpleos-wallpaper-schedule", "--on" if s.get_active() else "--off", timeout=30),
@@ -1503,24 +1710,24 @@ def main(argv):
             follow.connect("notify::active", lambda s, _p: bg(
                 lambda: cmd("simpleos-wallpaper-schedule", "--theme", "on" if s.get_active() else "off", timeout=60),
                 lambda _r: self.refresh()))
-            self.put(card([("Dynamic wallpaper (day/night)",
-                            "Light during the day, dark in the evening and whenever night light is on", dyn),
-                           ("Switch light/dark mode with it", "Apps, menus and taskbar follow the wallpaper", follow)]))
-            self.put(card([("Taskbar", "Position, size, style",
-                            button("Open", lambda: spawn("simpleos-taskbar-select")))]))
+            self.put(card([(_("Dynamic wallpaper (day/night)"),
+                            _("Light during the day, dark in the evening and whenever night light is on"), dyn),
+                           (_("Switch light/dark mode with it"), _("Apps, menus and taskbar follow the wallpaper"), follow)]))
+            self.put(card([(_("Taskbar"), _("Position, size, style"),
+                            button(_("Open"), lambda: spawn("simpleos-taskbar-select")))]))
             self.show_all_now()
 
     class InputPage(Page):
-        title = "Mouse & Touchpad"
+        title = _("Mouse & Touchpad")
 
         def refresh(self):
             self.clear()
             if not shutil.which("simpleos-input"):
-                self.note("Mouse and touchpad settings are not available (simpleos-input missing).")
+                self.note(_("Mouse and touchpad settings are not available (simpleos-input missing)."))
                 return self.show_all_now()
             st = input_status()
             if st.get("touchpad") != "yes" and st.get("mouse") != "yes":
-                self.note("No mouse or touchpad found. Settings for a device appear here once it is connected.")
+                self.note(_("No mouse or touchpad found. Settings for a device appear here once it is connected."))
                 return self.show_all_now()
             pend = {}
 
@@ -1548,41 +1755,41 @@ def main(argv):
                                                                "on" if s.get_active() else "off"))
                 return sw
             if st.get("touchpad") == "yes":
-                self.put(label("<b>Touchpad</b>", markup=True))
-                self.put(card([("Tap to click", "Tap the touchpad instead of pressing it", switch("tap", st.get("tap"))),
-                               ("Natural scrolling", "Content follows your fingers, like on a phone – turn off for "
-                                "the Windows/classic direction", switch("natural", st.get("natural"))),
-                               ("Pointer speed", None, speed_slider("tspeed", st.get("tspeed")))]))
+                self.put(label("<b>" + _("Touchpad") + "</b>", markup=True))
+                self.put(card([(_("Tap to click"), _("Tap the touchpad instead of pressing it"), switch("tap", st.get("tap"))),
+                               (_("Natural scrolling"), _("Content follows your fingers, like on a phone – turn off for "
+                                "the Windows/classic direction"), switch("natural", st.get("natural"))),
+                               (_("Pointer speed"), None, speed_slider("tspeed", st.get("tspeed")))]))
             if st.get("mouse") == "yes":
-                self.put(label("<b>Mouse</b>", markup=True))
-                self.put(card([("Pointer speed", None, speed_slider("mspeed", st.get("mspeed"))),
-                               ("Natural scrolling", "Scroll wheel in the opposite direction",
+                self.put(label("<b>" + _("Mouse") + "</b>", markup=True))
+                self.put(card([(_("Pointer speed"), None, speed_slider("mspeed", st.get("mspeed"))),
+                               (_("Natural scrolling"), _("Scroll wheel in the opposite direction"),
                                 switch("mnatural", st.get("mnatural")))]))
-            self.note("Your settings are kept for every device you connect later.")
+            self.note(_("Your settings are kept for every device you connect later."))
             self.show_all_now()
 
     class PowerPage(Page):
-        title = "Power"
+        title = _("Power")
 
         def refresh(self):
             self.clear()
             bat = battery_text()
             if bat:
-                self.put(card([("Battery", bat, None)]))
+                self.put(card([(_("Battery"), bat, None)]))
             off = Gtk.ComboBoxText()
             for minutes, text in SCREEN_OFF:
                 off.append(str(minutes), text)
             cur_off = screen_off()
             # another value (e.g. "simpleos-power --screen-off 20" in a terminal): as its own entry instead of an empty selection
             if not off.set_active_id(str(cur_off)):
-                off.append(str(cur_off), f"{cur_off} minutes")
+                off.append(str(cur_off), _('{cur_off} minutes').format(cur_off=cur_off))
                 off.set_active_id(str(cur_off))
             off.connect("changed", lambda c: cmd("simpleos-power", "--screen-off", c.get_active_id() or "10"))
-            self.put(card([("Turn off the screen after", "When the computer is not used", off)]))
+            self.put(card([(_("Turn off the screen after"), _("When the computer is not used"), off)]))
             lock = Gtk.Switch(active=lock_idle())
             lock.connect("notify::active", lambda sw, _p: cmd("simpleos-power", "--lock",
                                                               "on" if sw.get_active() else "off"))
-            self.put(card([("Lock when the screen turns off", "Your password is asked when you come back", lock)]))
+            self.put(card([(_("Lock when the screen turns off"), _("Your password is asked when you come back"), lock)]))
             cur, avail = power_profile()
             if cur != "unsupported":
                 mode = Gtk.ComboBoxText()
@@ -1593,47 +1800,47 @@ def main(argv):
                         hints[key] = hint
                 mode.set_active_id(cur)
                 mode.connect("changed", self.set_profile)
-                self.put(card([("Power mode", hints.get(cur, ""), mode)]))
+                self.put(card([(_("Power mode"), hints.get(cur, ""), mode)]))
             limit = charge_limit()
             if limit != "unsupported":
                 prot = Gtk.Switch(active=limit == "on")
                 prot.connect("notify::active", self.set_limit)
-                self.put(card([("Battery protection", "Stop charging at about 80 % – the battery lasts longer "
-                                "if the laptop is mostly plugged in", prot)]))
+                self.put(card([(_("Battery protection"), _("Stop charging at about 80 % – the battery lasts longer "
+                                "if the laptop is mostly plugged in"), prot)]))
             acts = Gtk.Box(spacing=6)
-            for key, text, style in (("lock", "Lock", None), ("sleep", "Sleep", None),
-                                     ("restart", "Restart", None), ("shutdown", "Shut down", "destructive-action")):
+            for key, text, style in (("lock", _("Lock"), None), ("sleep", _("Sleep"), None),
+                                     ("restart", _("Restart"), None), ("shutdown", _("Shut down"), "destructive-action")):
                 acts.pack_start(button(text, lambda k=key: self.power(k), style), False, False, 0)
-            self.put(card([("Power", None, acts)]))
+            self.put(card([(_("Power"), None, acts)]))
             self.show_all_now()
 
         def set_profile(self, combo):
             key = combo.get_active_id()
             if key and cmd("simpleos-power", "--profile", key).returncode != 0:
-                self.win.error("The power mode could not be changed.")
+                self.win.error(_("The power mode could not be changed."))
             self.refresh()   # subtitle matching the profile
 
         def set_limit(self, sw, _p):
             want = "on" if sw.get_active() else "off"
             if cmd("simpleos-power", "--charge-limit", want).returncode != 0:
-                self.win.error("Battery protection could not be changed.")
+                self.win.error(_("Battery protection could not be changed."))
                 self.refresh()
 
         def power(self, what):
             if what in ("restart", "shutdown"):
                 d = Gtk.MessageDialog(transient_for=self.win, modal=True, message_type=Gtk.MessageType.QUESTION,
                                       buttons=Gtk.ButtonsType.OK_CANCEL,
-                                      text="Restart now?" if what == "restart" else "Shut down now?")
-                d.format_secondary_text("Save your work first.")
+                                      text=_("Restart now?") if what == "restart" else _("Shut down now?"))
+                d.format_secondary_text(_("Save your work first."))
                 ok = d.run() == Gtk.ResponseType.OK
                 d.destroy()
                 if not ok:
                     return
             if not power_action(what):
-                self.win.error("That did not work. Please try again.")
+                self.win.error(_("That did not work. Please try again."))
 
     class NotificationsPage(Page):
-        title = "Notifications"
+        title = _("Notifications")
 
         def refresh(self):
             self.clear()
@@ -1643,13 +1850,14 @@ def main(argv):
             quiet = Gtk.Switch(active=dnd_no_effects())
             quiet.connect("notify::active", lambda s, _p: cmd("simpleos-dnd", "--no-effects",
                                                               "on" if s.get_active() else "off"))
-            self.put(card([("Do Not Disturb", "Pause notifications until you turn it off", dnd),
-                           ("Also turn off window effects", "No shadows or transparency while it is on", quiet)]))
-            self.note("While Do Not Disturb is on, the taskbar shows a crossed-out bell – click it to turn Do Not Disturb off again.")
+            self.put(card([(_("Do Not Disturb"), _("Pause notifications until you turn it off"), dnd),
+                           (_("Also turn off window effects"), _("No shadows or transparency while it is on"), quiet)]))
+            self.note(_('While Do Not Disturb is on, the taskbar shows a crossed-out bell – click it to turn Do Not '
+                        'Disturb off again.'))
             self.show_all_now()
 
     class KeyboardPage(Page):
-        title = "Keyboard"
+        title = _("Keyboard")
 
         def refresh(self):
             self.clear()
@@ -1658,28 +1866,28 @@ def main(argv):
             for key, name in keyboard_layouts():
                 kb.append(key, name)
             if not kb.set_active_id(cur):
-                kb.append(cur, cur.replace(":", " – ") or "Unknown")
+                kb.append(cur, cur.replace(":", " – ") or _("Unknown"))
                 kb.set_active_id(cur)
             kb.connect("changed", lambda c: c.get_active_id() and bg(
                 lambda: cmd("simpleos-keyboard-setup", "--set", c.get_active_id(), timeout=120), lambda _r: None))
-            self.put(card([("Keyboard layout", "Applies right away – also on the login screen", kb)]))
-            self.put(card([("Keyboard shortcuts", "Super+H shows them at any time",
-                            button("Show", lambda: spawn("simpleos-help")))]))
+            self.put(card([(_("Keyboard layout"), _("Applies right away – also on the login screen"), kb)]))
+            self.put(card([(_("Keyboard shortcuts"), _("Super+H shows them at any time"),
+                            button(_("Show"), lambda: spawn("simpleos-help")))]))
             self.show_all_now()
 
     class PrintersPage(Page):
-        title = "Printers & Scanners"
+        title = _("Printers & Scanners")
 
         def refresh(self):
             self.clear()
-            self.put(card([("Printers", "Most printers on your network or USB are found automatically",
-                            button("Open", lambda: spawn("system-config-printer"))),
-                           ("Scan a document", "Scanners and printers with a scanner",
-                            button("Scan", lambda: spawn("simple-scan")))]))
+            self.put(card([(_("Printers"), _("Most printers on your network or USB are found automatically"),
+                            button(_("Open"), lambda: spawn("system-config-printer"))),
+                           (_("Scan a document"), _("Scanners and printers with a scanner"),
+                            button(_("Scan"), lambda: spawn("simple-scan")))]))
             self.show_all_now()
 
     class AppsPage(Page):
-        title = "Apps"
+        title = _("Apps")
 
         def refresh(self):
             self.clear()
@@ -1690,19 +1898,19 @@ def main(argv):
         def show(self, res):
             self.clear()
             if isinstance(res, Exception):
-                self.note(f"The apps could not be read: {res}")
+                self.note(_('The apps could not be read: {res}').format(res=res))
                 return self.show_all_now()
             apps, startup = res
-            self.put(label("<b>Default apps</b>", markup=True))
-            self.note("Which app opens a file when you double-click it, or a link.")
+            self.put(label(_("<b>Default apps</b>"), markup=True))
+            self.note(_("Which app opens a file when you double-click it, or a link."))
             rows = []
             for group in DEFAULT_APPS:
                 key, title, sub, main, _prefix = group
                 cands = candidates(group, apps)
                 cur = current_default(main, apps)
                 if not cands:
-                    rows.append((title, "No app installed for this yet",
-                                 button("Get one…", lambda: spawn("simpleos-software-center"))))
+                    rows.append((title, _("No app installed for this yet"),
+                                 button(_("Get one…"), lambda: spawn("simpleos-software-center"))))
                 else:
                     combo = Gtk.ComboBoxText()
                     for i, name in cands:
@@ -1713,32 +1921,32 @@ def main(argv):
                     elif not cur and len(cands) == 1:
                         combo.set_active(0)   # nothing chosen, but the only app that can open it is the one used
                     elif not cur:             # several and nothing chosen (two office suites): not an empty field
-                        combo.prepend(CHOOSE, "Choose an app…")
+                        combo.prepend(CHOOSE, _("Choose an app…"))
                         combo.set_active(0)
                     combo.connect("changed", lambda c, g=group: self.picked(c, g, apps))
                     rows.append((title, sub, combo))
                 if key == "browser":
-                    rows.append(("More browsers", "Install Chromium or Mullvad Browser",
-                                 button("Choose…", lambda: spawn("simpleos-browser-select"))))
+                    rows.append((_("More browsers"), _("Install Chromium or Mullvad Browser"),
+                                 button(_("Choose…"), lambda: spawn("simpleos-browser-select"))))
             self.put(card(rows))
-            self.put(label("<b>Startup apps</b>", markup=True))
-            self.note("Apps that start by themselves when you sign in. Fewer startup apps = a faster start.")
+            self.put(label(_("<b>Startup apps</b>"), markup=True))
+            self.note(_("Apps that start by themselves when you sign in. Fewer startup apps = a faster start."))
             rows = []
             for i, name, comment, on, own in startup:
                 sw = Gtk.Switch(active=on)
                 sw.connect("notify::active", lambda s, _p, i=i: set_startup(i, s.get_active()) or
-                           self.win.error("This could not be changed."))
+                           self.win.error(_("This could not be changed.")))
                 if own:
                     box = Gtk.Box(spacing=6)
                     box.pack_start(sw, False, False, 0)
-                    box.pack_start(button("Remove", lambda i=i: (remove_startup(i), self.refresh())), False, False, 0)
+                    box.pack_start(button(_("Remove"), lambda i=i: (remove_startup(i), self.refresh())), False, False, 0)
                     sw = box
                 rows.append((name, comment or None, sw))
             if not rows:
-                rows.append(("No startup apps", "Apps like Steam or Discord add themselves here when you allow it", None))
-            rows.append(("Add an app", "Start an app every time you sign in", button("Add…", lambda: self.add(apps))))
+                rows.append((_("No startup apps"), _("Apps like Steam or Discord add themselves here when you allow it"), None))
+            rows.append((_("Add an app"), _("Start an app every time you sign in"), button(_("Add…"), lambda: self.add(apps))))
             self.put(card(rows))
-            self.note("Changes count from the next sign-in.")
+            self.note(_("Changes count from the next sign-in."))
             self.show_all_now()
 
         def picked(self, combo, group, apps):
@@ -1748,11 +1956,11 @@ def main(argv):
             if combo.get_model()[0][1] == CHOOSE:   # chosen now: the placeholder goes (picking it again would do nothing)
                 combo.remove(0)
             if not set_default(group, app_id, apps):
-                self.win.error("The default app could not be changed.")
+                self.win.error(_("The default app could not be changed."))
 
         def add(self, apps):
-            d = Gtk.Dialog(title="Add a startup app", transient_for=self.win, modal=True)
-            d.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Add", Gtk.ResponseType.OK)
+            d = Gtk.Dialog(title=_("Add a startup app"), transient_for=self.win, modal=True)
+            d.add_buttons(_("Cancel"), Gtk.ResponseType.CANCEL, _("Add"), Gtk.ResponseType.OK)
             d.set_default_response(Gtk.ResponseType.OK)
             d.set_default_size(360, -1)
             combo = Gtk.ComboBoxText()
@@ -1764,7 +1972,7 @@ def main(argv):
             box = d.get_content_area()
             box.set_spacing(8)
             box.set_border_width(12)
-            box.add(label("Which app should start when you sign in?"))
+            box.add(label(_("Which app should start when you sign in?")))
             box.add(combo)
             d.show_all()
             ok = d.run() == Gtk.ResponseType.OK
@@ -1772,11 +1980,11 @@ def main(argv):
             d.destroy()
             if ok and app_id:
                 if not add_startup(app_id, apps):
-                    self.win.error("The app could not be added.")
+                    self.win.error(_("The app could not be added."))
                 self.refresh()
 
     class DateTimePage(Page):
-        title = "Date & Time"
+        title = _("Date & Time")
 
         def refresh(self):
             self.clear()
@@ -1784,20 +1992,20 @@ def main(argv):
             auto = Gtk.Switch(active=ntp)
             auto.set_sensitive(can_ntp and bool(tz))
             auto.connect("notify::active", self.set_ntp)
-            state = "Clock synchronized" if ntp and synced else ("Waiting for the internet…" if ntp else "Set by hand")
-            self.put(card([("Set the time automatically", f"From the internet · {state}" if can_ntp else
-                            "Not available on this system", auto),
-                           ("Time zone", tz.replace("_", " ") if tz else "Unknown",
-                            button("Change…", lambda: self.choose_timezone(tz)))]))
+            state = _("Clock synchronized") if ntp and synced else (_("Waiting for the internet…") if ntp else _("Set by hand"))
+            self.put(card([(_("Set the time automatically"), _('From the internet · {state}').format(state=state) if can_ntp else
+                            _("Not available on this system"), auto),
+                           (_("Time zone"), tz.replace("_", " ") if tz else _("Unknown"),
+                            button(_("Change…"), lambda: self.choose_timezone(tz)))]))
             if windows_present():
                 win = Gtk.Switch(active=local_rtc())
                 win.connect("notify::active", self.set_local_rtc)
-                self.put(label("<b>Windows on this computer</b>", markup=True))
-                self.put(card([("Keep the clock like Windows does", "Turn this on if the time is off by an hour or "
-                                "more after you used Windows (Windows keeps the computer's clock in local time)", win)]))
-                self.note("Can't open or change your files on the Windows drive? Windows was not shut down completely. "
+                self.put(label(_("<b>Windows on this computer</b>"), markup=True))
+                self.put(card([(_("Keep the clock like Windows does"), _("Turn this on if the time is off by an hour or "
+                                "more after you used Windows (Windows keeps the computer's clock in local time)"), win)]))
+                self.note(_("Can't open or change your files on the Windows drive? Windows was not shut down completely. "
                           "In Windows: Control Panel → Power Options → \"Choose what the power buttons do\" → switch off "
-                          "\"Turn on fast startup\", then shut Windows down once.")
+                          "\"Turn on fast startup\", then shut Windows down once."))
             self.show_all_now()
 
         def set_local_rtc(self, sw, _p):
@@ -1808,7 +2016,7 @@ def main(argv):
 
             def done(res):
                 if local_rtc() != want and not timedatectl_cancelled(res):
-                    self.win.error("The setting could not be changed.")
+                    self.win.error(_("The setting could not be changed."))
                 self.refresh()
             # the clock is written in the new mode from the current (correct) system time
             bg(lambda: cmd("timedatectl", "set-local-rtc", "true" if want else "false", timeout=120), done)
@@ -1822,19 +2030,19 @@ def main(argv):
             def done(res):
                 # Only the new state counts; password dialog cancelled ("Access denied") -> back silently
                 if clock_info()[1] != want and not timedatectl_cancelled(res):
-                    self.win.error("The setting could not be changed.")
+                    self.win.error(_("The setting could not be changed."))
                 self.refresh()
             bg(lambda: cmd("timedatectl", "set-ntp", "true" if want else "false", timeout=120), done)
 
         def choose_timezone(self, current):
             zones = timezones()
             if not zones:
-                return self.win.error("The list of time zones is not available.")
+                return self.win.error(_("The list of time zones is not available."))
             by = {}
             for z in zones:
                 by.setdefault(z.partition("/")[0], []).append(z)
-            d = Gtk.Dialog(title="Time zone", transient_for=self.win, modal=True)
-            d.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Set", Gtk.ResponseType.OK)
+            d = Gtk.Dialog(title=_("Time zone"), transient_for=self.win, modal=True)
+            d.add_buttons(_("Cancel"), Gtk.ResponseType.CANCEL, _("Set"), Gtk.ResponseType.OK)
             d.set_default_response(Gtk.ResponseType.OK)
             d.set_default_size(340, -1)   # at its natural width the title was cut to "T… ne"
             region, city = Gtk.ComboBoxText(), Gtk.ComboBoxText()
@@ -1853,7 +2061,7 @@ def main(argv):
             box = d.get_content_area()
             box.set_spacing(8)
             box.set_border_width(12)
-            box.add(label("Where are you?"))
+            box.add(label(_("Where are you?")))
             box.add(region)
             box.add(city)
             d.show_all()
@@ -1865,12 +2073,12 @@ def main(argv):
 
             def done(res):
                 if clock_info()[0] != zone and not timedatectl_cancelled(res):
-                    self.win.error("The time zone could not be changed.")
+                    self.win.error(_("The time zone could not be changed."))
                 self.refresh()
             bg(lambda: cmd("timedatectl", "set-timezone", zone, timeout=120), done)
 
     class LanguagePage(Page):
-        title = "Language & Region"
+        title = _("Language & Region")
         names = {}
 
         def refresh(self):
@@ -1887,37 +2095,37 @@ def main(argv):
         def show(self, res):
             self.clear()
             if isinstance(res, Exception):
-                self.note(f"The languages could not be read: {res}")
+                self.note(_('The languages could not be read: {res}').format(res=res))
                 return self.show_all_now()
             self.names, (lang, fmt), example, live = res
             same = locale_key(fmt) == locale_key(lang)
-            rows = [("Language", f"{self.name(lang)} · menus and messages of the apps",
-                     button("Change…", lambda: self.choose(False, lang, fmt))),
-                    ("Formats", "Dates, numbers and currency · " + ("same as the language" if same else self.name(fmt)),
-                     button("Change…", lambda: self.choose(True, lang, fmt)))]
+            rows = [(_("Language"), _('{language} · menus and messages of the apps').format(language=self.name(lang)),
+                     button(_("Change…"), lambda: self.choose(False, lang, fmt))),
+                    (_("Formats"), _("Dates, numbers and currency · ") + (_("same as the language") if same else self.name(fmt)),
+                     button(_("Change…"), lambda: self.choose(True, lang, fmt)))]
             if example:
-                rows.append(("Example", example, None))
+                rows.append((_("Example"), example, None))
             self.put(card(rows))
-            self.note("Applies after you sign out and back in. When the computer is online, spell checking and the "
-                      "languages for Firefox and LibreOffice are installed with it.")
-            self.note("Simple OS's own windows, like this one, are still in English – translations are planned for "
-                      "Simple OS 1.2.")
+            self.note(_("Applies after you sign out and back in. When the computer is online, spell checking and the "
+                      "languages for Firefox and LibreOffice are installed with it."))
+            self.note(_("Simple OS's own windows, like this one, follow the language too (German and French so far; "
+                        "other languages fall back to English)."))
             if live:
-                self.note("Live Mode: the change lasts until the computer shuts down.")
-            self.put(card([("Keyboard layout", "Set separately, on the Keyboard page",
-                            button("Open", lambda: self.win.open("keyboard")))]))
+                self.note(_("Live Mode: the change lasts until the computer shuts down."))
+            self.put(card([(_("Keyboard layout"), _("Set separately, on the Keyboard page"),
+                            button(_("Open"), lambda: self.win.open("keyboard")))]))
             self.show_all_now()
 
         def choose(self, formats, lang, fmt):
             if not self.names:
-                return self.win.error("The list of languages is not available.")
+                return self.win.error(_("The list of languages is not available."))
             by = {}
             for loc, (lg, region) in sorted(self.names.items(), key=lambda kv: (kv[1][0], kv[1][1])):
                 by.setdefault(lg, []).append((loc, region))
             current = fmt if formats else lang
             cur = next((k for k in self.names if locale_key(k) == locale_key(current)), current)
-            d = Gtk.Dialog(title="Formats" if formats else "Language", transient_for=self.win, modal=True)
-            d.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Change", Gtk.ResponseType.OK)
+            d = Gtk.Dialog(title=_("Formats") if formats else _("Language"), transient_for=self.win, modal=True)
+            d.add_buttons(_("Cancel"), Gtk.ResponseType.CANCEL, _("Change"), Gtk.ResponseType.OK)
             d.set_default_response(Gtk.ResponseType.OK)
             d.set_default_size(360, -1)
             language, region = Gtk.ComboBoxText(), Gtk.ComboBoxText()
@@ -1936,15 +2144,15 @@ def main(argv):
             box = d.get_content_area()
             box.set_spacing(8)
             box.set_border_width(12)
-            same = Gtk.CheckButton(label="Same as the language", active=locale_key(fmt) == locale_key(lang))
+            same = Gtk.CheckButton(label=_("Same as the language"), active=locale_key(fmt) == locale_key(lang))
             if formats:
-                box.add(label("Show dates, numbers and currency like in …"))
+                box.add(label(_("Show dates, numbers and currency like in …")))
                 box.add(same)
                 same.connect("toggled", lambda b: (language.set_sensitive(not b.get_active()),
                                                    region.set_sensitive(not b.get_active())))
                 same.toggled()
             else:
-                box.add(label("Which language should the apps use?"))
+                box.add(label(_("Which language should the apps use?")))
             box.add(language)
             box.add(region)
             d.show_all()
@@ -1965,7 +2173,7 @@ def main(argv):
             self.clear()
             box = Gtk.Box(spacing=10)
             box.pack_start(Gtk.Spinner(active=True), False, False, 0)
-            box.pack_start(label("Changing the language…"), False, False, 0)
+            box.pack_start(label(_("Changing the language…")), False, False, 0)
             self.put(box)
             self.show_all_now()
             # The helper only takes Debian's own spelling (SUPPORTED: "de_DE.UTF-8"). LANG/LC_TIME of an edited or old
@@ -1984,8 +2192,8 @@ def main(argv):
                 prog = None
                 if os.access("/usr/local/bin/simpleos-progress", os.X_OK):
                     prog = subprocess.Popen(["/usr/local/bin/simpleos-progress", "--follow", feed, "--title",
-                                             "Changing the language", "--done", "Language changed",
-                                             "--hint", "Sign out to use it", "--app", "Control Center",
+                                             _("Changing the language"), "--done", _("Language changed"),
+                                             "--hint", _("Sign out to use it"), "--app", _("Control Center"),
                                              "--icon-name", "preferences-desktop-locale", "--pid", str(os.getpid())],
                                             stderr=subprocess.DEVNULL)
                 try:
@@ -2003,55 +2211,56 @@ def main(argv):
                 if rc in (126, 127):          # password dialog cancelled: nothing changed
                     return
                 if rc != 0:
-                    return self.win.error("The language could not be changed. Details: ~/.cache/simpleos-language.log")
+                    return self.win.error(_("The language could not be changed. Details: ~/.cache/simpleos-language.log"))
                 d = Gtk.MessageDialog(transient_for=self.win, modal=True, message_type=Gtk.MessageType.QUESTION,
-                                      text=f"Sign out now to use the new {what}?")
-                d.format_secondary_text("Save your work first – open apps will close.")
-                d.add_buttons("Later", Gtk.ResponseType.CANCEL, "Sign out", Gtk.ResponseType.OK)
+                                      text=_("Sign out now to use the new formats?") if what == "formats" else
+                                      _("Sign out now to use the new language?"))
+                d.format_secondary_text(_("Save your work first – open apps will close."))
+                d.add_buttons(_("Later"), Gtk.ResponseType.CANCEL, _("Sign out"), Gtk.ResponseType.OK)
                 if d.run() == Gtk.ResponseType.OK:
                     spawn("openbox", "--exit")
                 d.destroy()
             bg(work, done)
 
     class StoragePage(Page):
-        title = "Storage & Backups"
+        title = _("Storage & Backups")
 
         def refresh(self):
             self.clear()
             used, total = disk_usage("/")
             bar = Gtk.LevelBar(min_value=0, max_value=1, value=(used / total) if total else 0)
             bar.set_size_request(240, 10)
-            self.put(card([("System disk", f"{human(total - used)} free of {human(total)}", bar),
-                           ("Free up space", "Package cache, unused apps, old logs, thumbnails",
-                            button("Clean up", lambda: spawn("simpleos-cleaner"), "suggested-action")),
-                           ("Disks & USB sticks", "Format a USB stick, write an ISO image, check disk health",
-                            button("Open", lambda: spawn("gnome-disks")))]))
-            self.put(label("<b>Backups</b>", markup=True))
+            self.put(card([(_("System disk"), _('{free} free of {total}').format(free=human(total - used), total=human(total)), bar),
+                           (_("Free up space"), _("Package cache, unused apps, old logs, thumbnails"),
+                            button(_("Clean up"), lambda: spawn("simpleos-cleaner"), "suggested-action")),
+                           (_("Disks & USB sticks"), _("Format a USB stick, write an ISO image, check disk health"),
+                            button(_("Open"), lambda: spawn("gnome-disks")))]))
+            self.put(label("<b>" + _("Backups") + "</b>", markup=True))
             if live_session():
-                self.note("Backups can only be created on an installed system.")
+                self.note(_("Backups can only be created on an installed system."))
             else:
-                self.put(card([("Restore points", "Undo system changes – your personal files are not touched",
-                                button("Open", lambda: spawn("simpleos-backup"))),
-                               ("Create a restore point now", "The first one can take 10–20 minutes",
-                                button("Create", lambda: spawn("simpleos-backup", "--create"), "suggested-action"))]))
+                self.put(card([(_("Restore points"), _("Undo system changes – your personal files are not touched"),
+                                button(_("Open"), lambda: spawn("simpleos-backup"))),
+                               (_("Create a restore point now"), _("The first one can take 10–20 minutes"),
+                                button(_("Create"), lambda: spawn("simpleos-backup", "--create"), "suggested-action"))]))
             self.show_all_now()
 
     class SecurityPage(Page):
-        title = "Password & Security"
+        title = _("Password & Security")
 
         def refresh(self):
             self.clear()
             if not live_session():
-                self.put(card([("Password", "The password you sign in with",
-                                button("Change…", lambda: spawn(
-                                    "kitty", "--title", "Change password", "sh", "-c",
-                                    "passwd; printf '\\nPress Enter to close.'; read -r _")))]))
+                self.put(card([(_("Password"), _("The password you sign in with"),
+                                button(_("Change…"), lambda: own_password_dialog(self.win))),
+                               (_("Users"), _("Add accounts, administrators, automatic sign-in"),
+                                button(_("Open"), lambda: self.win.open("users")))]))
             fw = Gtk.Switch(active=firewall_on())
             fw.connect("notify::active", self.set_firewall)
-            self.put(card([("Firewall", "Blocks connections from other devices to this computer – "
-                            "browsing, printing and games keep working", fw)]))
-            self.put(card([("Screen lock", "Lock when the screen turns off: Power",
-                            button("Open", lambda: self.win.open("power")))]))
+            self.put(card([(_("Firewall"), _("Blocks connections from other devices to this computer – "
+                            "browsing, printing and games keep working"), fw)]))
+            self.put(card([(_("Screen lock"), _("Lock when the screen turns off: Power"),
+                            button(_("Open"), lambda: self.win.open("power")))]))
             self.show_all_now()
 
         def set_firewall(self, sw, _p):
@@ -2063,57 +2272,409 @@ def main(argv):
             def done(res):
                 # 126/127 = password dialog cancelled -> back silently; otherwise only the new state counts
                 if getattr(res, "returncode", 1) not in (126, 127) and firewall_on() != want:
-                    self.win.error("The firewall could not be changed.")
+                    self.win.error(_("The firewall could not be changed."))
                 self.refresh()
             bg(lambda: cmd("pkexec", HELPER, "--firewall", "on" if want else "off", timeout=120), done)
 
+    def users_helper(*args, password=None):
+        """pkexec simpleos-users-helper …; the password (if any) as one line on stdin. CompletedProcess."""
+        try:
+            return subprocess.run(["pkexec", USERS_HELPER, *args], input=(password + "\n") if password is not None
+                                  else None, capture_output=True, text=True, timeout=180)
+        except (OSError, subprocess.TimeoutExpired) as err:
+            return subprocess.CompletedProcess(args, 1, "", f"ERROR: {err}")
+
+    def helper_failed(res, what):
+        """None if it worked or the password dialog was cancelled, else the message to show"""
+        rc = getattr(res, "returncode", 1)
+        if rc in (0, 126, 127):
+            return None
+        for line in (getattr(res, "stderr", "") or "").splitlines():
+            if line.startswith("ERROR: "):
+                text = line[7:].strip()
+                return f"{what}: {text[0].upper() + text[1:]}." if text else what + "."
+        return what + "."
+
+    def password_entry(placeholder):
+        e = Gtk.Entry(visibility=False, placeholder_text=placeholder, activates_default=True)
+        e.set_input_purpose(Gtk.InputPurpose.PASSWORD)
+        return e
+
+    def own_password_dialog(parent):
+        """Change your own password: passwd asks for the current one (also for the keyring: libpam-gnome-keyring
+        changes the keyring's password along with it)"""
+        d = Gtk.Dialog(title=_("Change your password"), transient_for=parent, modal=True)
+        d.add_buttons(_("Cancel"), Gtk.ResponseType.CANCEL, _("Change"), Gtk.ResponseType.OK)
+        d.set_default_response(Gtk.ResponseType.OK)
+        box = d.get_content_area()
+        box.set_spacing(8)
+        box.set_border_width(14)
+        old, new, again = password_entry(_("Current password")), password_entry(_("New password")), password_entry(_("Repeat the new password"))
+        msg = label("", wrap=True)
+        for w in (label(_("Use at least 8 characters. Your keyring (saved passwords) keeps working with the new one.")),
+                  old, new, again, msg):
+            box.add(w)
+        d.show_all()
+        while True:
+            if d.run() != Gtk.ResponseType.OK:
+                break
+            if not old.get_text() or not new.get_text():
+                msg.set_markup(_("<b>Please fill in all fields.</b>"))
+                continue
+            if new.get_text() != again.get_text():
+                msg.set_markup(_("<b>The two new passwords don't match.</b>"))
+                continue
+            d.set_sensitive(False)
+            msg.set_text(_("Changing the password …"))
+            result = {}
+
+            def work():
+                return change_own_password(old.get_text(), new.get_text())
+
+            loop = GLib.MainLoop()
+
+            def done(res):
+                result["res"] = res
+                loop.quit()
+            bg(work, done)
+            loop.run()            # wait for the background thread, the window keeps drawing
+            d.set_sensitive(True)
+            ok, text = result["res"] if isinstance(result.get("res"), tuple) else (False, _("The password could not be changed."))
+            if ok:
+                d.destroy()
+                info = Gtk.MessageDialog(transient_for=parent, modal=True, message_type=Gtk.MessageType.INFO,
+                                         buttons=Gtk.ButtonsType.OK, text=_("Your password was changed."))
+                info.run()
+                info.destroy()
+                return True
+            msg.set_markup(f"<b>{GLib.markup_escape_text(text)}</b>")
+        d.destroy()
+        return False
+
+    class UsersPage(Page):
+        title = _("Users")
+
+        def avatar(self, user, size):
+            pic = user_picture(user)
+            if pic:
+                try:
+                    from gi.repository import GdkPixbuf
+                    return Gtk.Image.new_from_pixbuf(GdkPixbuf.Pixbuf.new_from_file_at_scale(pic, size, size, True))
+                except Exception:  # noqa: BLE001 – a broken picture: the default one
+                    pass
+            img = Gtk.Image.new_from_icon_name("avatar-default", Gtk.IconSize.DIALOG)
+            img.set_pixel_size(size)
+            return img
+
+        def refresh(self):
+            self.clear()
+            self.users = users_list()
+            self.me = os.environ.get("USER") or Path.home().name
+            self.live = live_session()
+            auto = autologin_user()
+            if self.live:
+                self.note(_("This is the live session – user accounts can be managed once Simple OS is installed."))
+            lst = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+            lst.get_style_context().add_class("frame")
+            for u in self.users:
+                row = Gtk.Box(spacing=12, margin=10)
+                row.pack_start(self.avatar(u, 40), False, False, 0)
+                texts = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, valign=Gtk.Align.CENTER)
+                texts.pack_start(label(_("{name}  (you)").format(name=u["full"]) if u["name"] == self.me else u["full"]), False, False, 0)
+                sub = f'{u["name"]} · {_("Administrator") if u["admin"] else _("Standard user")}'
+                if u["name"] == auto:
+                    sub += _(" · signs in automatically")
+                texts.pack_start(label(sub, dim=True), False, False, 0)
+                row.pack_start(texts, True, True, 0)
+                if not self.live:
+                    b = button(_("Change…"), lambda user=u: self.edit(user))
+                    b.set_valign(Gtk.Align.CENTER)
+                    row.pack_end(b, False, False, 0)
+                lst.add(row)
+            self.put(lst)
+            if not self.live:
+                actions = Gtk.Box(spacing=8)
+                actions.pack_start(button(_("Add a user…"), self.add_user, "suggested-action"), False, False, 0)
+                if len(self.users) > 1:
+                    actions.pack_start(button(_("Switch user"), self.switch_user), False, False, 0)
+                self.put(actions)
+                combo = Gtk.ComboBoxText()
+                combo.append("off", _("Off"))
+                for u in self.users:
+                    combo.append(u["name"], u["full"])
+                combo.set_active_id(auto if any(u["name"] == auto for u in self.users) else "off")
+                combo.connect("changed", self.set_autologin)
+                self.put(card([(_("Sign in automatically"), _("Start without the login screen. Anyone who turns on this "
+                                "computer gets in, and the keyring (saved passwords) asks for its password once."),
+                                combo)]))
+            self.note(_("Administrators can install apps and change settings for everyone. Standard users use the "
+                      "computer and change their own settings – for everything else they need an administrator's "
+                      "password."))
+            self.show_all_now()
+
+        def run_helper(self, what, *args, password=None, then=None):
+            """In the background; afterwards an error (if any) and a fresh page"""
+            def done(res):
+                text = helper_failed(res, what)
+                if text:
+                    self.win.error(text)
+                if then and not text and getattr(res, "returncode", 1) == 0:
+                    then()
+                self.refresh()
+            bg(lambda: users_helper(*args, password=password), done)
+
+        def set_autologin(self, combo):
+            who = combo.get_active_id() or "off"
+            if who == (autologin_user() or "off"):
+                return
+            self.run_helper(_("Automatic sign-in could not be changed"), "--autologin", who)
+
+        def switch_user(self):
+            env = dict(os.environ)
+            env.setdefault("XDG_SEAT_PATH", "/org/freedesktop/DisplayManager/Seat0")
+            try:
+                subprocess.Popen(["dm-tool", "switch-to-greeter"], env=env, start_new_session=True,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except OSError:
+                self.win.error(_("Could not switch to the login screen."))
+
+        def add_user(self):
+            d = Gtk.Dialog(title=_("Add a user"), transient_for=self.win, modal=True)
+            d.add_buttons(_("Cancel"), Gtk.ResponseType.CANCEL, _("Add"), Gtk.ResponseType.OK)
+            d.set_default_response(Gtk.ResponseType.OK)
+            d.set_default_size(420, -1)
+            box = d.get_content_area()
+            box.set_spacing(8)
+            box.set_border_width(14)
+            full = Gtk.Entry(placeholder_text=_("Full name, e.g. Anna Müller"), activates_default=True)
+            uname = Gtk.Entry(placeholder_text=_("User name"), activates_default=True)
+            pw, pw2 = password_entry(_("Password")), password_entry(_("Repeat the password"))
+            standard = Gtk.RadioButton.new_with_label(None, _("Standard user – uses the computer, changes own settings"))
+            admin = Gtk.RadioButton.new_with_label_from_widget(standard, _("Administrator – can install apps and change "
+                                                                         "settings for everyone"))
+            msg = label("")
+            taken = {u["name"] for u in self.users}
+            edited = {"name": False}
+            full.connect("changed", lambda e: edited["name"] or uname.set_text(suggest_username(e.get_text(), taken)))
+            uname.connect("key-press-event", lambda *_: edited.__setitem__("name", True) or False)
+            for w in (label(_("Name")), full, label(_("User name (for signing in, small letters)"), dim=True), uname,
+                      label(_("Password")), pw, pw2, label(_("Account type")), standard, admin, msg):
+                box.add(w)
+            d.show_all()
+            while d.run() == Gtk.ResponseType.OK:
+                name, user = full.get_text().strip(), uname.get_text().strip()
+                problem = (None if valid_fullname(name) else _("Please type a name (without : , =).")) or \
+                          (None if valid_username(user) else _("The user name may only have small letters, digits, "
+                                                             "- and _, and must start with a letter.")) or \
+                          (None if user not in taken else _('The user name {user} is taken already.').format(user=user)) or \
+                          (None if pw.get_text() else _("Please choose a password.")) or \
+                          (None if pw.get_text() == pw2.get_text() else _("The two passwords don't match."))
+                if problem:
+                    msg.set_markup(f"<b>{GLib.markup_escape_text(problem)}</b>")
+                    continue
+                # read everything BEFORE destroy(): a destroyed Gtk.Entry returns "" (#150)
+                password, kind = pw.get_text(), "admin" if admin.get_active() else "standard"
+                d.destroy()
+                self.run_helper(_("The account could not be created"), "--create", user, name, kind, password=password)
+                return
+            d.destroy()
+
+        def edit(self, u):
+            me = u["name"] == self.me
+            last_admin = u["admin"] and sum(x["admin"] for x in self.users) <= 1
+            d = Gtk.Dialog(title=u["full"], transient_for=self.win, modal=True)
+            d.add_buttons(_("Close"), Gtk.ResponseType.CLOSE)
+            d.set_default_size(440, -1)
+            box = d.get_content_area()
+            box.set_spacing(10)
+            box.set_border_width(14)
+
+            after = {}
+
+            def close_then(fn):
+                """the action runs once the dialog is closed (it may open its own dialog)"""
+                return lambda *_: (after.setdefault("fn", fn), d.response(Gtk.ResponseType.CLOSE))
+
+            head = Gtk.Box(spacing=12)
+            head.pack_start(self.avatar(u, 64), False, False, 0)
+            pics = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, valign=Gtk.Align.CENTER)
+            pics.pack_start(button(_("Choose a picture…"), close_then(lambda: self.choose_picture(u))), False, False, 0)
+            if user_picture(u):
+                pics.pack_start(button(_("Remove the picture"), close_then(lambda: self.set_picture(u, None))), False, False, 0)
+            head.pack_start(pics, False, False, 0)
+            box.add(head)
+
+            name = Gtk.Entry(text=u["full"], activates_default=False)
+            save = button(_("Save"), close_then(lambda: self.set_name(u, name.get_text().strip())))
+            row = Gtk.Box(spacing=8)
+            row.pack_start(name, True, True, 0)
+            row.pack_start(save, False, False, 0)
+            box.add(label(_("Full name")))
+            box.add(row)
+
+            kind = Gtk.ComboBoxText()
+            kind.append("admin", _("Administrator"))
+            kind.append("standard", _("Standard user"))
+            kind.set_active_id("admin" if u["admin"] else "standard")
+            kind.set_sensitive(not me and not last_admin)
+            kind.connect("changed", lambda c: close_then(lambda: self.run_helper(
+                _("The account type could not be changed"), "--admin", u["name"],
+                "on" if c.get_active_id() == "admin" else "off"))())
+            box.add(label(_("Account type")))
+            box.add(kind)
+            if me or last_admin:
+                box.add(label(_("You can't make your own account a standard user here.") if me else
+                              _("This is the only administrator – make another account an administrator first."), dim=True))
+
+            pwb = button(_("Change password…"), close_then(lambda: own_password_dialog(self.win) if me
+                                                         else self.set_password(u)))
+            pwb.set_halign(Gtk.Align.START)
+            box.add(pwb)
+            if not me:
+                delete = button(_("Delete this account…"), close_then(lambda: self.delete(u)), "destructive-action")
+                delete.set_halign(Gtk.Align.START)
+                delete.set_sensitive(not last_admin)
+                box.add(delete)
+            d.show_all()
+            d.run()
+            d.destroy()
+            if "fn" in after:
+                after["fn"]()
+
+        def set_name(self, u, full):
+            if full == u["full"] or not full:
+                return
+            if not valid_fullname(full):
+                return self.win.error(_("Please type a name without : , ="))
+            if u["name"] == self.me and accounts_set_own("SetRealName", full):
+                return self.refresh()
+            self.run_helper(_("The name could not be changed"), "--name", u["name"], full)
+
+        def choose_picture(self, u):
+            fc = Gtk.FileChooserDialog(title=_("Choose a picture"), transient_for=self.win,
+                                       action=Gtk.FileChooserAction.OPEN)
+            fc.add_buttons(_("Cancel"), Gtk.ResponseType.CANCEL, _("Choose"), Gtk.ResponseType.OK)
+            filt = Gtk.FileFilter()
+            filt.set_name(_("Pictures"))
+            for pattern in ("*.png", "*.jpg", "*.jpeg", "*.PNG", "*.JPG", "*.JPEG", "*.webp", "*.gif"):
+                filt.add_pattern(pattern)
+            fc.add_filter(filt)
+            pictures = Path(GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_PICTURES) or Path.home() / "Pictures")
+            if pictures.is_dir():
+                fc.set_current_folder(str(pictures))
+            ok = fc.run() == Gtk.ResponseType.OK
+            src = fc.get_filename()
+            fc.destroy()
+            if ok and src:
+                self.set_picture(u, src)
+
+        def set_picture(self, u, src):
+            import tempfile
+            if src is None:
+                if u["name"] == self.me and accounts_set_own("SetIconFile", ""):
+                    return self.refresh()
+                return self.run_helper(_("The picture could not be removed"), "--picture", u["name"], "none")
+            fd, tmp = tempfile.mkstemp(prefix="simpleos-picture-", suffix=".png")
+            os.close(fd)
+            if not square_picture(src, tmp):
+                os.unlink(tmp)
+                return self.win.error(_("This picture can't be used. Please choose a PNG or JPEG picture."))
+            if u["name"] == self.me and accounts_set_own("SetIconFile", tmp):
+                os.unlink(tmp)
+                return self.refresh()
+            self.run_helper(_("The picture could not be changed"), "--picture", u["name"], tmp,
+                            then=lambda: os.path.exists(tmp) and os.unlink(tmp))
+
+        def set_password(self, u):
+            d = Gtk.Dialog(title=_('New password for {name}').format(name=u['full']), transient_for=self.win, modal=True)
+            d.add_buttons(_("Cancel"), Gtk.ResponseType.CANCEL, _("Set password"), Gtk.ResponseType.OK)
+            d.set_default_response(Gtk.ResponseType.OK)
+            box = d.get_content_area()
+            box.set_spacing(8)
+            box.set_border_width(14)
+            pw, pw2 = password_entry(_("New password")), password_entry(_("Repeat the new password"))
+            msg = label("")
+            for w in (label(_('{name} signs in with this password from now on. Their keyring (passwords saved in the browser '
+                              'and apps) keeps the old password: they will be asked for it once, or can start a new keyring.').format(name=u['full']), wrap=True), pw, pw2, msg):
+                box.add(w)
+            d.show_all()
+            while d.run() == Gtk.ResponseType.OK:
+                if not pw.get_text() or pw.get_text() != pw2.get_text():
+                    msg.set_markup("<b>" + (_("Please type the password twice.") if not pw.get_text() else
+                                            _("The two passwords don't match.")) + "</b>")
+                    continue
+                password = pw.get_text()   # before destroy(): a destroyed Gtk.Entry returns "" (#150)
+                d.destroy()
+                self.run_helper(_("The password could not be changed"), "--password", u["name"], password=password)
+                return
+            d.destroy()
+
+        def delete(self, u):
+            d = Gtk.Dialog(title=_('Delete {name}?').format(name=u['full']), transient_for=self.win, modal=True)
+            d.add_buttons(_("Cancel"), Gtk.ResponseType.CANCEL, _("Delete"), Gtk.ResponseType.OK)
+            d.get_widget_for_response(Gtk.ResponseType.OK).get_style_context().add_class("destructive-action")
+            box = d.get_content_area()
+            box.set_spacing(8)
+            box.set_border_width(14)
+            keep = Gtk.RadioButton.new_with_label(None, _('Keep their files (in {folder} – only an administrator can open them)').format(folder=u['home']))
+            remove = Gtk.RadioButton.new_with_label_from_widget(keep, _("Delete their files too – this can't be undone"))
+            for w in (label(_('{name} can no longer sign in to this computer.').format(name=u['full'])), keep, remove):
+                box.add(w)
+            d.show_all()
+            ok = d.run() == Gtk.ResponseType.OK
+            gone = remove.get_active()
+            d.destroy()
+            if ok:
+                self.run_helper(_("The account could not be deleted"), "--delete", u["name"], "remove" if gone else "keep")
+
     class SystemPage(Page):
-        title = "System & Updates"
+        title = _("System & Updates")
 
         def refresh(self):
             self.clear()
             ver = os_version()
-            self.put(card([(f"Simple OS {ver}".strip(), "Based on Debian 13 “trixie”",
-                            button("What's new", lambda: spawn("simpleos-whats-new"))),
-                           ("Software Updates", "Simple OS, apps and security fixes",
-                            button("Open", lambda: spawn("simpleos-update"), "suggested-action"))]))
-            self.put(label("<b>Hardware &amp; Drivers</b>", markup=True))
+            self.put(card([(f"Simple OS {ver}".strip(), _("Based on Debian 13 “trixie”"),
+                            button(_("What's new"), lambda: spawn("simpleos-whats-new"))),
+                           (_("Software Updates"), _("Simple OS, apps and security fixes"),
+                            button(_("Open"), lambda: spawn("simpleos-update"), "suggested-action"))]))
+            self.put(label(_("<b>Hardware &amp; Drivers</b>"), markup=True))
             hw = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-            hw.pack_start(card([("Checking graphics, Wi-Fi and CPU…", None, Gtk.Spinner(active=True))]),
+            hw.pack_start(card([(_("Checking graphics, Wi-Fi and CPU…"), None, Gtk.Spinner(active=True))]),
                           False, False, 0)
             self.put(hw)
             bg(drivers_report, lambda rep: self.show_drivers(hw, rep))
-            self.put(label("<b>Help</b>", markup=True))
-            self.put(card([("Task Manager", "See what slows the computer down · Ctrl+Shift+Esc",
-                            button("Open", lambda: spawn("simpleos-taskmanager"))),
-                           ("Setup Wizard", "Run the first-start setup again (Wi-Fi, browser, apps)",
-                            button("Open", lambda: spawn("simpleos-welcome-wizard"))),
-                           ("Report a problem", "Saves details about this computer for a bug report",
-                            button("Report", lambda: spawn("simpleos-report")))]))
+            self.put(label("<b>" + _("Help") + "</b>", markup=True))
+            self.put(card([(_("Task Manager"), _("See what slows the computer down · Ctrl+Shift+Esc"),
+                            button(_("Open"), lambda: spawn("simpleos-taskmanager"))),
+                           (_("Setup Wizard"), _("Run the first-start setup again (Wi-Fi, browser, apps)"),
+                            button(_("Open"), lambda: spawn("simpleos-welcome-wizard"))),
+                           (_("Report a problem"), _("Saves details about this computer for a bug report"),
+                            button(_("Report"), lambda: spawn("simpleos-report")))]))
             self.show_all_now()
 
         def show_drivers(self, hw, rep):
             for c in hw.get_children():
                 hw.remove(c)
             if not isinstance(rep, dict):
-                hw.pack_start(card([("Hardware could not be checked", str(rep) or None, None)]), False, False, 0)
+                hw.pack_start(card([(_("Hardware could not be checked"), str(rep) or None, None)]), False, False, 0)
                 hw.show_all()
                 return
             rows = []
-            for g in rep.get("gpu") or [{"name": "No graphics card found", "status": ""}]:
-                rows.append((f"Graphics · {g['name']}", g["status"] or None, None))
-            for w in rep.get("wifi") or [{"name": "No Wi-Fi adapter found", "status": ""}]:
-                rows.append((f"Wi-Fi · {w['name']}", w["status"] or None, None))
+            for g in rep.get("gpu") or [{"name": _("No graphics card found"), "status": ""}]:
+                rows.append((_('Graphics · {name}').format(name=g['name']), g["status"] or None, None))
+            for w in rep.get("wifi") or [{"name": _("No Wi-Fi adapter found"), "status": ""}]:
+                rows.append((_('Wi-Fi · {name}').format(name=w['name']), w["status"] or None, None))
             cpu = rep.get("cpu") or {}
-            rows.append((f"CPU · {cpu.get('name', 'Unknown')}", cpu.get("status"), None))
+            rows.append((_('CPU · {name}').format(name=cpu.get('name', 'Unknown')), cpu.get("status"), None))
             todo = rep.get("recommended") or []
             if todo:
-                b = button("Install Recommended Drivers", lambda: spawn("simpleos-drivers", "--install"),
+                b = button(_("Install Recommended Drivers"), lambda: spawn("simpleos-drivers", "--install"),
                            "suggested-action")
-                rows.append((f"{len(todo)} package{'s' if len(todo) != 1 else ''} recommended",
+                rows.append((_("1 package recommended") if len(todo) == 1 else
+                             _("{count} packages recommended").format(count=len(todo)),
                              ", ".join(todo), b))
             else:
-                rows.append(("All recommended drivers are installed", None, None))
+                rows.append((_("All recommended drivers are installed"), None, None))
             hw.pack_start(card(rows), False, False, 0)
             for n in rep.get("notes") or []:
                 hw.pack_start(label(n, dim=True), False, False, 0)
@@ -2130,7 +2691,7 @@ def main(argv):
 
     class Window(Gtk.ApplicationWindow):
         def __init__(self, app):
-            super().__init__(application=app, title="Control Center")
+            super().__init__(application=app, title=_("Control Center"))
             ts = text_scale()
             w, h = int(900 * ts), int(680 * ts)
             try:   # never bigger than the screen (125 % on a 1366x768 laptop)
@@ -2144,7 +2705,7 @@ def main(argv):
             self.set_default_size(w, h)
             self.set_icon_name("preferences-system")
             self.set_position(Gtk.WindowPosition.CENTER)
-            hb = Gtk.HeaderBar(show_close_button=True, title="Control Center")
+            hb = Gtk.HeaderBar(show_close_button=True, title=_("Control Center"))
             self.set_titlebar(hb)
             pane = Gtk.Box()
             self.side = Gtk.ListBox()
@@ -2159,7 +2720,7 @@ def main(argv):
             self.pages = {}
             classes = {"system": SystemPage, "notifications": NotificationsPage, "keyboard": KeyboardPage,
                        "printers": PrintersPage, "apps": AppsPage, "datetime": DateTimePage, "storage": StoragePage,
-                       "security": SecurityPage, "language": LanguagePage,
+                       "security": SecurityPage, "language": LanguagePage, "users": UsersPage,
                        "sound": SoundPage, "display": DisplayPage, "wifi": WifiPage, "bluetooth": BluetoothPage,
                        "appearance": AppearancePage, "input": InputPage, "power": PowerPage}
             for key, title, icon in PAGES:
@@ -2201,14 +2762,14 @@ def main(argv):
             d.destroy()
 
         def ask_password(self, ssid):
-            d = Gtk.Dialog(title=f"Connect to {ssid}", transient_for=self, modal=True)
-            d.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Connect", Gtk.ResponseType.OK)
+            d = Gtk.Dialog(title=_('Connect to {ssid}').format(ssid=ssid), transient_for=self, modal=True)
+            d.add_buttons(_("Cancel"), Gtk.ResponseType.CANCEL, _("Connect"), Gtk.ResponseType.OK)
             d.set_default_response(Gtk.ResponseType.OK)
-            entry = Gtk.Entry(visibility=False, activates_default=True, placeholder_text="Wi-Fi password")
+            entry = Gtk.Entry(visibility=False, activates_default=True, placeholder_text=_("Wi-Fi password"))
             box = d.get_content_area()
             box.set_spacing(8)
             box.set_border_width(12)
-            box.add(label(f"Enter the password for “{ssid}”."))
+            box.add(label(_('Enter the password for “{ssid}”.').format(ssid=ssid)))
             box.add(entry)
             d.show_all()
             ok = d.run() == Gtk.ResponseType.OK

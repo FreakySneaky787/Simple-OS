@@ -10,6 +10,8 @@
 set -u
 export DEBIAN_FRONTEND=noninteractive
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
+# Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
+if [ -r /usr/local/lib/simpleos/i18n.sh ]; then . /usr/local/lib/simpleos/i18n.sh; else _t() { printf '%s' "$1"; }; fi
 [ $# -gt 0 ] || { echo "Usage: $0 --apt-cache|--autoremove|--flatpak|--journal …" >&2; exit 2; }
 for a in "$@"; do
     case "$a" in --apt-cache|--autoremove|--flatpak|--journal) ;; *) echo "unknown: $a" >&2; exit 2 ;; esac
@@ -19,18 +21,18 @@ failed=0
 for a in "$@"; do
     case "$a" in
         --apt-cache)
-            echo "STEP: Removing downloaded package files"
+            echo "STEP: $(_t 'Removing downloaded package files')"
             apt-get -o DPkg::Lock::Timeout=120 clean || failed=1 ;;
         --autoremove)
-            echo "STEP: Removing packages that are no longer needed"
+            echo "STEP: $(_t 'Removing packages that are no longer needed')"
             apt-get -y -o DPkg::Lock::Timeout=120 autoremove || failed=1 ;;
         --flatpak)
             if command -v flatpak >/dev/null; then
-                echo "STEP: Removing unused Flatpak runtimes"
+                echo "STEP: $(_t 'Removing unused Flatpak runtimes')"
                 flatpak uninstall --system --unused -y --noninteractive || failed=1
             fi ;;
         --journal)
-            echo "STEP: Removing system logs older than 7 days"
+            echo "STEP: $(_t 'Removing system logs older than 7 days')"
             journalctl --vacuum-time=7d || failed=1 ;;
     esac
 done

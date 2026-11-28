@@ -9,7 +9,8 @@ Why not xdg-open/$BROWSER: hardened privacy browsers (Mullvad Browser as a Flatp
   - stores nothing (ephemeral profile), JavaScript is off (the page needs none),
   - opens external links (https:, mailto:) in the default browser – that is what it is for.
 
-  welcome-viewer [PAGE]      open the window (exit 0 after closing)
+  welcome-viewer [PAGE]      open the window (exit 0 after closing); PAGE: a page in /usr/share/simpleos, e.g.
+                             windows-programs.html (#85) – its <title> becomes the window title
   welcome-viewer --probe     check without a screen whether window and page are available (exit 0/3);
                              also reports "live banner: on|off"
 Live session (simpleos-live --check): at the very top a mauve banner "You are running Simple OS in Live Mode!" with
@@ -19,6 +20,10 @@ Exit 3 = WebKit/GTK not available or no screen -> simpleos-welcome takes the nex
 import os
 import subprocess
 import sys
+import gettext
+
+# Translations (#43): the system language from /usr/share/locale/<lang>/LC_MESSAGES/simpleos.mo, else English
+_ = gettext.translation("simpleos", fallback=True).gettext
 
 PAGE_DIR = "/usr/share/simpleos"
 DEFAULT_PAGE = PAGE_DIR + "/welcome.html"
@@ -33,7 +38,41 @@ os.environ.setdefault("WEBKIT_DISABLE_COMPOSITING_MODE", "1")
 os.environ.setdefault("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
 
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
-page = os.path.realpath(args[0] if args else DEFAULT_PAGE)
+page = args[0] if args else DEFAULT_PAGE
+if "/" not in page:            # a bare name ("windows-programs.html") is a page of /usr/share/simpleos
+    page = os.path.join(PAGE_DIR, page)
+page = os.path.realpath(page)
+
+
+def system_languages():
+    """['de_DE', 'de', …] from LANGUAGE/LC_ALL/LC_MESSAGES/LANG (the first one that is set)"""
+    for var in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):
+        value = os.environ.get(var, "")
+        if value:
+            out = []
+            for item in value.split(":"):
+                code = item.split(".")[0].split("@")[0]
+                for c in (code, code.split("_")[0]):
+                    if c and c not in out:
+                        out.append(c)
+            return out
+    return []
+
+
+def localized(path):
+    """welcome.html -> welcome.de.html in a German system, when that page exists (#43); English otherwise"""
+    base, ext = os.path.splitext(path)
+    for code in system_languages():
+        if code in ("C", "POSIX", "en") or code.startswith("en_"):
+            return path
+        candidate = f"{base}.{code}{ext}"
+        if os.path.isfile(candidate):
+            return candidate
+    return path
+
+
+WELCOME = page == DEFAULT_PAGE   # the live banner and the window title belong to the welcome page
+page = localized(page)
 
 try:
     import gi
@@ -48,8 +87,8 @@ if not os.path.isfile(page) or not page.startswith(PAGE_DIR + "/"):
     print(f"welcome-viewer: page not found: {page}", file=sys.stderr)
     sys.exit(UNAVAILABLE)
 
-LIVE_TEXT = "You are running Simple OS in Live Mode! Try out everything safely or install it to your system."
-INSTALL_LABEL = "Install Simple OS Now"
+LIVE_TEXT = _("You are running Simple OS in Live Mode! Try out everything safely or install it to your system.")
+INSTALL_LABEL = _("Install Simple OS Now")
 BANNER_CSS = b"""
 .live-banner { background-color: #cba6f7; padding: 14px 20px; }
 .live-banner label { color: #1e1e2e; }
@@ -88,7 +127,7 @@ def live_banner():
     box = Gtk.Box(spacing=18)
     box.get_style_context().add_class("live-banner")
     texts = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, valign=Gtk.Align.CENTER)
-    title = Gtk.Label(label="Live Mode", xalign=0)
+    title = Gtk.Label(label=_("Live Mode"), xalign=0)
     title.get_style_context().add_class("live-title")
     text = Gtk.Label(label=LIVE_TEXT, xalign=0, wrap=True)
     texts.pack_start(title, False, False, 0)
@@ -136,6 +175,22 @@ def on_decide_policy(_view, decision, decision_type):
     return True
 
 
+def window_title(path):
+    """The welcome page: "Welcome to Simple OS"; other pages (help, #85): their <title>"""
+    if WELCOME:
+        return _("Welcome to Simple OS")
+    try:
+        import html
+        import re
+        with open(path, encoding="utf-8") as f:
+            m = re.search(r"<title>(.*?)</title>", f.read(4096), re.S)
+        if m and m.group(1).strip():
+            return html.unescape(m.group(1).strip())
+    except OSError:
+        pass
+    return _("Simple OS")
+
+
 def main():
     settings = Gtk.Settings.get_default()
     settings.set_property("gtk-application-prefer-dark-theme", True)
@@ -151,7 +206,7 @@ def main():
     view.connect("decide-policy", on_decide_policy)
     view.connect("context-menu", lambda *_: True)  # no "Reload/Inspect" menu
 
-    window = Gtk.Window(title="Welcome to Simple OS")
+    window = Gtk.Window(title=window_title(page))
     # 900x760 is taller than a 1366x768 laptop screen (minus taskbar and title bar): fit the window to the screen
     width, height = 900, 760
     try:
@@ -164,7 +219,8 @@ def main():
     window.set_default_size(max(width, 480), max(height, 360))
     window.set_position(Gtk.WindowPosition.CENTER)
     window.set_icon_name("user-home")
-    banner = live_banner()
+    # The live banner ("Install Simple OS Now") belongs to the welcome page, not to help pages like windows-programs.html
+    banner = live_banner() if WELCOME else None
     if banner:
         layout = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         layout.pack_start(banner, False, False, 0)

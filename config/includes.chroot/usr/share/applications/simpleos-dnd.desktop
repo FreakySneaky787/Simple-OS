@@ -1,7 +1,11 @@
 [Desktop Entry]
 Type=Application
 Name=Do Not Disturb
+Name[de]=Nicht stören
+Name[fr]=Ne pas déranger
 Comment=Pause notifications until you turn it off again
+Comment[de]=Benachrichtigungen pausieren, bis du es wieder ausschaltest
+Comment[fr]=Suspendre les notifications jusqu’à ce que vous le désactiviez
 Exec=/usr/local/bin/simpleos-dnd --toggle
 Icon=notification-disabled
 Categories=Settings;

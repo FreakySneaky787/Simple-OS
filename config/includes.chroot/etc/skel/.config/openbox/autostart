@@ -7,13 +7,11 @@
 if systemd-detect-virt -q --vm; then
     xrandr -s 1920x1080 2>/dev/null || xrandr --auto 2>/dev/null || true
 fi
-# Standard folders (Documents, Downloads, Pictures … come with ~/.config/user-dirs.dirs from /etc/skel): fill the
-# sidebar of Thunar and file dialogs with them once at first login – needs the real home path, so not already
-# in /etc/skel. No xdg-user-dirs-update: it does not recreate deleted folders but points them to ~ instead
-mkdir -p ~/.config/gtk-3.0
-[ -e ~/.config/gtk-3.0/bookmarks ] || for d in Documents Downloads Pictures Music Videos; do
-    echo "file://$HOME/$d $d"
-done > ~/.config/gtk-3.0/bookmarks
+# Standard folders (Documents, Downloads, Pictures … come with ~/.config/user-dirs.dirs from /etc/skel): at the first
+# sign-in they get the account's language (Dokumente, Bilder …, #157) and fill the sidebar of Thunar and the file
+# dialogs – needs the real home path, so not already in /etc/skel. No xdg-user-dirs-update: it does not recreate
+# deleted folders but points them to ~ instead
+/usr/local/lib/simpleos/home-folders
 # Services that D-Bus starts on request (e.g. simpleos-screensaver, the "keep the screen on during a video" service
 # for computers without a battery) need to know the screen; the session bus does not get it by itself
 dbus-update-activation-environment --systemd DISPLAY XAUTHORITY 2>/dev/null
