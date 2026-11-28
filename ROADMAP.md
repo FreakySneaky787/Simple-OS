@@ -30,6 +30,11 @@ Dates are a target, not a promise (see the first paragraph). Nothing is publishe
 ## 1.2.1 – bugfix release after 1.2
 
 - Restart: a Firefox window flashes up before the computer restarts (#167).
+- **From the code review of 1.2 (2026-11-28), done on `next`:** check boxes and switches lose their image in open
+  apps after a light/dark switch (#169); the calculator with "round(1.125,2)" / "max(1,5; 2)" in German and French
+  (#170); camera photos go to a new "Kamera" folder after the update (#171); a signed-out account can't be deleted
+  until a restart (#172); no sidebar bookmarks with an incomplete user-dirs.dirs (#173); about 20 words of the taskbar
+  menus stay English (#174); small things (#175).
 - What comes in after 1.2 (milestone 1.2.1); hardware tests (#49).
 
 ## After 1.2 – bugfixes only, the port starts slowly

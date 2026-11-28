@@ -1,4 +1,12 @@
-# Simple OS 1.2
+# Simple OS 1.2.1
+## Fixed in 1.2.1
+- **Check boxes and switches keep their look** in open windows after you switch between light and dark.
+- **The calculator** in the search understands "round(1.125,2)" and "max(1,5; 2)" in German and French too.
+- **Your camera photos stay together.** After the update to 1.2, German and French systems saved new photos in a
+  new folder; they go into your existing camera folder again.
+- **Deleting an account works right after that person signed out** – no restart needed any more.
+- **More of Simple OS in your language:** the Wi-Fi signal, the taskbar setup, "Muted" and the report message.
+- **"Open in the Software Center"** shows the right app also when the Software Center is already open.
 ## New in 1.2
 - **Simple OS speaks German and French.** Every Simple OS window, menu and message follows the language you pick in
   Control Center → Language & Region – German and French for now, other languages fall back to English.

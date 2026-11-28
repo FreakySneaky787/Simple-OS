@@ -1,4 +1,13 @@
-# Simple OS 1.2
+# Simple OS 1.2.1
+## Behoben in 1.2.1
+- **Kontrollkästchen und Schalter behalten ihr Aussehen** in offenen Fenstern, wenn du zwischen hell und dunkel wechselst.
+- **Der Rechner** in der Suche versteht auch „round(1.125,2)“ und „max(1,5; 2)“.
+- **Deine Kamerafotos bleiben beisammen.** Nach dem Update auf 1.2 landeten neue Fotos in einem neuen Ordner; jetzt
+  wieder in deinem bisherigen Kamera-Ordner.
+- **Ein Konto lässt sich gleich nach dem Abmelden der Person löschen** – ohne Neustart.
+- **Mehr Simple OS auf Deutsch:** die WLAN-Signalstärke, die Taskleisten-Einstellungen, „Stumm“ und die Meldung beim
+  Problembericht.
+- **„Im Software-Center öffnen“** zeigt die richtige App auch, wenn das Software-Center schon offen ist.
 ## Neu in 1.2
 - **Simple OS spricht Deutsch und Französisch.** Alle Fenster, Menüs und Meldungen von Simple OS folgen der Sprache,
   die du unter Einstellungen → Sprache & Region wählst.

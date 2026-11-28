@@ -1,4 +1,14 @@
-# Simple OS 1.2
+# Simple OS 1.2.1
+## Corrigé dans 1.2.1
+- **Les cases à cocher et les interrupteurs gardent leur aspect** dans les fenêtres ouvertes quand vous passez du
+  mode clair au mode sombre.
+- **La calculatrice** de la recherche comprend aussi « round(1.125,2) » et « max(1,5; 2) ».
+- **Vos photos restent ensemble.** Après la mise à jour vers 1.2, les nouvelles photos allaient dans un nouveau
+  dossier ; elles vont de nouveau dans votre dossier de l’appareil photo.
+- **Supprimer un compte fonctionne juste après la déconnexion** de la personne – sans redémarrer.
+- **Plus de Simple OS en français :** la force du signal Wi-Fi, les réglages de la barre des tâches, « Son coupé » et
+  le message du rapport de problème.
+- **« Ouvrir dans le Centre de logiciels »** montre la bonne application même si le Centre de logiciels est déjà ouvert.
 ## Nouveau dans 1.2
 - **Simple OS parle français et allemand.** Toutes les fenêtres, menus et messages de Simple OS suivent la langue
   choisie dans Centre de contrôle → Langue et région.
