@@ -23,14 +23,16 @@ on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook
 | Release | When | Condition |
 |---|---|---|
 | **1.2** (feature release) | **released 2026-11-28** | the last feature release of 1.x (`RELEASE_NOTES.md`) |
-| **1.2.1** (bugfix release) | about 2–3 weeks after 1.2 | what comes in after 1.2 (milestone 1.2.1) |
+| **1.2.1** (security hotfix) | right after 1.2 | the two security fixes of the code review after 1.2 (`RELEASE_NOTES.md`) |
+| **1.2.2** (bugfix release) | about 2–3 weeks after 1.2 | the other fixes of the code review and what comes in after 1.2 (milestone 1.2.2) |
 
 Dates are a target, not a promise (see the first paragraph). Nothing is published untested on hardware.
 
-## 1.2.1 – bugfix release after 1.2
+## 1.2.2 – bugfix release after 1.2
 
+- The other findings of the code review after 1.2 (#169–#175 and the update window), on the branch `next`.
 - Restart: a Firefox window flashes up before the computer restarts (#167).
-- What comes in after 1.2 (milestone 1.2.1); hardware tests (#49).
+- What comes in after 1.2 (milestone 1.2.2); hardware tests (#49).
 
 ## After 1.2 – bugfixes only, the port starts slowly
 

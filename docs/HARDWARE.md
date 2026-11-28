@@ -13,7 +13,7 @@ Last updated: 26 November 2026 (Simple OS 1.1.2).
 
 | Computer | Firmware | Version | Install | Wi-Fi | Sound | Graphics | Brightness | Suspend | External monitor |
 |---|---|---|---|---|---|---|---|---|---|
-| Lenovo ThinkPad E16 Gen 3 (21TF) – Intel Core 5 210H, Intel graphics, Intel Wi-Fi | UEFI, Secure Boot off | 1.0.7, 1.1, 1.1.1, 1.1.2 | Yes | Partly | Yes | Yes | Yes | Yes | Yes |
+| Lenovo ThinkPad E16 Gen 3 (21TF) – Intel Core 5 210H, Intel graphics, Intel Wi-Fi | UEFI, Secure Boot off | 1.0.7, 1.1, 1.1.1, 1.1.2, 1.2 | Yes | Partly | Yes | Yes | Yes | Yes | Yes |
 | Self-built desktop – AMD Ryzen 5 5600X, NVIDIA GeForce RTX 3050 (8 GB), 16 GB DDR4, Wi-Fi | UEFI, Secure Boot off, next to Windows | 1.1.1 | Yes | Yes | Yes | Yes | – | Yes | Yes |
 | Acer Predator – gaming desktop, Intel Core i7 (13th gen), NVIDIA GeForce RTX 4070 Super, 32 GB RAM | UEFI, Secure Boot off, next to Windows | 1.0.7, 1.1.2 | Yes | Yes | Yes | – | Yes | Yes | Yes |
 | Samsung Galaxy Book 4 – Intel Core 7 150U, 16 GB RAM | UEFI, Secure Boot on, whole disk | 1.1.2 | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
@@ -23,7 +23,9 @@ Last updated: 26 November 2026 (Simple OS 1.1.2).
 **ThinkPad E16 Gen 3:** in daily use since Simple OS 1.0. Wi-Fi: with one router the 5 GHz connection (a wide 160 MHz
 channel) was slow; setting the network to 2.4 GHz in Control Center → Wi-Fi fixed it. Bluetooth headphones, keyboards
 and phones pair. A monitor plugged in later turns on by itself. Suspend and waking up were checked with 1.0.7. 1.1.1 was installed fresh on it before its
-release: menus stay open with a firm touchpad click, and the bigger window buttons are easy to hit. 1.1.2 was checked on it before its release too (menus, search, sound menu). The power
+release: menus stay open with a firm touchpad click, and the bigger window buttons are easy to hit. 1.1.2 was checked on it before its release too (menus, search, sound menu). 1.2 was
+installed on an external SSD (Samsung T7) from it before its release: search (#144), signing in after "Switch user" (#163)
+and a Windows program with SOS Bridge work. The power
 button has to be held for about a second – the firmware ignores a quick tap.
 
 **Acer Predator (gaming desktop):** installed next to Windows with 1.0.7 – installing, Wi-Fi, sound, suspend and

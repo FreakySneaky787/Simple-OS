@@ -81,7 +81,8 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
     copy of the Openbox theme with the bigger buttons). 1.1.2: `user/140-menu-highlight` (the row under the mouse in
     the account's accent color). 1.2: `110-stray-home` (the image's /home/aaron), `user/150-menu-lang` (the menu in the
     system language), `120-bottles-games` (Bottles may not create ~/Games/umu, #154), `user/160-gtk-accent` (light
-    mode = Arc-Lighter and the accent in GTK apps for accounts that chose them, #158). 2.0: `user/200-rigi-peach-accent`
+    mode = Arc-Lighter and the accent in GTK apps for accounts that chose them, #158). 1.2.1: `130-lock-vt-restart`
+    (asks for a restart: only a newly started X server reads the setting that stops Ctrl+Alt+F7 at the lock screen). 2.0: `user/200-rigi-peach-accent`
     (every account from 1.x moves to the peach accent: taskbar, Rofi, Openbox copy and theme state together).
   - **Files the system changes itself:** tools never write into package files under `/etc/skel` (or other conffiles)
     for everyday settings – a changed conffile is kept by dpkg and the edition tool forever. Per-account changes go
@@ -113,7 +114,7 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
 - **`main` is the published edition, pushed with a release.** Between releases nothing new goes to `main` on GitHub,
   so it always matches what installed systems run. The release tags (`v1.0.3` …) always match exactly what was
   published. Release day: `git push`, then build, test, `sign`, `publish`.
-- **`next` is the branch for the next release** – at the moment the features for **1.2**.
+- **`next` is the branch for the next release** – at the moment the fixes for **1.2.2**.
   It is pushed as the work goes on; on release day `next` is merged into `main` and released from there.
   Details: [`docs/MAINTAINING.md`](MAINTAINING.md#7-branches).
 - **Website** (freakysneaky787.github.io, its own repository): updated after every release – version, download, roadmap.

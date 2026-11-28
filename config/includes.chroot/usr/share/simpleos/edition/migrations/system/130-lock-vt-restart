@@ -1,0 +1,19 @@
+#!/bin/sh
+# Simple OS 1.2.1 – ask for a restart so the lock screen can't be left with Ctrl+Alt+F7 (runs once, as root, from the
+# postinst of the package simpleos via "edition --system").
+# /etc/X11/xorg.conf.d/50-simpleos-no-vt-switch.conf turns VT switching off, but an X server reads it only when it
+# starts: until the next restart, the session that is running keeps the hole. Restarting X here would end everybody's
+# session in the middle of the update, so this only marks a restart as needed; Software Updates then offers it.
+# No X server running (an update without a desktop): nothing to do. Never fails (exit 0).
+# Tests: SIMPLEOS_XORG_RUNNING (1 = an X server runs, 0 = none), SIMPLEOS_REBOOT_FLAG (instead of /var/run/reboot-required).
+FLAG=${SIMPLEOS_REBOOT_FLAG:-/var/run/reboot-required}
+
+if [ -n "${SIMPLEOS_XORG_RUNNING+x}" ]; then
+    [ "$SIMPLEOS_XORG_RUNNING" = 1 ] || exit 0
+else
+    pgrep -x Xorg >/dev/null 2>&1 || exit 0
+fi
+: > "$FLAG" 2>/dev/null
+printf 'simpleos\n' >> "$FLAG.pkgs" 2>/dev/null
+echo "130-lock-vt-restart: an X server runs without the VT switch lock – restart needed"
+exit 0
