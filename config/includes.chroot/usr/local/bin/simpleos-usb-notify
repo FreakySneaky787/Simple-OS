@@ -4,7 +4,10 @@
 #   simpleos-usb-notify <event> <mount_path> <id_label> <drive_label>
 #   device_mounted   -> "USB drive is ready" with the buttons "Open" (a click on the notification is enough) -> file manager
 #                       and "Safely remove" -> unmount + power off the drive (udiskie-umount --detach)
-#   device_unmounted -> "can be removed safely" (only for a drive announced above)
+#                       The notification stays until it is clicked or closed (#159: after 8 seconds a late click did
+#                       nothing); "can be removed safely" takes its place (same dunst stack tag)
+#   device_unmounted -> "can be removed safely" (only for a drive announced above); gvfs' own "Device can be
+#                       removed" (Thunar's eject) is dropped by a dunst rule (#161, dunstrc)
 #   only mounts below /media/<user> (udiskie's own) of removable drives; the installer's, root's (fwupd) or
 #   other programs' mounts and internal disks are not announced
 #   job_failed       -> a clear error message
@@ -26,7 +29,7 @@ name=${label:-${drive:-USB drive}}
 open_files() {
     if command -v thunar >/dev/null; then exec thunar "$1"; fi
     if command -v xdg-open >/dev/null; then exec xdg-open "$1"; fi
-    sos_notify "Your files are in $1"
+    sos_notify "$(printf "$(_t 'Your files are in %s')" "$1")"
     exit 0
 }
 
@@ -39,8 +42,11 @@ eject() {
         dev=$(findmnt -n -o SOURCE --target "$1" 2>/dev/null)
         [ -n "$dev" ] && udisksctl unmount -b "$dev" >&2 2>&1 && { udisksctl power-off -b "$dev" >&2 2>&1; return 0; }
     fi
-    sos_notify "\"$name\" is still in use. Close all files and windows from it, then try again." critical
+    sos_notify "$(printf "$(_t '“%s” is still in use. Close all files and windows from it, then try again.')" "$name")" critical
 }
+
+# dunst stack tag of a drive: its notifications replace each other
+tag() { printf 'simpleos-usb-%s' "$1" | tr -c 'A-Za-z0-9_-' '_'; }
 
 # Drives this script announced as ready (one name per line): only those get "can be removed safely" later
 SEEN=${XDG_RUNTIME_DIR:-$SOS_LOG_DIR}/simpleos-usb-notify.mounted
@@ -68,8 +74,10 @@ case "$event" in
         printf '%s\n%s\n' "$seen" "$name" | grep . > "$SEEN" 2>/dev/null
         sos_log "ask: $name mounted at $path"
         # yes/default = Open (a click on the notification itself), eject = Safely remove; waits for the click
-        answer=$(notify-send -c x-simpleos -a "$SOS_TITLE" -i "$SOS_ICON" -A "yes=Open" -A "eject=Safely remove" \
-                     -A "default=Open" "\"$name\" is ready" "Open it in the file manager or remove it safely." 2>/dev/null)
+        answer=$(notify-send -c x-simpleos -a "$SOS_TITLE" -i "$SOS_ICON" -t 0 -h "string:x-dunst-stack-tag:$(tag "$name")" \
+                     -A "yes=$(_t 'Open')" \
+                     -A "eject=$(_t 'Safely remove')" -A "default=$(_t 'Open')" "$(printf "$(_t '“%s” is ready')" "$name")" \
+                     "$(_t 'Open it in the file manager or remove it safely.')" 2>/dev/null)
         case "$answer" in
             yes|default) open_files "$path" ;;
             eject)       eject "$path" ;;
@@ -79,8 +87,12 @@ case "$event" in
         grep -qxF "$name" "$SEEN" 2>/dev/null || { sos_log "ignored: $name unmounted (not announced)"; exit 0; }
         seen=$(grep -vxF "$name" "$SEEN" 2>/dev/null)
         printf '%s\n' "$seen" | grep . > "$SEEN" 2>/dev/null
-        sos_notify "\"$name\" can now be removed safely." ;;
+        # replaces the "is ready" notification if it is still open (#159)
+        notify-send -c x-simpleos -a "$SOS_TITLE" -i "$SOS_ICON" -h "string:x-dunst-stack-tag:$(tag "$name")" \
+            "$SOS_TITLE" "$(printf "$(_t '“%s” can now be removed safely.')" "$name")" 2>/dev/null ||
+            sos_notify "$(printf "$(_t '“%s” can now be removed safely.')" "$name")"
+        sos_log "removed: $name" ;;
     job_failed)
-        sos_notify "\"$name\" could not be opened. It may be damaged or use a format Simple OS can't read." critical ;;
+        sos_notify "$(printf "$(_t "“%s” could not be opened. It may be damaged or use a format Simple OS can't read.")" "$name")" critical ;;
 esac
 exit 0

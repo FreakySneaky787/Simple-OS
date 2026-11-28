@@ -3,6 +3,8 @@
 #   simpleos-browser-select                  selection via Rofi
 #   simpleos-browser-select --set <id>       set/install directly (e.g. chromium.desktop; used by the Setup Wizard)
 # List: name<TAB>desktop ID<TAB>source (apt:<package> | flatpak:<app-id> | empty = selectable only if installed)
+# Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
+if [ -r /usr/local/lib/simpleos/i18n.sh ]; then . /usr/local/lib/simpleos/i18n.sh; else _t() { printf '%s' "$1"; }; fi
 list=$(mktemp)
 trap 'rm -f "$list"' EXIT
 TAB=$(printf '\t')
@@ -46,14 +48,14 @@ if [ "$1" = "--set" ]; then
 else
 idx=$( { while IFS=$TAB read -r name id src; do
         if ! installed "$id"; then
-            echo "$name   (not installed – select to install)"
+            printf "$(_t '%s   (not installed – select to install)')\n" "$name"
         elif [ "$id" = "$current" ]; then
-            echo "$name   (current)"
+            printf "$(_t '%s   (current)')\n" "$name"
         else
             echo "$name"
         fi
-    done < "$list"; echo "Find more browsers in the Software Store ..."; } |
-    SOS_NAME=simpleos-browser-select SOS_TITLE="Browser Selector" "$rofi_cmd" -dmenu -i -no-custom -format i -p "Browser" -mesg "Choose your default web browser" \
+    done < "$list"; _t "Find more browsers in the Software Store ..."; echo; } |
+    SOS_NAME=simpleos-browser-select SOS_TITLE="$(_t 'Browser Selector')" "$rofi_cmd" -dmenu -i -no-custom -format i -p "$(_t 'Browser')" -mesg "$(_t 'Choose your default web browser')" \
         -theme-str 'window { width: 520px; } listview { lines: 7; } element-icon { enabled: false; }')
 case "$idx" in ''|*[!0-9]*) exit 0 ;; esac
 [ "$idx" -ge "$count" ] && exec simpleos-software
@@ -80,11 +82,11 @@ if ! installed "$id"; then
     PROGRESS=/usr/local/bin/simpleos-progress
     ppid=
     if [ -x "$PROGRESS" ]; then
-        "$PROGRESS" --follow "$feed" --title "Installing $name" --done "$name installed" --app "Browser Selector" \
+        "$PROGRESS" --follow "$feed" --title "$(printf "$(_t 'Installing %s')" "$name")" --done "$(printf "$(_t '%s installed')" "$name")" --app "$(_t 'Browser Selector')" \
             --icon-name web-browser --pid $$ 2>>"$log" &
         ppid=$!
     else
-        notify-send -i web-browser "Browser Selector" "Installing $name – this can take a few minutes." 2>/dev/null
+        notify-send -i web-browser "$(_t 'Browser Selector')" "$(printf "$(_t 'Installing %s – this can take a few minutes.')" "$name")" 2>/dev/null
     fi
     $cmd </dev/null >>"$feed" 2>>"$log"
     rc=$?
@@ -92,10 +94,10 @@ if ! installed "$id"; then
     [ -n "$ppid" ] && wait "$ppid" 2>/dev/null
     if ! installed "$id"; then
         if [ "$rc" -eq 126 ]; then
-            notify-send -i dialog-information "Browser Selector" "No password entered – $name was not installed." 2>/dev/null
+            notify-send -i dialog-information "$(_t 'Browser Selector')" "$(printf "$(_t 'No password entered – %s was not installed.')" "$name")" 2>/dev/null
         else
-            notify-send -u critical -i dialog-error "Browser Selector" \
-                "$name could not be installed. Details: ~/.cache/simpleos-browser-select.log" 2>/dev/null
+            notify-send -u critical -i dialog-error "$(_t 'Browser Selector')" \
+                "$(printf "$(_t '%s could not be installed. Details: ~/.cache/simpleos-browser-select.log')" "$name")" 2>/dev/null
         fi
         exit 1
     fi
@@ -112,4 +114,4 @@ for mime in x-scheme-handler/http x-scheme-handler/https text/html; do
     sed -i "\|^$mime=|d" "$user_defaults"
     echo "$mime=$id" >> "$user_defaults"
 done
-notify-send -i web-browser "Browser Selector" "$name is now your default browser."
+notify-send -i web-browser "$(_t 'Browser Selector')" "$(printf "$(_t '%s is now your default browser.')" "$name")"

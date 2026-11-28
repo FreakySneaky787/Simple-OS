@@ -9,6 +9,16 @@ SOS_ICON=${SOS_ICON:-dialog-information}
 SOS_NL='
 '
 
+# Translations (#43): _t "English text" in the system language – see i18n.sh
+if [ -r "${SIMPLEOS_I18N:-/usr/local/lib/simpleos/i18n.sh}" ]; then
+    . "${SIMPLEOS_I18N:-/usr/local/lib/simpleos/i18n.sh}"
+else
+    _t() { printf '%s' "$1"; }
+fi
+# The tool's name in notifications and window titles (SOS_TITLE=Power …; the texts are in config/i18n/extra.txt)
+SOS_TITLE=$(_t "$SOS_TITLE")
+[ -n "${SOS_PROMPT:-}" ] && SOS_PROMPT=$(_t "$SOS_PROMPT")
+
 # Error output into the log instead of nowhere (taskbar, Openbox and udiskie discard stderr)
 sos_log_init() {
     SOS_LOG_DIR=${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}

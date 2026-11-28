@@ -88,9 +88,9 @@ set_layout() {  # $1 "layout[:variant]"
     l=${1%%:*} v=
     case "$1" in *:*) v=${1#*:} ;; esac
     case "$l$v" in *[!a-z0-9_]*|'') echo "Invalid: $1" >&2; exit 2 ;; esac
-    known "$l" "$v" || { sos_notify "This keyboard layout is not available: $1" critical; return 0; }
+    known "$l" "$v" || { sos_notify "$(printf "$(_t 'This keyboard layout is not available: %s')" "$1")" critical; return 0; }
     if ! apply_x "$l" "$v"; then
-        sos_notify "The keyboard layout could not be changed." critical
+        sos_notify "$(_t 'The keyboard layout could not be changed.')" critical
         return 0
     fi
     sync_xtest
@@ -98,9 +98,9 @@ set_layout() {  # $1 "layout[:variant]"
     name=$(name_of "$l:$v"); name=${name:-$l${v:+ ($v)}}
     # system-wide (login screen, console): localectl -> /etc/default/keyboard; password via polkit
     if command -v localectl >/dev/null && localectl set-x11-keymap "$l" pc105 "$v" >&2 2>&1; then
-        sos_notify "Keyboard layout: $name" low
+        sos_notify "$(printf "$(_t 'Keyboard layout: %s')" "$name")" low
     else
-        sos_notify "Keyboard layout: $name – for your account (the login screen keeps its layout)." low
+        sos_notify "$(printf "$(_t 'Keyboard layout: %s – for your account (the login screen keeps its layout).')" "$name")" low
     fi
 }
 
@@ -124,13 +124,13 @@ I_KEY='\357\204\234' I_CHECK='\357\200\214'   # FontAwesome 4: keyboard U+F11C, 
 while IFS="$TAB" read -r key label; do
     [ -n "$key" ] || continue
     if [ "$key" = "$curkey" ]; then
-        sos_add "$(sos_fa "$I_CHECK")  $(sos_esc "$label")  $(sos_dim "Current")" "noop"
+        sos_add "$(sos_fa "$I_CHECK")  $(sos_esc "$label")  $(sos_dim "$(_t 'Current')")" "noop"
     else
         sos_add "$(sos_fa "$I_KEY")  $(sos_esc "$label")" "set$TAB$key"
     fi
 done <<EOF
 $LAYOUTS
 EOF
-sos_pick "<b>Keyboard layout</b>   $(sos_dim "applies right away")" 520
+sos_pick "<b>$(_t 'Keyboard layout')</b>   $(sos_dim "$(_t 'applies right away')")" 520
 [ "$action" = set ] && set_layout "$arg1"
 exit 0

@@ -1,7 +1,11 @@
 [Desktop Entry]
 Type=Application
 Name=Screenshot (Area)
+Name[de]=Bildschirmfoto (Bereich)
+Name[fr]=Capture d’écran (zone)
 Comment=Drag to capture part of the screen – saved to Pictures/Screenshots and copied
+Comment[de]=Ziehen, um einen Teil des Bildschirms aufzunehmen – gespeichert unter Pictures/Screenshots und kopiert
+Comment[fr]=Faites glisser pour capturer une partie de l’écran – enregistrée dans Pictures/Screenshots et copiée
 Exec=/usr/local/bin/simpleos-screenshot --area
 Icon=applets-screenshooter
 Categories=Utility;Graphics;

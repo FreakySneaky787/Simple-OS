@@ -1,0 +1,10 @@
+Simple OS – translations of the installer's slideshow (Calamares branding, #160)
+
+etc/calamares/branding/simpleos/show.qml uses qsTr(); Calamares loads the installer language's translation from
+etc/calamares/branding/simpleos/lang/calamares-simpleos_<lang>.qm (compiled Qt translations; the live session is
+English even when German was chosen in the installer, so without them the slideshow stayed English).
+The sources are the .ts files here. After changing a text in show.qml or a .ts file, compile them again with
+lrelease (Debian: qttools5-dev-tools), e.g. in a Debian container:
+    apt-get install qttools5-dev-tools && /usr/lib/qt5/bin/lrelease calamares-simpleos_de.ts
+and copy the .qm files to config/includes.chroot/etc/calamares/branding/simpleos/lang/.
+The <source> must be exactly the text qsTr() gets (the concatenated string, context "show" = the file name).

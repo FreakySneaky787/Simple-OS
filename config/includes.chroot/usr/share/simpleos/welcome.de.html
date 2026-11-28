@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simple OS</title>
+<!-- Simple OS – Willkommensseite auf Deutsch (#43; welcome-viewer wählt sie in einem deutschen System). Original: offline, own WebKit window (simpleos-welcome), Catppuccin Mocha.
+     Calm cards instead of a grid of boxes; no color fades, shadows or animations. -->
+<style>
+  :root {
+    --crust:#11111b; --mantle:#181825; --base:#1e1e2e; --surface0:#313244; --surface1:#45475a;
+    --overlay:#7f849c; --subtext:#bac2de; --text:#cdd6f4; --blue:#89b4fa; --green:#a6e3a1; --lavender:#b4befe;
+  }
+  * { box-sizing:border-box; }
+  html { background:var(--crust); }
+  body { margin:0; color:var(--text); font:16px/1.65 Inter, Cantarell, "Noto Sans", sans-serif;
+         -webkit-font-smoothing:antialiased; }
+  main { max-width:820px; margin:0 auto; padding:40px 24px 56px; }
+
+  header { display:flex; align-items:center; gap:18px; padding:4px 8px 28px; }
+  header img { width:52px; height:52px; }
+  h1 { margin:0; font-size:1.75rem; font-weight:700; letter-spacing:-.01em; line-height:1.2; }
+  header p { margin:3px 0 0; color:var(--subtext); }
+
+  section { background:var(--base); border:1px solid var(--surface0); border-radius:16px;
+            padding:24px 28px; margin-top:16px; }
+  h2 { margin:0 0 14px; font-size:1.15rem; font-weight:650; }
+  h3 { margin:20px 0 4px; font-size:1rem; font-weight:600; }
+  h3:first-of-type { margin-top:4px; }
+  p { margin:0 0 8px; }
+  .note { color:var(--subtext); font-size:.95rem; }
+  a { color:var(--blue); text-decoration:none; border-bottom:1px solid rgba(137,180,250,.35); }
+  a:focus-visible { outline:2px solid var(--blue); outline-offset:3px; border-radius:4px; }
+
+  /* Steps with round numbers */
+  ol { list-style:none; counter-reset:step; margin:0; padding:0; }
+  ol li { counter-increment:step; position:relative; padding:2px 0 14px 46px; }
+  ol li:last-child { padding-bottom:0; }
+  ol li::before { content:counter(step); position:absolute; left:0; top:1px; width:30px; height:30px;
+                  border-radius:50%; background:var(--surface0); color:var(--lavender);
+                  font-weight:700; font-size:.9rem; display:flex; align-items:center; justify-content:center; }
+
+  code { font:.88em "JetBrains Mono", monospace; color:var(--green); background:var(--mantle);
+         border:1px solid var(--surface0); border-radius:6px; padding:2px 7px; }
+  kbd { font:600 .82em Inter, Cantarell, sans-serif; color:var(--text); white-space:nowrap;
+        background:var(--surface0); border:1px solid var(--surface1); border-bottom-width:2px;
+        border-radius:6px; padding:2px 8px; }
+
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:10px 4px; border-bottom:1px solid var(--surface0); }
+  tr:last-child td { border-bottom:0; }
+  th { color:var(--overlay); font-weight:600; font-size:.88rem; }
+  td:first-child { width:42%; }
+
+  footer { margin-top:28px; padding:0 8px; color:var(--overlay); font-size:.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="logo.png" alt="SOS-Logo: ein Rettungsring">
+    <div>
+      <h1>Simple OS</h1>
+      <p>Keep it Simple. Debian 12 mit Openbox – hier ist alles, was du für den Anfang brauchst.</p>
+    </div>
+  </header>
+
+  <section id="start">
+    <h2>Schnellstart</h2>
+    <ol>
+      <li><strong>Mit dem WLAN verbinden.</strong> Klicke in der Taskleiste auf das Netzwerksymbol oder die IP-Adresse,
+          wähle dein Netzwerk und gib das Passwort ein. Kabelverbindungen funktionieren von selbst. Auch der
+          Einrichtungsassistent hilft dir bei der ersten Anmeldung dabei.
+          <br><span class="note">VPN, feste IP und andere Extras: Klicke mit rechts auf das Netzwerksymbol im Infobereich und wähle „Verbindungen bearbeiten“.</span></li>
+      <li><strong>Deine Software installieren.</strong> Im Einrichtungsassistenten wählst du einen Browser, eine
+          Office-Suite, optionale Komponenten (Windows-Programme, Spiele, Entwicklerwerkzeuge) und den dunklen oder
+          hellen Modus. Er öffnet sich einmal nach deiner ersten Anmeldung – wieder öffnen: Menü → Hilfe →
+          Einrichtungsassistent. Weitere Apps: Menü → Software-Center.</li>
+      <li><strong>Das war’s.</strong> Updates kümmern sich um sich selbst: Wenn welche bereit sind, erscheint eine
+          Nachricht – klicke darauf, um sie zu installieren. Du kannst auch jederzeit unter Menü → Werkzeuge →
+          Software-Aktualisierung nachsehen.</li>
+    </ol>
+  </section>
+
+  <section id="keys">
+    <h2>Tastenkürzel</h2>
+    <table>
+      <thead><tr><th scope="col">Tasten</th><th scope="col">Was sie tun</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>Super</kbd></td><td>Apps und Dateien suchen, rechnen (42*12)</td></tr>
+        <tr><td><kbd>Super</kbd>+<kbd>←</kbd> / <kbd>→</kbd></td><td>Ein Fenster an die linke oder rechte Hälfte andocken</td></tr>
+        <tr><td><kbd>Super</kbd>+<kbd>Enter</kbd></td><td>Ein Terminal öffnen</td></tr>
+        <tr><td><kbd>Super</kbd>+<kbd>B</kbd></td><td>Den Webbrowser öffnen</td></tr>
+        <tr><td><kbd>Super</kbd>+<kbd>E</kbd></td><td>Den Dateimanager öffnen</td></tr>
+        <tr><td><kbd>Super</kbd>+<kbd>H</kbd></td><td>Alle Tastenkürzel anzeigen</td></tr>
+        <tr><td><kbd>Super</kbd>+<kbd>I</kbd></td><td>Die Einstellungen öffnen</td></tr>
+        <tr><td><kbd>Super</kbd>+<kbd>X</kbd></td><td>Herunterfahren, neu starten oder abmelden</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="tools">
+    <h2>Systemwerkzeuge</h2>
+    <h3>Einstellungen</h3>
+    <p>Menü → Einstellungen oder <kbd>Super</kbd>+<kbd>I</kbd>: WLAN, Bluetooth, Ton, Bildschirm, Aussehen und mehr in
+       einem Fenster. Position, Größe und Stil der Taskleiste: Einstellungen → Aussehen &amp; Hintergrundbild →
+       Taskleiste.</p>
+    <h3>Netzwerkinfo</h3>
+    <p><kbd>Super</kbd>+<kbd>N</kbd> zeigt deine LAN-IP, das Gateway, den Rechnernamen, den VPN-Status und die öffentliche
+       IP.</p>
+    <h3>Für Fortgeschrittene</h3>
+    <p class="note">Alles oben geht mit Klicks – das Terminal (<kbd>Super</kbd>+<kbd>Enter</kbd>) brauchst du nicht.
+       Netzwerkinfo als Text: <code>simpleos-netinfo --text</code>. Tastenkürzel und Fensterregeln von Openbox stehen in
+       <code>~/.config/openbox/rc.xml</code>; deine Änderungen wendest du mit <code>openbox --reconfigure</code> an.</p>
+  </section>
+
+  <footer>Diese Seite öffnest du wieder mit einem Rechtsklick auf den Desktop → Hilfe → Willkommen bei Simple OS.</footer>
+</main>
+</body>
+</html>

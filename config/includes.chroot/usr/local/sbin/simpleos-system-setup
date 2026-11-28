@@ -1,7 +1,17 @@
 #!/bin/sh
 # Simple OS – system changes of the Setup Wizard (runs as root, called via pkexec with a GUI password dialog)
 #   pkexec simpleos-system-setup [--browser firefox|chromium|mullvad] [--purge-firefox]
-#                                [--office libreoffice|onlyoffice|none] [--gaming]
+#                                [--office libreoffice|onlyoffice|none] [--gaming] [--bridge] [--devtools]
+#                                    the wizard's choices; --gaming, --bridge and --devtools are the optional
+#                                    components of the wizard's page "Extras" (#126) and the Software Center:
+#                                      --gaming    Gaming Support: Steam, Lutris, MangoHud, 32-bit drivers, game
+#                                                  controllers (steam-devices)
+#                                      --bridge    SOS Bridge (#85): Bottles from Flathub for Windows programs
+#                                      --devtools  Developer Tools: Git, build-essential, Python pip/venv, the code
+#                                                  editor VSCodium from Flathub
+#                                    An optional component that fails is reported with "OPTIONAL-FAILED: <name>";
+#                                    if nothing else failed, the exit code is 3 (the wizard says what is missing and
+#                                    that it can be added later, instead of an error screen)
 #   pkexec simpleos-system-setup --upgrade   system update (simpleos-update): download package lists, install all
 #                                    updates without removing packages; then Flatpak apps (system), finally
 #                                    firmware/BIOS from LVFS (fwupd; not in VMs). Before that a restore point,
@@ -37,8 +47,10 @@
 set -u
 export DEBIAN_FRONTEND=noninteractive
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
+if [ -r /usr/local/lib/simpleos/i18n.sh ]; then . /usr/local/lib/simpleos/i18n.sh; else _t() { printf '%s' "$1"; }; fi
 
-usage() { echo "Usage: $0 [--browser firefox|chromium|mullvad] [--purge-firefox] [--office libreoffice|onlyoffice|none] [--gaming] | --repos | --upgrade | --refresh | --language | --locale LOCALE [--formats LOCALE] | --firewall on|off | --drivers PACKAGE…" >&2; exit 2; }
+usage() { echo "Usage: $0 [--browser firefox|chromium|mullvad] [--purge-firefox] [--office libreoffice|onlyoffice|none] [--gaming] [--bridge] [--devtools] | --repos | --upgrade | --refresh | --language | --locale LOCALE [--formats LOCALE] | --firewall on|off | --drivers PACKAGE…" >&2; exit 2; }
 # The only packages --drivers may install (the same list as ALLOWED in simpleos-drivers)
 # Kernel/headers/firmware come from bookworm-backports via pinning (/etc/apt/preferences.d/simpleos-backports.pref)
 DRIVER_PACKAGES="firmware-linux-nonfree firmware-misc-nonfree firmware-intel-graphics firmware-amd-graphics
@@ -47,7 +59,7 @@ nvidia-tesla-470-driver linux-image-amd64 linux-headers-amd64 intel-microcode am
 
 [ "$(id -u)" -eq 0 ] || [ "${SIMPLEOS_SETUP_DRYRUN:-}" = 1 ] || { echo "simpleos-system-setup: must run as root (pkexec)" >&2; exit 1; }
 
-browser= purge_firefox=0 office=none gaming=0 repos_only=0 upgrade=0 refresh=0 language=0 drivers=0 firewall=
+browser= purge_firefox=0 office=none gaming=0 bridge=0 devtools=0 repos_only=0 upgrade=0 refresh=0 language=0 drivers=0 firewall=
 locale= formats=
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -56,6 +68,8 @@ while [ $# -gt 0 ]; do
         --purge-firefox) purge_firefox=1 ;;
         --office)        [ $# -ge 2 ] || usage; office=$2; shift ;;
         --gaming)        gaming=1 ;;
+        --bridge)        bridge=1 ;;
+        --devtools)      devtools=1 ;;
         --repos)         repos_only=1 ;;
         --upgrade)       upgrade=1 ;;
         --refresh)       refresh=1 ;;
@@ -80,7 +94,8 @@ utf8_locale() {
 [ -z "$locale" ] || utf8_locale "$locale" || usage
 [ -z "$formats" ] || utf8_locale "$formats" || usage
 # Allowed combinations in ONE place: at most one action (--repos, --upgrade, --refresh, --firewall,
-# --drivers, --locale), and never together with wizard options (--browser, --purge-firefox, --office, --gaming).
+# --drivers, --locale), and never together with wizard options (--browser, --purge-firefox, --office, --gaming,
+# --bridge, --devtools).
 # Before, every section checked itself via a string ("$browser$gaming…" = "000") – after adding
 # --refresh a count of zeros no longer matched, and every --upgrade ended as an "invalid call" (exit 2).
 actions=0
@@ -88,15 +103,23 @@ for a in "$repos_only" "$upgrade" "$refresh" "$language" "$drivers"; do [ "$a" =
 [ -n "$firewall" ] && actions=$((actions + 1))
 [ -n "$locale" ] && actions=$((actions + 1))
 wizard=0
-if [ -n "$browser" ] || [ "$purge_firefox" = 1 ] || [ "$office" != none ] || [ "$gaming" = 1 ]; then wizard=1; fi
+if [ -n "$browser" ] || [ "$purge_firefox" = 1 ] || [ "$office" != none ] || [ "$gaming" = 1 ] || [ "$bridge" = 1 ] ||
+   [ "$devtools" = 1 ]; then wizard=1; fi
 [ "$actions" -le 1 ] || usage
 [ "$actions" -eq 0 ] || [ "$wizard" -eq 0 ] || usage
 # Test (verify hook): only check the arguments; pkexec clears the environment
 [ "${SIMPLEOS_SETUP_ARGCHECK:-}" = 1 ] && { echo "ARGS: ok"; exit 0; }
 
 failed=0
+optional_failed=
 step() { echo "STEP: $*"; }
 fail() { echo "ERROR: $*" >&2; failed=1; }
+# An optional component (#126) did not work: say which, but no error screen in the wizard (exit 3 at the end)
+optional_fail() {
+    echo "ERROR: $2" >&2
+    echo "OPTIONAL-FAILED: $1"
+    case ", $optional_failed, " in *", $1, "*) ;; *) optional_failed="$optional_failed${optional_failed:+, }$1" ;; esac
+}
 # Wait instead of aborting if another apt process is running right now
 # Progress for the wizard/progress window: "STAGE: …" and "PROGRESS: <percent>" per operation (new after every "STEP:").
 # apt reports it via status fd 3 ("dlstatus:…:<percent>:…" download 0–40 %, "pmstatus:<package>:<percent>:…"
@@ -107,7 +130,7 @@ APT_FILTER_ARGS=
 aptget() {
     _rcf=$(mktemp)
     # shellcheck disable=SC2086
-    { apt-get -y -o DPkg::Lock::Timeout=300 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
+    { LANGUAGE= LC_ALL=C.UTF-8 apt-get -y -o DPkg::Lock::Timeout=300 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
           -o APT::Status-Fd=3 "$@" 3>&1 1>&2; echo $? > "$_rcf"; } | /usr/local/lib/simpleos/progress-filter apt $APT_FILTER_ARGS
     _rc=$(cat "$_rcf" 2>/dev/null); rm -f "$_rcf"
     return "${_rc:-1}"
@@ -127,7 +150,7 @@ apt_busy() {
 apt_wait() {
     _w=0
     while apt_busy; do
-        [ "$_w" -eq 0 ] && echo "STAGE: Waiting for a background update to finish"
+        [ "$_w" -eq 0 ] && echo "STAGE: $(_t 'Waiting for a background update to finish')"
         _w=$((_w + 1))
         [ "$_w" -ge 300 ] && return 0
         sleep 2
@@ -186,12 +209,14 @@ flatpak_install() {
     _need=${2:-1200}
     _free=${SIMPLEOS_SETUP_FREE_MB:-$(flatpak_free_mb)}
     if [ -n "$_free" ] && [ "$_free" -lt "$_need" ]; then
-        step "Not enough free space: $_free MB free, about $_need MB needed"
+        step "$(printf "$(_t 'Not enough free space: %s MB free, about %s MB needed')" "$_free" "$_need")"
         echo "ERROR: $1: not enough free space ($_free MB free, ~$_need MB needed)" >&2
         return 1
     fi
     _rcf=$(mktemp)
-    { flatpak install --system -y flathub "$1" </dev/null 2>&1; echo $? > "$_rcf"; } |
+    # LANGUAGE= LC_ALL=C.UTF-8 (LANGUAGE wins over LC_ALL otherwise, i18n.sh sets it): progress-filter reads the tool's English lines – in German, Flatpak printed "1 wird installiert/3 …" and
+    # the window got no percentages at all (our own texts stay translated: they come from _t/_ , not from the tool)
+    { LANGUAGE= LC_ALL=C.UTF-8 flatpak install --system -y flathub "$1" </dev/null 2>&1; echo $? > "$_rcf"; } |
         if [ -x "$FP_PROGRESS" ]; then "$FP_PROGRESS"; else cat; fi
     _rc=$(cat "$_rcf" 2>/dev/null); rm -f "$_rcf"
     return "${_rc:-1}"
@@ -246,8 +271,8 @@ install_drivers() {
         # the output of apt-get update to the log instead (stderr)
         if [ "${dry:-0}" = 1 ]; then $APT_GET update >&2; else apt_wait; apt_get_update >&2; fi ||
             { echo "package lists could not be downloaded" >&2; exit 1; }
-        echo "STAGE: Downloading drivers" >&3
-        $APT_GET -y -o DPkg::Lock::Timeout=300 -o Dpkg::Options::=--force-confdef \
+        echo "STAGE: $(_t 'Downloading drivers')" >&3
+        LANGUAGE= LC_ALL=C.UTF-8 $APT_GET -y -o DPkg::Lock::Timeout=300 -o Dpkg::Options::=--force-confdef \
             -o Dpkg::Options::=--force-confold -o APT::Status-Fd=3 install "$@" >&2
         echo $? > "$_drc"
     } 3>&1 | /usr/local/lib/simpleos/progress-filter apt --dl 5 40 --inst 40 100
@@ -260,7 +285,7 @@ install_drivers() {
         done
         [ "$_rc" -eq 0 ] && printf '%s\n' "$@" | mark_reboot
     fi
-    [ "$_rc" -eq 0 ] && { echo "PROGRESS: 100"; step "Done"; }
+    [ "$_rc" -eq 0 ] && { echo "PROGRESS: 100"; step "$(_t 'Done')"; }
     return "$_rc"
 }
 
@@ -277,7 +302,7 @@ if [ "$drivers" -eq 1 ]; then
     dry=${SIMPLEOS_SETUP_DRYRUN:-0}
     APT_GET=apt-get
     [ "$dry" = 1 ] && APT_GET="echo apt-get"
-    echo "STAGE: Checking package sources"
+    echo "STAGE: $(_t 'Checking package sources')"
     echo "PROGRESS: 2"
     [ "$dry" = 1 ] || ensure_repos >&2 || true
     install_drivers "$@"
@@ -289,10 +314,10 @@ fi
 if [ -n "$firewall" ]; then
     command -v ufw >/dev/null || { echo "ERROR: ufw missing" >&2; exit 1; }
     if [ "$firewall" = on ]; then
-        step "Turning on the firewall"
+        step "$(_t 'Turning on the firewall')"
         ufw --force enable
     else
-        step "Turning off the firewall"
+        step "$(_t 'Turning off the firewall')"
         ufw disable
     fi
     exit $?
@@ -314,7 +339,7 @@ fw_pending() {
 }
 fw_update() {
     # shellcheck disable=SC2086
-    _fw=$(timeout 1800 fwupdmgr update $FWUPD_OPTS 2>&1)
+    _fw=$(LANGUAGE= LC_ALL=C.UTF-8 timeout 1800 fwupdmgr update $FWUPD_OPTS 2>&1)   # English: "power"/"battery" below
     _rc=$?
     printf '%s\n' "$_fw" >&2
     if [ "$_rc" -eq 0 ]; then
@@ -335,8 +360,8 @@ fw_update() {
 # Exit != 0 -> simpleos-update reports "Some updates could not be installed".
 # ------------------------------------------------------------ Only check (simpleos-update when opening)
 if [ "$refresh" -eq 1 ]; then
-    step "Checking for updates"
-    apt_get_update || { fail "package lists could not be downloaded"; exit 1; }
+    step "$(_t 'Checking for updates')"
+    apt_get_update || { fail "$(_t 'package lists could not be downloaded')"; exit 1; }
     if command -v fwupdmgr >/dev/null && ! systemd-detect-virt -q --vm 2>/dev/null; then
         # shellcheck disable=SC2086
         timeout 120 fwupdmgr refresh $FWUPD_OPTS >/dev/null 2>&1
@@ -426,13 +451,13 @@ edition_todo() { [ -x "$EDITION" ] && "$EDITION" --todo-packages 2>/dev/null; }
 install_edition_pkgs() {
     _todo=$(edition_todo)
     [ -n "$_todo" ] || return 0
-    step "Installing new Simple OS components"
+    step "$(_t 'Installing new Simple OS components')"
     # shellcheck disable=SC2086
     if aptget --no-remove install $_todo; then
         "$EDITION" --mark-packages
         printf '%s\n' "$_todo" | mark_reboot
     else
-        fail "new Simple OS components could not be installed"
+        fail "$(_t 'new Simple OS components could not be installed')"
     fi
 }
 
@@ -440,7 +465,8 @@ install_edition_pkgs() {
 # Language packs for the system language (/etc/default/locale, chosen in the installer). The image is built in English
 # without them: Firefox and LibreOffice would stay English for every other language, and there would be no
 # dictionary for spell checking. Installed: the dictionary (hunspell), Firefox/LibreOffice in the language (only if
-# those are installed) and, for Chinese/Japanese/Korean, the Noto CJK font. Nothing for plain English (en_US).
+# those are installed), Chromium's chromium-l10n (all languages in one package) and, for Chinese/Japanese/Korean,
+# the Noto CJK font. Nothing for plain English (en_US).
 # Debian names the packages <prefix>-<language>-<country> (hunspell-de-de, firefox-esr-l10n-pt-br) or <prefix>-<language>.
 sys_locale() {
     _l=$(sed -n 's/^LANG=//p' "${SIMPLEOS_LOCALE_FILE:-/etc/default/locale}" 2>/dev/null | head -n 1 | tr -d "\"'")
@@ -465,6 +491,8 @@ lang_pkgs() {  # missing language packages of this system, one per line
         if [ "$_lg-$_cc" != en-us ]; then
             installed firefox-esr && lang_pick firefox-esr-l10n "$_lg" "$_cc"
             installed libreoffice-common && lang_pick libreoffice-l10n "$_lg" "$_cc"
+            # Chromium has one package for every language; without it Chromium stays English (#149)
+            installed chromium && apt-cache show chromium-l10n >/dev/null 2>&1 && echo chromium-l10n
         fi
         case "$_lg" in zh|ja|ko) echo fonts-noto-cjk ;; esac
     } | while read -r _p; do
@@ -476,7 +504,7 @@ lang_pkgs() {  # missing language packages of this system, one per line
 language_install() {
     _pk=$(lang_pkgs)
     [ -n "$_pk" ] || return 0
-    step "Installing language packs"
+    step "$(_t 'Installing language packs')"
     # shellcheck disable=SC2086
     aptget --no-install-recommends install $_pk || echo "language packs could not be installed (ignored): $_pk" >&2
     return 0
@@ -508,8 +536,8 @@ fi
 # values of the boot in their environment, and a signed-in session only gets what pam_env reads from this file (a
 # file with only LANG left the old formats in the session until a restart; VM 2026-10-29). Old LANGUAGE/LC_ALL lines go.
 if [ -n "$locale" ]; then
-    step "Setting the language"
-    echo "STAGE: Preparing the language"
+    step "$(_t 'Setting the language')"
+    echo "STAGE: $(_t 'Preparing the language')"
     ${SIMPLEOS_LOCALE_ENABLE:-/usr/local/lib/simpleos/locale-enable} $locale $formats ||
         { echo "ERROR: the language could not be prepared (locale-gen)" >&2; exit 1; }
     _new=$(mktemp "$LOCALE_FILE.XXXXXX") || exit 1
@@ -533,13 +561,13 @@ if [ -n "$locale" ]; then
 fi
 
 if [ "$upgrade" -eq 1 ]; then
-    step "Checking for updates"
+    step "$(_t 'Checking for updates')"
     # BIOS systems from before 1.0.4: grub-pc did not know its disk and stopped every GRUB update (and with it this
     # repair) – answer that first (/usr/local/lib/simpleos/grub-pc-devices)
     /usr/local/lib/simpleos/grub-pc-devices || echo "GRUB install device could not be set" >&2
     # dpkg's "Setting up …" lines go to the log only, never into the progress window (#120)
-    dpkg --configure -a >&2 || fail "an interrupted installation could not be repaired"
-    apt_get_update || { fail "package lists could not be downloaded"; exit 1; }
+    dpkg --configure -a >&2 || fail "$(_t 'an interrupted installation could not be repaired')"
+    apt_get_update || { fail "$(_t 'package lists could not be downloaded')"; exit 1; }
     # Check first what is pending: without system and app updates done right away ("UPTODATE: 1", the progress window
     # shows "Already up to date") – before, everything still ran with a progress bar ("Nothing to do").
     # If Flatpak cannot check (network), rather update normally.
@@ -558,16 +586,16 @@ if [ "$upgrade" -eq 1 ]; then
     if [ "$apt_pending$fp_pending$fw" = 000 ] && [ "$failed" -eq 0 ]; then
         echo "UPTODATE: 1"
         report_held
-        echo "DONE: Already up to date"
-        step "Done"
+        echo "DONE: $(_t 'Already up to date')"
+        step "$(_t 'Done')"
         exit 0
     fi
     if [ "$apt_pending" -eq 1 ]; then
         # Enough free space? Otherwise stop before anything changes (#91) – also no app or firmware updates: the
         # message says to free up space and try again
         if ! space_ok "$mode" "$planned"; then
-            step "Not enough free disk space"
-            fail "not enough free disk space for the updates – nothing was changed"
+            step "$(_t 'Not enough free disk space')"
+            fail "$(_t 'not enough free disk space for the updates – nothing was changed')"
             exit 1
         fi
         # Restore point (simpleos-backup → "Restore point before updates: On"), only if system updates are
@@ -577,13 +605,13 @@ if [ "$upgrade" -eq 1 ]; then
                 echo "restore point before the update failed – the update runs anyway" >&2
         fi
         if ! space_still_ok; then
-            step "Not enough free disk space"
-            fail "not enough free disk space for the updates after the restore point – the updates were not installed"
+            step "$(_t 'Not enough free disk space')"
+            fail "$(_t 'not enough free disk space for the updates after the restore point – the updates were not installed')"
             exit 1
         fi
         urc=0
         if [ -n "$planned" ]; then
-            step "Installing updates"
+            step "$(_t 'Installing updates')"
             APT_FILTER_ARGS="--updates $(printf '%s\n' "$planned" | grep -c .)"
             if [ "$mode" = full ]; then
                 aptget --no-remove full-upgrade
@@ -600,24 +628,24 @@ if [ "$upgrade" -eq 1 ]; then
             install_edition_pkgs
             language_install
         else
-            fail "updates could not be installed"
+            fail "$(_t 'updates could not be installed')"
         fi
     fi
     report_held
     if [ "$fp_pending" -eq 1 ]; then
-        step "Updating apps from the Software Store"
+        step "$(_t 'Updating apps from the Software Store')"
         _rcf=$(mktemp)
-        { flatpak update --system -y </dev/null 2>&1; echo $? > "$_rcf"; } | if [ -x "$FP_PROGRESS" ]; then "$FP_PROGRESS"; else cat; fi
+        { LANGUAGE= LC_ALL=C.UTF-8 flatpak update --system -y </dev/null 2>&1; echo $? > "$_rcf"; } | if [ -x "$FP_PROGRESS" ]; then "$FP_PROGRESS"; else cat; fi
         _rc=$(cat "$_rcf" 2>/dev/null); rm -f "$_rcf"
-        [ "${_rc:-1}" -eq 0 ] || fail "Flatpak apps could not be updated"
+        [ "${_rc:-1}" -eq 0 ] || fail "$(_t 'Flatpak apps could not be updated')"
     fi
     # Last: firmware often needs a restart, and a failed BIOS update should not hold up the others
     if [ "$fw" -eq 1 ]; then
-        step "Updating firmware (BIOS and devices)"
-        echo "STAGE: Don't turn off the computer"
+        step "$(_t 'Updating firmware (BIOS and devices)')"
+        echo "STAGE: $(_t "Don't turn off the computer")"
         fw_update
     fi
-    [ "$failed" -eq 0 ] && step "Done"
+    [ "$failed" -eq 0 ] && step "$(_t 'Done')"
     exit "$failed"
 fi
 
@@ -625,7 +653,7 @@ updated=0
 apt_update() {
     ensure_repos && updated=0
     [ "$updated" -eq 1 ] && return 0
-    step "Updating package lists"
+    step "$(_t 'Updating package lists')"
     # If it fails, browser/office work with the existing lists (the amd64 packages are already in them);
     # gaming needs fresh lists (32-bit just enabled) and checks the return value
     apt_get_update && { updated=1; return 0; }
@@ -639,19 +667,19 @@ case "$browser" in
         # e.g. back again after an earlier switch to Chromium/Mullvad
         if ! installed firefox-esr; then
             apt_update
-            step "Installing Firefox ESR"
-            aptget install firefox-esr || fail "Firefox ESR could not be installed"
+            step "$(_t 'Installing Firefox ESR')"
+            aptget install firefox-esr || fail "$(_t 'Firefox ESR could not be installed')"
         fi ;;
     chromium)
         if ! installed chromium; then
             apt_update
-            step "Installing Chromium"
-            aptget install chromium || fail "Chromium could not be installed"
+            step "$(_t 'Installing Chromium')"
+            aptget install chromium || fail "$(_t 'Chromium could not be installed')"
         fi ;;
     mullvad)
         if ! flatpak info --system net.mullvad.MullvadBrowser >/dev/null 2>&1; then
-            step "Installing Mullvad Browser"
-            flatpak_install net.mullvad.MullvadBrowser || fail "Mullvad Browser could not be installed"
+            step "$(_t 'Installing Mullvad Browser')"
+            flatpak_install net.mullvad.MullvadBrowser || fail "$(_t 'Mullvad Browser could not be installed')"
         fi ;;
 esac
 
@@ -663,7 +691,7 @@ if [ "$purge_firefox" -eq 1 ] && installed firefox-esr; then
         *)        ok= ;;
     esac
     if [ -n "$ok" ]; then
-        step "Removing Firefox ESR"
+        step "$(_t 'Removing Firefox ESR')"
         if aptget purge firefox-esr; then
             aptget autoremove --purge
             # Not touched: /etc/xdg/mimeapps.list and /usr/share/applications/defaults.list belong to the package simpleos
@@ -672,7 +700,7 @@ if [ "$purge_firefox" -eq 1 ] && installed firefox-esr; then
             # simpleos-browser, which falls back to any installed browser.
             # (The Openbox menu needs nothing: "Web Browser" starts simpleos-browser, i.e. the default browser)
         else
-            fail "Firefox ESR could not be removed"
+            fail "$(_t 'Firefox ESR could not be removed')"
         fi
     elif [ -n "$browser" ] && [ "$browser" != firefox ]; then
         echo "Firefox ESR stays installed because the new browser is missing." >&2
@@ -687,18 +715,18 @@ case "$office" in
     libreoffice)
         if ! installed libreoffice-writer; then
             apt_update
-            step "Installing LibreOffice (this can take a while)"
+            step "$(_t 'Installing LibreOffice (this can take a while)')"
             aptget install libreoffice-writer libreoffice-calc libreoffice-impress libreoffice-draw \
                 libreoffice-gtk3 hunspell-en-us \
-                || fail "LibreOffice could not be installed"
+                || fail "$(_t 'LibreOffice could not be installed')"
         fi ;;
     onlyoffice)
         if ! flatpak info --system org.onlyoffice.desktopeditors >/dev/null 2>&1; then
             # ~615 MB download, ~1.3 GB installed + runtime/graphics extensions (~1.2 GB) if not there yet
             need=1600
             flatpak info --system org.freedesktop.Platform//25.08 >/dev/null 2>&1 || need=2900
-            step "Installing ONLYOFFICE (about 1 GB download – this takes several minutes)"
-            flatpak_install org.onlyoffice.desktopeditors "$need" || fail "ONLYOFFICE could not be installed"
+            step "$(_t 'Installing ONLYOFFICE (about 1 GB download – this takes several minutes)')"
+            flatpak_install org.onlyoffice.desktopeditors "$need" || fail "$(_t 'ONLYOFFICE could not be installed')"
         fi ;;
 esac
 
@@ -706,16 +734,16 @@ esac
 if [ "$gaming" -eq 1 ]; then
     # Order: sources (Steam is in contrib) -> i386 -> apt-get update -> installation
     if ensure_repos; then
-        step "Enabling contrib and non-free repositories"
+        step "$(_t 'Enabling contrib and non-free repositories')"
         updated=0
     fi
     if ! dpkg --print-foreign-architectures | grep -qx i386; then
-        step "Enabling 32-bit support"
+        step "$(_t 'Enabling 32-bit support')"
         dpkg --add-architecture i386
         updated=0
     fi
     if ! apt_update; then
-        fail "Gaming package: package lists (32-bit) could not be downloaded – check the internet connection"
+        optional_fail "Gaming Support" "$(_t 'Gaming package: package lists (32-bit) could not be downloaded – check the internet connection')"
     else
         # Accept the license in the background beforehand (choosing "Ultimate Gaming" in the wizard is the consent).
         # bookworm does not ask during installation (Steam shows the license graphically on first start),
@@ -734,20 +762,52 @@ if [ "$gaming" -eq 1 ]; then
         elif installed nvidia-driver; then
             nvidia="nvidia-driver-libs:i386"
         fi
-        step "Installing Steam, Lutris and MangoHud (this can take a while)"
-        # 32-bit graphics drivers explicitly: Steam and many games are 32-bit
-        aptget install steam-installer steam-libs-i386 lutris mangohud gamemode \
+        step "$(_t 'Installing Steam, Lutris and MangoHud (this can take a while)')"
+        # 32-bit graphics drivers explicitly: Steam and many games are 32-bit. steam-devices: udev rules so game
+        # controllers (Steam Controller, Xbox/PlayStation pads over USB/Bluetooth, Steam Deck) work without root (#126)
+        aptget install steam-installer steam-libs-i386 steam-devices lutris mangohud gamemode \
             libgl1-mesa-dri:i386 libgl1:i386 mesa-vulkan-drivers mesa-vulkan-drivers:i386 $nvidia \
-            || fail "Gaming package could not be installed completely"
+            || optional_fail "Gaming Support" "$(_t 'Gaming package could not be installed completely')"
+    fi
+fi
+
+# ------------------------------------------------- SOS Bridge (#85, #126)
+# Bottles from Flathub (system-wide); the double-click on .exe/.msi (simpleos-windows-app) then opens it there
+BOTTLES=com.usebottles.bottles
+if [ "$bridge" -eq 1 ] && ! flatpak info --system "$BOTTLES" >/dev/null 2>&1; then
+    # ~700 MB download; with the GNOME runtime not there yet ~2 GB on disk
+    need=600
+    flatpak list --system --runtime --columns=application 2>/dev/null | grep -qx org.gnome.Platform || need=2000
+    step "$(_t 'Installing SOS Bridge (Bottles – about 700 MB download)')"
+    flatpak_install "$BOTTLES" "$need" || optional_fail "SOS Bridge" "$(_t 'SOS Bridge (Bottles) could not be installed')"
+fi
+
+# ---------------------------------------------------- Developer Tools (#126)
+CODE_EDITOR=com.vscodium.codium
+if [ "$devtools" -eq 1 ]; then
+    missing=
+    for p in git build-essential python3-pip python3-venv; do installed "$p" || missing="$missing $p"; done
+    if [ -n "$missing" ]; then
+        apt_update
+        step "$(_t 'Installing developer tools (Git, compilers, Python)')"
+        # shellcheck disable=SC2086
+        aptget install $missing || optional_fail "Developer Tools" "$(printf "$(_t 'developer packages could not be installed:%s')" "$missing")"
+    fi
+    if ! flatpak info --system "$CODE_EDITOR" >/dev/null 2>&1; then
+        step "$(_t 'Installing the code editor VSCodium')"
+        flatpak_install "$CODE_EDITOR" 1500 || optional_fail "Developer Tools" "$(_t 'the code editor VSCodium could not be installed')"
     fi
 fi
 
 # Firefox/LibreOffice just installed (or already there) in the language of the system
 language_install
 
-if [ "$failed" -eq 0 ]; then
-    step "Done"
+if [ "$failed" -eq 0 ] && [ -z "$optional_failed" ]; then
+    step "$(_t 'Done')"
+elif [ "$failed" -eq 0 ]; then
+    step "$(printf "$(_t 'Done – not installed: %s')" "$optional_failed")"
+    exit 3
 else
-    step "Finished with errors"
+    step "$(_t 'Finished with errors')"
 fi
 exit "$failed"

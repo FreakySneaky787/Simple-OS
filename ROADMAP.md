@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Last updated 2026-11-18. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
+Last updated 2026-11-21. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -47,7 +47,7 @@ Dates are a target, not a promise (see the first paragraph). Nothing is publishe
     daemon that sign-in starts is gone after about 2 minutes. Hook 17 (#32) has to be revisited – the first sign-in must
     be tested again before it changes.
   - Chromium stays English after the system language was changed: `chromium-l10n` is never installed (#149).
-  - The search or start menu can take the selection from a resting mouse pointer while typing (#144, unconfirmed).
+  - The search or start menu can take the selection from a resting mouse pointer while typing (#144, confirmed on a ThinkPad E16).
   - Small things in one issue (#147): the search calculator with `round(x,2)` and German number formats, the migration
     list in the README, the free-space check before the first restore point.
 

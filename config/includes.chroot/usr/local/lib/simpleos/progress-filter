@@ -37,23 +37,27 @@ import time
 import os
 import re
 import sys
+import gettext
+
+# Translations (#43): the system language from /usr/share/locale/<lang>/LC_MESSAGES/simpleos.mo, else English
+_ = gettext.translation("simpleos", fallback=True).gettext
 
 UNIT = {"": 1, "k": 1e3, "m": 1e6, "g": 1e9}
 # Speed only together with Flatpak's own estimate ("00:12"): it only appears once the speed has settled
 SPEED = re.compile(r"\d+%\s+([\d.]+)\s*([kMG]?)(?:B|bytes)/s\s+\d+:\d\d")
 PARTIAL = 0.05
 RSYNC_LOGS = "/run/timeshift/*/backup/timeshift/snapshots/*/rsync-log"
-TS_HINT = "This can take 10–20 minutes – don't turn off the computer"
-TS_HINT_LATE = "Still working, this is normal – don't turn off the computer"
+TS_HINT = _("This can take 10–20 minutes – don't turn off the computer")
+TS_HINT_LATE = _("Still working, this is normal – don't turn off the computer")
 TS_LATE = 180          # s without a real percentage -> TS_HINT_LATE
 TS_TICK = 2.0          # s between two looks at the rsync log
 TS_STAGES = (
-    (re.compile(r"Estimating system size"), "Measuring the system"),
-    (re.compile(r"Mounted|Mounting|Saving to device|Creating new snapshot"), "Preparing the backup disk"),
-    (re.compile(r"Synching files"), "Copying system files"),
-    (re.compile(r"Restoring"), "Putting system files back"),
-    (re.compile(r"Removing|Deleting"), "Removing old files"),
-    (re.compile(r"[Ss]napshot saved|Tagged snapshot|Updating GRUB|Restore completed"), "Finishing up"),
+    (re.compile(r"Estimating system size"), _("Measuring the system")),
+    (re.compile(r"Mounted|Mounting|Saving to device|Creating new snapshot"), _("Preparing the backup disk")),
+    (re.compile(r"Synching files"), _("Copying system files")),
+    (re.compile(r"Restoring"), _("Putting system files back")),
+    (re.compile(r"Removing|Deleting"), _("Removing old files")),
+    (re.compile(r"[Ss]napshot saved|Tagged snapshot|Updating GRUB|Restore completed"), _("Finishing up")),
 )
 
 
@@ -131,7 +135,7 @@ class Filter:
         if re.match(r"^\s*ID\s+Branch\b", line) or re.match(r"^\s*ID\s+Arch\b", line):
             return
         if re.match(r"^Looking for (app )?updates", line):
-            self.stage("Checking for app updates")
+            self.stage(_("Checking for app updates"))
             return
         m = re.match(r"^\s*(\d+)\.\t", line)
         if m:
@@ -161,7 +165,7 @@ class Filter:
             v = SPEED.search(line)
             if v and float(v.group(1)) > 0:
                 self.speed = speed_text(float(v.group(1)) * UNIT[v.group(2).lower()])
-            label = f"Downloading part {cur} of {cnt}" if cnt > 1 else "Downloading"
+            label = _('Downloading part {cur} of {cnt}').format(cur=cur, cnt=cnt) if cnt > 1 else _("Downloading")
             self.stage(label + (f" · {self.speed}" if self.speed else ""))
             self.pct(min(overall, 99))           # 100 only with "Installation complete."
             return
@@ -186,10 +190,10 @@ class Filter:
             lo, hi = self.dl if kind == "dlstatus" else self.inst
             if kind == "dlstatus":
                 # with --updates the heading already says "Installing updates": the description only counts (#129)
-                text = "Downloading"
+                text = _("Downloading")
                 m = re.match(r"Retrieving file (\d+) of (\d+)", desc)
                 if self.updates and m:
-                    text = f"Downloading {m.group(1)} of {m.group(2)}"
+                    text = _('Downloading {done} of {total}').format(done=m.group(1), total=m.group(2))
                 self.stage(text)
             elif parts[1] == "dpkg-exec":
                 pass                              # "Running dpkg": the current text stays
@@ -199,13 +203,13 @@ class Filter:
                     if n >= self.updates:         # a trigger in the middle flickered "Finishing up" <-> "Update 3 of 5"
                         self.finishing = True
                 if self.finishing:
-                    self.stage("Finishing up")
+                    self.stage(_("Finishing up"))
                 else:
-                    self.stage(f"Update {n} of {self.updates}")
+                    self.stage(_('Update {n} of {updates}').format(n=n, updates=self.updates))
             elif desc.startswith("Running"):      # "Running post-installation trigger …"
-                self.stage("Finishing up")
+                self.stage(_("Finishing up"))
             else:
-                self.stage("Installing")
+                self.stage(_("Installing"))
             self.pct(lo + (hi - lo) * p / 100)
             return
         # pmerror:/pmconffile:/pmhalt … – apt's other status lines: never as the description (#131); the error itself
@@ -275,7 +279,7 @@ class Filter:
         self.ts_pos += len(data)
         self.ts_files += data.count(b"\n")
         if self.ts_files != self.ts_shown and self.ts_files > 0:
-            self.stage(f"Copying system files · {self.ts_files:,} files")
+            self.stage(_('Copying system files · {ts_files:,} files').format(ts_files=self.ts_files))
             self.ts_shown = self.ts_files
 
     def feed(self, line):

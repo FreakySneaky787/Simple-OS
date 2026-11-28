@@ -23,6 +23,10 @@ import subprocess
 import sys
 import threading
 import time
+import gettext
+
+# Translations (#43): the system language from /usr/share/locale/<lang>/LC_MESSAGES/simpleos.mo, else English
+_ = gettext.translation("simpleos", fallback=True).gettext
 
 HELPER = "/usr/local/sbin/simpleos-taskmanager-helper"
 TERM_WAIT = 1.5
@@ -104,7 +108,7 @@ def human(n):
         if n < 1000 or unit == "GB":
             return f"{n:.0f} {unit}" if unit in ("B", "KB") else f"{n:.1f} {unit}"
         n /= 1000
-    return f"{n:.1f} GB"
+    return _('{n:.1f} GB').format(n=n)
 
 
 # ---------------------------------------------------------------- Ending
@@ -168,11 +172,11 @@ def run_gui(selftest=False):
 
     class Win(Gtk.Window):
         def __init__(self):
-            super().__init__(title="Task Manager")
+            super().__init__(title=_("Task Manager"))
             self.set_default_size(760, 540)
             self.set_icon_name("utilities-system-monitor")
             self.set_position(Gtk.WindowPosition.CENTER)
-            hb = Gtk.HeaderBar(show_close_button=True, title="Task Manager")
+            hb = Gtk.HeaderBar(show_close_button=True, title=_("Task Manager"))
             self.set_titlebar(hb)
             self.hb = hb
             self.prev = {}          # pid -> (ticks, time) for the CPU share
@@ -182,10 +186,10 @@ def run_gui(selftest=False):
 
             box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, margin=12)
             top = Gtk.Box(spacing=8)
-            self.search = Gtk.SearchEntry(placeholder_text="Search processes")
+            self.search = Gtk.SearchEntry(placeholder_text=_("Search processes"))
             self.search.connect("search-changed", lambda *_: self.filter.refilter())
             top.pack_start(self.search, True, True, 0)
-            allu = Gtk.CheckButton(label="All users")
+            allu = Gtk.CheckButton(label=_("All users"))
             allu.connect("toggled", self.on_all_users)
             top.pack_start(allu, False, False, 0)
             box.pack_start(top, False, False, 0)
@@ -201,9 +205,9 @@ def run_gui(selftest=False):
             self.view = Gtk.TreeView(model=self.sorted)
             # Fixed widths for the numbers, only Name stretches (and gives way): with all columns sized by their content
             # the list came out wider than the window and the Memory column was cut off
-            for title, col, sort, xalign, expand, width in (("Name", 1, 1, 0.0, True, 0), ("PID", 0, 0, 1.0, False, 70),
-                                                            ("User", 2, 2, 0.0, False, 100), ("CPU", 5, 3, 1.0, False, 80),
-                                                            ("Memory", 6, 4, 1.0, False, 100)):
+            for title, col, sort, xalign, expand, width in ((_("Name"), 1, 1, 0.0, True, 0), ("PID", 0, 0, 1.0, False, 70),
+                                                            (_("User"), 2, 2, 0.0, False, 100), ("CPU", 5, 3, 1.0, False, 80),
+                                                            (_("Memory"), 6, 4, 1.0, False, 100)):
                 r = Gtk.CellRendererText(xalign=xalign)
                 c = Gtk.TreeViewColumn(title, r, text=col)
                 c.set_sort_column_id(sort)
@@ -231,7 +235,7 @@ def run_gui(selftest=False):
             self.status = Gtk.Label(xalign=0)
             self.status.get_style_context().add_class("dim-label")
             bottom.pack_start(self.status, True, True, 0)
-            self.end_btn = Gtk.Button(label="End task")
+            self.end_btn = Gtk.Button(label=_("End task"))
             self.end_btn.get_style_context().add_class("destructive-action")
             self.end_btn.connect("clicked", lambda *_: self.end_selected())
             bottom.pack_end(self.end_btn, False, False, 0)
@@ -265,7 +269,7 @@ def run_gui(selftest=False):
                     cpu = max(0.0, (p["ticks"] - last[0]) / CLK / (now - last[1]) / NCPU * 100)
                 self.prev[pid] = (p["ticks"], now, p["start"])
                 total_cpu += cpu
-                name = p["name"] + (" – ending…" if pid in self.busy else "")
+                name = p["name"] + (_(" – ending…") if pid in self.busy else "")
                 vals = (pid, name, p["user"], cpu, float(p["rss"]), f"{cpu:.1f} %", human(p["rss"]), p["start"],
                         p["uid"])
                 ref = self.rows.get(pid)
@@ -283,7 +287,7 @@ def run_gui(selftest=False):
             for pid in [pid for pid in self.prev if pid not in seen]:
                 del self.prev[pid]
             mem = self.meminfo()
-            self.hb.set_subtitle(f"{len(procs)} processes · CPU {total_cpu:.0f} %" + (f" · Memory {mem}" if mem else ""))
+            self.hb.set_subtitle(_('{count} processes · CPU {total_cpu:.0f} %').format(count=len(procs), total_cpu=total_cpu) + (_(' · Memory {mem}').format(mem=mem) if mem else ""))
             self.update_button()
             return True
 
@@ -297,7 +301,7 @@ def run_gui(selftest=False):
             try:
                 with open("/proc/meminfo") as f:
                     m = {l.split(":")[0]: int(l.split()[1]) * 1024 for l in f}
-                return f"{human(m['MemTotal'] - m['MemAvailable'])} of {human(m['MemTotal'])}"
+                return _('{used} of {total}').format(used=human(m['MemTotal'] - m['MemAvailable']), total=human(m['MemTotal']))
             except (OSError, KeyError, ValueError, IndexError):
                 return ""
 
@@ -335,7 +339,7 @@ def run_gui(selftest=False):
                 if hit:
                     view.get_selection().select_path(hit[0])
                     menu = Gtk.Menu()
-                    item = Gtk.MenuItem(label="End task")
+                    item = Gtk.MenuItem(label=_("End task"))
                     item.connect("activate", lambda *_: self.end_selected())
                     menu.append(item)
                     menu.show_all()
@@ -348,20 +352,20 @@ def run_gui(selftest=False):
             if not sel or sel["pid"] in self.busy:
                 return
             if sel["pid"] <= 1:
-                self.status.set_text("This process can't be ended.")
+                self.status.set_text(_("This process can't be ended."))
                 return
             if sel["name"] in CRITICAL or sel["pid"] == os.getppid():
                 d = Gtk.MessageDialog(transient_for=self, modal=True, message_type=Gtk.MessageType.WARNING,
-                                      buttons=Gtk.ButtonsType.OK_CANCEL, text=f"End {sel['name']}?")
-                d.format_secondary_text("It is part of the desktop or the system. Ending it can close your session "
-                                        "or stop the network or sound.")
+                                      buttons=Gtk.ButtonsType.OK_CANCEL, text=_('End {process}?').format(process=sel['name']))
+                d.format_secondary_text(_("It is part of the desktop or the system. Ending it can close your session "
+                                        "or stop the network or sound."))
                 ok = d.run() == Gtk.ResponseType.OK
                 d.destroy()
                 if not ok:
                     return
             self.busy.add(sel["pid"])
             self.select_neighbour()
-            self.status.set_text(f"Ending {sel['name']}…")
+            self.status.set_text(_('Ending {process}…').format(process=sel['name']))
             self.refresh()
 
             def after_signal():
@@ -375,11 +379,11 @@ def run_gui(selftest=False):
 
         def finished(self, sel, res):
             self.busy.discard(sel["pid"])
-            text = {"terminated": f"{sel['name']} was closed.",
-                    "killed": f"{sel['name']} did not respond and was forced to close.",
-                    "gone": f"{sel['name']} had already closed.",
-                    "denied": f"{sel['name']} was not ended – no password entered.",
-                    "failed": f"{sel['name']} could not be ended."}[res]
+            text = {"terminated": _('{process} was closed.').format(process=sel['name']),
+                    "killed": _('{process} did not respond and was forced to close.').format(process=sel['name']),
+                    "gone": _('{process} had already closed.').format(process=sel['name']),
+                    "denied": _('{process} was not ended – no password entered.').format(process=sel['name']),
+                    "failed": _('{process} could not be ended.').format(process=sel['name'])}[res]
             self.status.set_text(text)
             if res in ("terminated", "killed", "gone"):
                 self.remove_row(sel["pid"])

@@ -1,0 +1,6 @@
+# Simple OS: the Openbox menu in the system language (#43) – ~/.config/openbox/menu-simpleos.xml from the account's
+# English menu.xml (/usr/local/lib/simpleos/menu-lang), after 81simpleos-office-menu and before Openbox reads the
+# menu. Sourced by Xsession: never exits, never fails.
+if [ -x /usr/local/lib/simpleos/menu-lang ]; then
+    timeout 10 /usr/local/lib/simpleos/menu-lang >/dev/null 2>&1 || true
+fi

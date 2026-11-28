@@ -1,0 +1,4843 @@
+# Simple OS – translations of Simple OS's own tools (#43). Edit the msgstr lines; after changing the tools
+# run ./tools/i18n.py extract (new texts appear here empty) and ./tools/i18n.py check.
+msgid ""
+msgstr ""
+"Project-Id-Version: Simple OS\n"
+"Report-Msgid-Bugs-To: https://github.com/FreakySneaky787/Simple-OS/issues\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: usr/local/bin/rofi:17 usr/local/bin/simpleos-control-center:1639 usr/local/bin/simpleos-control-center:1660 usr/local/bin/simpleos-search:387 usr/local/bin/simpleos-search:387 usr/local/bin/simpleos-search:405
+msgid "Search"
+msgstr ""
+
+#: usr/local/bin/simpleos-admin-open:9 usr/local/bin/simpleos-control-center:2384 usr/local/bin/simpleos-control-center:2516
+msgid "Administrator"
+msgstr ""
+
+#: usr/local/bin/simpleos-admin-open:13
+msgid "“%s” does not exist."
+msgstr ""
+
+#: usr/local/bin/simpleos-admin-open:15
+msgid "%s is not installed."
+msgstr ""
+
+#: usr/local/bin/simpleos-admin-open:16
+msgid "Administrator access is not available (pkexec missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-admin-open:26
+msgid "You are not allowed to open this as administrator."
+msgstr ""
+
+#: usr/local/bin/simpleos-admin-open:27
+msgid "“%s” could not be opened as administrator."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:30 usr/local/bin/simpleos-control-center:2240
+msgid "Backups can only be created on an installed system."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:35
+msgid "Backups are not available (pkexec missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:73 usr/local/bin/simpleos-drivers:361 usr/local/bin/simpleos-update:240
+msgid "No password entered – nothing was changed."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:74
+msgid "Backups need the program Timeshift, which is missing."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:76
+msgid "No backup location is set up: the system partition could not be found. Restore points need Simple OS installed on a disk."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:80
+msgid "Not enough free space for a restore point: %s free, at least %s needed. Free up space with the Storage Cleaner."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:82
+msgid "Not enough free space for a restore point: %s free, but Timeshift needs more for this one. Free up space with the Storage Cleaner."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:84
+msgid "Not enough free space for a restore point – Timeshift reports the backup disk is too full. Free up space with the Storage Cleaner."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:86
+msgid "%s Details: ~/.cache/simpleos-backup.log"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:98 usr/local/bin/simpleos-backup:102
+msgid "The restore point could not be created."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:99
+msgid "Creating a restore point"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:99
+msgid "Restore point created"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:100
+msgid "The first one takes 10–20 minutes · you can keep working"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:100 usr/local/bin/simpleos-backup:161
+msgid "Restore point"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:101
+msgid "Creating a restore point. The first one copies the whole system and can take 10–20 minutes."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:103
+msgid "Restore point created."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:115
+msgid "Restore this point…"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:116
+msgid "Check"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:117 usr/local/bin/simpleos-control-center:2614
+msgid "Delete"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:118 usr/local/bin/simpleos-bluetooth:124 usr/local/bin/simpleos-bluetooth:136 usr/local/bin/simpleos-cleaner:193 usr/local/bin/simpleos-control-center:1661 usr/local/bin/simpleos-control-center:1661 usr/local/bin/simpleos-search:432 usr/local/bin/simpleos-search:437 usr/local/bin/simpleos-search:448 usr/local/bin/simpleos-volume:187 usr/local/bin/simpleos-welcome-wizard:462 usr/local/bin/simpleos-wifi:143
+msgid "Back"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:122
+msgid "Yes, restore and restart"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:123 usr/local/bin/simpleos-cleaner:203 usr/local/bin/simpleos-control-center:1963 usr/local/bin/simpleos-control-center:2045 usr/local/bin/simpleos-control-center:2128 usr/local/bin/simpleos-control-center:2307 usr/local/bin/simpleos-control-center:2443 usr/local/bin/simpleos-control-center:2556 usr/local/bin/simpleos-control-center:2590 usr/local/bin/simpleos-control-center:2614 usr/local/bin/simpleos-control-center:2766 usr/local/bin/simpleos-powermenu:105 usr/local/bin/simpleos-report:287 usr/local/bin/simpleos-search:534 usr/local/bin/simpleos-windows-app:728 usr/local/bin/simpleos-windows-app:849
+msgid "Cancel"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:124
+msgid "Restore %s?"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:124
+msgid "System files go back to that point · your personal files stay · the computer restarts"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:126
+msgid "Restoring %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:126
+msgid "Restored – restarting"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:127
+msgid "Don't turn off the computer – it restarts by itself when done"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:128
+msgid "Restoring… Don't turn off the computer. It restarts by itself when done."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:129
+msgid "The restore point could not be restored. Nothing was changed."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:132
+msgid "This restore point is damaged or incomplete. Create a new one."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:134
+msgid "This restore point is complete."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:135
+msgid "This restore point is listed by Timeshift (stored on another disk)."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:138 usr/local/sbin/simpleos-backup-helper:302
+msgid "Deleting %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:138
+msgid "Restore point deleted"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:138
+msgid "Only this restore point is removed"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:139
+msgid "The restore point could not be deleted."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:139
+msgid "Restore point deleted."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:146
+msgid "The restore points could not be read."
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:150
+msgid "Create restore point now"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:152 usr/local/bin/simpleos-backup:154
+msgid "Restore point before updates"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:152 usr/local/bin/simpleos-control-center:1434 usr/local/bin/simpleos-control-center:1624
+msgid "On"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:154 usr/local/bin/simpleos-control-center:1396 usr/local/bin/simpleos-control-center:1434 usr/local/bin/simpleos-control-center:1624 usr/local/bin/simpleos-control-center:2402
+msgid "Off"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:165
+msgid "No restore points yet"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:166
+msgid "1 restore point"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:166
+msgid "%s restore points"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:167 usr/local/bin/simpleos-control-center:2238 config/i18n/extra.txt:6 config/i18n/extra.txt:59
+msgid "Backups"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:167
+msgid "system files only, not your personal files"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:170 usr/local/bin/simpleos-control-center:2460 usr/local/bin/simpleos-taskmanager:208
+msgid "Name"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:170
+msgid "Name for the restore point"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:170
+msgid "optional, e.g. Before installing drivers"
+msgstr ""
+
+#: usr/local/bin/simpleos-backup:175 usr/local/bin/simpleos-control-center:2019 usr/local/bin/simpleos-control-center:2033
+msgid "The setting could not be changed."
+msgstr ""
+
+#: usr/local/bin/simpleos-battery:37
+msgid "Battery low"
+msgstr ""
+
+#: usr/local/bin/simpleos-battery:37
+msgid "Plug in your charger soon."
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:26
+msgid "The Bluetooth settings are not installed."
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:30
+msgid "The Bluetooth menu could not open. Opening the Bluetooth settings instead."
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:34 usr/local/bin/simpleos-control-center:1605
+msgid "Bluetooth is not available (bluez missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:51
+msgid " · Battery %s %%"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:56 usr/local/bin/simpleos-control-center:371 usr/local/bin/simpleos-control-center:371
+msgid "Headphones"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:57 usr/local/bin/simpleos-control-center:371 usr/local/bin/simpleos-control-center:372
+msgid "Speaker"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:58 usr/local/bin/simpleos-control-center:372 usr/local/bin/simpleos-control-center:1764
+msgid "Mouse"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:59 usr/local/bin/simpleos-control-center:65 usr/local/bin/simpleos-control-center:372 usr/local/bin/simpleos-control-center:1860 config/i18n/extra.txt:11 config/i18n/extra.txt:51
+msgid "Keyboard"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:60 usr/local/bin/simpleos-control-center:373
+msgid "Gamepad"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:61 usr/local/bin/simpleos-control-center:373
+msgid "Tablet"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:62 usr/local/bin/simpleos-control-center:373
+msgid "Phone"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:63 usr/local/bin/simpleos-control-center:373 usr/local/bin/simpleos-welcome-wizard:176
+msgid "Computer"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:64
+msgid "Device"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:72
+msgid "Bluetooth could not be turned on."
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:76 usr/local/bin/simpleos-wifi:175 usr/local/bin/simpleos-wifi:196
+msgid "Connected to %s."
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:77
+msgid "Could not connect to %s. Make sure it is turned on and nearby."
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:93
+msgid "Pairing with %s…"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:95
+msgid "If %s asks for a code, a window with the code or a field for it opens."
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:97 usr/local/bin/simpleos-bluetooth:101
+msgid "Could not pair with %s. Put it in pairing mode and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:109
+msgid "Searching for devices. Put your device in pairing mode…"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:123
+msgid "Nothing found – search again"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:125 usr/local/bin/simpleos-control-center:1638
+msgid "Add device"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:125
+msgid "Click a device to pair"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:133 usr/local/bin/simpleos-control-center:337 usr/local/bin/simpleos-control-center:1629 usr/local/bin/simpleos-wifi:141
+msgid "Disconnect"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:134 usr/local/bin/simpleos-control-center:337 usr/local/bin/simpleos-control-center:1629 usr/local/bin/simpleos-control-center:2766 usr/local/bin/simpleos-welcome-wizard:581
+msgid "Connect"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:135
+msgid "Remove device"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:141 usr/local/bin/simpleos-wifi:149
+msgid "Disconnected from %s."
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:142 usr/local/bin/simpleos-wifi:150
+msgid "Could not disconnect from %s. Please try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:143
+msgid "%s was removed."
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:144
+msgid "%s could not be removed."
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:154 usr/local/bin/simpleos-control-center:1617
+msgid "No Bluetooth adapter found. Virtual machines and many desktop PCs have none – a USB Bluetooth stick adds it."
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:159
+msgid "Turn off Bluetooth"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:163 usr/local/bin/simpleos-control-center:336 usr/local/bin/simpleos-welcome-wizard:332
+msgid "Connected"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:170
+msgid "Add device…"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:173
+msgid "Turn on Bluetooth"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:176 usr/local/bin/simpleos-control-center:1640
+msgid "More Bluetooth settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-bluetooth:177 usr/local/bin/simpleos-control-center:61 usr/local/bin/simpleos-control-center:1600 usr/local/bin/simpleos-control-center:1624 config/i18n/extra.txt:7 config/i18n/extra.txt:47
+msgid "Bluetooth"
+msgstr ""
+
+#: usr/local/bin/simpleos-browser-select:51
+msgid "%s   (not installed – select to install)"
+msgstr ""
+
+#: usr/local/bin/simpleos-browser-select:53
+msgid "%s   (current)"
+msgstr ""
+
+#: usr/local/bin/simpleos-browser-select:57
+msgid "Find more browsers in the Software Store ..."
+msgstr ""
+
+#: usr/local/bin/simpleos-browser-select:58 usr/local/bin/simpleos-browser-select:85 usr/local/bin/simpleos-browser-select:89 usr/local/bin/simpleos-browser-select:97 usr/local/bin/simpleos-browser-select:99 usr/local/bin/simpleos-browser-select:117 config/i18n/extra.txt:8
+msgid "Browser Selector"
+msgstr ""
+
+#: usr/local/bin/simpleos-browser-select:58 usr/local/bin/simpleos-welcome-wizard:95
+msgid "Browser"
+msgstr ""
+
+#: usr/local/bin/simpleos-browser-select:58
+msgid "Choose your default web browser"
+msgstr ""
+
+#: usr/local/bin/simpleos-browser-select:85
+msgid "Installing %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-browser-select:85
+msgid "%s installed"
+msgstr ""
+
+#: usr/local/bin/simpleos-browser-select:89
+msgid "Installing %s – this can take a few minutes."
+msgstr ""
+
+#: usr/local/bin/simpleos-browser-select:97
+msgid "No password entered – %s was not installed."
+msgstr ""
+
+#: usr/local/bin/simpleos-browser-select:100
+msgid "%s could not be installed. Details: ~/.cache/simpleos-browser-select.log"
+msgstr ""
+
+#: usr/local/bin/simpleos-browser-select:117
+msgid "%s is now your default browser."
+msgstr ""
+
+#: usr/local/bin/simpleos-calendar:102
+msgid "Calendar"
+msgstr ""
+
+#: usr/local/bin/simpleos-calendar:136
+msgid "Today"
+msgstr ""
+
+#: usr/local/bin/simpleos-calendar:143
+msgid "Date & Time settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:31
+msgid "No camera found"
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:32
+msgid ""
+"Laptops: look for a camera switch on the side, a key with a camera symbol (often F8 or F10), or a small cover that slides over the lens.\n"
+"USB cameras: plug it in – it appears here by itself."
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:48 usr/local/bin/simpleos-camera:65 usr/local/bin/simpleos-camera:170 usr/local/bin/simpleos-camera:177 config/i18n/extra.txt:43
+msgid "Camera"
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:53
+msgid "Photo %Y-%m-%d %H-%M-%S"
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:124
+msgid "The camera is in use"
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:125
+msgid "Another app is using the camera right now – a video call or a browser tab. Close it and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:127
+msgid "Simple OS was not allowed to use the camera. Restart the computer and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:127
+msgid "The camera could not be opened"
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:131
+msgid "The camera could not be started"
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:131
+msgid "Unplug and reconnect it, or restart the computer. ({message})"
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:154
+msgid "Parts of the camera app are missing"
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:155
+msgid "Open Software Updates and install all updates, then try again. (missing: {missing})"
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:202
+msgid "Try Again"
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:210
+msgid "Take Photo"
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:214
+msgid "Open Folder"
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:240
+msgid "Test camera"
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:342
+msgid "No picture yet – try again in a moment."
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:351
+msgid "the picture could not be read from the camera"
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:357
+msgid "The photo could not be saved: {error}"
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:360
+msgid "Saved to {parent}/{folder}: {file}"
+msgstr ""
+
+#: usr/local/bin/simpleos-camera:373
+msgid "Your photos are in {folder}"
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:102
+msgid "Downloaded package files"
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:103
+msgid "Packages no longer needed"
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:104
+msgid "Unused Flatpak runtimes"
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:105
+msgid "System logs older than 7 days"
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:106
+msgid "Thumbnail cache"
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:134
+msgid "System files can't be cleaned (pkexec missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:140
+msgid "No password entered – system files were not cleaned."
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:150
+msgid "Some items could not be cleaned (%s freed). Details: ~/.cache/simpleos-cleaner.log"
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:152
+msgid "Done – %s freed."
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:186 usr/local/bin/simpleos-cleaner:232
+msgid "Disk usage"
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:186
+msgid "%s free of %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:202
+msgid "Clean up – free %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:218
+msgid "Clean everything"
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:220
+msgid "Nothing to clean right now"
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:227
+msgid "clean"
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:233 config/i18n/extra.txt:24 config/i18n/extra.txt:60
+msgid "Storage Cleaner"
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:233
+msgid "%s free on the system disk"
+msgstr ""
+
+#: usr/local/bin/simpleos-cleaner:240
+msgid "Clean everything?"
+msgstr ""
+
+#: usr/local/bin/simpleos-clipboard:30 usr/local/bin/simpleos-copy-file:9
+msgid "Clipboard"
+msgstr ""
+
+#: usr/local/bin/simpleos-clipboard:95
+msgid "Nothing copied yet. Copy some text and press Super+V again."
+msgstr ""
+
+#: usr/local/bin/simpleos-clipboard:97
+msgid "Clear history"
+msgstr ""
+
+#: usr/local/bin/simpleos-clipboard:100
+msgid "The clipboard history could not open (rofi missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-clipboard:114
+msgid "Clipboard history cleared."
+msgstr ""
+
+#: usr/local/bin/simpleos-clipboard:119
+msgid "The text could not be copied (xclip missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-clipboard:180
+msgid "The clipboard history ran into a problem: {e}"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:61 usr/local/bin/simpleos-control-center:1510
+msgid "Wi-Fi"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:62 usr/local/bin/simpleos-control-center:1357 usr/local/bin/simpleos-display:357 usr/local/bin/simpleos-display:370 config/i18n/extra.txt:9 config/i18n/extra.txt:49
+msgid "Display"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:62 usr/local/bin/simpleos-control-center:1300 usr/local/bin/simpleos-volume:156 usr/local/bin/simpleos-volume:162 config/i18n/extra.txt:22 config/i18n/extra.txt:48
+msgid "Sound"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:63 usr/local/bin/simpleos-control-center:1665 usr/local/bin/simpleos-theme:74 usr/local/bin/simpleos-welcome-wizard:95 config/i18n/extra.txt:5
+msgid "Appearance"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:64 usr/local/bin/simpleos-control-center:1843
+msgid "Notifications"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:65 usr/local/bin/simpleos-control-center:1721 config/i18n/extra.txt:14
+msgid "Mouse & Touchpad"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:66 usr/local/bin/simpleos-control-center:1772 usr/local/bin/simpleos-control-center:1814 config/i18n/extra.txt:17
+msgid "Power"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:66 usr/local/bin/simpleos-control-center:1879 config/i18n/extra.txt:52
+msgid "Printers & Scanners"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:67 usr/local/bin/simpleos-control-center:1688 usr/local/bin/simpleos-control-center:1890 usr/local/bin/simpleos-welcome-wizard:95 usr/local/bin/simpleos-welcome-wizard:748 config/i18n/extra.txt:37
+msgid "Apps"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:68 usr/local/bin/simpleos-control-center:1987
+msgid "Date & Time"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:69 usr/local/bin/simpleos-control-center:2081
+msgid "Language & Region"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:70 usr/local/bin/simpleos-control-center:2249
+msgid "Password & Security"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:70 usr/local/bin/simpleos-control-center:2226
+msgid "Storage & Backups"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:71 usr/local/bin/simpleos-control-center:2631
+msgid "System & Updates"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:71 usr/local/bin/simpleos-control-center:2256 usr/local/bin/simpleos-control-center:2355
+msgid "Users"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:82
+msgid "Longer battery life, a bit slower"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:82
+msgid "Power saver"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:83
+msgid "Balanced"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:83
+msgid "Recommended"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:84
+msgid "Fastest – uses more power, fans get louder"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:84
+msgid "Performance"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:87
+msgid "10 minutes"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:87
+msgid "15 minutes"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:87
+msgid "30 minutes"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:87
+msgid "5 minutes"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:87
+msgid "Never"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:88
+msgid "1 hour"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:241 usr/local/bin/simpleos-display:107
+msgid "Built-in display"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:243
+msgid "Screen"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:243
+msgid "Virtual"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:327
+msgid "Connected to {network}"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:329
+msgid "Connected with a network cable"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:331 usr/local/bin/simpleos-wifi:100
+msgid "Not connected"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:335 usr/local/bin/simpleos-welcome-wizard:360
+msgid "Good signal"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:335 usr/local/bin/simpleos-welcome-wizard:360
+msgid "Strong signal"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:335 usr/local/bin/simpleos-welcome-wizard:360
+msgid "Weak signal"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:336 usr/local/bin/simpleos-welcome-wizard:332
+msgid " · needs password"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:336 usr/local/bin/simpleos-welcome-wizard:332
+msgid " · open"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:339
+msgid "This computer has no Wi-Fi."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:340 usr/local/bin/simpleos-welcome-wizard:340
+msgid "This computer has no Wi-Fi. Plug in a network cable – it connects by itself."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:342
+msgid "Wi-Fi is turned off. Turn it on with the switch to see the networks around you."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:344
+msgid "No Wi-Fi networks found nearby. Move closer to your router and click Refresh."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:346
+msgid "To switch, click Connect next to another network."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:348
+msgid "Click Connect next to your network and type its password if it asks for one (often on a sticker on your router)."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:356
+msgid "Could not disconnect. Please try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:356
+msgid "Disconnected."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:399
+msgid " · Battery {battery} %"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:399
+msgid " · Connected"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:705
+msgid "Charging"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:705
+msgid "Full"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:705
+msgid "On battery"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:706
+msgid "Plugged in"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:806
+msgid "Links and web pages"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:806
+msgid "Web browser"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:807
+msgid "Email"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:807
+msgid "Opens “send an email” links"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:808
+msgid "PDF documents"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:809 usr/local/bin/simpleos-control-center:1692 usr/local/bin/simpleos-control-center:2558
+msgid "Pictures"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:810
+msgid "Music"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:811
+msgid "Videos"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:812
+msgid "Text files"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:813
+msgid "Documents"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:813
+msgid "Word and Writer files (.docx, .odt, .doc …)"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:815
+msgid "Excel and Calc files (.xlsx, .ods, .csv …)"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:815
+msgid "Spreadsheets"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:817
+msgid "PowerPoint and Impress files (.pptx, .odp …)"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:817
+msgid "Presentations"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1116
+msgid "The current password is wrong."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1118
+msgid "The new password is too short – please use at least 8 characters."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1121
+msgid "The new password is too simple or too close to the old one – please choose another one."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1123
+msgid "The two new passwords don't match."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1124 usr/local/bin/simpleos-control-center:2342
+msgid "The password could not be changed."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1305 usr/local/bin/simpleos-volume:86
+msgid "Sound control is not available (pactl missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1348 usr/local/bin/simpleos-volume:166
+msgid "Mute"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1348
+msgid "Volume"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1349 usr/local/bin/simpleos-volume:179
+msgid "No sound output found"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1349
+msgid "Output"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1349
+msgid "Speakers, headphones, HDMI, Bluetooth"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1351
+msgid "Microphone"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1352 usr/local/bin/simpleos-volume:181
+msgid "Advanced Audio Settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1352
+msgid "Per-app volume, inputs, profiles"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1353 usr/local/bin/simpleos-control-center:1459 usr/local/bin/simpleos-control-center:1562 usr/local/bin/simpleos-control-center:1640 usr/local/bin/simpleos-control-center:1717 usr/local/bin/simpleos-control-center:1884 usr/local/bin/simpleos-control-center:2116 usr/local/bin/simpleos-control-center:2237 usr/local/bin/simpleos-control-center:2243 usr/local/bin/simpleos-control-center:2257 usr/local/bin/simpleos-control-center:2263 usr/local/bin/simpleos-control-center:2639 usr/local/bin/simpleos-control-center:2648 usr/local/bin/simpleos-control-center:2650 usr/local/bin/simpleos-software-center:341 usr/local/bin/simpleos-usb-notify:78 usr/local/bin/simpleos-usb-notify:79
+msgid "Open"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1365
+msgid "Automatic ({percent} %)"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1370
+msgid "Scale"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1370
+msgid "Size of text, taskbar, menus and the mouse pointer"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1373
+msgid "No display found (xrandr missing or not running in a desktop session)."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1396
+msgid "Main · "
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1399 usr/local/bin/simpleos-display:292 usr/local/bin/simpleos-display:298 usr/local/bin/simpleos-display:356
+msgid "Refresh rate"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1399 usr/local/bin/simpleos-display:281 usr/local/bin/simpleos-display:297 usr/local/bin/simpleos-display:355
+msgid "Resolution"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1400 usr/local/bin/simpleos-control-center:1409
+msgid "Apply"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1404 usr/local/bin/simpleos-display:364
+msgid "Duplicate"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1404 usr/local/bin/simpleos-display:366
+msgid "Extend left"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1404 usr/local/bin/simpleos-display:365
+msgid "Extend right"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1405
+msgid "Only {screen}"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1408
+msgid "Like Windows+P"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1408
+msgid "Multiple displays"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1429
+msgid "Brightness"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1430
+msgid "Screen brightness"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1430
+msgid "The brightness keys do the same"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1434 usr/local/bin/simpleos-nightlight:125
+msgid "Automatic (20:00–07:00)"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1455
+msgid "<b>Night light</b>"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1456 usr/local/bin/simpleos-nightlight:130 config/i18n/extra.txt:16
+msgid "Night light"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1456
+msgid "Warmer colors in the evening"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1457
+msgid "Right = warmer"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1457
+msgid "Warmth"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1458 usr/local/bin/simpleos-display:372
+msgid "Advanced Display Settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1458
+msgid "Drag screens into place"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1465 usr/local/bin/simpleos-display:255
+msgid "This display setting is not supported."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1468 usr/local/bin/simpleos-display:238
+msgid "Keep these display settings?"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1469 usr/local/bin/simpleos-display:237
+msgid "Keep changes"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1469 usr/local/bin/simpleos-display:237
+msgid "Revert"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1477
+msgid "Reverting in {seconds} seconds…"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1479
+msgid "Reverting in 15 seconds…"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1498
+msgid "The scale could not be changed."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1500
+msgid "The scale has changed"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1501
+msgid "Apps that are open, like Firefox or the Terminal, use the new size after you close and open them again. Signing out applies it everywhere."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1503 usr/local/bin/simpleos-control-center:2219 usr/local/bin/simpleos-powermenu:73 usr/local/bin/simpleos-search:49
+msgid "Sign out"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1516
+msgid "Wi-Fi settings are not available (Simple OS setup wizard missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1520
+msgid "Searching for networks…"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1535
+msgid "Wi-Fi could not be read: {res}"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1548
+msgid "2.4 GHz only"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1548
+msgid "5 GHz only"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1548
+msgid "Automatic"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1552
+msgid "If downloads keep dropping to a crawl although the signal is strong, try 2.4 GHz – the 5 GHz channel of some routers is unstable"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1552
+msgid "Wi-Fi band"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1560
+msgid "Refresh"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1560 usr/local/bin/simpleos-control-center:1660 usr/local/bin/simpleos-welcome-wizard:347 usr/local/bin/simpleos-welcome-wizard:350 usr/local/bin/simpleos-welcome-wizard:354 usr/local/bin/simpleos-welcome-wizard:584 usr/local/bin/simpleos-wifi:125
+msgid "Search again"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1561
+msgid "More network options"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1561
+msgid "Wired, VPN, hidden networks"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1574
+msgid "The Wi-Fi band could not be changed."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1613
+msgid "Bluetooth could not be read: {res}"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1632 usr/local/bin/simpleos-control-center:1942 usr/local/bin/simpleos-software-center:345
+msgid "Remove"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1636
+msgid "<b>Your devices</b>"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1638
+msgid "Put your device in pairing mode first"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1646
+msgid "Searching for devices (10 seconds)…"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1654
+msgid "Nothing found. Make sure the device is in pairing mode and nearby."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1656
+msgid "Pair"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1658
+msgid "Could not pair with {n}. Put it in pairing mode and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1671 usr/local/bin/simpleos-welcome-wizard:752
+msgid "Dark"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1672 usr/local/bin/simpleos-welcome-wizard:753
+msgid "Light"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1675 usr/local/bin/simpleos-welcome-wizard:68
+msgid "Blue"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1675 usr/local/bin/simpleos-welcome-wizard:68
+msgid "Green"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1675 usr/local/bin/simpleos-welcome-wizard:68
+msgid "Mauve"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1675 usr/local/bin/simpleos-welcome-wizard:68
+msgid "Pink"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1676 usr/local/bin/simpleos-welcome-wizard:69
+msgid "Peach"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1676 usr/local/bin/simpleos-welcome-wizard:69
+msgid "Teal"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1688
+msgid "Dark or light windows"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1689 usr/local/bin/simpleos-welcome-wizard:762
+msgid "Accent color"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1689
+msgid "Menus, taskbar, window borders"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1690 usr/local/bin/simpleos-control-center:2554
+msgid "Choose a picture"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1702
+msgid "Or right-click a picture in Files → Set as Wallpaper"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1702 usr/local/bin/simpleos-wallpaper:10
+msgid "Wallpaper"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1703
+msgid "Default wallpaper"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1704
+msgid "Restore"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1713
+msgid "Dynamic wallpaper (day/night)"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1714
+msgid "Light during the day, dark in the evening and whenever night light is on"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1715
+msgid "Apps, menus and taskbar follow the wallpaper"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1715
+msgid "Switch light/dark mode with it"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1716
+msgid "Position, size, style"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1716 usr/local/bin/simpleos-taskbar-select:245 config/i18n/extra.txt:25
+msgid "Taskbar"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1726
+msgid "Mouse and touchpad settings are not available (simpleos-input missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1730
+msgid "No mouse or touchpad found. Settings for a device appear here once it is connected."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1758
+msgid "Touchpad"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1759
+msgid "Tap the touchpad instead of pressing it"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1759
+msgid "Tap to click"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1760
+msgid "Content follows your fingers, like on a phone – turn off for the Windows/classic direction"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1760 usr/local/bin/simpleos-control-center:1766
+msgid "Natural scrolling"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1762 usr/local/bin/simpleos-control-center:1765
+msgid "Pointer speed"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1766
+msgid "Scroll wheel in the opposite direction"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1768
+msgid "Your settings are kept for every device you connect later."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1778
+msgid "Battery"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1785
+msgid "{cur_off} minutes"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1788
+msgid "Turn off the screen after"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1788
+msgid "When the computer is not used"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1792
+msgid "Lock when the screen turns off"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1792
+msgid "Your password is asked when you come back"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1803
+msgid "Power mode"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1808
+msgid "Battery protection"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1808
+msgid "Stop charging at about 80 % – the battery lasts longer if the laptop is mostly plugged in"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1811 usr/local/bin/simpleos-powermenu:67 usr/local/bin/simpleos-search:44
+msgid "Lock"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1811 usr/local/bin/simpleos-powermenu:68 usr/local/bin/simpleos-search:45
+msgid "Sleep"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1812 usr/local/bin/simpleos-powermenu:69 usr/local/bin/simpleos-search:46
+msgid "Restart"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1812 usr/local/bin/simpleos-powermenu:70 usr/local/bin/simpleos-search:47
+msgid "Shut down"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1820
+msgid "The power mode could not be changed."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1826
+msgid "Battery protection could not be changed."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1833 usr/local/bin/simpleos-update:152
+msgid "Restart now?"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1833
+msgid "Shut down now?"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1834 usr/local/bin/simpleos-search:532
+msgid "Save your work first."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1840 usr/local/bin/simpleos-search:505
+msgid "That did not work. Please try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1853 config/i18n/extra.txt:10
+msgid "Do Not Disturb"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1853
+msgid "Pause notifications until you turn it off"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1854
+msgid "Also turn off window effects"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1854
+msgid "No shadows or transparency while it is on"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1855
+msgid "While Do Not Disturb is on, the taskbar shows a crossed-out bell – click it to turn Do Not Disturb off again."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1869 usr/local/bin/simpleos-control-center:1998
+msgid "Unknown"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1873
+msgid "Applies right away – also on the login screen"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1873 usr/local/bin/simpleos-control-center:2115 usr/local/bin/simpleos-keyboard-setup:134 config/i18n/extra.txt:12
+msgid "Keyboard layout"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1874 config/i18n/extra.txt:13
+msgid "Keyboard shortcuts"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1874
+msgid "Super+H shows them at any time"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1875
+msgid "Show"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1883
+msgid "Most printers on your network or USB are found automatically"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1883
+msgid "Printers"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1885
+msgid "Scan a document"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1885
+msgid "Scanners and printers with a scanner"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1886
+msgid "Scan"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1901
+msgid "The apps could not be read: {res}"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1904
+msgid "<b>Default apps</b>"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1905
+msgid "Which app opens a file when you double-click it, or a link."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1912
+msgid "No app installed for this yet"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1913
+msgid "Get one…"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1924
+msgid "Choose an app…"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1929
+msgid "Install Chromium or Mullvad Browser"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1929
+msgid "More browsers"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1930
+msgid "Choose…"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1932
+msgid "<b>Startup apps</b>"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1933
+msgid "Apps that start by themselves when you sign in. Fewer startup apps = a faster start."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1938
+msgid "This could not be changed."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1946
+msgid "Apps like Steam or Discord add themselves here when you allow it"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1946
+msgid "No startup apps"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1947
+msgid "Add an app"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1947
+msgid "Add…"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1947
+msgid "Start an app every time you sign in"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1949
+msgid "Changes count from the next sign-in."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1959
+msgid "The default app could not be changed."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1962
+msgid "Add a startup app"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1963 usr/local/bin/simpleos-control-center:2443
+msgid "Add"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1975
+msgid "Which app should start when you sign in?"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1983
+msgid "The app could not be added."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1995
+msgid "Clock synchronized"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1995
+msgid "Set by hand"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1995
+msgid "Waiting for the internet…"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1996
+msgid "From the internet · {state}"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1996
+msgid "Set the time automatically"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1997
+msgid "Not available on this system"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1998 usr/local/bin/simpleos-control-center:2044
+msgid "Time zone"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:1999 usr/local/bin/simpleos-control-center:2103 usr/local/bin/simpleos-control-center:2105 usr/local/bin/simpleos-control-center:2255 usr/local/bin/simpleos-control-center:2390
+msgid "Change…"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2003
+msgid "<b>Windows on this computer</b>"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2004
+msgid "Keep the clock like Windows does"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2004
+msgid "Turn this on if the time is off by an hour or more after you used Windows (Windows keeps the computer's clock in local time)"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2006
+msgid "Can't open or change your files on the Windows drive? Windows was not shut down completely. In Windows: Control Panel → Power Options → \"Choose what the power buttons do\" → switch off \"Turn on fast startup\", then shut Windows down once."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2040
+msgid "The list of time zones is not available."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2045
+msgid "Set"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2064
+msgid "Where are you?"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2076
+msgid "The time zone could not be changed."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2098
+msgid "The languages could not be read: {res}"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2102 usr/local/bin/simpleos-control-center:2127
+msgid "Language"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2102
+msgid "{language} · menus and messages of the apps"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2104
+msgid "Dates, numbers and currency · "
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2104 usr/local/bin/simpleos-control-center:2127
+msgid "Formats"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2104
+msgid "same as the language"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2107
+msgid "Example"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2109
+msgid "Applies after you sign out and back in. When the computer is online, spell checking and the languages for Firefox and LibreOffice are installed with it."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2111
+msgid "Simple OS's own windows, like this one, follow the language too (German and French so far; other languages fall back to English)."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2114
+msgid "Live Mode: the change lasts until the computer shuts down."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2115
+msgid "Set separately, on the Keyboard page"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2121
+msgid "The list of languages is not available."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2128 usr/local/bin/simpleos-control-center:2307
+msgid "Change"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2147
+msgid "Same as the language"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2149
+msgid "Show dates, numbers and currency like in …"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2155
+msgid "Which language should the apps use?"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2176
+msgid "Changing the language…"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2195
+msgid "Changing the language"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2195
+msgid "Language changed"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2196 usr/local/bin/simpleos-control-center:2694 usr/local/bin/simpleos-control-center:2708
+msgid "Control Center"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2196
+msgid "Sign out to use it"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2214
+msgid "The language could not be changed. Details: ~/.cache/simpleos-language.log"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2216
+msgid "Sign out now to use the new formats?"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2217
+msgid "Sign out now to use the new language?"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2218
+msgid "Save your work first – open apps will close."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2219 usr/local/bin/simpleos-update:151
+msgid "Later"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2233
+msgid "System disk"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2233
+msgid "{free} free of {total}"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2234
+msgid "Free up space"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2234
+msgid "Package cache, unused apps, old logs, thumbnails"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2235
+msgid "Clean up"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2236
+msgid "Disks & USB sticks"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2236
+msgid "Format a USB stick, write an ISO image, check disk health"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2242
+msgid "Restore points"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2242
+msgid "Undo system changes – your personal files are not touched"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2244
+msgid "Create a restore point now"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2244
+msgid "The first one can take 10–20 minutes"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2245
+msgid "Create"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2254 usr/local/bin/simpleos-control-center:2451 usr/local/bin/simpleos-control-center:2461 usr/local/bin/simpleos-wifi:182
+msgid "Password"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2254
+msgid "The password you sign in with"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2256
+msgid "Add accounts, administrators, automatic sign-in"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2260
+msgid "Blocks connections from other devices to this computer – browsing, printing and games keep working"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2260
+msgid "Firewall"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2262
+msgid "Lock when the screen turns off: Power"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2262
+msgid "Screen lock"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2275
+msgid "The firewall could not be changed."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2306
+msgid "Change your password"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2312
+msgid "Current password"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2312 usr/local/bin/simpleos-control-center:2595
+msgid "New password"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2312 usr/local/bin/simpleos-control-center:2595
+msgid "Repeat the new password"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2314
+msgid "Use at least 8 characters. Your keyring (saved passwords) keeps working with the new one."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2322
+msgid "<b>Please fill in all fields.</b>"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2325
+msgid "<b>The two new passwords don't match.</b>"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2328
+msgid "Changing the password …"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2346
+msgid "Your password was changed."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2376
+msgid "This is the live session – user accounts can be managed once Simple OS is installed."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2383
+msgid "{name}  (you)"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2384 usr/local/bin/simpleos-control-center:2517
+msgid "Standard user"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2386
+msgid " · signs in automatically"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2397
+msgid "Add a user…"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2399 usr/local/bin/simpleos-powermenu:72 usr/local/bin/simpleos-search:48
+msgid "Switch user"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2407
+msgid "Sign in automatically"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2407
+msgid "Start without the login screen. Anyone who turns on this computer gets in, and the keyring (saved passwords) asks for its password once."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2410
+msgid "Administrators can install apps and change settings for everyone. Standard users use the computer and change their own settings – for everything else they need an administrator's password."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2430
+msgid "Automatic sign-in could not be changed"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2439 usr/local/bin/simpleos-powermenu:127
+msgid "Could not switch to the login screen."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2442
+msgid "Add a user"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2449
+msgid "Full name, e.g. Anna Müller"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2450
+msgid "User name"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2451
+msgid "Repeat the password"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2452
+msgid "Standard user – uses the computer, changes own settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2453
+msgid "Administrator – can install apps and change settings for everyone"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2460
+msgid "User name (for signing in, small letters)"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2461 usr/local/bin/simpleos-control-center:2523
+msgid "Account type"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2466
+msgid "Please type a name (without : , =)."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2467
+msgid "The user name may only have small letters, digits, - and _, and must start with a letter."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2469
+msgid "The user name {user} is taken already."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2470
+msgid "Please choose a password."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2471 usr/local/bin/simpleos-control-center:2604
+msgid "The two passwords don't match."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2478
+msgid "The account could not be created"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2486 usr/local/bin/simpleos-welcome-wizard:1107 usr/local/bin/simpleos-welcome-wizard:1115 usr/local/bin/simpleos-whats-new:191 usr/local/bin/simpleos-windows-app:802 usr/local/bin/simpleos-windows-app:839
+msgid "Close"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2501
+msgid "Choose a picture…"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2503
+msgid "Remove the picture"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2508
+msgid "Save"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2512
+msgid "Full name"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2521
+msgid "The account type could not be changed"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2526
+msgid "You can't make your own account a standard user here."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2527
+msgid "This is the only administrator – make another account an administrator first."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2529
+msgid "Change password…"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2534
+msgid "Delete this account…"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2548
+msgid "Please type a name without : , ="
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2551
+msgid "The name could not be changed"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2556
+msgid "Choose"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2576
+msgid "The picture could not be removed"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2581
+msgid "This picture can't be used. Please choose a PNG or JPEG picture."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2585
+msgid "The picture could not be changed"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2589
+msgid "New password for {name}"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2590
+msgid "Set password"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2597
+msgid "{name} signs in with this password from now on. Their keyring (passwords saved in the browser and apps) keeps the old password: they will be asked for it once, or can start a new keyring."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2603
+msgid "Please type the password twice."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2608
+msgid "The password could not be changed"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2613
+msgid "Delete {name}?"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2619
+msgid "Keep their files (in {folder} – only an administrator can open them)"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2620
+msgid "Delete their files too – this can't be undone"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2621
+msgid "{name} can no longer sign in to this computer."
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2628
+msgid "The account could not be deleted"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2636
+msgid "Based on Debian 12 “bookworm”"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2637
+msgid "What's new"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2638
+msgid "Simple OS, apps and security fixes"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2638 config/i18n/extra.txt:21 config/i18n/extra.txt:57
+msgid "Software Updates"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2640
+msgid "<b>Hardware &amp; Drivers</b>"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2642
+msgid "Checking graphics, Wi-Fi and CPU…"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2646 config/i18n/extra.txt:63
+msgid "Help"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2647
+msgid "See what slows the computer down · Ctrl+Shift+Esc"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2647 usr/local/bin/simpleos-taskmanager:175 usr/local/bin/simpleos-taskmanager:179
+msgid "Task Manager"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2649
+msgid "Run the first-start setup again (Wi-Fi, browser, apps)"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2649 config/i18n/extra.txt:67
+msgid "Setup Wizard"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2651 usr/local/bin/simpleos-report:288
+msgid "Report a problem"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2651
+msgid "Saves details about this computer for a bug report"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2652 config/i18n/extra.txt:18
+msgid "Report"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2659
+msgid "Hardware could not be checked"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2663 usr/local/bin/simpleos-drivers:316
+msgid "No graphics card found"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2664
+msgid "Graphics · {name}"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2665 usr/local/bin/simpleos-drivers:318
+msgid "No Wi-Fi adapter found"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2666
+msgid "Wi-Fi · {name}"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2668
+msgid "CPU · {name}"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2671
+msgid "Install Recommended Drivers"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2673
+msgid "1 package recommended"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2674
+msgid "{count} packages recommended"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2677
+msgid "All recommended drivers are installed"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2765
+msgid "Connect to {ssid}"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2768 usr/local/bin/simpleos-welcome-wizard:575
+msgid "Wi-Fi password"
+msgstr ""
+
+#: usr/local/bin/simpleos-control-center:2772
+msgid "Enter the password for “{ssid}”."
+msgstr ""
+
+#: usr/local/bin/simpleos-copy-file:11
+msgid "Copying is not available (xclip missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-copy-file:17
+msgid "Picture copied: %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-copy-file:21
+msgid "Text copied: %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-copy-file:26
+msgid "Path copied: %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-copy-file:26
+msgid "%s paths copied."
+msgstr ""
+
+#: usr/local/bin/simpleos-copy-file:27
+msgid "Nothing could be copied."
+msgstr ""
+
+#: usr/local/bin/simpleos-display:41
+msgid "The advanced display settings are not installed."
+msgstr ""
+
+#: usr/local/bin/simpleos-display:45
+msgid "The display menu could not open. Opening the advanced display settings instead."
+msgstr ""
+
+#: usr/local/bin/simpleos-display:51
+msgid "Display settings are not available (xrandr missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-display:176
+msgid "Display connected: %s. The desktop now extends onto it – Super+P changes that."
+msgstr ""
+
+#: usr/local/bin/simpleos-display:238
+msgid "Reverting in %s seconds…"
+msgstr ""
+
+#: usr/local/bin/simpleos-display:261
+msgid "Display settings saved."
+msgstr ""
+
+#: usr/local/bin/simpleos-display:265
+msgid "Display settings restored."
+msgstr ""
+
+#: usr/local/bin/simpleos-display:278 usr/local/bin/simpleos-display:289 usr/local/bin/simpleos-keyboard-setup:127 usr/local/bin/simpleos-nightlight:120
+msgid "Current"
+msgstr ""
+
+#: usr/local/bin/simpleos-display:286
+msgid "This display is off."
+msgstr ""
+
+#: usr/local/bin/simpleos-display:299
+msgid "Make main display"
+msgstr ""
+
+#: usr/local/bin/simpleos-display:300 usr/local/bin/simpleos-nightlight:124
+msgid "Turn off"
+msgstr ""
+
+#: usr/local/bin/simpleos-display:301 usr/local/bin/simpleos-nightlight:123
+msgid "Turn on"
+msgstr ""
+
+#: usr/local/bin/simpleos-display:348
+msgid "No display found."
+msgstr ""
+
+#: usr/local/bin/simpleos-display:368
+msgid "Only %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-display:370
+msgid "%s displays"
+msgstr ""
+
+#: usr/local/bin/simpleos-dnd:97
+msgid "Do Not Disturb is already on."
+msgstr ""
+
+#: usr/local/bin/simpleos-dnd:99
+msgid "Do Not Disturb is on – notifications are paused until you turn it off."
+msgstr ""
+
+#: usr/local/bin/simpleos-dnd:111
+msgid "Do Not Disturb is already off."
+msgstr ""
+
+#: usr/local/bin/simpleos-dnd:118
+msgid "Do Not Disturb is off – notifications are back."
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:204
+msgid "Virtual graphics – no driver needed"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:207
+msgid "NVIDIA driver active"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:209
+msgid "Too new for the NVIDIA driver of Debian 12 – no driver is installed for it"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:210
+msgid "Your NVIDIA graphics card is newer than the NVIDIA driver in Debian 12 supports, so Simple OS does not install one (it would stop the graphical login). The screen works with the basic driver; full 3D speed has to wait for a newer Simple OS."
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:215
+msgid "Open-source driver – the NVIDIA driver is faster"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:216
+msgid "NVIDIA driver installed – active after a restart"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:219
+msgid "Open-source driver – NVIDIA 470 driver available for this card"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:220
+msgid "NVIDIA 470 driver installed – active after a restart"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:222
+msgid "Open-source driver (nouveau) – no newer NVIDIA driver supports this card"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:226
+msgid "Secure Boot is on: the NVIDIA driver only works after you turn Secure Boot off in your computer's firmware settings (BIOS/UEFI)."
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:240
+msgid "No driver for this graphics chip in kernel {kver} – the screen stays at a low resolution until the newer kernel is installed"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:243
+msgid "No driver for this graphics chip yet (kernel {kernel}) – the screen stays at a low resolution"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:246
+msgid "Firmware missing (power saving, video decoding)"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:247
+msgid "Firmware installed – active after a restart"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:249 usr/local/bin/simpleos-drivers:252 usr/local/bin/simpleos-drivers:254 usr/local/bin/simpleos-drivers:266
+msgid "Working ({driver})"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:252 usr/local/bin/simpleos-drivers:272 usr/local/bin/simpleos-drivers:287
+msgid "Firmware missing"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:254
+msgid "No driver in use"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:269
+msgid "Driver installed – active after a restart"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:269
+msgid "Driver missing"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:273
+msgid "Driver loaded, but no Wi-Fi interface – try a restart"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:273 usr/local/bin/simpleos-drivers:275 usr/local/bin/simpleos-drivers:289
+msgid "No driver found"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:282
+msgid "USB Wi-Fi {vendor}:{product}"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:284 usr/local/bin/simpleos-progress:126 usr/local/bin/simpleos-progress:583
+msgid "Working"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:287
+msgid "No Wi-Fi interface – try a restart"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:295
+msgid "Unknown CPU"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:299
+msgid "Microcode is handled by the host (virtual machine)"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:301
+msgid "No microcode package for this CPU"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:304
+msgid "Microcode update missing (security and stability fixes)"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:305
+msgid "Microcode up to date"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:317
+msgid "Graphics: {name} – {status}"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:320
+msgid "CPU: {name} – {status}"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:321
+msgid "Note: {n}"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:322
+msgid "Recommended: "
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:322
+msgid "nothing – all drivers are installed"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:329 usr/local/bin/simpleos-drivers:330 usr/local/bin/simpleos-drivers:349
+msgid "Hardware & Drivers"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:339
+msgid "All recommended drivers are already installed."
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:347
+msgid "Installing drivers"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:348
+msgid "Drivers installed"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:348
+msgid "Restart afterwards to use them"
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:359
+msgid "Drivers installed. Restart the computer to use them."
+msgstr ""
+
+#: usr/local/bin/simpleos-drivers:363
+msgid "The drivers could not be installed. Details: ~/.cache/simpleos-drivers.log"
+msgstr ""
+
+#: usr/local/bin/simpleos-help:14
+msgid "Super: apps · Super+Enter: terminal · Super+B: browser · Super+E: files · Super+X: power menu"
+msgstr ""
+
+#: usr/local/bin/simpleos-help:171
+msgid "Filter"
+msgstr ""
+
+#: usr/local/bin/simpleos-help:172
+msgid "Simple OS – Keyboard shortcuts"
+msgstr ""
+
+#: usr/local/bin/simpleos-help:172
+msgid "type to filter"
+msgstr ""
+
+#: usr/local/bin/simpleos-help:172
+msgid "Esc to close"
+msgstr ""
+
+#: usr/local/bin/simpleos-install:17 config/i18n/extra.txt:31
+msgid "Install Simple OS"
+msgstr ""
+
+#: usr/local/bin/simpleos-install:19
+msgid "Simple OS is already installed on this computer."
+msgstr ""
+
+#: usr/local/bin/simpleos-install:28 usr/local/bin/simpleos-install:33
+msgid "The installer is already open."
+msgstr ""
+
+#: usr/local/bin/simpleos-install:49
+msgid "A drive of this computer is still in use: %s. Close the windows that show its files, then start the installer again."
+msgstr ""
+
+#: usr/local/bin/simpleos-install:64
+msgid "The installer is missing on this system."
+msgstr ""
+
+#: usr/local/bin/simpleos-keyboard-setup:91
+msgid "This keyboard layout is not available: %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-keyboard-setup:93
+msgid "The keyboard layout could not be changed."
+msgstr ""
+
+#: usr/local/bin/simpleos-keyboard-setup:101
+msgid "Keyboard layout: %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-keyboard-setup:103
+msgid "Keyboard layout: %s – for your account (the login screen keeps its layout)."
+msgstr ""
+
+#: usr/local/bin/simpleos-keyboard-setup:134
+msgid "applies right away"
+msgstr ""
+
+#: usr/local/bin/simpleos-netinfo:34
+msgid "active (%s)"
+msgstr ""
+
+#: usr/local/bin/simpleos-netinfo:37
+msgid "not reachable"
+msgstr ""
+
+#: usr/local/bin/simpleos-netinfo:53
+msgid "Click: Wi-Fi · Right-click: Details (Super+N)"
+msgstr ""
+
+#: usr/local/bin/simpleos-netinfo:55
+msgid "Network\\nLAN IP:  %s\\nDevice:  %s (%s)\\nGateway: %s\\nHost:    %s\\n%s"
+msgstr ""
+
+#: usr/local/bin/simpleos-netinfo:58
+msgid "No network connection\\nHost:    %s\\n%s"
+msgstr ""
+
+#: usr/local/bin/simpleos-netinfo:67
+msgid "LAN IP"
+msgstr ""
+
+#: usr/local/bin/simpleos-netinfo:67
+msgid "not connected"
+msgstr ""
+
+#: usr/local/bin/simpleos-netinfo:68
+msgid "Interface"
+msgstr ""
+
+#: usr/local/bin/simpleos-netinfo:69
+msgid "Gateway"
+msgstr ""
+
+#: usr/local/bin/simpleos-netinfo:70
+msgid "Hostname"
+msgstr ""
+
+#: usr/local/bin/simpleos-netinfo:73
+msgid "Public IP"
+msgstr ""
+
+#: usr/local/bin/simpleos-netinfo:88
+msgid "Wi-Fi & network settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-netinfo:93 config/i18n/extra.txt:15
+msgid "Network"
+msgstr ""
+
+#: usr/local/bin/simpleos-netinfo:94
+msgid "Network information"
+msgstr ""
+
+#: usr/local/bin/simpleos-nightlight:52
+msgid "Night light is not installed (gammastep missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-nightlight:65
+msgid "Night light is not supported by this display. Virtual machines often can't change screen colors."
+msgstr ""
+
+#: usr/local/bin/simpleos-nightlight:78
+msgid "Night light is on – warmer colors (%s K)."
+msgstr ""
+
+#: usr/local/bin/simpleos-nightlight:79
+msgid "Night light is off."
+msgstr ""
+
+#: usr/local/bin/simpleos-nightlight:81
+msgid "Night light is automatic – warmer colors from 20:00 to 07:00 (%s)."
+msgstr ""
+
+#: usr/local/bin/simpleos-nightlight:127
+msgid "Very warm"
+msgstr ""
+
+#: usr/local/bin/simpleos-powermenu:16
+msgid "The power menu could not open. Right-click the desktop and choose Power instead."
+msgstr ""
+
+#: usr/local/bin/simpleos-powermenu:27
+msgid "The screen is not locked in Live Mode – there is nothing to protect, and unlocking would ask for the live password."
+msgstr ""
+
+#: usr/local/bin/simpleos-powermenu:62 usr/local/bin/simpleos-powermenu:113
+msgid "The screen could not be locked."
+msgstr ""
+
+#: usr/local/bin/simpleos-powermenu:74
+msgid "Power options"
+msgstr ""
+
+#: usr/local/bin/simpleos-powermenu:83 usr/local/bin/simpleos-powermenu:101
+msgid "Restart anyway"
+msgstr ""
+
+#: usr/local/bin/simpleos-powermenu:84 usr/local/bin/simpleos-powermenu:103
+msgid "Shut down anyway"
+msgstr ""
+
+#: usr/local/bin/simpleos-powermenu:85
+msgid "Sleep anyway"
+msgstr ""
+
+#: usr/local/bin/simpleos-powermenu:86
+msgid "Sign out anyway"
+msgstr ""
+
+#: usr/local/bin/simpleos-powermenu:88
+msgid "Keep installing"
+msgstr ""
+
+#: usr/local/bin/simpleos-powermenu:90
+msgid "The installer is still working"
+msgstr ""
+
+#: usr/local/bin/simpleos-powermenu:107
+msgid "Also signed in: %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-powermenu:108
+msgid "Anything they have not saved is lost."
+msgstr ""
+
+#: usr/local/bin/simpleos-powermenu:121
+msgid "Sleep is not available on this computer."
+msgstr ""
+
+#: usr/local/bin/simpleos-powermenu:122
+msgid "The computer could not restart. Please save your work and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-powermenu:123
+msgid "The computer could not shut down. Please save your work and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-powermenu:124
+msgid "Could not sign out. Please try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-progress:57 usr/local/sbin/simpleos-backup-helper:284 usr/local/sbin/simpleos-backup-helper:298 usr/local/sbin/simpleos-backup-helper:305 usr/local/sbin/simpleos-system-setup:288 usr/local/sbin/simpleos-system-setup:590 usr/local/sbin/simpleos-system-setup:648 usr/local/sbin/simpleos-system-setup:806
+msgid "Done"
+msgstr ""
+
+#: usr/local/bin/simpleos-progress:405
+msgid " · {remaining} left"
+msgstr ""
+
+#: usr/local/bin/simpleos-report:284
+msgid "Create report"
+msgstr ""
+
+#: usr/local/bin/simpleos-report:284
+msgid "includes system logs – asks for your password"
+msgstr ""
+
+#: usr/local/bin/simpleos-report:285
+msgid "Create report without system logs"
+msgstr ""
+
+#: usr/local/bin/simpleos-report:286
+msgid "Open the issue page only"
+msgstr ""
+
+#: usr/local/bin/simpleos-report:289
+msgid "Saves details about this computer to a text file you can attach."
+msgstr ""
+
+#: usr/local/bin/simpleos-report:290
+msgid "Your name, user name, network names and addresses are removed."
+msgstr ""
+
+#: usr/local/bin/simpleos-report:300
+msgid "Collecting details… this takes a few seconds."
+msgstr ""
+
+#: usr/local/bin/simpleos-report:304
+msgid "The report could not be created. Details: ~/.cache/simpleos-report.log"
+msgstr ""
+
+#: usr/local/bin/simpleos-report:318
+msgid "Saved to your %s: %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-screenshot:20
+msgid "Screenshots are not available (maim is missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-screenshot:28 usr/local/bin/simpleos-screenshot:31 usr/local/bin/simpleos-screenshot:33
+msgid "The screenshot could not be saved."
+msgstr ""
+
+#: usr/local/bin/simpleos-screenshot:41
+msgid "Screenshot saved & copied"
+msgstr ""
+
+#: usr/local/bin/simpleos-screenshot:43
+msgid "Screenshot saved"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:46 usr/local/bin/simpleos-update:150 usr/local/sbin/simpleos-installer-restart:164
+msgid "Restart now"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:47
+msgid "Shut down now"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:49
+msgid "Sign out now"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:54
+msgid "Wi-Fi settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:55
+msgid "Bluetooth settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:56
+msgid "Sound settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:57
+msgid "Display settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:60
+msgid "Appearance settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:62
+msgid "Notification settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:64
+msgid "Mouse & touchpad settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:65
+msgid "Keyboard settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:66
+msgid "Printer & scanner settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:67
+msgid "Power settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:69
+msgid "Default & startup app settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:71
+msgid "Date & time settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:72
+msgid "Language & region settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:74
+msgid "Storage & backup settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:76
+msgid "Password & security settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:77
+msgid "User account settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:79
+msgid "System & update settings"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:228
+msgid "{expr} – can't divide by zero"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:230
+msgid "{expr} – the number is too large"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:232 usr/local/bin/simpleos-search:237 usr/local/bin/simpleos-search:240
+msgid "{expr} – no result"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:411
+msgid "Apps, settings and power options · type a calculation or a file name and press Enter"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:430
+msgid "Enter copies the result"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:430
+msgid "That calculation has no result"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:436
+msgid "Nothing found for “{text}” in your files"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:439
+msgid "1 file or folder matching “{text}” · Enter opens"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:440
+msgid "{count} files and folders matching “{text}” · Enter opens"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:446
+msgid "Home"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:494
+msgid "Switching users is not available in Live Mode."
+msgstr ""
+
+#: usr/local/bin/simpleos-search:512
+msgid "{text} could not be started."
+msgstr ""
+
+#: usr/local/bin/simpleos-search:515
+msgid "The file could not be opened."
+msgstr ""
+
+#: usr/local/bin/simpleos-search:518
+msgid "The Control Center could not be opened."
+msgstr ""
+
+#: usr/local/bin/simpleos-search:526
+msgid "{value} copied to the clipboard."
+msgstr ""
+
+#: usr/local/bin/simpleos-search:531
+msgid "Also signed in: {names} – anything they have not saved is lost."
+msgstr ""
+
+#: usr/local/bin/simpleos-search:545
+msgid "Search is not available (rofi missing). Press Super+Space again later."
+msgstr ""
+
+#: usr/local/bin/simpleos-search:549
+msgid "Search apps, files, or calculate"
+msgstr ""
+
+#: usr/local/bin/simpleos-search:561
+msgid "Search could not open. Please try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-software:51
+msgid "The Software Store is not available (Flatpak is missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-software:57
+msgid "The Software Store can't be installed: the Flathub source is not set up."
+msgstr ""
+
+#: usr/local/bin/simpleos-software:69
+msgid "In Live mode, apps are kept in memory – only %s MB are free, the Software Store needs about %s MB. Install Simple OS (icon on the desktop), then open the Software Store."
+msgstr ""
+
+#: usr/local/bin/simpleos-software:71
+msgid "Not enough free disk space for the Software Store: %s MB free, about %s MB needed. Free up space with the Storage Cleaner."
+msgstr ""
+
+#: usr/local/bin/simpleos-software:83 usr/local/bin/simpleos-software:119 usr/local/bin/simpleos-windows-app:678 usr/local/bin/simpleos-windows-app:753
+msgid "Flathub can't be reached. Check your internet connection and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-software:86
+msgid "The Software Store could not be installed (no temporary file)."
+msgstr ""
+
+#: usr/local/bin/simpleos-software:90 usr/local/bin/simpleos-software:97
+msgid "Installing the Software Store"
+msgstr ""
+
+#: usr/local/bin/simpleos-software:90
+msgid "Software Store installed"
+msgstr ""
+
+#: usr/local/bin/simpleos-software:91
+msgid "One time only · about %s MB from Flathub"
+msgstr ""
+
+#: usr/local/bin/simpleos-software:95
+msgid "Installing the Software Store from Flathub – this takes a few minutes, one time only."
+msgstr ""
+
+#: usr/local/bin/simpleos-software:117
+msgid "Not enough free space to install the Software Store. In Live mode, install Simple OS first."
+msgstr ""
+
+#: usr/local/bin/simpleos-software:121
+msgid "The Software Store could not be installed. Details: ~/.cache/simpleos-software.log"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:50 usr/local/bin/simpleos-software-center:73 usr/local/bin/simpleos-software-center:75 usr/local/bin/simpleos-software-center:88
+msgid "Games"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:50 usr/local/bin/simpleos-welcome-wizard:83
+msgid "Gaming Support"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:50
+msgid "Steam, Lutris, MangoHud and game controllers – thousands of games"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:52
+msgid "Documents, spreadsheets and presentations"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:52 usr/local/bin/simpleos-software-center:88 usr/local/bin/simpleos-welcome-wizard:95
+msgid "Office"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:54 usr/local/bin/simpleos-software-center:60 usr/local/bin/simpleos-software-center:62 usr/local/bin/simpleos-software-center:63 usr/local/bin/simpleos-software-center:64 usr/local/bin/simpleos-software-center:88 usr/local/bin/simpleos-welcome-wizard:95
+msgid "Internet"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:54
+msgid "Voice, video and text chat"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:56 usr/local/bin/simpleos-software-center:57 usr/local/bin/simpleos-software-center:68 usr/local/bin/simpleos-software-center:70 usr/local/bin/simpleos-software-center:71 usr/local/bin/simpleos-software-center:85 usr/local/bin/simpleos-software-center:88
+msgid "Media"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:56
+msgid "Music and podcasts"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:57
+msgid "Plays almost every video and audio file"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:58
+msgid "Office suite that looks like Microsoft Office"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:60
+msgid "Email and calendar"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:62
+msgid "Messenger"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:63
+msgid "Private messenger"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:64
+msgid "Video meetings"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:65
+msgid "Edit photos and images"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:65 usr/local/bin/simpleos-software-center:66 usr/local/bin/simpleos-software-center:67 usr/local/bin/simpleos-software-center:88
+msgid "Graphics"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:66
+msgid "Digital painting"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:67
+msgid "Vector graphics"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:68
+msgid "Record and stream your screen"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:70
+msgid "Video editor"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:71
+msgid "Record and edit audio"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:73
+msgid "Epic Games, GOG and Amazon games"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:75
+msgid "Minecraft launcher"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:77
+msgid "Run many Windows programs (Bottles and Wine) – double-click a .exe"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:79 usr/local/bin/simpleos-welcome-wizard:85
+msgid "Developer Tools"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:79
+msgid "Git, compilers, Python tools and the VSCodium code editor"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:81
+msgid "Code editor"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:81 usr/local/bin/simpleos-software-center:88
+msgid "Development"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:83
+msgid "Password manager"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:83 usr/local/bin/simpleos-software-center:89
+msgid "Utilities"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:85
+msgid "Media center for TV and movies"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:88
+msgid "All"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:172 usr/local/bin/simpleos-welcome-wizard:1146
+msgid " · less than a minute left"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:173 usr/local/bin/simpleos-welcome-wizard:1146
+msgid " · about {minutes} min left"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:188
+msgid "No password entered – nothing was installed."
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:190
+msgid "This could not start (a required program is missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:194
+msgid "Not enough free space. In Live mode, apps are kept in memory – install Simple OS first."
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:197
+msgid "No internet connection. Check your network and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:199
+msgid "Flathub is not set up on this computer."
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:200
+msgid "Something went wrong. Please try again later."
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:236 usr/local/bin/simpleos-software-center:246 usr/local/bin/simpleos-software-center:471 config/i18n/extra.txt:35
+msgid "Software Center"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:247
+msgid "Search apps"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:250
+msgid "More apps"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:252
+msgid "Browse Flathub (Bazaar)"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:253
+msgid "GNOME Software (all apps and system packages)"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:282
+msgid "Flatpak is missing – only system apps can be installed."
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:292
+msgid "{doing} continues in the background. You'll get a message when it's done."
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:300
+msgid "{program} is not installed."
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:321
+msgid "No apps found. Try “More apps” for the full catalog."
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:339
+msgid "Working…"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:351
+msgid "Install"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:363
+msgid "Remove {app}?"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:365
+msgid "Your Windows programs and their files stay. Their menu entries are hidden until you install SOS Bridge again – then they come back."
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:368
+msgid "Your files stay. The app's settings are kept for a later reinstall."
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:379
+msgid "Only {free} MB free – install {app} anyway?"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:381
+msgid "Large apps need 1–3 GB including their runtime. In Live mode, apps are kept in memory and are gone after a restart – install Simple OS first."
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:391
+msgid "Installing {app}"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:391
+msgid "Removing {app}"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:394
+msgid "{doing}… (this can take a few minutes)"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:415 usr/local/bin/simpleos-welcome-wizard:1078
+msgid " · about {rest} left"
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:455
+msgid "{app} is installed."
+msgstr ""
+
+#: usr/local/bin/simpleos-software-center:456
+msgid "{app} is removed."
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:121
+msgid "Do Not Disturb is on – click to turn it off"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:122
+msgid "Sound – click: volume and outputs · scroll: louder/quieter · middle click: mute"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:123
+msgid "Apps (Super)"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:123
+msgid "Shut down / Restart (Super+X)"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:252
+msgid "icons + text"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:252
+msgid "icons only"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:253 usr/local/bin/simpleos-taskbar-select:275
+msgid "Dark transparent"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:253
+msgid "Match theme"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:259
+msgid "Simple OS Taskbar Setup"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:260
+msgid "Position:  %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:261
+msgid "Layout:  %s, %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:262
+msgid "Look:  %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:263
+msgid "Network & clock:  network %s, clock %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:264
+msgid "Reset to defaults"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:270
+msgid "Full (40 px bar)"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:270
+msgid "Compact (34 px bar)"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:271
+msgid "Large (48 px bar, bigger clock and text)"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:272
+msgid "Icons + text"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:272
+msgid "Icons only"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:276
+msgid "Match theme (light or dark like your apps)"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:279
+msgid "Network & clock (select to switch on/off)"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskbar-select:280
+msgid "Network display (LAN IP)"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:111
+msgid "{n:.1f} GB"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:189
+msgid "Search processes"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:192
+msgid "All users"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:209
+msgid "User"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:210 usr/local/bin/simpleos-welcome-wizard:179
+msgid "Memory"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:238 usr/local/bin/simpleos-taskmanager:342
+msgid "End task"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:272
+msgid " – ending…"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:290
+msgid " · Memory {mem}"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:290
+msgid "{count} processes · CPU {total_cpu:.0f} %"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:304
+msgid "{used} of {total}"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:355
+msgid "This process can't be ended."
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:359
+msgid "End {process}?"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:360
+msgid "It is part of the desktop or the system. Ending it can close your session or stop the network or sound."
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:368
+msgid "Ending {process}…"
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:382
+msgid "{process} was closed."
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:383
+msgid "{process} did not respond and was forced to close."
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:384
+msgid "{process} had already closed."
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:385
+msgid "{process} was not ended – no password entered."
+msgstr ""
+
+#: usr/local/bin/simpleos-taskmanager:386
+msgid "{process} could not be ended."
+msgstr ""
+
+#: usr/local/bin/simpleos-theme:72
+msgid "Dark mode"
+msgstr ""
+
+#: usr/local/bin/simpleos-theme:72
+msgid "Light mode"
+msgstr ""
+
+#: usr/local/bin/simpleos-theme:72
+msgid "Accent: blue"
+msgstr ""
+
+#: usr/local/bin/simpleos-theme:72
+msgid "Accent: mauve"
+msgstr ""
+
+#: usr/local/bin/simpleos-theme:73
+msgid "Accent: pink"
+msgstr ""
+
+#: usr/local/bin/simpleos-theme:73
+msgid "Accent: green"
+msgstr ""
+
+#: usr/local/bin/simpleos-theme:73
+msgid "Accent: peach"
+msgstr ""
+
+#: usr/local/bin/simpleos-theme:73
+msgid "Accent: teal"
+msgstr ""
+
+#: usr/local/bin/simpleos-theme:75
+msgid "Current: %s mode, %s accent"
+msgstr ""
+
+#: usr/local/bin/simpleos-update:46
+msgid "The update window could not open. Please try again from Menu → Tools → Software Updates."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:81
+msgid "Updates are already being checked or installed."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:143
+msgid "The firmware update (%s) was not applied during the restart. Keep the charger plugged in and try again from Menu → Tools → Software Updates. Details: ~/.cache/simpleos-update.log"
+msgstr ""
+
+#: usr/local/bin/simpleos-update:149 usr/local/bin/simpleos-update:187
+msgid "Updates installed"
+msgstr ""
+
+#: usr/local/bin/simpleos-update:149
+msgid "Restart…"
+msgstr ""
+
+#: usr/local/bin/simpleos-update:152
+msgid "Save your work first – open windows will close."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:154
+msgid "Please restart your computer to finish the update."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:168
+msgid "Updates cannot be installed on this system (update helper missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:188
+msgid "You can keep working – don't turn off the computer"
+msgstr ""
+
+#: usr/local/bin/simpleos-update:192
+msgid "Installing updates … You can keep working. Don't turn off the computer."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:207
+msgid "A firmware update (BIOS) is waiting: plug in the charger, then open Software Updates again."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:209
+msgid "The firmware update could not be installed. Details: ~/.cache/simpleos-update.log"
+msgstr ""
+
+#: usr/local/bin/simpleos-update:216
+msgid "1 update could not be installed automatically: it would remove other software. Details: ~/.cache/simpleos-update.log"
+msgstr ""
+
+#: usr/local/bin/simpleos-update:218
+msgid "%s updates could not be installed automatically: they would remove other software. Details: ~/.cache/simpleos-update.log"
+msgstr ""
+
+#: usr/local/bin/simpleos-update:221
+msgid "Your computer needs a restart to finish the update. Restart when it suits you."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:222
+msgid "Simple OS %s is installed. Your computer needs a restart to finish the update. Restart when it suits you."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:224
+msgid "Your computer needs a restart to finish the update. Firmware is installed during the restart – keep the charger plugged in."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:232
+msgid "Simple OS %s is installed. Sign out and back in to see everything that is new."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:236
+msgid "Your system is up to date – there was nothing to install."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:238 usr/local/bin/simpleos-update:322
+msgid "Your system is up to date."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:247
+msgid "Not enough free disk space for the updates on the boot partition: about %s MB are needed, %s MB are free. Nothing was changed. Free up space with the Storage Cleaner, then try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:249
+msgid "Not enough free disk space for the updates: about %s MB are needed, %s MB are free. Nothing was changed. Free up space with the Storage Cleaner, then try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:251
+msgid "Open Storage Cleaner"
+msgstr ""
+
+#: usr/local/bin/simpleos-update:255
+msgid "Some updates could not be installed: not enough free disk space. Free up space with the Storage Cleaner and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:257
+msgid "Some updates could not be installed: no internet connection. Check your network and try again from Menu → Tools → Software Updates."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:259
+msgid "Some updates could not be installed: another installation was still running. Try again in a few minutes."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:265
+msgid "Restart your computer first, then try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:267
+msgid "Some updates could not be installed: %s."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:269
+msgid "Some updates could not be installed."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:271
+msgid "Details: ~/.cache/simpleos-update.log"
+msgstr ""
+
+#: usr/local/bin/simpleos-update:283
+msgid "Checking for updates…"
+msgstr ""
+
+#: usr/local/bin/simpleos-update:298
+msgid "1 update is ready to install."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:299
+msgid "%s updates are ready to install."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:302
+msgid "Updates available"
+msgstr ""
+
+#: usr/local/bin/simpleos-update:302
+msgid "Click to install."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:308
+msgid "Updates can be installed after Simple OS is installed on your computer."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:311
+msgid "Updates are not available on this system (apt missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-update:324
+msgid "Updates could not be checked right now – are you connected to the internet? Details: ~/.cache/simpleos-update.log"
+msgstr ""
+
+#: usr/local/bin/simpleos-update:332
+msgid "1 update available"
+msgstr ""
+
+#: usr/local/bin/simpleos-update:332
+msgid "%s updates available"
+msgstr ""
+
+#: usr/local/bin/simpleos-update:333
+msgid "(could not check online – last known state)"
+msgstr ""
+
+#: usr/local/bin/simpleos-update:334
+msgid "Install now"
+msgstr ""
+
+#: usr/local/bin/simpleos-update:335
+msgid "Not now"
+msgstr ""
+
+#: usr/local/bin/simpleos-usb-notify:32
+msgid "Your files are in %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-usb-notify:45
+msgid "“%s” is still in use. Close all files and windows from it, then try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-usb-notify:79
+msgid "Safely remove"
+msgstr ""
+
+#: usr/local/bin/simpleos-usb-notify:79
+msgid "“%s” is ready"
+msgstr ""
+
+#: usr/local/bin/simpleos-usb-notify:80
+msgid "Open it in the file manager or remove it safely."
+msgstr ""
+
+#: usr/local/bin/simpleos-usb-notify:92 usr/local/bin/simpleos-usb-notify:93
+msgid "“%s” can now be removed safely."
+msgstr ""
+
+#: usr/local/bin/simpleos-usb-notify:96
+msgid "“%s” could not be opened. It may be damaged or use a format Simple OS can't read."
+msgstr ""
+
+#: usr/local/bin/simpleos-volume:77
+msgid "The advanced sound settings are not installed (pavucontrol missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-volume:82
+msgid "The sound menu could not open. Opening the advanced sound settings instead."
+msgstr ""
+
+#: usr/local/bin/simpleos-volume:96
+msgid "The volume could not be changed."
+msgstr ""
+
+#: usr/local/bin/simpleos-volume:138 usr/local/bin/simpleos-volume:139
+msgid "This output could not be selected."
+msgstr ""
+
+#: usr/local/bin/simpleos-volume:144
+msgid "Sound now plays on %s."
+msgstr ""
+
+#: usr/local/bin/simpleos-volume:162
+msgid "No output"
+msgstr ""
+
+#: usr/local/bin/simpleos-volume:163
+msgid "Volume up"
+msgstr ""
+
+#: usr/local/bin/simpleos-volume:164
+msgid "Volume down"
+msgstr ""
+
+#: usr/local/bin/simpleos-volume:165
+msgid "Set volume…"
+msgstr ""
+
+#: usr/local/bin/simpleos-volume:166
+msgid "Unmute"
+msgstr ""
+
+#: usr/local/bin/simpleos-volume:171
+msgid "Active"
+msgstr ""
+
+#: usr/local/bin/simpleos-volume:185
+msgid "Set volume"
+msgstr ""
+
+#: usr/local/bin/simpleos-volume:185
+msgid "now %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-volume:197
+msgid "Mute could not be changed."
+msgstr ""
+
+#: usr/local/bin/simpleos-wallpaper:16
+msgid "This picture could not be opened."
+msgstr ""
+
+#: usr/local/bin/simpleos-wallpaper:18
+msgid "This file is not a picture."
+msgstr ""
+
+#: usr/local/bin/simpleos-wallpaper:32
+msgid "The wallpaper could not be changed."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome:24
+msgid "The welcome page is missing (%s)."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome:34
+msgid "The welcome page could not open. You can find it at %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:60
+msgid "Preinstalled. Stable and privacy-friendly."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:61
+msgid "Open-source base of Chrome. Installed from Debian (about 100 MB)."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:62
+msgid "Built for privacy. Installed from Flathub."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:72
+msgid "The classic: Writer, Calc, Impress and Draw. Installed from Debian."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:74
+msgid "Modern alternative, very compatible with Microsoft Office. Installed from Flathub."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:76
+msgid "Minimal"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:76
+msgid "No office suite. You can install one later from the Software Center."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:81
+msgid "Run many Windows programs with Bottles and Wine – no Windows needed."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:82
+msgid "about 700 MB download"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:83
+msgid "Steam, Lutris and MangoHud with 32-bit support and game controllers. GameMode is already built in."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:84
+msgid "about 1 GB download"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:85
+msgid "Git, compilers, Python tools and the code editor VSCodium."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:86
+msgid "about 800 MB download"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:95
+msgid "Extras"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:95 config/i18n/extra.txt:28
+msgid "Welcome"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:150
+msgid "{model} ({threads} threads)"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:154
+msgid "{threads} threads"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:170
+msgid "{free:.0f} GiB free of {total:.0f} GiB"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:175
+msgid "System"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:177
+msgid "Kernel"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:178
+msgid "Processor"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:180 config/i18n/extra.txt:23
+msgid "Storage"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:327
+msgid "You're online – connected to {network}"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:329
+msgid "You're online – connected with a network cable"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:331
+msgid "Not connected yet"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:337
+msgid "Click Next to continue."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:338
+msgid "Use a different network"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:341
+msgid "Check again"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:343
+msgid "Wi-Fi is turned off. Click \"Turn on Wi-Fi\" to see the networks around you."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:344 usr/local/bin/simpleos-wifi:131
+msgid "Turn on Wi-Fi"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:346
+msgid "No Wi-Fi networks found nearby. Move closer to your router and click \"Search again\"."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:349
+msgid "To switch, click another network, type its password if it needs one, then click Connect."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:352
+msgid "1. Click your Wi-Fi network.   2. Type its password (often on a sticker on your router).   3. Click Connect."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:373 usr/local/bin/simpleos-welcome-wizard:381 usr/local/bin/simpleos-welcome-wizard:387
+msgid "Connected to {ssid}. You're online."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:392
+msgid "That didn't work. The password may be wrong – please check it and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:394
+msgid "That didn't work. The saved password may be wrong – please type the password and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:395
+msgid "That didn't work. Move closer to your router and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:401
+msgid "Simple OS Setup"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:454
+msgid "Skip setup"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:455
+msgid "Keep the defaults and don't show this again"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:458 usr/local/bin/simpleos-welcome-wizard:943
+msgid "Next"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:480
+msgid "You're already online"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:534 usr/local/lib/simpleos/welcome-viewer:181 config/i18n/extra.txt:64
+msgid "Welcome to Simple OS"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:535
+msgid "Let's set up a few things. This takes less than a minute."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:554
+msgid "Connect to the internet"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:555
+msgid "The next steps download your browser and apps, so Simple OS needs the internet once."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:557 usr/local/bin/simpleos-welcome-wizard:605
+msgid "Checking your connection ..."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:577
+msgid "Show the password"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:590
+msgid "Not now? Just click Next. Later, click the network display in the taskbar (bottom right) to connect."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:660
+msgid "Password for “{ssid}”:"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:676
+msgid "Please type the password for \"{ssid}\", then click Connect."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:680
+msgid "Connecting to {ssid} ..."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:694
+msgid " Click Next to continue."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:716
+msgid "Turning on Wi-Fi ..."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:721
+msgid "Choose your web browser"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:722
+msgid "Links and Super+B open this browser. Missing browsers are installed for you."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:727 usr/local/bin/simpleos-welcome-wizard:814 usr/local/bin/simpleos-welcome-wizard:829
+msgid "installed"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:727 usr/local/bin/simpleos-welcome-wizard:814
+msgid "will be installed"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:741
+msgid "You can change this later in Control Center → Apps."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:745
+msgid "Make it yours"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:746
+msgid "Pick a style for your apps and an accent color for menus, panel and windows."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:760
+msgid "The panel, menus and terminal always stay dark."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:807
+msgid "Office suite"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:808
+msgid "Documents, spreadsheets and presentations. Pick one or keep the system minimal."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:817
+msgid "Already installed office apps are not removed."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:821
+msgid "Optional components"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:822
+msgid "Add extras now or later in the Software Center. Nothing is installed unless you turn it on."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:844
+msgid "What runs with SOS Bridge?"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:849
+msgid "Gaming Support: by turning it on you accept the Steam license agreement (store.steampowered.com/subscriber_agreement)."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:861
+msgid "You're offline – connect to the internet (step 2) to add these now, or add them later in the Software Center."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:866
+msgid "Nothing selected – you can add these later in the Software Center."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:868
+msgid "Selected: {components} – additional downloads, installed at the end of the setup."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:885
+msgid "Installing your software"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:886
+msgid "You will be asked for your password once. Please keep this window open."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:891 usr/local/bin/simpleos-welcome-wizard:938
+msgid "Starting ..."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:907
+msgid "Details"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:915
+msgid "Get more apps"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:916
+msgid "The Software Center installs popular apps like Steam, Spotify or Zoom with one click."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:920
+msgid "Open the Software Center after setup"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:923
+msgid "Its button \"More apps\" leads to thousands more from Flathub."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:930
+msgid ""
+"You find the Software Center in the menu any time.\n"
+"Run this wizard again any time from Menu → Help → Setup Wizard."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:943 usr/local/bin/simpleos-welcome-wizard:1095
+msgid "Finish"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:977
+msgid "Firefox ESR will be removed completely to free up space."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1038
+msgid "Waiting for your password ..."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1093
+msgid "No password entered – nothing was installed or removed. Click Finish to try again or Back to change your choices."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1102
+msgid "an optional component"
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1103
+msgid "Everything is set up – except {names}: it could not be installed (no internet or not enough space?). You can add it later in the Software Center."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1152
+msgid " Run the wizard again from Menu → Help → Setup Wizard."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1155
+msgid "Some software could not be installed: not enough free space. In Live mode, apps are kept in memory – install Simple OS first."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1159
+msgid "Some software could not be installed: no internet connection. Check your network."
+msgstr ""
+
+#: usr/local/bin/simpleos-welcome-wizard:1160
+msgid "Some software could not be installed (details below)."
+msgstr ""
+
+#: usr/local/bin/simpleos-whats-new:147
+msgid "What's new in Simple OS"
+msgstr ""
+
+#: usr/local/bin/simpleos-whats-new:158
+msgid ""
+"<span size='x-large' weight='bold'>What's new in Simple OS {version}</span>\n"
+"<span alpha='70%'>Your computer was updated. Here is what changed for you.</span>"
+msgstr ""
+
+#: usr/local/bin/simpleos-whats-new:167
+msgid "No notes for this version. The release notes on the project page list every change."
+msgstr ""
+
+#: usr/local/bin/simpleos-whats-new:187
+msgid "Show this after updates"
+msgstr ""
+
+#: usr/local/bin/simpleos-whats-new:195
+msgid "All changes"
+msgstr ""
+
+#: usr/local/bin/simpleos-whats-new:196
+msgid "The full release notes on the project page"
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:34
+msgid "Network details are not available on this system."
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:40
+msgid "The network menu could not open. Opening the network settings window instead."
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:50
+msgid "Network management is not installed (NetworkManager missing)."
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:96
+msgid "Connected: %s"
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:98
+msgid "Connected: Ethernet"
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:102
+msgid "Cable unplugged"
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:104
+msgid "No network adapter"
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:110
+msgid "Wi-Fi Hardware:"
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:110
+msgid "Not found / Disabled"
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:130
+msgid "Turn off Wi-Fi"
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:133 usr/local/bin/simpleos-wifi:142
+msgid "Network Details"
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:135
+msgid "Select network"
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:136
+msgid "Wi-Fi is off"
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:159
+msgid "Wi-Fi is off."
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:160
+msgid "Wi-Fi is on. Looking for networks …"
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:162
+msgid "Connecting …"
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:163
+msgid "You're online (Ethernet)."
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:164
+msgid "Could not connect. Check that the network cable is plugged in at both ends."
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:182
+msgid "Enter the password"
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:188
+msgid "Connecting to %s …"
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:203
+msgid "Could not connect to %s. The password may be wrong – click the network display and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-wifi:205
+msgid "Could not connect to %s. Move closer to the router and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:69
+msgid "about 700 MB"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:198
+msgid "In Live mode, apps are kept in memory – only {free} MB are free, SOS Bridge needs about {need} MB. Install Simple OS first (icon on the desktop)."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:200
+msgid "Not enough free disk space for SOS Bridge: {free} MB free, about {need} MB needed. Free up space with the Storage Cleaner."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:338
+msgid "Preparing SOS Bridge"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:338
+msgid "SOS Bridge is ready"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:339
+msgid "One time only · about a minute"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:342
+msgid "Setting up Windows support (Wine) …"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:360
+msgid "Setting up Windows support (Wine) – trying again …"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:424 usr/local/bin/simpleos-windows-app:605
+msgid "Starting {program} …"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:425 usr/local/bin/simpleos-windows-app:606
+msgid "Windows programs take a few seconds to open."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:451 usr/local/bin/simpleos-windows-app:594 usr/local/bin/simpleos-windows-app:601 usr/local/bin/simpleos-windows-app:694 usr/local/bin/simpleos-windows-app:799 usr/local/bin/simpleos-windows-app:821 usr/local/bin/simpleos-windows-app:910
+msgid "Windows program"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:452
+msgid "{program} did not open. Some Windows programs don't work with SOS Bridge – details: {LOG}"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:498
+msgid "Windows program (SOS Bridge)"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:540
+msgid "Windows programs"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:595
+msgid "This program is not installed any more."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:602
+msgid "SOS Bridge could not be set up. Check your internet connection and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:641
+msgid "Installing SOS Bridge"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:642
+msgid "SOS Bridge installed"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:643
+msgid "One time only · {size} from Flathub"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:647
+msgid "Installing SOS Bridge (Bottles)"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:675
+msgid "Not enough free space to install SOS Bridge."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:680
+msgid "Installing apps needs an administrator's password."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:681
+msgid "SOS Bridge could not be installed. Details: {LOG}"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:704
+msgid "<b><big>{program} needs SOS Bridge</big></b>"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:706
+msgid "{program} is a Windows program. It runs with SOS Bridge, which is not installed any more. Your Windows programs and their files are still there – install SOS Bridge again and {program} opens."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:710
+msgid "<b><big>{program} is a Windows program</big></b>"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:712
+msgid "Simple OS can try to run it with SOS Bridge – the free app Bottles with Wine, no Windows needed. Many Windows programs work, some don't (for example Microsoft 365, current Adobe apps and games with anti-cheat). Programs made for Windows itself never work: Windows installation media and setup tools, drivers and antivirus programs."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:720
+msgid "Additional download required: SOS Bridge comes once from Flathub ({DOWNLOAD}). You can also install it later in the Software Center."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:727 usr/local/bin/simpleos-windows-app:838
+msgid "What works?"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:729
+msgid "Install SOS Bridge"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:744 usr/local/bin/simpleos-windows-app:803
+msgid "Try again"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:776
+msgid "Installing SOS Bridge – this takes a few minutes …"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:795
+msgid "SOS Bridge could not be set up"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:796
+msgid "The first time, SOS Bridge downloads its Windows support (Wine, about a minute). That did not work – usually the internet connection dropped. Check your connection and try again."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:834
+msgid "<b><big>{program} is made for Windows itself</big></b>"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:836
+msgid "Windows installation media and setup tools only work on a Windows computer – SOS Bridge can't run them, and Simple OS doesn't need them."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:843
+msgid "<b><big>{name} has its own version for Simple OS</big></b>"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:845
+msgid "{program} is the Windows installer of {name}. The version for Simple OS works much better and updates itself – install it from the Software Center with one click."
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:848
+msgid "Run the Windows version anyway"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:850
+msgid "Open in the Software Center"
+msgstr ""
+
+#: usr/local/bin/simpleos-windows-app:911
+msgid "The file does not exist."
+msgstr ""
+
+#: usr/local/sbin/simpleos-backup-helper:58
+msgid "Usage: --list | --create TEXT | --restore NAME | --delete NAME | --check NAME | --auto on|off|status | --before-update"
+msgstr ""
+
+#: usr/local/sbin/simpleos-backup-helper:60 usr/local/sbin/simpleos-users-helper:44
+msgid "must run as root (pkexec)"
+msgstr ""
+
+#: usr/local/sbin/simpleos-backup-helper:62
+msgid "timeshift missing"
+msgstr ""
+
+#: usr/local/sbin/simpleos-backup-helper:264 usr/local/sbin/simpleos-backup-helper:269 usr/local/sbin/simpleos-backup-helper:287
+msgid "Live-Session"
+msgstr ""
+
+#: usr/local/sbin/simpleos-backup-helper:279
+msgid "invalid description"
+msgstr ""
+
+#: usr/local/sbin/simpleos-backup-helper:282
+msgid "Creating a restore point (the first one can take 10–20 minutes)"
+msgstr ""
+
+#: usr/local/sbin/simpleos-backup-helper:290 usr/local/sbin/simpleos-backup-helper:301 usr/local/sbin/simpleos-backup-helper:308
+msgid "point %s not found"
+msgstr ""
+
+#: usr/local/sbin/simpleos-backup-helper:291
+msgid "Restoring %s – the computer restarts when it is done"
+msgstr ""
+
+#: usr/local/sbin/simpleos-backup-helper:297
+msgid "timeshift --restore failed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-backup-helper:304
+msgid "timeshift --delete: %s still there"
+msgstr ""
+
+#: usr/local/sbin/simpleos-backup-helper:311
+msgid "%s: info.json missing"
+msgstr ""
+
+#: usr/local/sbin/simpleos-backup-helper:312
+msgid "%s: info.json damaged"
+msgstr ""
+
+#: usr/local/sbin/simpleos-backup-helper:313
+msgid "%s: system files missing (localhost/etc/os-release)"
+msgstr ""
+
+#: usr/local/sbin/simpleos-backup-helper:314
+msgid "%s: system files missing (localhost/usr/bin)"
+msgstr ""
+
+#: usr/local/sbin/simpleos-backup-helper:334
+msgid "Creating a restore point before the update"
+msgstr ""
+
+#: usr/local/sbin/simpleos-cleaner-helper:24
+msgid "Removing downloaded package files"
+msgstr ""
+
+#: usr/local/sbin/simpleos-cleaner-helper:27
+msgid "Removing packages that are no longer needed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-cleaner-helper:31
+msgid "Removing unused Flatpak runtimes"
+msgstr ""
+
+#: usr/local/sbin/simpleos-cleaner-helper:35
+msgid "Removing system logs older than 7 days"
+msgstr ""
+
+#: usr/local/sbin/simpleos-installer-restart:54
+msgid "Simple OS is installed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-installer-restart:55
+msgid ""
+"Remove the USB stick (or take out the disc) now.\n"
+"\n"
+"Then click “Restart now” – the computer starts your new Simple OS."
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:153
+msgid "Waiting for a background update to finish"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:212
+msgid "Not enough free space: %s MB free, about %s MB needed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:274
+msgid "Downloading drivers"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:305
+msgid "Checking package sources"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:317
+msgid "Turning on the firewall"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:320
+msgid "Turning off the firewall"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:363 usr/local/sbin/simpleos-system-setup:564
+msgid "Checking for updates"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:364 usr/local/sbin/simpleos-system-setup:570
+msgid "package lists could not be downloaded"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:454
+msgid "Installing new Simple OS components"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:460
+msgid "new Simple OS components could not be installed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:507
+msgid "Installing language packs"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:539
+msgid "Setting the language"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:540
+msgid "Preparing the language"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:569
+msgid "an interrupted installation could not be repaired"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:589
+msgid "Already up to date"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:597 usr/local/sbin/simpleos-system-setup:608
+msgid "Not enough free disk space"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:598
+msgid "not enough free disk space for the updates – nothing was changed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:609
+msgid "not enough free disk space for the updates after the restore point – the updates were not installed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:614
+msgid "Installing updates"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:631
+msgid "updates could not be installed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:636
+msgid "Updating apps from the Software Store"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:640
+msgid "Flatpak apps could not be updated"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:644
+msgid "Updating firmware (BIOS and devices)"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:645
+msgid "Don't turn off the computer"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:656
+msgid "Updating package lists"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:670
+msgid "Installing Firefox ESR"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:671
+msgid "Firefox ESR could not be installed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:676
+msgid "Installing Chromium"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:677
+msgid "Chromium could not be installed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:681
+msgid "Installing Mullvad Browser"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:682
+msgid "Mullvad Browser could not be installed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:694
+msgid "Removing Firefox ESR"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:703
+msgid "Firefox ESR could not be removed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:718
+msgid "Installing LibreOffice (this can take a while)"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:721
+msgid "LibreOffice could not be installed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:728
+msgid "Installing ONLYOFFICE (about 1 GB download – this takes several minutes)"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:729
+msgid "ONLYOFFICE could not be installed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:737
+msgid "Enabling contrib and non-free repositories"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:741
+msgid "Enabling 32-bit support"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:746
+msgid "Gaming package: package lists (32-bit) could not be downloaded – check the internet connection"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:765
+msgid "Installing Steam, Lutris and MangoHud (this can take a while)"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:770
+msgid "Gaming package could not be installed completely"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:781
+msgid "Installing SOS Bridge (Bottles – about 700 MB download)"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:782
+msgid "SOS Bridge (Bottles) could not be installed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:792
+msgid "Installing developer tools (Git, compilers, Python)"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:794
+msgid "developer packages could not be installed:%s"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:797
+msgid "Installing the code editor VSCodium"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:798
+msgid "the code editor VSCodium could not be installed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:808
+msgid "Done – not installed: %s"
+msgstr ""
+
+#: usr/local/sbin/simpleos-system-setup:811
+msgid "Finished with errors"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:41
+msgid "Usage: --create USER NAME admin|standard | --delete USER keep|remove | --name USER NAME | --password USER | --admin USER on|off | --picture USER FILE|none | --autologin USER|off"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:46
+msgid "user accounts can only be changed on an installed system"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:90
+msgid "no password given"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:91
+msgid "the password is empty"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:92
+msgid "the password has control characters"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:99
+msgid "%s is not a person's account on this computer"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:103
+msgid "you can't delete your own account here"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:104
+msgid "you can't make your own account a standard user here"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:152
+msgid "the user name may only have small letters, digits, - and _ and must start with a letter"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:153 usr/local/sbin/simpleos-users-helper:189
+msgid "the full name is empty, too long or has : , ="
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:155
+msgid "the user name %s is taken already"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:158
+msgid "the folder %s exists already (files of a deleted account?) – choose another user name, or move the folder away first"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:160
+msgid "the account could not be created"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:161
+msgid "the password could not be set"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:172 usr/local/sbin/simpleos-users-helper:205
+msgid "%s is the last administrator"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:173
+msgid "%s is signed in – sign them out first"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:177
+msgid "the account could not be deleted"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:190
+msgid "the name could not be changed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:196
+msgid "the password could not be changed"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:202
+msgid "could not make %s an administrator"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:206
+msgid "could not make %s a standard user"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:215 usr/local/sbin/simpleos-users-helper:227
+msgid "the picture can't be read"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:216 usr/local/sbin/simpleos-users-helper:228
+msgid "the picture is bigger than 5 MB"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:218 usr/local/sbin/simpleos-users-helper:231
+msgid "the picture is not a PNG or JPEG file"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:224
+msgid "no temporary file"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:241
+msgid "the picture could not be set"
+msgstr ""
+
+#: usr/local/sbin/simpleos-users-helper:259
+msgid "automatic sign-in could not be changed"
+msgstr ""
+
+#: usr/local/lib/simpleos/home-folders:113
+msgid "Text Document"
+msgstr ""
+
+#: usr/local/lib/simpleos/progress-filter:50
+msgid "This can take 10–20 minutes – don't turn off the computer"
+msgstr ""
+
+#: usr/local/lib/simpleos/progress-filter:51
+msgid "Still working, this is normal – don't turn off the computer"
+msgstr ""
+
+#: usr/local/lib/simpleos/progress-filter:55
+msgid "Measuring the system"
+msgstr ""
+
+#: usr/local/lib/simpleos/progress-filter:56
+msgid "Preparing the backup disk"
+msgstr ""
+
+#: usr/local/lib/simpleos/progress-filter:57
+msgid "Copying system files"
+msgstr ""
+
+#: usr/local/lib/simpleos/progress-filter:58
+msgid "Putting system files back"
+msgstr ""
+
+#: usr/local/lib/simpleos/progress-filter:59
+msgid "Removing old files"
+msgstr ""
+
+#: usr/local/lib/simpleos/progress-filter:60 usr/local/lib/simpleos/progress-filter:206 usr/local/lib/simpleos/progress-filter:210
+msgid "Finishing up"
+msgstr ""
+
+#: usr/local/lib/simpleos/progress-filter:138
+msgid "Checking for app updates"
+msgstr ""
+
+#: usr/local/lib/simpleos/progress-filter:168 usr/local/lib/simpleos/progress-filter:193
+msgid "Downloading"
+msgstr ""
+
+#: usr/local/lib/simpleos/progress-filter:168
+msgid "Downloading part {cur} of {cnt}"
+msgstr ""
+
+#: usr/local/lib/simpleos/progress-filter:196
+msgid "Downloading {done} of {total}"
+msgstr ""
+
+#: usr/local/lib/simpleos/progress-filter:208
+msgid "Update {n} of {updates}"
+msgstr ""
+
+#: usr/local/lib/simpleos/progress-filter:212
+msgid "Installing"
+msgstr ""
+
+#: usr/local/lib/simpleos/progress-filter:282
+msgid "Copying system files · {ts_files:,} files"
+msgstr ""
+
+#: usr/local/lib/simpleos/welcome-viewer:90
+msgid "You are running Simple OS in Live Mode! Try out everything safely or install it to your system."
+msgstr ""
+
+#: usr/local/lib/simpleos/welcome-viewer:91
+msgid "Install Simple OS Now"
+msgstr ""
+
+#: usr/local/lib/simpleos/welcome-viewer:130
+msgid "Live Mode"
+msgstr ""
+
+#: usr/local/lib/simpleos/welcome-viewer:191 config/i18n/extra.txt:30
+msgid "Simple OS"
+msgstr ""
+
+#: config/i18n/extra.txt:19 config/i18n/extra.txt:69
+msgid "Report a Problem"
+msgstr ""
+
+#: config/i18n/extra.txt:20
+msgid "Software Store"
+msgstr ""
+
+#: config/i18n/extra.txt:26
+msgid "Updates"
+msgstr ""
+
+#: config/i18n/extra.txt:27
+msgid "USB drive"
+msgstr ""
+
+#: config/i18n/extra.txt:32
+msgid "Search (Super+Space)"
+msgstr ""
+
+#: config/i18n/extra.txt:33
+msgid "Files"
+msgstr ""
+
+#: config/i18n/extra.txt:34
+msgid "Web Browser (Super+B)"
+msgstr ""
+
+#: config/i18n/extra.txt:36
+msgid "Terminal"
+msgstr ""
+
+#: config/i18n/extra.txt:38
+msgid "PDF Viewer"
+msgstr ""
+
+#: config/i18n/extra.txt:39
+msgid "Text Editor"
+msgstr ""
+
+#: config/i18n/extra.txt:40
+msgid "Calculator"
+msgstr ""
+
+#: config/i18n/extra.txt:41
+msgid "Media Player"
+msgstr ""
+
+#: config/i18n/extra.txt:42
+msgid "Image Viewer"
+msgstr ""
+
+#: config/i18n/extra.txt:44
+msgid "Settings"
+msgstr ""
+
+#: config/i18n/extra.txt:45
+msgid "All Settings (Super+I)"
+msgstr ""
+
+#: config/i18n/extra.txt:46
+msgid "Wi-Fi & Network"
+msgstr ""
+
+#: config/i18n/extra.txt:50
+msgid "Appearance & Wallpaper"
+msgstr ""
+
+#: config/i18n/extra.txt:53
+msgid "Default & Startup Apps"
+msgstr ""
+
+#: config/i18n/extra.txt:54
+msgid "Night Light"
+msgstr ""
+
+#: config/i18n/extra.txt:55
+msgid "Do Not Disturb (on/off)"
+msgstr ""
+
+#: config/i18n/extra.txt:56
+msgid "Tools"
+msgstr ""
+
+#: config/i18n/extra.txt:58
+msgid "Task Manager (Ctrl+Shift+Esc)"
+msgstr ""
+
+#: config/i18n/extra.txt:61
+msgid "Disks & USB Sticks"
+msgstr ""
+
+#: config/i18n/extra.txt:62
+msgid "Network Info (Super+N)"
+msgstr ""
+
+#: config/i18n/extra.txt:65
+msgid "What's New"
+msgstr ""
+
+#: config/i18n/extra.txt:66
+msgid "Keyboard Shortcuts (Super+H)"
+msgstr ""
+
+#: config/i18n/extra.txt:68
+msgid "Windows Programs"
+msgstr ""
+
+#: config/i18n/extra.txt:70
+msgid "Power (Super+X)"
+msgstr ""
+

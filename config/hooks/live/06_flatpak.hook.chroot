@@ -1,5 +1,9 @@
 #!/bin/sh
 set -e
+# SOS Bridge (#154): Bottles' Flatpak permission "~/Games/umu:create" made an empty "Games" folder in every home
+# folder that used SOS Bridge (UMU is for games in Bottles' own launcher, not used by Simple OS). Works before Bottles
+# is installed: the override is only a file in /var/lib/flatpak/overrides. Updated systems: migration system/120.
+flatpak override --system --nofilesystem='~/Games/umu' com.usebottles.bottles
 flatpak remote-add --if-not-exists --system flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 # Show GTK4/libadwaita Flatpaks (Bazaar) dark via the GTK portal
 glib-compile-schemas /usr/share/glib-2.0/schemas

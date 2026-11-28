@@ -150,6 +150,8 @@ cmd_publish() {
     # next: its notice at the top of the README ("still being tested") must be gone first (docs/MAINTAINING.md, section 7)
     [ "$(head -n1 RELEASE_NOTES.md 2>/dev/null)" = "# Simple OS $v" ] ||
         die "RELEASE_NOTES.md is not about $v (first line must be '# Simple OS $v') – write the release text first"
+    # Every text of the tools translated (#43) – otherwise a German system shows English bits of this release
+    python3 tools/i18n.py check >/dev/null 2>&1 || die "translations incomplete – run ./tools/i18n.py check (and extract)"
     ! grep -q 'simpleos-next-branch' README.md ||
         die "README.md still has the notice of the branch next at the top – remove it, commit, push, then publish"
     # The next edition recognizes unchanged files by their versions in git – an edition from uncommitted files
@@ -185,6 +187,13 @@ cmd_publish() {
         # without the marker build_iso.sh writes; file times do not help – live-build dates the ISO to the build start)
         (cd "$REPO" && sha256sum --quiet -c .in-iso >/dev/null 2>&1) ||
             die "output/repo is not from the ISO build – run ./build_iso.sh again, then sign and publish"
+        # The automatic boot test (tools/qemu-test.sh, #124) must have passed with exactly this ISO, BIOS and UEFI
+        local qt=output/.qemu-test
+        [ -f "$qt" ] || die "no boot test of this ISO – run ./tools/qemu-test.sh first"
+        [ "$(sed -n 's/^iso=//p' "$qt")" = "$(sha256sum "$ISO" | cut -d' ' -f1)" ] ||
+            die "the boot test was made with another ISO – run ./tools/qemu-test.sh again"
+        grep -qx 'bios=pass' "$qt" && grep -qx 'uefi=pass' "$qt" ||
+            die "the boot test did not pass in both modes ($(grep -E '^(bios|uefi)=' "$qt" | tr '\n' ' ')) – see output/qemu-test/"
         assets+=("$ISO" "$ISO.sha256" output/Simple-OS.packages.txt)
     fi
     # Installed systems download without a GitHub login: release files of a private repository are not reachable

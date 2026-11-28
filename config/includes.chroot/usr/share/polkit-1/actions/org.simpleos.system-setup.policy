@@ -6,7 +6,11 @@
   <vendor>Simple OS</vendor>
   <action id="org.simpleos.system-setup">
     <description>Install and remove software chosen in the Setup Wizard</description>
+    <description xml:lang="de">Software installieren und entfernen, die im Einrichtungsassistenten gewählt wurde</description>
+    <description xml:lang="fr">Installer et supprimer les logiciels choisis dans l’assistant de configuration</description>
     <message>Simple OS needs your password to install or update software.</message>
+    <message xml:lang="de">Simple OS braucht dein Passwort, um Software zu installieren oder zu aktualisieren.</message>
+    <message xml:lang="fr">Simple OS a besoin de votre mot de passe pour installer ou mettre à jour des logiciels.</message>
     <icon_name>system-software-install</icon_name>
     <defaults>
       <allow_any>auth_admin</allow_any>

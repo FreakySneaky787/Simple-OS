@@ -18,6 +18,10 @@ import signal
 import subprocess
 import sys
 from pathlib import Path
+import gettext
+
+# Translations (#43): the system language from /usr/share/locale/<lang>/LC_MESSAGES/simpleos.mo, else English
+_ = gettext.translation("simpleos", fallback=True).gettext
 
 RUN = Path(os.environ.get("XDG_RUNTIME_DIR") or Path.home() / ".cache")
 PIDFILE = RUN / "simpleos-calendar.pid"
@@ -95,7 +99,7 @@ def main(argv):
             sys.__excepthook__(etype, value, tb)
         sys.excepthook = hook
 
-    win = Gtk.Window(title="Calendar")
+    win = Gtk.Window(title=_("Calendar"))
     win.set_decorated(False)
     win.set_skip_taskbar_hint(True)
     win.set_skip_pager_hint(True)
@@ -129,14 +133,14 @@ def main(argv):
     cal.connect("month-changed", month_changed)
     box.pack_start(cal, False, False, 0)
     btns = Gtk.Box(spacing=8)
-    back = Gtk.Button(label="Today")
+    back = Gtk.Button(label=_("Today"))
 
     def to_today(_b):
         cal.select_month(today.month - 1, today.year)
         cal.select_day(today.day)
     back.connect("clicked", to_today)
     btns.pack_start(back, False, False, 0)
-    sets = Gtk.Button(label="Date & Time settings")
+    sets = Gtk.Button(label=_("Date & Time settings"))
 
     def settings(_b):
         subprocess.Popen(["simpleos-control-center", "datetime"], start_new_session=True,

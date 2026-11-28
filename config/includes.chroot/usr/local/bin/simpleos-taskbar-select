@@ -9,6 +9,8 @@
 # and everything else stays), then tint2 reloads the file via SIGUSR1 in the running process (no restart).
 # Display scale (simpleos-scale, #41): scale_relative_to_dpi from simpleos-scale --tint2-ref – tint2 then scales sizes
 # and fonts itself; the line is added to an older tint2rc that does not have it yet.
+# Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
+if [ -r /usr/local/lib/simpleos/i18n.sh ]; then . /usr/local/lib/simpleos/i18n.sh; else _t() { printf '%s' "$1"; }; fi
 set -e
 
 STATE="$HOME/.config/simpleos/taskbar"
@@ -115,8 +117,14 @@ apply() {
     case "$scale_ref" in ""|*[!0-9.]*) scale_ref=0 ;; esac
     kv="$kv;scale_relative_to_dpi|$scale_ref"
 
+    # Tooltips in the system language (#43); English stays exactly the text of /etc/skel
+    tt_dnd=$(_t 'Do Not Disturb is on – click to turn it off')
+    tt_sound=$(_t 'Sound – click: volume and outputs · scroll: louder/quieter · middle click: mute')
+    tt_apps=$(_t 'Apps (Super)') tt_power=$(_t 'Shut down / Restart (Super+X)')
+
     tmp=$(mktemp "$TINT2RC.XXXXXX")
-    awk -v bg="$bg" -v kv="$kv" -v live="$live" '
+    awk -v bg="$bg" -v kv="$kv" -v live="$live" -v tt_dnd="$tt_dnd" -v tt_sound="$tt_sound" -v tt_apps="$tt_apps" \
+        -v tt_power="$tt_power" '
     BEGIN {
         n = split(bg, a, ";"); for (i = 1; i <= n; i++) { split(a[i], f, "|"); B[f[1] SUBSEP f[2]] = f[3] }
         n = split(kv, a, ";"); for (i = 1; i <= n; i++) { split(a[i], f, "|"); K[f[1]] = f[2] }
@@ -137,7 +145,7 @@ apply() {
         print "execp_padding = 6 4"
         print "execp_background_id = 6"
         print "execp_centered = 1"
-        print "execp_tooltip = Do Not Disturb is on – click to turn it off"
+        print "execp_tooltip = " tt_dnd
         print "execp_lclick_command = /usr/local/bin/simpleos-dnd --toggle"
         print "execp_rclick_command = /usr/local/bin/simpleos-control-center notifications"
         print "#---- Do Not Disturb End"
@@ -153,7 +161,7 @@ apply() {
         print "execp_padding = 6 4"
         print "execp_background_id = 6"
         print "execp_centered = 1"
-        print "execp_tooltip = Sound – click: volume and outputs · scroll: louder/quieter · middle click: mute"
+        print "execp_tooltip = " tt_sound
         print "execp_lclick_command = /usr/local/bin/simpleos-volume"
         print "execp_rclick_command = /usr/local/bin/simpleos-volume"
         print "execp_mclick_command = /usr/local/bin/simpleos-osd volume mute"
@@ -169,6 +177,9 @@ apply() {
     /^#---- Live-Badge/ { skip = 1 }
     skip { if (/^#---- Live-Badge End/) { skip = 0; eat = 1 } next }
     eat { eat = 0; if ($0 == "") next }      # the empty line after the block belongs to it
+    # The app button and the power button (in this order in the file; after the
+    # rules above, which drop the old live badge with its own tooltip) – their tooltips in the system language
+    /^button_tooltip = / { nbtn++; if (nbtn == 1) { print "button_tooltip = " tt_apps; next } if (nbtn == 2) { print "button_tooltip = " tt_power; next } }
     /^#---- Power[- ][Bb]utton/ && live == 1 {
         # an empty line as between all sections; when removing, "eat" takes it along again
         print "#---- Live-Badge (live session only; simpleos-taskbar-select --apply sets/removes it)"
@@ -228,55 +239,50 @@ esac
 rofi_cmd=/usr/local/lib/simpleos/rofi-retry
 [ -x "$rofi_cmd" ] || rofi_cmd=rofi
 export SOS_NAME=simpleos-taskbar-select SOS_TITLE=Taskbar
-pick() {  # $1 = title, rest = entries; the current value is marked with ●
+pick() {  # $1 = title, rest = entries -> the number of the chosen entry (0, 1 …), nothing on Esc. Numbers, not the
+    # texts: those are translated (#43)
     title=$1; shift
-    printf '%s\n' "$@" | "$rofi_cmd" -dmenu -i -no-custom -p "Taskbar" -mesg "<b>$title</b>" -markup \
+    printf '%s\n' "$@" | "$rofi_cmd" -dmenu -i -no-custom -format i -p "$(_t 'Taskbar')" -mesg "<b>$title</b>" -markup \
         -theme-str 'window { width: 460px; } listview { lines: 7; } element-icon { enabled: false; }' || true
 }
 mark() { if [ "$1" = "$2" ]; then echo "●  $3"; else echo "○  $3"; fi; }
 label() {
     case "$1" in
-        bottom) echo Bottom ;; top) echo Top ;; full) echo Full ;; compact) echo Compact ;; large) echo Large ;;
-        text) echo "icons + text" ;; icons) echo "icons only" ;;
-        dark) echo Dark ;; transparent) echo "Dark transparent" ;; theme) echo "Match theme" ;;
-        on) echo on ;; off) echo off ;;
+        bottom) _t Bottom ;; top) _t Top ;; full) _t Full ;; compact) _t Compact ;; large) _t Large ;;
+        text) _t 'icons + text' ;; icons) _t 'icons only' ;;
+        dark) _t Dark ;; transparent) _t 'Dark transparent' ;; theme) _t 'Match theme' ;;
+        on) _t on ;; off) _t off ;;
     esac
 }
 
 while :; do
-    choice=$(pick "Simple OS Taskbar Setup" \
-        "Position:  $(label "$position")" \
-        "Layout:  $(label "$size"), $(label "$tasks")" \
-        "Look:  $(label "$style")" \
-        "Network & clock:  network $network, clock $clock" \
-        "Reset to defaults")
+    choice=$(pick "$(_t 'Simple OS Taskbar Setup')" \
+        "$(printf "$(_t 'Position:  %s')" "$(label "$position")")" \
+        "$(printf "$(_t 'Layout:  %s, %s')" "$(label "$size")" "$(label "$tasks")")" \
+        "$(printf "$(_t 'Look:  %s')" "$(label "$style")")" \
+        "$(printf "$(_t 'Network & clock:  network %s, clock %s')" "$(label "$network")" "$(label "$clock")")" \
+        "$(_t 'Reset to defaults')")
     case "$choice" in
-        Position*)
-            case "$(pick "Position" "$(mark "$position" bottom Bottom)" "$(mark "$position" top Top)")" in
-                *Bottom) position=bottom ;; *Top) position=top ;; *) continue ;;
+        0)  case "$(pick "$(_t Position)" "$(mark "$position" bottom "$(_t Bottom)")" "$(mark "$position" top "$(_t Top)")")" in
+                0) position=bottom ;; 1) position=top ;; *) continue ;;
             esac ;;
-        Layout*)
-            case "$(pick "Layout" \
-                "$(mark "$size" full "Full (40 px bar)")" "$(mark "$size" compact "Compact (34 px bar)")" \
-                "$(mark "$size" large "Large (48 px bar, bigger clock and text)")" \
-                "$(mark "$tasks" text "Icons + text")" "$(mark "$tasks" icons "Icons only")")" in
-                *Full*) size=full ;; *Compact*) size=compact ;; *Large*) size=large ;;
-                *"Icons + text") tasks=text ;; *"Icons only") tasks=icons ;; *) continue ;;
+        1)  case "$(pick "$(_t Layout)" \
+                "$(mark "$size" full "$(_t 'Full (40 px bar)')")" "$(mark "$size" compact "$(_t 'Compact (34 px bar)')")" \
+                "$(mark "$size" large "$(_t 'Large (48 px bar, bigger clock and text)')")" \
+                "$(mark "$tasks" text "$(_t 'Icons + text')")" "$(mark "$tasks" icons "$(_t 'Icons only')")")" in
+                0) size=full ;; 1) size=compact ;; 2) size=large ;; 3) tasks=text ;; 4) tasks=icons ;; *) continue ;;
             esac ;;
-        Look*)
-            case "$(pick "Look" "$(mark "$style" dark "Dark")" "$(mark "$style" transparent "Dark transparent")" \
-                "$(mark "$style" theme "Match theme (light or dark like your apps)")")" in
-                *"Dark") style=dark ;; *"Dark transparent") style=transparent ;; *"Match theme"*) style=theme ;;
+        2)  case "$(pick "$(_t Look)" "$(mark "$style" dark "$(_t Dark)")" "$(mark "$style" transparent "$(_t 'Dark transparent')")" \
+                "$(mark "$style" theme "$(_t 'Match theme (light or dark like your apps)')")")" in
+                0) style=dark ;; 1) style=transparent ;; 2) style=theme ;; *) continue ;;
+            esac ;;
+        3)  case "$(pick "$(_t 'Network & clock (select to switch on/off)')" \
+                "$(mark "$network" on "$(_t 'Network display (LAN IP)')")" "$(mark "$clock" on "$(_t Clock)")")" in
+                0) if [ "$network" = on ]; then network=off; else network=on; fi ;;
+                1) if [ "$clock" = on ]; then clock=off; else clock=on; fi ;;
                 *) continue ;;
             esac ;;
-        Network*)
-            case "$(pick "Network & clock (select to switch on/off)" \
-                "$(mark "$network" on "Network display (LAN IP)")" "$(mark "$clock" on "Clock")")" in
-                *Network*) if [ "$network" = on ]; then network=off; else network=on; fi ;;
-                *Clock)    if [ "$clock" = on ]; then clock=off; else clock=on; fi ;;
-                *) continue ;;
-            esac ;;
-        Reset*) position=bottom size=full tasks=text style=dark network=on clock=on ;;
+        4)  position=bottom size=full tasks=text style=dark network=on clock=on ;;
         *) exit 0 ;;
     esac
     apply

@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=Run with SOS Bridge
+Name[de]=Mit SOS Bridge ausführen
+Name[fr]=Exécuter avec SOS Bridge
+Comment=Run a Windows program (.exe, .msi) with Bottles – offers to install it the first time
+Comment[de]=Ein Windows-Programm (.exe, .msi) mit Bottles starten – bietet beim ersten Mal die Installation an
+Comment[fr]=Lancer un programme Windows (.exe, .msi) avec Bottles – propose l’installation la première fois
+Exec=/usr/local/bin/simpleos-windows-app %f
+Icon=com.usebottles.bottles
+NoDisplay=true
+Terminal=false
+MimeType=application/x-ms-dos-executable;application/x-msdownload;application/vnd.microsoft.portable-executable;application/x-msi;application/x-ms-installer;
+Categories=System;

@@ -17,7 +17,9 @@
 # (findmnt), otherwise "/" (target device = system partition), otherwise timeshift's own mount points
 # /run/timeshift/*/backup. If a path returns an error or a total size of 0 bytes, the next one is tried; if
 # all are unusable, the space counts as "not measurable" and there is NO space warning (timeshift decides).
-# Minimum free: 5 GB before the first point (full copy of the system), 1 GB before further ones (changes only).
+# Minimum free before the first point (full copy of the system): the space the system really uses on "/" without
+# /home and /swapfile (timeshift leaves both out) plus 10 % (#147) – 5 GB when that cannot be measured (or counting /home takes
+# longer than 10 s); 1 GB before further ones (changes only).
 # First-time setup: if timeshift has no (valid) target device, /etc/timeshift/timeshift.json is created minimally
 # or completed: RSYNC mode on the partition of "/" (UUID via findmnt; with LUKS also the UUID of the
 # encrypted container), no schedules, home folders excluded (/home/*/**, /root/**) – otherwise
@@ -32,9 +34,12 @@
 #      5 no target device (system partition cannot be determined/not available), 6 not enough space.
 # Tests: SIMPLEOS_BACKUP_ROOT replaces "/" for the state file, timeshift.json and snapshot folder; its bin/
 # comes first in PATH (dummies for timeshift/findmnt/lsblk/blkid). Only then SIMPLEOS_FAKE_DISK applies too
-# ("path=total:free;…", path missing = error when querying) instead of shutil.disk_usage. pkexec clears the environment.
+# ("path=total:free;…", path missing = error when querying) instead of shutil.disk_usage, and SIMPLEOS_FAKE_USED
+# (bytes the system uses, unset = not measurable) instead of df/du. pkexec clears the environment.
 set -u
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
+if [ -r /usr/local/lib/simpleos/i18n.sh ]; then . /usr/local/lib/simpleos/i18n.sh; else _t() { printf '%s' "$1"; }; fi
 ROOT=${SIMPLEOS_BACKUP_ROOT:-}
 # Test root: its bin/ (timeshift dummy) first – can only be set directly as root, pkexec clears the environment
 [ -n "$ROOT" ] && PATH=$ROOT/bin:$PATH
@@ -43,18 +48,18 @@ SNAPDIR=$ROOT/timeshift/snapshots
 KEEP_UPDATE=3
 UPDATE_COMMENT="Before system update"
 CONF=$ROOT/etc/timeshift/timeshift.json
-MIN_FIRST=5000000000   # 5 GB before the first point (full copy)
+MIN_FIRST=5000000000   # 5 GB before the first point (full copy) when the system's size cannot be measured
 MIN_NEXT=1000000000    # 1 GB before further points (rsync hard links: only changed files take space)
 TSOUT=$(mktemp) || exit 1
 trap 'rm -f "$TSOUT" "$TSOUT.rc"' EXIT
 
 step() { echo "STEP: $*"; }
 die() { echo "simpleos-backup-helper: $*" >&2; exit "${2:-1}"; }
-usage() { die "Usage: --list | --create TEXT | --restore NAME | --delete NAME | --check NAME | --auto on|off|status | --before-update" 2; }
+usage() { die "$(_t 'Usage: --list | --create TEXT | --restore NAME | --delete NAME | --check NAME | --auto on|off|status | --before-update')" 2; }
 
-[ "$(id -u)" -eq 0 ] || [ -n "$ROOT" ] || die "must run as root (pkexec)"
+[ "$(id -u)" -eq 0 ] || [ -n "$ROOT" ] || die "$(_t 'must run as root (pkexec)')"
 live() { [ -x /usr/local/bin/simpleos-live ] && /usr/local/bin/simpleos-live --check; }
-need_ts() { command -v timeshift >/dev/null || die "timeshift missing" 3; }
+need_ts() { command -v timeshift >/dev/null || die "$(_t 'timeshift missing')" 3; }
 valid_name() { printf '%s' "$1" | grep -qxE '[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}'; }
 valid_text() { [ ${#1} -le 60 ] && printf '%s' "$1" | grep -qxE "[[:alnum:] .,:()_-]*"; }
 
@@ -133,9 +138,33 @@ except Exception: print("")' "$CONF" 2>/dev/null)
     fi
     for d in /run/timeshift/*/backup /run/timeshift/backup; do [ -d "$d" ] && echo "$d"; done
 }
+# Bytes the first point needs: what the system uses on "/" without /home and /swapfile, plus 10 %; MIN_FIRST when
+# that cannot be measured
+first_need() {
+    if [ -n "$ROOT" ]; then
+        used=${SIMPLEOS_FAKE_USED:-}; skip=0
+    else
+        used=$(python3 -c 'import os; s = os.statvfs("/"); print((s.f_blocks - s.f_bfree) * s.f_frsize)' 2>/dev/null)
+        skip=0
+        # /home on the same file system as "/" (also a Btrfs subvolume of it: same UUID, other device number) is in
+        # the used space but not in the restore point
+        fs_root=$(findmnt -n -o UUID --target / 2>/dev/null)
+        if [ -d /home ] && [ -n "$fs_root" ] && [ "$fs_root" = "$(findmnt -n -o UUID --target /home 2>/dev/null)" ]; then
+            skip=$(timeout 10 du -sx -B1 /home 2>/dev/null) && skip=${skip%%[[:space:]]*} || skip=
+        fi
+        if [ -f /swapfile ] && [ -n "$skip" ]; then
+            swap=$(stat -c %s /swapfile 2>/dev/null) && skip=$((skip + swap))
+        fi
+    fi
+    case $used$skip in ''|*[!0-9]*) echo "$MIN_FIRST"; return ;; esac
+    [ -n "$used" ] && [ -n "$skip" ] || { echo "$MIN_FIRST"; return; }
+    sys=$((used - skip)); [ "$sys" -gt 0 ] || sys=0
+    need=$((sys + sys / 10)); [ "$need" -ge "$MIN_NEXT" ] || need=$MIN_NEXT
+    echo "$need"
+}
 # Space at the target: "FREE: n" "NEED: n" "PATH: p" (FREE empty = not measurable). Exit 0 enough/unknown, 6 too little
 space_report() {
-    if [ -n "$(list | head -n 1)" ]; then need=$MIN_NEXT; else need=$MIN_FIRST; fi
+    if [ -n "$(list | head -n 1)" ]; then need=$MIN_NEXT; else need=$(first_need); fi
     target_paths | FAKE=$( [ -n "$ROOT" ] && printf '%s' "${SIMPLEOS_FAKE_DISK:-}" ) python3 -c '
 import os, shutil, sys
 fake = os.environ.get("FAKE", "")
@@ -204,7 +233,8 @@ progress_filter() {
 ts() {
     rcf=$TSOUT.rc
     unbuf=; command -v stdbuf >/dev/null && unbuf="stdbuf -o0 -e0"
-    { $unbuf timeshift "$@" 2>&1; echo $? > "$rcf"; } | tee "$TSOUT" | progress_filter
+    # English lines for progress-filter and classify (LANGUAGE= too: it wins over LC_ALL otherwise)
+    { LANGUAGE= LC_ALL=C.UTF-8 $unbuf timeshift "$@" 2>&1; echo $? > "$rcf"; } | tee "$TSOUT" | progress_filter
     trc=$(cat "$rcf" 2>/dev/null); rm -f "$rcf"
     cat "$TSOUT" >&2
     return "${trc:-1}"
@@ -231,12 +261,12 @@ case "${1:-}" in
     --space)
         [ $# -eq 1 ] || usage
         need_ts
-        live && die "Live-Session" 4
+        live && die "$(_t 'Live-Session')" 4
         ensure_config || exit $?
         space_report; exit $? ;;
     --setup)
         [ $# -eq 1 ] || usage
-        live && die "Live-Session" 4
+        live && die "$(_t 'Live-Session')" 4
         ensure_config || exit $? ;;
     --list)
         [ $# -eq 1 ] || usage
@@ -246,42 +276,42 @@ case "${1:-}" in
         list ;;
     --create)
         [ $# -eq 2 ] || usage
-        valid_text "$2" || die "invalid description" 2
+        valid_text "$2" || die "$(_t 'invalid description')" 2
         need_ts
         precheck || exit $?
-        step "Creating a restore point (the first one can take 10–20 minutes)"
+        step "$(_t 'Creating a restore point (the first one can take 10–20 minutes)')"
         create_point "$2" || exit $?
-        step "Done" ;;
+        step "$(_t 'Done')" ;;
     --restore)
         [ $# -eq 2 ] && valid_name "$2" || usage
-        live && die "Live-Session" 4
+        live && die "$(_t 'Live-Session')" 4
         need_ts
         ensure_config || exit $?
-        exists "$2" || die "point $2 not found"
-        step "Restoring $2 – the computer restarts when it is done"
+        exists "$2" || die "$(printf "$(_t 'point %s not found')" "$2")"
+        step "$(printf "$(_t 'Restoring %s – the computer restarts when it is done')" "$2")"
         # target device = running system (default), GRUB stays as it is; --yes answers the question
         ts --restore --snapshot "$2" --scripted --yes --skip-grub; trc=$?
         # Classified errors (live, device, space) count even with exit 0; otherwise the exit code decides
         classify; rc=$?
         [ "$rc" -eq 1 ] || exit "$rc"
-        [ "$trc" -eq 0 ] || die "timeshift --restore failed"
-        step "Done" ;;
+        [ "$trc" -eq 0 ] || die "$(_t 'timeshift --restore failed')"
+        step "$(_t 'Done')" ;;
     --delete)
         [ $# -eq 2 ] && valid_name "$2" || usage
-        exists "$2" || die "point $2 not found"
-        step "Deleting $2"
+        exists "$2" || die "$(printf "$(_t 'point %s not found')" "$2")"
+        step "$(printf "$(_t 'Deleting %s')" "$2")"
         ts --delete --snapshot "$2" --scripted --yes
-        exists "$2" && { classify; rc=$?; die "timeshift --delete: $2 still there" "$rc"; }
-        step "Done" ;;
+        exists "$2" && { classify; rc=$?; die "$(printf "$(_t 'timeshift --delete: %s still there')" "$2")" "$rc"; }
+        step "$(_t 'Done')" ;;
     --check)
         [ $# -eq 2 ] && valid_name "$2" || usage
-        exists "$2" || die "point $2 not found"
+        exists "$2" || die "$(printf "$(_t 'point %s not found')" "$2")"
         d=$SNAPDIR/$2
         if [ -d "$d" ]; then
-            [ -s "$d/info.json" ] || die "$2: info.json missing"
-            python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$d/info.json" 2>/dev/null || die "$2: info.json damaged"
-            [ -s "$d/localhost/etc/os-release" ] || die "$2: system files missing (localhost/etc/os-release)"
-            [ -d "$d/localhost/usr/bin" ] || die "$2: system files missing (localhost/usr/bin)"
+            [ -s "$d/info.json" ] || die "$(printf "$(_t '%s: info.json missing')" "$2")"
+            python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$d/info.json" 2>/dev/null || die "$(printf "$(_t '%s: info.json damaged')" "$2")"
+            [ -s "$d/localhost/etc/os-release" ] || die "$(printf "$(_t '%s: system files missing (localhost/etc/os-release)')" "$2")"
+            [ -d "$d/localhost/usr/bin" ] || die "$(printf "$(_t '%s: system files missing (localhost/usr/bin)')" "$2")"
             echo "ok"
         else
             # another device or Btrfs: the folder is only mounted while timeshift runs -> the list is enough
@@ -301,7 +331,7 @@ case "${1:-}" in
         live && exit 0
         command -v timeshift >/dev/null || exit 0
         precheck || exit $?
-        step "Creating a restore point before the update"
+        step "$(_t 'Creating a restore point before the update')"
         create_point "$UPDATE_COMMENT" || exit $?
         # Keep only the newest points before updates (own, manual points stay untouched)
         list | awk -F'\t' -v c="$UPDATE_COMMENT" '$3 == c { n++; if (n > '"$KEEP_UPDATE"') print $1 }' |

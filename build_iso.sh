@@ -46,6 +46,14 @@ if [[ $CONFIG_ONLY == 1 ]]; then
 else
     STEPS="$PREPARE && lb clean --purge && ../tools/lb_config.sh && { lb build 2>&1 | tee build.log; exit \${PIPESTATUS[0]}; }"
 fi
+# A git worktree (e.g. ~/simple-os-next): its .git is only a pointer to the main repository's .git. Without that
+# directory in the container, tools/managed_history.py finds no history – the edition package would know only the
+# current version of every /etc/skel and /etc file, and updates would treat older unchanged copies as changed by the
+# user (no new menu entries …). Mount it read-only at the same path.
+if [[ -f .git ]]; then
+    common=$(git -c safe.directory='*' rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)
+    [[ -n "$common" && -d "$common" ]] && RUN_OPTS+=(--security-opt label=disable -v "$common:$common:ro")
+fi
 $CONTAINER_CMD run --rm "${RUN_OPTS[@]}" -v "$PWD":/project:Z -w /project/build "$IMAGE" bash -euc "$STEPS"
 
 if [[ $CONFIG_ONLY == 1 ]]; then
@@ -56,6 +64,16 @@ fi
 ISO=$(ls -t build/*.iso 2>/dev/null | head -n1 || true)
 if [[ -z "$ISO" ]]; then
     echo "Error: no ISO found – see build/build.log" >&2
+    exit 1
+fi
+# The network went away during the build (2026-11-22: DNS failed after the verify hook): apt's last "update" in the
+# image fails with only a warning, and the ISO ships without package lists (/var/lib/apt/lists, 166 MB, and the
+# AppStream catalog) – language packs in the installer and Gaming Support would fail. Never hand out such an ISO.
+NET_FAIL="Temporary failure resolving|Could not resolve|Could not connect to|Network is unreachable|Connection timed out"
+if grep -qE "$NET_FAIL" build/build.log; then
+    echo "Error: downloads failed during the build (network?) – the ISO would lack apt's package lists." >&2
+    grep -E "$NET_FAIL" build/build.log | sort | uniq -c | head -n 5 >&2
+    echo "The ISO stays in $ISO (not moved to output/). Check the internet connection and build again." >&2
     exit 1
 fi
 sudo mv "$ISO" output/Simple-OS.iso

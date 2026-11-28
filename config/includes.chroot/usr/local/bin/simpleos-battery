@@ -11,6 +11,8 @@
 # dummies or the host's battery with present 1.
 # Tests: SIMPLEOS_POWER_SUPPLY replaces /sys/class/power_supply, SIMPLEOS_VIRT the result of
 # systemd-detect-virt --vm ("none" = real hardware).
+# Translations (#43): _t "text" in the system language (i18n.sh); English if that file is missing
+if [ -r /usr/local/lib/simpleos/i18n.sh ]; then . /usr/local/lib/simpleos/i18n.sh; else _t() { printf '%s' "$1"; }; fi
 PS=${SIMPLEOS_POWER_SUPPLY:-/sys/class/power_supply}
 
 in_vm() {
@@ -32,7 +34,7 @@ case "${1:-}" in
     --low-alert)
         for b in $(batteries); do
             [ "$(cat "$b/status" 2>/dev/null)" = Discharging ] || continue
-            notify-send -u critical -i battery-caution "Battery low" "Plug in your charger soon." 2>/dev/null
+            notify-send -u critical -i battery-caution "$(_t 'Battery low')" "$(_t 'Plug in your charger soon.')" 2>/dev/null
             exit 0
         done
         exit 0 ;;

@@ -1,7 +1,11 @@
 [Desktop Entry]
 Type=Application
 Name=Software Updates
+Name[de]=Software-Aktualisierung
+Name[fr]=Mises à jour logicielles
 Comment=Check for and install system updates
+Comment[de]=Systemupdates suchen und installieren
+Comment[fr]=Rechercher et installer les mises à jour du système
 Exec=/usr/local/bin/simpleos-update
 Icon=system-software-update
 Categories=Settings;System;

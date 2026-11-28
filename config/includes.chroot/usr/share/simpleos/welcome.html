@@ -69,11 +69,12 @@
     <h2>Quick start</h2>
     <ol>
       <li><strong>Connect to Wi-Fi.</strong> Click the network icon or the IP address in the taskbar, pick your
-          network and enter the password. From a terminal: <code>simpleos-wifi</code>. Cable connections work on their own.
+          network and enter the password. Cable connections work on their own.
           The Setup Wizard also helps you with this on your first login.
           <br><span class="note">VPN, fixed IP and other extras: right-click the network icon in the system tray and choose Edit Connections.</span></li>
-      <li><strong>Install your software.</strong> Run <code>simpleos-setup</code> to pick a browser, an office suite,
-          gaming tools and dark or light mode. It also opens once after your first login.</li>
+      <li><strong>Install your software.</strong> The Setup Wizard lets you pick a browser, an office suite,
+          optional components (Windows programs, gaming, developer tools) and dark or light mode. It opens once
+          after your first login – to open it again: Menu → Help → Setup Wizard. More apps: Menu → Software Center.</li>
       <li><strong>That's it.</strong> Updates take care of themselves: when some are ready, a message appears –
           click it to install. You can also check any time under Menu → Tools → Software Updates.</li>
     </ol>
@@ -90,6 +91,7 @@
         <tr><td><kbd>Super</kbd>+<kbd>B</kbd></td><td>Open the web browser</td></tr>
         <tr><td><kbd>Super</kbd>+<kbd>E</kbd></td><td>Open the file manager</td></tr>
         <tr><td><kbd>Super</kbd>+<kbd>H</kbd></td><td>Show all shortcuts</td></tr>
+        <tr><td><kbd>Super</kbd>+<kbd>I</kbd></td><td>Open the settings</td></tr>
         <tr><td><kbd>Super</kbd>+<kbd>X</kbd></td><td>Shut down, restart or log out</td></tr>
       </tbody>
     </table>
@@ -97,15 +99,15 @@
 
   <section id="tools">
     <h2>System tools</h2>
-    <h3>Taskbar designer</h3>
-    <p>Open Control Center → Appearance → Taskbar, or run <code>simpleos-taskbar-select</code>.
-       You can change position, size, style and whether the clock and network display are shown.</p>
-    <h3>Openbox settings</h3>
-    <p>Run <code>obconf</code> for window theme, fonts and desktop count. Shortcuts and window rules live in
-       <code>~/.config/openbox/rc.xml</code>. After editing that file, apply it with <code>openbox --reconfigure</code>.</p>
+    <h3>Settings</h3>
+    <p>Menu → Settings, or <kbd>Super</kbd>+<kbd>I</kbd>: Wi-Fi, Bluetooth, sound, display, appearance and more in
+       one window. The taskbar's position, size and style: Settings → Appearance &amp; Wallpaper → Taskbar.</p>
     <h3>Network info</h3>
-    <p><kbd>Super</kbd>+<kbd>N</kbd> shows your LAN IP, gateway, hostname, VPN status and public IP.
-       For the same output in a terminal, run <code>simpleos-netinfo --text</code>.</p>
+    <p><kbd>Super</kbd>+<kbd>N</kbd> shows your LAN IP, gateway, hostname, VPN status and public IP.</p>
+    <h3>For experts</h3>
+    <p class="note">Everything above works with clicks – the terminal (<kbd>Super</kbd>+<kbd>Enter</kbd>) is
+       optional. Network info as text: <code>simpleos-netinfo --text</code>. Openbox's shortcuts and window rules live
+       in <code>~/.config/openbox/rc.xml</code>; apply your changes with <code>openbox --reconfigure</code>.</p>
   </section>
 
   <footer>To open this page again, right-click the desktop and choose Help → Welcome to Simple OS.</footer>
