@@ -10,7 +10,7 @@ body:
     attributes:
       label: Simple OS version
       description: Shown in the Setup Wizard, the release name, or `cat /etc/os-release`.
-      placeholder: e.g. 1.1.2
+      placeholder: e.g. 1.2
     validations:
       required: true
   - type: input

@@ -47,7 +47,7 @@ Already running Simple OS? New versions arrive through **Software Updates** – 
 
 Thank you for testing! Every report helps, especially from real hardware.
 
-**Wanted right now** (1.2 is coming – test builds from the branch `next`):
+**Wanted right now** (1.2 is out):
 
 - **German or French:** set Deutsch or Français in Control Center → Language & Region (or install in that language).
   Is anything of Simple OS still English – a window, a menu, a message, a password prompt? Does a French text sound
@@ -58,7 +58,7 @@ Thank you for testing! Every report helps, especially from real hardware.
 - **Setup Wizard → Extras:** turn on Gaming Support or Developer Tools – do they install cleanly?
 - **The search:** leave the mouse pointer in the middle of the screen, press Super, type "display settings" and
   Enter – does the Display page open?
-- **Updating from 1.1.2** through Software Updates, and **installing on real hardware** (BIOS and UEFI, also next to
+- **Updating from 1.1.2 or older** through Software Updates, and **installing on real hardware** (BIOS and UEFI, also next to
   Windows).
 
 **How to report:**

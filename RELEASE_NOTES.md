@@ -14,11 +14,11 @@ sign in afterwards, "What's new" shows the highlights.
 
 ### New
 
-- **Simple OS speaks German** (issue #43). Every Simple OS window, menu, notification, password prompt and help page
+- **Simple OS speaks German and French** (issue #43). Every Simple OS window, menu, notification, password prompt and help page
   follows the language you choose in the installer or in Control Center → Language & Region: the Control Center, the
   Setup Wizard, the menus of the taskbar, Software Updates, the right-click menu of the desktop, the app names in the
-  start menu and the search. German is the first language; others fall back to English, and more can be added
-  without touching the tools (`po/`).
+  start menu and the search. German and French are the first languages (the French translation is new and not yet checked by a native
+  speaker – corrections welcome); others fall back to English, and more can be added without touching the tools (`po/`).
 - **Users** in Control Center (issue #68): see who has an account on this computer, add people (name, password,
   Standard user or Administrator), change names, pictures and passwords, delete accounts (keeping or deleting their
   files), and turn on automatic sign-in. Pictures show on the login screen. "Switch user" is in the power menu and the
@@ -242,7 +242,7 @@ repository that installed systems use. You don't need to download them yourself.
 
 ## Known issues
 
-- **Languages:** Simple OS's own tools are translated into German; in other languages they stay English while your
+- **Languages:** Simple OS's own tools are translated into German and French; in other languages they stay English while your
   apps follow the language. The keyboard layout can be changed at any time in Control Center → Keyboard.
 - **Windows programs** run with SOS Bridge only if Wine supports them: many older programs and lots of games do,
   Microsoft 365, current Adobe apps and games with kernel anti-cheat don't. Programs made for Windows itself –
