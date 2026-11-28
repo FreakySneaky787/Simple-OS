@@ -2426,6 +2426,15 @@ c.photo_path(d, t).touch(); assert c.photo_path(d, t).name == 'Photo 2026-10-29 
 assert 'in use' in c.explain('Gerät /dev/video0 ist belegt', '', 'busy')[0] and c.explain('x', '', 'gone') == c.NO_CAMERA
 assert 'in use' in c.explain('Device /dev/video0 is busy')[0] and c.explain('Could not open device: No such file')[0] == c.NO_CAMERA[0]
 assert 'F8' in c.NO_CAMERA[1]\""
+# #171: 1.1.x saved photos in Pictures/Camera – a German system kept using it after the update, not a new "Kamera"
+camh=$(mktemp -d); mkdir -p "$camh/Pictures/Camera"
+check "Camera: photos go to a new translated folder although Pictures/Camera exists (#171)" \
+      "env -i HOME=$camh PATH=/usr/bin:/bin python3 -c \"import importlib.machinery as m, pathlib; c = m.SourceFileLoader('c', '$CAM').load_module()
+c._ = lambda t: {'Camera': 'Kamera'}.get(t, t)
+assert c.photo_dir() == pathlib.Path('$camh/Pictures/Camera'), c.photo_dir()
+import shutil; shutil.rmtree('$camh/Pictures/Camera')
+assert c.photo_dir() == pathlib.Path('$camh/Pictures/Kamera'), c.photo_dir()\" 2>/dev/null"
+rm -rf "$camh"
 check "Camera: the preview is not mirrored (videoflip)" "python3 -c \"import importlib.machinery as m, tempfile; c = m.SourceFileLoader('c', '$CAM').load_module()
 import gi; gi.require_version('Gst', '1.0'); gi.require_version('GdkPixbuf', '2.0'); from gi.repository import Gst, GdkPixbuf; Gst.init(None)
 f = tempfile.mktemp(suffix='.png')

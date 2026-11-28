@@ -37,6 +37,10 @@ MAX_AREA = 1920 * 1080
 MIRROR = "videoflip video-direction=horiz"
 
 
+# The folder's name in the languages Simple OS speaks (po/*.po "Camera") – one of them may hold the photos already
+CAMERA_NAMES = ("Camera", "Kamera", "Caméra")
+
+
 def photo_dir():
     """Pictures/Camera of the user (xdg-user-dir; it prints the home folder when Pictures is not set up)"""
     home = Path.home()
@@ -45,6 +49,12 @@ def photo_dir():
     except (OSError, subprocess.SubprocessError):
         pics = ""
     base = Path(pics) if pics and Path(pics) != home else home / "Pictures"
+    # #171: up to 1.1.2 the folder was always "Camera" – keep using a folder that exists (in any language), so the
+    # earlier photos stay where "Open Folder" goes; the translated name only for a new one
+    names = [_("Camera"), "Camera"] + [n for n in CAMERA_NAMES if n not in (_("Camera"), "Camera")]
+    for name in names:
+        if (base / name).is_dir():
+            return base / name
     return base / _("Camera")
 
 
