@@ -2256,6 +2256,11 @@ check "home-folders missing" "[ -x $HF ]"
 hf() { rm -rf "${uh:?}"; mkdir -p "$uh"; cp -a /etc/skel/. "$uh/"; env -i HOME=$uh PATH=/usr/bin:/bin SIMPLEOS_HF_HOME=$uh SIMPLEOS_HF_LIVE=0 "$@" $HF; }
 check "home-folders: English bookmarks wrong" \
       "hf LANG=en_US.UTF-8 && grep -qx 'file://$uh/Downloads Downloads' $uh/.config/gtk-3.0/bookmarks && [ \$(wc -l < $uh/.config/gtk-3.0/bookmarks) -eq 5 ] && [ -d $uh/Documents ] && [ -f '$uh/Templates/Text Document.txt' ]"
+# #173: a user-dirs.dirs without some entries ("" became Path(".")) gave no bookmarks at all, at every sign-in
+check "home-folders: no bookmarks when user-dirs.dirs lacks entries (#173)" \
+      "rm -rf $uh && mkdir -p $uh/.config $uh/Downloads && printf 'XDG_DOWNLOAD_DIR=\"\$HOME/Downloads\"\n' > $uh/.config/user-dirs.dirs &&
+       env -i HOME=$uh PATH=/usr/bin:/bin SIMPLEOS_HF_HOME=$uh SIMPLEOS_HF_LIVE=0 LANG=en_US.UTF-8 $HF &&
+       grep -qx 'file://$uh/Downloads Downloads' $uh/.config/gtk-3.0/bookmarks"
 check "home-folders: a new German account keeps English folder names (#157)" \
       "hf LANG=de_DE.UTF-8 && [ -d $uh/Dokumente ] && [ -d $uh/Bilder/Screenshots ] && [ -f $uh/Schreibtisch/simpleos-welcome.desktop ] && [ ! -e $uh/Documents ] &&
        [ \"\$(env -i HOME=$uh PATH=/usr/bin:/bin xdg-user-dir PICTURES)\" = '$uh/Bilder' ] && grep -qx 'file://$uh/Dokumente Dokumente' $uh/.config/gtk-3.0/bookmarks &&

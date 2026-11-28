@@ -107,11 +107,13 @@ def localize(lang):
         log(f"{english} -> {name}")
     # Thunar's "Create Document" lists the templates by file name: the empty text file from /etc/skel too
     ours = gettext.translation("simpleos", "/usr/share/locale", languages=[lang, lang.split("_")[0]], fallback=True)
-    templates = Path(read_dirs_from(text).get("TEMPLATES", ""))
-    plain = templates / "Text Document.txt"
+    # a missing entry is not Path("") – that is Path("."), the current folder (#173)
+    templates = read_dirs_from(text).get("TEMPLATES")
+    templates = Path(templates) if templates and templates.startswith("/") else None
     _ = ours.gettext
-    local = templates / (_("Text Document") + ".txt")
-    if str(templates) and plain.is_file() and plain != local and not local.exists():
+    plain = templates / "Text Document.txt" if templates else None
+    local = templates / (_("Text Document") + ".txt") if templates else None
+    if templates and plain.is_file() and plain != local and not local.exists():
         try:
             plain.rename(local)
         except OSError as err:
@@ -127,8 +129,12 @@ def write_bookmarks():
     dirs = read_dirs()
     lines = []
     for key in SIDEBAR:
-        path = Path(dirs.get(key) or "")
-        if str(path) and path.is_dir() and path != HOME:
+        # a missing or relative entry is skipped – Path("") is ".", and as_uri() fails on it: no bookmarks at all (#173)
+        value = dirs.get(key) or ""
+        if not value.startswith("/"):
+            continue
+        path = Path(value)
+        if path.is_dir() and path != HOME:
             lines.append(f"{path.as_uri()} {path.name}")
     BOOKMARKS.parent.mkdir(parents=True, exist_ok=True)
     BOOKMARKS.write_text("".join(line + "\n" for line in lines))
