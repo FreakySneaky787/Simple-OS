@@ -1,5 +1,8 @@
 # Simple OS 1.2.1
 ## Corrigé dans 1.2.1
+- **L’écran de verrouillage est de nouveau sûr.** Ctrl+Alt+F7 sur l’écran de verrouillage (ou après « Changer
+  d’utilisateur ») ramenait au bureau déverrouillé sans mot de passe. Redémarrez votre ordinateur une fois après cette
+  mise à jour.
 - **Les cases à cocher et les interrupteurs gardent leur aspect** dans les fenêtres ouvertes quand vous passez du
   mode clair au mode sombre.
 - **La calculatrice** de la recherche comprend aussi « round(1.125,2) » et « max(1,5; 2) ».

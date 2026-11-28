@@ -1,5 +1,7 @@
 # Simple OS 1.2.1
 ## Behoben in 1.2.1
+- **Der Sperrbildschirm ist wieder sicher.** Strg+Alt+F7 am Sperrbildschirm (oder nach „Benutzer wechseln“) führte
+  ohne Passwort zurück auf den entsperrten Desktop. Starte deinen Computer nach diesem Update einmal neu.
 - **Kontrollkästchen und Schalter behalten ihr Aussehen** in offenen Fenstern, wenn du zwischen hell und dunkel wechselst.
 - **Der Rechner** in der Suche versteht auch „round(1.125,2)“ und „max(1,5; 2)“.
 - **Deine Kamerafotos bleiben beisammen.** Nach dem Update auf 1.2 landeten neue Fotos in einem neuen Ordner; jetzt

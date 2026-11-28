@@ -1,5 +1,7 @@
 # Simple OS 1.2.1
 ## Fixed in 1.2.1
+- **The lock screen is safe again.** Ctrl+Alt+F7 at the lock screen (or after "Switch user") led back to the unlocked
+  desktop without a password. Restart your computer once after this update.
 - **Check boxes and switches keep their look** in open windows after you switch between light and dark.
 - **The calculator** in the search understands "round(1.125,2)" and "max(1,5; 2)" in German and French too.
 - **Your camera photos stay together.** After the update to 1.2, German and French systems saved new photos in a
