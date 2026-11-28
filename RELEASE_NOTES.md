@@ -22,8 +22,9 @@ Software Updates asks you to, and the lock screen fix only takes effect after th
   Simple OS no longer switch with Ctrl+Alt+F1 … F12 at all; unlocking, signing in and "Switch user" work as before
   and always ask for the password.
 - **Debian's security updates always arrive.** On systems in another language than English, Software Updates stopped
-  with "package lists could not be downloaded" whenever only the Simple OS update server (GitHub) could not be
-  reached – and with it Debian's own security updates. Now Debian's updates go on, as it was always meant to be.
+  with "package lists could not be downloaded" whenever only the Simple OS update server (GitHub) answered with an
+  error, for example while a release was still being uploaded – and with it Debian's own security updates. Now
+  Debian's updates go on, as it was always meant to be.
 
 Everything else the code review found (14 smaller bugs, none of them a security problem) comes in 1.2.2.
 
