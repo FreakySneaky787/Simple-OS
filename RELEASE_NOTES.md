@@ -18,7 +18,7 @@ Software Updates asks you to, and the lock screen fix only takes effect after th
 - **The lock screen could be left without a password.** At the lock screen, Ctrl+Alt+F7 switched back to the
   desktop behind it – unlocked, without asking for the password. This affected every way the screen locks: Super+L,
   locking after some time without use, locking before sleep, and "Switch user". Anyone with access to the keyboard of
-  a locked computer could use the account that was signed in. Simple OS 1.0.4 to 1.2 are affected. The screens of
+  a locked computer could use the account that was signed in. Every version from Simple OS 1.0 to 1.2 is affected. The screens of
   Simple OS no longer switch with Ctrl+Alt+F1 … F12 at all; unlocking, signing in and "Switch user" work as before
   and always ask for the password.
 - **Debian's security updates always arrive.** On systems in another language than English, Software Updates stopped
