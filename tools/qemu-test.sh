@@ -154,11 +154,20 @@ for m in "${MODES[@]}"; do run_mode "$m" || rc=1; done
 
 iso_sum=$(sha256sum "$ISO" | cut -d' ' -f1)
 commit=$(sed -n 's/^commit=//p' output/repo/.build-state 2>/dev/null || true)
+# The other mode's result of the same ISO stays: "--bios", then "--uefi" = both passed (release.sh needs both, #175)
+kept=()
+if [ "$(sed -n 's/^iso=//p' output/.qemu-test 2>/dev/null)" = "$iso_sum" ]; then
+    for m in bios uefi; do
+        case " ${MODES[*]} " in *" $m "*) continue ;; esac
+        line=$(grep -x "$m=.*" output/.qemu-test 2>/dev/null || true)
+        [ -n "$line" ] && kept+=("$line")
+    done
+fi
 {
     echo "iso=$iso_sum"
     echo "commit=${commit:-unknown}"
     echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    for r in "${RESULTS[@]}"; do echo "$r"; done
+    for r in "${kept[@]}" "${RESULTS[@]}"; do echo "$r"; done
 } > output/.qemu-test
 [ "$rc" = 0 ] && echo "qemu-test: all passed (output/.qemu-test)" || echo "qemu-test: FAILED – see above" >&2
 exit "$rc"
