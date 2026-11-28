@@ -236,3 +236,14 @@ Before publishing (Sunday 2026-11-15), with the new ISO (built 2026-11-11 from f
       VM 2026-11-28, German: a Simple OS source with Release but no Packages (404) – apt prints a second German "E:"
       line without the address, which stopped 1.2's helper; 1.2.1: "Debian updates go on", exit 0. (An unreachable
       server is only a warning for apt and never stopped anything.)
+
+## 10. What changed in 1.2.2
+
+- [ ] **Code review fixes** (#169–#175): light/dark switch with an open file manager (check boxes keep their look),
+      calculator "round(1.125,2)" / "max(1,5; 2)" in German, a camera photo after the update lands in the old folder,
+      delete an account right after it signed out, the taskbar menus fully German/French.
+- [ ] **Standard user checks for updates** (#178): sign in as a standard user, open Software Updates → no password
+      dialog for checking; "Install now" asks for an administrator's password.
+- [ ] **Software Updates is honest** (#177): a Flatpak update that fails (e.g. network cut during the app step) still
+      ends with the restart offer after a kernel update; the "could not be updated" note for apps appears.
+- [ ] **Update from 1.2.1** through Software Updates: What's New shows 1.2.2, 0 failed units.
