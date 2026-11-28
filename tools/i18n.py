@@ -34,7 +34,8 @@ POT = PO_DIR / "simpleos.pot"
 EXTRA = ROOT / "config/i18n/extra.txt"
 SCAN = ["usr/local/bin", "usr/local/sbin", "usr/local/lib/simpleos", "usr/lib/systemd/system-sleep",
         "etc/X11/Xsession.d", "usr/share/simpleos/edition/migrations"]
-SHELL_RE = re.compile(r"""\b_t\s+(?:"((?:[^"\\$`]|\\.)*)"|'([^']*)')""")
+# _t "text", _t 'text' and a bare word: _t Strong (#174 – those were never collected, so they stayed English)
+SHELL_RE = re.compile(r"""\b_t\s+(?:"((?:[^"\\$`]|\\.)*)"|'([^']*)'|([A-Za-z][A-Za-z0-9-]*)(?=$|[\s);&|]))""")
 PLACEHOLDER_RE = re.compile(r"\{[a-z_][a-z0-9_]*(?:![rsa])?(?::[^{}]*)?\}|%[sd]")
 
 
@@ -45,7 +46,8 @@ def kind_of(path):
     except OSError:
         return None
     if not first.startswith("#!"):
-        return None
+        # a library that the tools source (common.sh) has no "#!" line (#174)
+        return "sh" if path.suffix == ".sh" else None
     if "python" in first:
         return "py"
     if re.search(r"\b(sh|bash|dash)\b", first):
@@ -82,7 +84,7 @@ def shell_texts(path):
         if line.lstrip().startswith("#") or line.lstrip().startswith("_t()"):
             continue
         for m in SHELL_RE.finditer(line):
-            text = shell_unescape(m.group(1)) if m.group(1) is not None else m.group(2)
+            text = shell_unescape(m.group(1)) if m.group(1) is not None else m.group(2) or m.group(3)
             if text:
                 out.append((no, text))
     return out

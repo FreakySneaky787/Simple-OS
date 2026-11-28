@@ -3888,6 +3888,9 @@ check "accountsservice missing (account pictures on the login screen, #68)" "dpk
 MO=/usr/share/locale/de/LC_MESSAGES/simpleos.mo
 check "Translations: German catalog missing or not readable" \
       "[ -s $MO ] && python3 -c 'import gettext; t = gettext.translation(\"simpleos\", languages=[\"de\"]); assert t.gettext(\"Software Center\") == \"Software-Center\" and t.gettext(\"Users\") == \"Benutzer\"'"
+# #174: "_t Strong" (no quotes) was never collected – the Wi-Fi signal, taskbar setup, "Muted" stayed English
+check "Translations: bare words like '_t Strong' stay English (#174)" \
+      "python3 -c 'import gettext; t = gettext.translation(\"simpleos\", languages=[\"de\"]); assert t.gettext(\"Strong\") == \"Stark\" and t.gettext(\"Muted\") == \"Stumm\" and t.gettext(\"Bottom\") == \"Unten\"'"
 check "Translations: Python tools translate through gettext (wizard, Control Center, Software Center)" \
       "env -i LANGUAGE=de PATH=/usr/bin:/bin python3 -c \"import importlib.machinery as m; c = m.SourceFileLoader('c', '/usr/local/bin/simpleos-control-center').load_module(); assert ('users', 'Benutzer', 'system-users') in c.PAGES, c.PAGES\" 2>/dev/null"
 check "Translations: an English system shows translated texts" \

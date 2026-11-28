@@ -42,7 +42,7 @@ sos_rofi_failed() {
     fi
     summary=
     [ -x "$NETINFO" ] && summary=$(timeout 5 "$NETINFO" --text 2>/dev/null | head -n 1)
-    sos_notify "The network menu could not open.${summary:+
+    sos_notify "$(_t 'The network menu could not open.')${summary:+
 $summary}" critical
     exit 0
 }

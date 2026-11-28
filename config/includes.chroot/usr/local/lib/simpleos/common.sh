@@ -80,7 +80,7 @@ sos_dim() { printf "<span alpha='55%%'>%s</span>" "$(sos_esc "$1")"; }
 
 # Rofi does not start at all -> sos_rofi_failed (callers can override the function)
 sos_rofi_failed() {
-    sos_notify "This window could not open. Please try again." critical
+    sos_notify "$(_t 'This window could not open. Please try again.')" critical
     exit 0
 }
 # Rofi with retries: Esc -> empty output, any other error -> sos_rofi_failed. A new attempt (every 0.05 s, for at most

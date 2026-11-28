@@ -306,15 +306,19 @@ if ! report "$arg1" > "$file" || [ ! -s "$file" ]; then
 fi
 sos_log "saved $file"
 name=${file##*/}
-where="Desktop"
-[ "$dir" = "$HOME" ] && where="Home folder"
-[ "$SOS_NOPW" = 1 ] && name="$name (without system logs – no password entered)"
+[ "$SOS_NOPW" = 1 ] && name=$(printf "$(_t '%s (without system logs – no password entered)')" "$name")
+# One whole sentence per place – "Saved to your %s" with a translated folder name reads wrong in German (#174)
+if [ "$dir" = "$HOME" ]; then
+    saved=$(printf "$(_t 'Saved in your home folder: %s')" "$name")
+else
+    saved=$(printf "$(_t 'Saved on your desktop: %s')" "$name")
+fi
 if [ -n "$url" ]; then
     open_url "$url"
-    sos_notify "Saved to your $where: $name
-Drag this file into the issue page that just opened."
+    sos_notify "$saved
+$(_t 'Drag this file into the issue page that just opened.')"
 else
     command -v thunar >/dev/null && { setsid thunar "$dir" >/dev/null 2>&1 & }
-    sos_notify "$(printf "$(_t 'Saved to your %s: %s')" "$where" "$name")"
+    sos_notify "$saved"
 fi
 exit 0
