@@ -566,9 +566,23 @@ def remove_empty_games():
         log(f"{games}: {err}")
 
 
-def program_pids():
-    """PIDs of the person's Windows programs (not Wine's own services)"""
-    pids = set()
+def lnk_exe(lnk):
+    """File name of the program a Windows shortcut (.lnk) starts, lower case ("notepad++.exe"); "" if not found.
+    A .lnk holds the target path as text (ANSI in its LinkInfo, UTF-16 in its string data)"""
+    try:
+        data = Path(lnk).read_bytes()[:65536]
+    except OSError:
+        return ""
+    for text in (data.decode("latin-1"), data.decode("utf-16-le", errors="ignore"), data[1:].decode("utf-16-le", errors="ignore")):
+        found = re.search(r"[A-Za-z]:\\[^\x00-\x1f\"*?<>|]{0,250}?([^\\/\x00-\x1f\"*?<>|]+\.exe)(?![A-Za-z0-9])", text, re.I)
+        if found:
+            return found.group(1).lower()
+    return ""
+
+
+def program_pids(exe=None):
+    """PIDs of the person's Windows programs (not Wine's own services); exe: only that program ("notepad++.exe")"""
+    pids, only = set(), (exe or "").lower()
     try:
         out = subprocess.run(["ps", "-u", str(os.getuid()), "-o", "pid=,args="], capture_output=True, text=True,
                              timeout=10).stdout
@@ -578,7 +592,7 @@ def program_pids():
         pid, _sep, args = line.strip().partition(" ")
         found = re.search(r"([^\\/]+?\.exe)\b", args, re.I)
         exe = found.group(1).strip().lower() if found else ""
-        if exe and exe not in WINE_SERVICES:
+        if exe and exe not in WINE_SERVICES and (not only or exe == only):
             pids.add(pid)
     return pids
 
@@ -606,7 +620,11 @@ def start_shortcut(lnk):
                      _("Windows programs take a few seconds to open.")], stderr=subprocess.DEVNULL)
     command = bottles_cli("shell", "-b", BOTTLE, "-i", "start /unix " + shlex.quote(lnk))
     before = program_pids()
-    # a program that is already open may only come to the front (no new process): then no second try
+    # a program that is already open may only come to the front (no new process): then no second try. Only THIS
+    # program counts – any other open Windows program turned the second try off (#175); a shortcut whose program is
+    # not found inside it falls back to any Windows program
+    target = lnk_exe(lnk)
+    already_open = program_pids(target) if target else before
 
     def opened():
         """#165: the first start after (re)installing Bottles set Bottles up and opened nothing – wait for the
@@ -618,7 +636,7 @@ def start_shortcut(lnk):
         log(f"{program}: no program process after the start")
         return False
 
-    run_and_watch(command, retry=None if before else opened, retry_note=program)
+    run_and_watch(command, retry=None if already_open else opened, retry_note=program)
     return 0
 
 

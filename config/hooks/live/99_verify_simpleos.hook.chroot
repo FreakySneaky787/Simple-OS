@@ -272,6 +272,12 @@ check "helper: optional components not reported or not exit 3" \
 check "helper: Gaming Support without game controllers (steam-devices)" "grep -q 'aptget install steam-installer steam-libs-i386 steam-devices' /usr/local/sbin/simpleos-system-setup"
 # #85: .exe/.msi -> SOS Bridge (simpleos-windows-app), the help page, the right-click action
 WA=/usr/local/bin/simpleos-windows-app
+# #175: the second try of a menu entry that opened nothing looks at THIS program, not at any open Windows program
+wal=$(mktemp -d)
+printf 'L\000\000\000junk\000C:\\Program Files\\Notepad++\\notepad++.exe\000' > "$wal/n.lnk"
+check "Windows programs: the program of a shortcut not found (second try off whenever any program runs, #175)" \
+      "python3 -c \"import importlib.machinery as m; a = m.SourceFileLoader('a', '$WA').load_module(); assert a.lnk_exe('$wal/n.lnk') == 'notepad++.exe', a.lnk_exe('$wal/n.lnk'); assert a.lnk_exe('/nonexistent.lnk') == ''\" 2>/dev/null"
+rm -rf "$wal"
 wexe=$(mktemp --suffix=.exe)
 check "Windows programs: tool missing or Python error" "[ -x $WA ] && python3 -m py_compile $WA 2>/dev/null; rm -rf /usr/local/bin/__pycache__; [ -x $WA ]"
 check "Windows programs: Bottles installed -> not opened there" "[ \"\$(SIMPLEOS_WA_INSTALLED=1 python3 $WA --decide $wexe)\" = open ]"
