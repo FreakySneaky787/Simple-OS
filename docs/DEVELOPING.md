@@ -80,7 +80,8 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
     copy of the Openbox theme with the bigger buttons). 1.1.2: `user/140-menu-highlight` (the row under the mouse in
     the account's accent color). 1.2: `110-stray-home` (the image's /home/aaron), `user/150-menu-lang` (the menu in the
     system language), `120-bottles-games` (Bottles may not create ~/Games/umu, #154), `user/160-gtk-accent` (light
-    mode = Arc-Lighter and the accent in GTK apps for accounts that chose them, #158).
+    mode = Arc-Lighter and the accent in GTK apps for accounts that chose them, #158). 1.2.1: `130-lock-vt-restart`
+    (asks for a restart: only a newly started X server reads the setting that stops Ctrl+Alt+F7 at the lock screen).
   - **Files the system changes itself:** tools never write into package files under `/etc/skel` (or other conffiles)
     for everyday settings – a changed conffile is kept by dpkg and the edition tool forever. Per-account changes go
     into the home copies (merged by the edition tool), see `office-menu` below.

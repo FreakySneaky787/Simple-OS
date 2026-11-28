@@ -1,4 +1,9 @@
-# Simple OS 1.2
+# Simple OS 1.2.1
+## Wichtiges Sicherheits-Update
+- **Der Sperrbildschirm ist wieder sicher.** Strg+Alt+F7 am Sperrbildschirm (oder nach „Benutzer wechseln“) führte
+  ohne Passwort zurück auf den entsperrten Desktop. Starte deinen Computer nach diesem Update einmal neu.
+- **Die Sicherheitsupdates von Debian kommen immer an.** Auf Systemen in einer anderen Sprache als Englisch blieben sie
+  hängen, sobald der Update-Server von Simple OS nicht erreichbar war.
 ## Neu in 1.2
 - **Simple OS spricht Deutsch und Französisch.** Alle Fenster, Menüs und Meldungen von Simple OS folgen der Sprache,
   die du unter Einstellungen → Sprache & Region wählst.

@@ -1,4 +1,9 @@
-# Simple OS 1.2
+# Simple OS 1.2.1
+## Important security update
+- **The lock screen is safe again.** Ctrl+Alt+F7 at the lock screen (or after "Switch user") led back to the unlocked
+  desktop without a password. Restart your computer once after this update.
+- **Debian's security updates always arrive.** On systems in another language than English they were held up
+  whenever the Simple OS update server could not be reached.
 ## New in 1.2
 - **Simple OS speaks German and French.** Every Simple OS window, menu and message follows the language you pick in
   Control Center → Language & Region – German and French for now, other languages fall back to English.
