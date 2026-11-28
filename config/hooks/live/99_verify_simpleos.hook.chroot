@@ -5173,9 +5173,12 @@ check "gtk-accent: green accent not in GTK apps / own gtk.css lines lost (#158)"
        grep -q '^/\* simpleos-accent begin' \$c && grep -q 'label { font-weight: bold; }' \$c && ! grep -qi '#5294e2' \$c &&
        grep -q '^progressbar progress' \$c && grep -q 'radio:checked.*gtk-accent/green-light/radio-checked.png' \$c &&
        [ -s $gah/.local/share/simpleos/gtk-accent/green-light/switch-active.png ]"
-check "gtk-accent: switching to dark keeps the light images / two blocks (#158)" \
+check "gtk-accent: switching to dark writes two blocks / deletes the light images open apps still use (#158, #169)" \
       "env -i HOME=$gah PATH=/usr/bin:/bin $GA --accent green --mode dark && c=$gah/.config/gtk-3.0/gtk.css &&
-       [ \$(grep -c 'simpleos-accent begin' \$c) = 1 ] && grep -q 'gtk-accent/green-dark/' \$c && [ ! -e $gah/.local/share/simpleos/gtk-accent/green-light ]"
+       [ \$(grep -c 'simpleos-accent begin' \$c) = 1 ] && grep -q 'gtk-accent/green-dark/' \$c && [ -s $gah/.local/share/simpleos/gtk-accent/green-light/switch-active.png ]"
+check "gtk-accent: images of older choices are kept forever (#169)" \
+      "env -i HOME=$gah PATH=/usr/bin:/bin $GA --accent teal --mode dark && d=$gah/.local/share/simpleos/gtk-accent &&
+       [ -d \$d/teal-dark ] && [ -d \$d/green-dark ] && [ ! -e \$d/green-light ]"
 check "gtk-accent: blue (Arc's own) still writes a block / removes your own lines (#158)" \
       "env -i HOME=$gah PATH=/usr/bin:/bin $GA --accent blue --mode dark && c=$gah/.config/gtk-3.0/gtk.css &&
        ! grep -q simpleos-accent \$c && grep -q 'label { font-weight: bold; }' \$c"

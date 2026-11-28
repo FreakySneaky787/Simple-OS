@@ -11,6 +11,9 @@ the PNG images of check boxes, radio buttons and switches). simpleos-theme calls
     Only declarations whose value is the same in Arc and Arc-Dark are taken (the colors), the images from the
     current mode's theme – so a running app that switches light/dark live (XSETTINGS) keeps right colors; only the
     tick/knob color of its check boxes follows after the app is started again (GTK reads gtk.css once per program).
+    That is also why the previous folder stays: an open app loads an image of its old block only when it first draws
+    that state (a check box on a page not shown yet) – deleted, the widget would have no image (#169). Older
+    folders are removed.
 Your own lines in gtk.css outside the block stay. Link colors and Arc's blue "info" color are not changed.
 
   gtk-accent --accent green --mode light     write the block (or remove it for blue)
@@ -218,6 +221,15 @@ def block(accent, mode):
     return "\n".join(lines) + "\n"
 
 
+def previous_folder():
+    """<accent>-<mode> the current block's images are in ("" if none)"""
+    try:
+        found = re.search(r"/gtk-accent/([a-z]+-(?:light|dark))/", GTK_CSS.read_text())
+    except OSError:
+        return ""
+    return found.group(1) if found else ""
+
+
 def write(text):
     try:
         old = GTK_CSS.read_text()
@@ -264,12 +276,13 @@ def main(argv):
         sys.stdout.write(text or "")
         return 0
     try:
+        keep = {f"{accent}-{mode}", previous_folder()}
         write(text)
-        # images of other accents/modes are not needed any more
+        # older images are not needed any more – the previous ones are, by apps that are still open (#169)
         if DATA.is_dir():
             import shutil
             for d in DATA.iterdir():
-                if d.name != f"{accent}-{mode}":
+                if d.name not in keep:
                     shutil.rmtree(d, ignore_errors=True)
     except OSError as err:
         log(f"write: {err}")
