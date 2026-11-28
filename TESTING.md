@@ -218,12 +218,21 @@ Before publishing (Sunday 2026-11-15), with the new ISO (built 2026-11-11 from f
 
 ## 9. What changed in 1.2.1 (security hotfix)
 
-- [ ] **Lock screen** (Xorg `DontVTSwitch`): lock with Super+L, then Ctrl+Alt+F7 and Ctrl+Alt+F1 → nothing happens,
+- [x] **Lock screen** (Xorg `DontVTSwitch`): lock with Super+L, then Ctrl+Alt+F7 and Ctrl+Alt+F1 → nothing happens,
       the lock screen stays; the password unlocks. "Switch user" → the login screen; Ctrl+Alt+F7 does not lead back to
       the first account; signing in again as it needs the password. Also after the idle lock and after sleep.
       `grep DontVTSwitch /var/log/Xorg.*.log` lists the option for every X server.
-- [ ] **Update from 1.2** through Software Updates: "Simple OS 1.2.1 is installed" with the restart offer
+      VM 2026-11-28 after the update (German, ISO 5db4d018): lock → Ctrl+Alt+F7 and F1 stay on the lock screen (tty8),
+      a wrong password is refused, the right one unlocks; "Switch user" → Ctrl+Alt+F7 stays on the login screen;
+      Xorg.0.log has the option. Idle lock/sleep use the same `dm-tool lock` path (VM test of the fix 2026-11-28).
+- [x] **Update from 1.2** through Software Updates: "Simple OS 1.2.1 is installed" with the restart offer
       (migration 130); after the restart the lock screen test above passes, What's New shows 1.2.1.
-- [ ] **Debian updates without the Simple OS server** (German system): with `simpleos.sources` pointing to an
+      VM 2026-11-28 (1.2 install, local repo of the 1.2.1 build): "7 updates" → Install now → password → "Simple OS
+      1.2.1 is installed … restart"; reboot-required.pkgs = simpleos (migration 130); after the restart 1.2.1, What's
+      New 1.2.1 in German, 0 failed units. qemu-test BIOS + UEFI PASS.
+- [x] **Debian updates without the Simple OS server** (German system): with `simpleos.sources` pointing to an
       address that does not answer, Software Updates still installs Debian updates (log: "Simple OS updates could
       not be checked … Debian updates go on").
+      VM 2026-11-28, German: a Simple OS source with Release but no Packages (404) – apt prints a second German "E:"
+      line without the address, which stopped 1.2's helper; 1.2.1: "Debian updates go on", exit 0. (An unreachable
+      server is only a warning for apt and never stopped anything.)
