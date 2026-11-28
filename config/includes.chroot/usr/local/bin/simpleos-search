@@ -154,15 +154,44 @@ def _comma_language():
     return lang in _COMMA_DECIMAL
 
 
-def _enclosing_call(expr, pos):
-    """Name of the function whose brackets are around position pos ("" for none or a plain bracket)"""
+def _enclosing_call(expr, pos, with_position=False):
+    """Name of the function whose brackets are around position pos ("" for none or a plain bracket);
+    with_position: (name, position of its "(") – -1 for none"""
     calls = []
     for i, ch in enumerate(expr[:pos]):
         if ch == "(":
-            calls.append(re.search(r"([A-Za-z_]*)\s*$", expr[:i]).group(1))
+            calls.append((re.search(r"([A-Za-z_]*)\s*$", expr[:i]).group(1), i))
         elif ch == ")" and calls:
             calls.pop()
-    return calls[-1] if calls else ""
+    found = calls[-1] if calls else ("", -1)
+    return found if with_position else found[0]
+
+
+def _german_thousands(expr, m):
+    """A number like "1.000" or "1.234,5" in a decimal-comma language: thousands dots – inside round/min/max only
+    when the call separates its arguments with ";" like a German spreadsheet ("round(1.234,5; 1)"); otherwise the
+    dot there is a decimal dot (#170: "round(1.125,2)" gave 1125)"""
+    func, open_pos = _enclosing_call(expr, m.start(), with_position=True)
+    if func in _MULTI_ARG and not _explicit_separator(expr, open_pos, semicolon_only=True):
+        return m.group(0)
+    return m.group(0).replace(".", "")
+
+
+def _explicit_separator(expr, open_pos, semicolon_only=False):
+    """True if the call whose "(" is at open_pos separates its arguments the German way: ";" or ", " at its own level
+    (semicolon_only: only ";")"""
+    depth = 0
+    for i in range(open_pos + 1, len(expr)):
+        ch = expr[i]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            if depth == 0:
+                return False
+            depth -= 1
+        elif depth == 0 and (ch == ";" or (not semicolon_only and ch == "," and expr[i + 1:i + 2].isspace())):
+            return True
+    return False
 
 
 def _decimal_commas(expr):
@@ -172,35 +201,38 @@ def _decimal_commas(expr):
       decimal-comma languages, where it separates the arguments ("round(3.14159,2)", "max(1,2)").
     - Outside decimal-comma languages, groups of exactly three digits ("1,000", "12,345,678") are thousands.
     - In decimal-comma languages a dot followed by groups of exactly three digits is a thousands separator
-      ("1.000" = 1000, "1.234,5" = 1234.5); a comma followed by a space or a semicolon separates the arguments
+      ("1.000" = 1000, "1.234,5" = 1234.5) – inside round/min/max only when the call uses ";" ("round(1.234,5; 1)"),
+      otherwise "1.125" there is a number with a decimal dot (#170: round(1.125,2) gave 1125); a comma followed by a space or a semicolon separates the arguments
       ("round(3,14159; 2)"), and so does a comma after a number written with a decimal dot ("round(3.14159,2)")
-      and every comma in min/max ("max(1,2)")."""
+      and every comma in min/max ("max(1,2)") – unless the call separates its arguments with "; " or ", ", then a
+      comma between digits is a decimal comma there too ("max(1,5; 2)" = 2, "min(3,5, 4)" = 3,5)."""
     comma_decimal = _comma_language()
     if comma_decimal:
         expr = re.sub(r"(?<![\d.,])[1-9]\d{0,2}(?:\.\d{3})+(?:,\d+)?(?![\d.]|,\d)",
-                      lambda m: m.group(0).replace(".", ""), expr)
+                      lambda m: _german_thousands(expr, m), expr)
     else:
         # not inside min/max/round: there every comma separates the arguments ("max(1,234)" = 234, not 1234);
         # "sqrt(1,000,000)" stays one million
         expr = re.sub(r"(?<![\d,.])\d{1,3}(?:,\d{3})+(?![\d,])(?!\.)",
                       lambda m: m.group(0) if _enclosing_call(expr, m.start()) in _MULTI_ARG
                       else m.group(0).replace(",", ""), expr)
-    out, calls = [], []      # calls: one entry per open bracket – the function's name, "" for a plain bracket
+    out, calls = [], []      # calls: one entry per open bracket – (function name or "" for a plain bracket, position)
     for i, ch in enumerate(expr):
         if ch == "(":
             name = re.search(r"([A-Za-z_]*)\s*$", expr[:i]).group(1)
-            calls.append(name)
+            calls.append((name, i))
         elif ch == ")":
             if calls:
                 calls.pop()
         elif ch in ",;":
-            func = calls[-1] if calls else ""
+            func, open_pos = calls[-1] if calls else ("", -1)
             between_digits = expr[i - 1:i].isdigit() and expr[i + 1:i + 2].isdigit()
             if ch == ";":
                 ch = "," if func else ch
             elif between_digits:
                 number_before = re.search(r"[\d.]*$", expr[:i]).group(0)
-                separator = func and (not comma_decimal or func in ("min", "max") or "." in number_before)
+                min_max = func in ("min", "max") and not _explicit_separator(expr, open_pos)
+                separator = func and (not comma_decimal or min_max or "." in number_before)
                 if not separator:
                     ch = "."
         out.append(ch)
