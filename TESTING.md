@@ -177,29 +177,41 @@ Before publishing (Sunday 2026-11-15), with the new ISO (built 2026-11-11 from f
 
 ## 8. What changed in 1.2
 
-- [ ] **German** (#43): install in German (or Control Center → Language & Region → Deutsch, sign out and in). Control
+- [x] **German** (#43): install in German (or Control Center → Language & Region → Deutsch, sign out and in). Control
       Center, Setup Wizard, Software Center, search, taskbar menus (Wi-Fi, sound, power …), notifications, password
       prompts, the desktop right-click menu, start menu names, Welcome page, What's New and the shortcut list are German;
       nothing English is left over. Back to English: everything English again.
-- [ ] **French** (1.2): the same with Français – no English left over, no text cut off (French is longer), the Welcome
+      VM 2026-11-21/23 (German BIOS install, i12b) and the E16 (German, 2026-11-26).
+- [x] **French** (1.2): the same with Français – no English left over, no text cut off (French is longer), the Welcome
       page, Windows help page and What's New in French, file manager right-click actions in French.
-- [ ] **Users** (#68): add a Standard user and an Administrator, sign in as the new user (desktop, wizard, no keyring
+      VM 2026-11-23: desktop, menus, help, password prompt, a user created in French; native-speaker check still
+      welcome.
+- [x] **Users** (#68): add a Standard user and an Administrator, sign in as the new user (desktop, wizard, no keyring
       prompt), their picture on the login screen, "Switch user" in the power menu, automatic sign-in on/off (also after
       an installation with "Log in automatically"), change your own password (keyring still opens), delete a user with
       and without files. The last administrator can't be demoted or deleted.
-- [ ] **Windows programs** (#85): double-click a downloaded `.exe` (e.g. the Notepad++ installer) → the SOS Bridge
+      VM 2026-11-21/24 (standard user created/deleted, Switch user); E16 2026-11-26 (#163).
+- [x] **Windows programs** (#85): double-click a downloaded `.exe` (e.g. the Notepad++ installer) → the SOS Bridge
       window → Install → progress → "Preparing SOS Bridge" (first time, ~1 min) → the installer opens by itself, no
       Bottles window. After installing: the program is in the menu (search its name) and starts from there. Second
       double-click: opens within seconds. `SteamSetup.exe` → "Steam has its own version for Simple OS" → Software
       Center opens with Gaming Support; "Run the Windows version anyway" still works. `MediaCreationTool*.exe` →
       "made for Windows itself". Right-click "Run with SOS Bridge"; Menu → Help → Windows Programs (also in
       German).
-- [ ] **Setup Wizard → Extras** (#126): all three off; turning on SOS Bridge + Developer Tools installs both with one
+      VM 2026-11-24: 21 programs (#153, docs/SOS-BRIDGE-APPS.md); E16 2026-11-26.
+- [x] **Setup Wizard → Extras** (#126): all three off; turning on SOS Bridge + Developer Tools installs both with one
       password and one progress bar; offline the switches are off with a hint; Gaming Support installs `steam-devices`.
-- [ ] **AppArmor** (#48): `sudo aa-status` shows the profiles enforced, `journalctl -k | grep DENIED` stays quiet while
+      VM 2026-11-21 (UEFI + BIOS installs).
+- [x] **AppArmor** (#48): `sudo aa-status` shows the profiles enforced, `journalctl -k | grep DENIED` stays quiet while
       printing (a test page), LibreOffice, Firefox, Chromium and a Flatpak app run.
-- [ ] **Search on real hardware** (#144, ThinkPad E16): pointer resting in the middle of the screen, Super, type
+      VM 2026-11-24: 15 profiles enforced, no DENIED; again after the update on 2026-11-28.
+- [x] **Search on real hardware** (#144, ThinkPad E16): pointer resting in the middle of the screen, Super, type
       "display settings", Enter → the Display page (3–4 tries); moving the mouse still highlights rows.
-- [ ] **Updating from 1.1.2** through Software Updates: AppArmor, accountsservice and the new rofi are installed, the
+      ThinkPad E16 2026-11-26 (release ISO ef14ad77); VM after the update 2026-11-28.
+- [x] **Updating from 1.1.2** through Software Updates: AppArmor, accountsservice and the new rofi are installed, the
       menu becomes German after signing in again on a German system, What's New shows 1.2.
-
+      VM 2026-11-28 from the real GitHub release: fresh 1.1.2 install (ISO e397b5f9, UEFI) → the automatic check
+      notified "24 updates" → Install now → password → "Simple OS 1.2 is installed"; after a restart What's New
+      1.2, simpleos 1.2+20261125211355, rofi +simpleos1, apparmor (15 profiles enforced) + accountsservice, user
+      migrations 150/160, /home/aaron gone, 0 failed units, `dpkg --audit` clean, nothing upgradable, search
+      "display settings" → Display page. Also 2026-11-24 with RC a37be5c5 (local repo).
