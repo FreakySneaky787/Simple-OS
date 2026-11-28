@@ -2709,6 +2709,11 @@ keys = [k for k, _t, _i in c.PAGES]
 assert len(set(keys)) == len(keys) and all(v in keys for v in c.ALIASES.values()) and c.GROUP_STARTS <= set(keys)
 \""
 rm -rf "$ap"
+# #175: our own login helpers are not "startup apps" – switching one off broke it (SOS Bridge menu sync)
+check "Control Center → Startup apps lists an internal Simple OS login helper (AUTOSTART_OWN, #175)" \
+      "for f in /etc/xdg/autostart/simpleos-*.desktop; do grep -q \"\\\"\${f##*/}\\\"\" /usr/local/bin/simpleos-control-center || { echo \$f >&2; exit 1; }; done"
+check "Control Center: the password entries are read inside the background job (GTK is not thread-safe, #175)" \
+      "! grep -q 'change_own_password(old.get_text()' /usr/local/bin/simpleos-control-center"
 # #75: two apps for a type and nothing chosen (LibreOffice + ONLYOFFICE) -> "Choose an app…" instead of an empty field
 check "Control Center → Apps: empty choice field with two office suites (#75)" \
       "grep -qF 'combo.prepend(CHOOSE, _(\"Choose an app…\"))' $CC && grep -qF 'if not app_id or app_id == CHOOSE:' $CC"

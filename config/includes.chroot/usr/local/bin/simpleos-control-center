@@ -928,7 +928,7 @@ def set_default(group, app_id, apps):
 # shown: switching them here would start them twice or break the desktop
 AUTOSTART_OWN = {"blueman.desktop", "calamares-desktop-icon.desktop", "nm-applet.desktop", "spice-vdagent.desktop",
                  "xdg-user-dirs.desktop", "xfce4-power-manager.desktop", "lxpolkit.desktop",
-                 "simpleos-keyring.desktop"}
+                 "simpleos-keyring.desktop", "simpleos-windows-app.desktop"}
 
 
 def autostart_dirs():
@@ -2327,9 +2327,11 @@ def main(argv):
             d.set_sensitive(False)
             msg.set_text(_("Changing the password …"))
             result = {}
+            # read the entries here, in the GTK thread – not inside the background job (#175)
+            old_pw, new_pw = old.get_text(), new.get_text()
 
             def work():
-                return change_own_password(old.get_text(), new.get_text())
+                return change_own_password(old_pw, new_pw)
 
             loop = GLib.MainLoop()
 
@@ -2412,14 +2414,17 @@ def main(argv):
                       "password."))
             self.show_all_now()
 
-        def run_helper(self, what, *args, password=None, then=None):
-            """In the background; afterwards an error (if any) and a fresh page"""
+        def run_helper(self, what, *args, password=None, then=None, always=None):
+            """In the background; afterwards an error (if any) and a fresh page. then: only after success,
+            always: whatever the result (also a cancelled password dialog)"""
             def done(res):
                 text = helper_failed(res, what)
                 if text:
                     self.win.error(text)
                 if then and not text and getattr(res, "returncode", 1) == 0:
                     then()
+                if always:
+                    always()
                 self.refresh()
             bg(lambda: users_helper(*args, password=password), done)
 
@@ -2582,8 +2587,9 @@ def main(argv):
             if u["name"] == self.me and accounts_set_own("SetIconFile", tmp):
                 os.unlink(tmp)
                 return self.refresh()
+            # the scaled copy goes also when the password dialog is cancelled or the helper fails (#175)
             self.run_helper(_("The picture could not be changed"), "--picture", u["name"], tmp,
-                            then=lambda: os.path.exists(tmp) and os.unlink(tmp))
+                            always=lambda: os.path.exists(tmp) and os.unlink(tmp))
 
         def set_password(self, u):
             d = Gtk.Dialog(title=_('New password for {name}').format(name=u['full']), transient_for=self.win, modal=True)
