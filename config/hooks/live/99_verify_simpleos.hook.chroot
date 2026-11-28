@@ -2711,7 +2711,7 @@ assert len(set(keys)) == len(keys) and all(v in keys for v in c.ALIASES.values()
 rm -rf "$ap"
 # #175: our own login helpers are not "startup apps" – switching one off broke it (SOS Bridge menu sync)
 check "Control Center → Startup apps lists an internal Simple OS login helper (AUTOSTART_OWN, #175)" \
-      "for f in /etc/xdg/autostart/simpleos-*.desktop; do grep -q \"\\\"\${f##*/}\\\"\" /usr/local/bin/simpleos-control-center || { echo \$f >&2; exit 1; }; done"
+      "(for f in /etc/xdg/autostart/simpleos-*.desktop; do grep -q \"\\\"\${f##*/}\\\"\" /usr/local/bin/simpleos-control-center || { echo \$f >&2; exit 1; }; done)"
 check "Control Center: the password entries are read inside the background job (GTK is not thread-safe, #175)" \
       "! grep -q 'change_own_password(old.get_text()' /usr/local/bin/simpleos-control-center"
 # #75: two apps for a type and nothing chosen (LibreOffice + ONLYOFFICE) -> "Choose an app…" instead of an empty field
@@ -3903,9 +3903,9 @@ check "Translations: an English system shows translated texts" \
 check "Translations: i18n.sh missing or _t changes English text" \
       "[ \"\$(env -i PATH=/usr/bin:/bin LANG=en_US.UTF-8 sh -c '. /usr/local/lib/simpleos/i18n.sh; _t \"Backups\"')\" = Backups ] && command -v gettext >/dev/null"
 check "Translations: a shell tool uses _t without i18n.sh or common.sh" \
-      "for f in \$(grep -l '\\\$(_t ' /usr/local/bin/* /usr/local/sbin/* 2>/dev/null); do head -1 \$f | grep -q python && continue; grep -q 'common.sh\\|i18n.sh' \$f || { echo \$f >&2; exit 1; }; done"
+      "(for f in \$(grep -l '\\\$(_t ' /usr/local/bin/* /usr/local/sbin/* 2>/dev/null); do head -1 \$f | grep -q python && continue; grep -q 'common.sh\\|i18n.sh' \$f || { echo \$f >&2; exit 1; }; done)"
 check "Translations: an own launcher without a German name (Name[de])" \
-      "for f in /usr/share/applications/simpleos-*.desktop; do grep -q '^Name\\[de\\]=' \$f || { echo \$f >&2; exit 1; }; done"
+      "(for f in /usr/share/applications/simpleos-*.desktop; do grep -q '^Name\\[de\\]=' \$f || { echo \$f >&2; exit 1; }; done)"
 mlt=$(mktemp -d)
 printf '<openbox_menu>\n  <menu id="root-menu" label="Simple OS">\n    <item label="Files"/>\n    <item label="What&apos;s New"/>\n  </menu>\n</openbox_menu>\n' > "$mlt/menu.xml"
 check "Translations: the Openbox menu is not translated (menu-lang)" \
@@ -3926,7 +3926,7 @@ check "Translations: Rofi's \"Search\" placeholder stays English in German/Frenc
 check "Translations: French catalog missing or not readable" \
       "[ -s /usr/share/locale/fr/LC_MESSAGES/simpleos.mo ] && python3 -c 'import gettext; t = gettext.translation(\"simpleos\", languages=[\"fr\"]); assert t.gettext(\"Users\") == \"Utilisateurs\" and t.gettext(\"Done\") == \"Terminé\"'"
 check "Translations: an own launcher without a French name (Name[fr])" \
-      "for f in /usr/share/applications/simpleos-*.desktop; do grep -q '^Name\\[fr\\]=' \$f || { echo \$f >&2; exit 1; }; done"
+      "(for f in /usr/share/applications/simpleos-*.desktop; do grep -q '^Name\\[fr\\]=' \$f || { echo \$f >&2; exit 1; }; done)"
 check "Translations: polkit asks in French nowhere" "[ \$(grep -l 'message xml:lang=\"fr\"' /usr/share/polkit-1/actions/org.simpleos.*.policy | wc -l) -eq \$(ls /usr/share/polkit-1/actions/org.simpleos.*.policy | wc -l) ]"
 check "Translations: French welcome/Windows help pages or What's new missing" \
       "[ -s /usr/share/simpleos/welcome.fr.html ] && [ -s /usr/share/simpleos/windows-programs.fr.html ] && [ -s /usr/share/simpleos/whats-new.fr ] &&
@@ -3940,7 +3940,7 @@ rm -rf "${mlt:?}"
 check "AppArmor: package missing or its boot service not enabled" \
       "dpkg -s apparmor >/dev/null 2>&1 && [ -x /sbin/apparmor_parser ] && systemctl is-enabled apparmor.service >/dev/null 2>&1"
 check "AppArmor: a profile in /etc/apparmor.d does not compile (it would not load at boot)" \
-      "for f in /etc/apparmor.d/*; do [ -f \"\$f\" ] || continue; /sbin/apparmor_parser -Q -K \"\$f\" >/dev/null 2>&1 || { echo \"\$f\" >&2; exit 1; }; done"
+      "(for f in /etc/apparmor.d/*; do [ -f \"\$f\" ] || continue; /sbin/apparmor_parser -Q -K \"\$f\" >/dev/null 2>&1 || { echo \"\$f\" >&2; exit 1; }; done)"
 check "AppArmor: extra profile sets installed (untested confinement)" "! dpkg -s apparmor-profiles >/dev/null 2>&1 && ! dpkg -s apparmor-profiles-extra >/dev/null 2>&1"
 POL=/usr/share/polkit-1/actions/org.simpleos.power-tools.policy
 check "Polkit: power tools invalid" "python3 -c 'import sys, xml.dom.minidom as m; m.parse(sys.argv[1])' $POL 2>/dev/null"
