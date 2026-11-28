@@ -1,7 +1,7 @@
 # Simple OS – Roadmap
 
 Where Simple OS is going. It is a plan, not a promise: dates move, the order follows what real users run into.
-Last updated 2026-11-21. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
+Last updated 2026-11-28. Released versions are not listed here: they are in `RELEASE_NOTES.md` and on the GitHub releases page. What to test before a release is in
 `TESTING.md`.
 
 ## How we release
@@ -22,34 +22,15 @@ on purpose); every fix gets a test in `config/hooks/live/99_verify_simpleos.hook
 
 | Release | When | Condition |
 |---|---|---|
-| **1.1.3** (bugfix release) | skipped | no bug reports came in after 1.1.2, so its fixes (#148, #149) go into 1.2 |
-| **1.2** (feature release) | Saturday **28 November 2026** | everything is implemented; the release candidate passed the VM tests and the hardware check on the ThinkPad E16 (2026-11-26) |
+| **1.2** (feature release) | **released 2026-11-28** | the last feature release of 1.x (`RELEASE_NOTES.md`) |
 | **1.2.1** (bugfix release) | about 2–3 weeks after 1.2 | what comes in after 1.2 (milestone 1.2.1) |
 
 Dates are a target, not a promise (see the first paragraph). Nothing is published untested on hardware.
 
-## 1.2 – feature release after 1.1
+## 1.2.1 – bugfix release after 1.2
 
-- **Translations** of Simple OS's own tools (all English today) (#43).
-- **Users & accounts page** in Control Center: create, delete and switch users, change passwords and pictures, administrator or standard user, automatic login (#68).
-- **AppArmor** profiles (#48).
-- **Windows programs** (#85): double-click on a `.exe`/`.msi` offers to run it with Bottles (installed from the Software
-  Store if missing), a plain help page on what works (older programs, many games through Steam/Proton) and what doesn't
-  (Microsoft 365, current Adobe apps, kernel anti-cheat) with alternatives, and a hint to Steam's own "Steam Play for
-  all titles" switch. The Setup Wizard gets a page "Optional Components" (#126) with **SOS Bridge**:
-  one checkbox, off by default, that installs Bottles at the end of the wizard ("Additional downloads required. You
-  can install it later from the Software Store."). SOS Bridge is only the name of this bundle, not our own Windows layer.
-  Not planned: automatic Windows VMs, CrossOver, our own configs for Windows apps.
-- **Optional Components** in the Setup Wizard (#126): a short list, all off by default – SOS Bridge, Gaming Support
-  (Steam, launchers, controllers) and Developer Tools. Simple Health (#127) and Remote Support (#128) are ideas with low priority.
-- **Fixes already collected for 1.2** (from the review of 1.1.2 and a full test installation, 2026-11-18):
-  - Chromium asks for a new keyring password a few minutes after the first sign-in of an account (#148): the keyring
-    daemon that sign-in starts is gone after about 2 minutes. Hook 17 (#32) has to be revisited – the first sign-in must
-    be tested again before it changes.
-  - Chromium stays English after the system language was changed: `chromium-l10n` is never installed (#149).
-  - The search or start menu can take the selection from a resting mouse pointer while typing (#144, confirmed on a ThinkPad E16).
-  - Small things in one issue (#147): the search calculator with `round(x,2)` and German number formats, the migration
-    list in the README, the free-space check before the first restore point.
+- Restart: a Firefox window flashes up before the computer restarts (#167).
+- What comes in after 1.2 (milestone 1.2.1); hardware tests (#49).
 
 ## After 1.2 – bugfixes only, the port starts slowly
 
