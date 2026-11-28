@@ -75,9 +75,22 @@ signed_in() {
         case " ${SIMPLEOS_USERS_SIGNED_IN:-} " in *" $1 "*) return 0 ;; esac
         return 1
     fi
-    # a session of the account (logind keeps a user that just signed out listed for a moment – without sessions)
-    [ -n "$(loginctl show-user "$1" -p Sessions --value 2>/dev/null)" ] && return 0
-    pgrep -u "$1" >/dev/null 2>&1
+    # an active or online session of the account. Not one that is "closing": Debian keeps a signed-out user's
+    # processes (KillUserProcesses=no, #130), so their session can stay "closing" until a restart – the power menu
+    # and the search count those as signed out too (#172: deleting the account was refused until a restart)
+    for s in $(loginctl show-user "$1" -p Sessions --value 2>/dev/null); do
+        case "$(loginctl show-session "$s" -p State --value 2>/dev/null)" in active|online) return 0 ;; esac
+    done
+    return 1
+}
+# The processes a signed-out account left behind (see signed_in) – userdel refuses an account whose processes run
+end_leftovers() {
+    if [ -n "$TEST" ]; then echo "RUN: end the processes of $1"; return 0; fi
+    loginctl terminate-user "$1" 2>/dev/null
+    i=0
+    while pgrep -u "$1" >/dev/null 2>&1 && [ "$i" -lt 10 ]; do sleep 0.5; i=$((i + 1)); done
+    pkill -KILL -u "$1" 2>/dev/null && sleep 0.5
+    return 0
 }
 valid_user() { printf '%s' "$1" | grep -qxE '[a-z][a-z0-9_-]{0,31}'; }
 # Full name: letters of any language, spaces, . ' - … – no ":" "," "=" (passwd/GECOS separators) or control characters
@@ -172,6 +185,7 @@ case "$action" in
         last_admin "$user" && die "$(printf "$(_t '%s is the last administrator')" "$user")" 3
         signed_in "$user" && die "$(printf "$(_t '%s is signed in – sign them out first')" "$user")" 5
         [ "$(autologin_user)" = "$user" ] && set_autologin off
+        end_leftovers "$user"
         home=$(awk -F: -v u="$user" '$1 == u { print $6 }' "$ETC/passwd")
         if [ "$1" = remove ]; then run deluser --quiet --remove-home "$user"; else run deluser --quiet "$user"; fi ||
             die "$(_t 'the account could not be deleted')"

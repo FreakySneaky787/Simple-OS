@@ -3856,6 +3856,10 @@ for c in "6|--create anna Anna standard" "2|--create Bob Bob standard" "2|--crea
     check "Users: '${c#*|}' not refused with exit ${c%%|*}" "echo pw | uh $UH ${c#*|}; [ \$? -eq ${c%%|*} ]"
 done
 check "Users: the last administrator can be demoted by someone else" "env SIMPLEOS_USERS_TEST=1 SIMPLEOS_USERS_ETC=$ue SIMPLEOS_USERS_CALLER=anna $UH --admin pax off >/dev/null 2>&1; [ \$? -eq 3 ]"
+check "Users: the processes a signed-out account left behind are not ended before deleting it – userdel refuses (#172)" \
+      "uh $UH --delete anna keep && grep -qx 'RUN: end the processes of anna' $ue/out"
+check "Users: a session that is closing (signed out, KillUserProcesses=no) counts as signed in (#172)" \
+      "sed -n '/^signed_in() {/,/^}/p' $UH | grep -q 'active|online' && ! sed -n '/^signed_in() {/,/^}/p' $UH | grep -q pgrep"
 check "Users: a signed-in account deleted" "env SIMPLEOS_USERS_SIGNED_IN=anna SIMPLEOS_USERS_TEST=1 SIMPLEOS_USERS_ETC=$ue SIMPLEOS_USERS_CALLER=pax $UH --delete anna keep >/dev/null 2>&1; [ \$? -eq 5 ]"
 check "Users: delete keeps the home folder unless asked / kept folder still open to the next account with the same ID" "uh $UH --delete anna keep && grep -qx 'RUN: deluser --quiet anna' $ue/out && grep -qx 'RUN: chown -R root:root /home/anna' $ue/out && grep -qx 'RUN: chmod 0700 /home/anna' $ue/out && uh $UH --delete anna remove && grep -qx 'RUN: deluser --quiet --remove-home anna' $ue/out && ! grep -q 'RUN: chown' $ue/out"
 check "Users: automatic sign-in does not take the installer's line in lightdm.conf out of the way" \
