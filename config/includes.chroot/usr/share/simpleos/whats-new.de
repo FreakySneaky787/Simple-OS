@@ -1,7 +1,5 @@
-# Simple OS 1.2.1
-## Behoben in 1.2.1
-- **Der Sperrbildschirm ist wieder sicher.** Strg+Alt+F7 am Sperrbildschirm (oder nach „Benutzer wechseln“) führte
-  ohne Passwort zurück auf den entsperrten Desktop. Starte deinen Computer nach diesem Update einmal neu.
+# Simple OS 1.2.2
+## Behoben in 1.2.2
 - **Kontrollkästchen und Schalter behalten ihr Aussehen** in offenen Fenstern, wenn du zwischen hell und dunkel wechselst.
 - **Der Rechner** in der Suche versteht auch „round(1.125,2)“ und „max(1,5; 2)“.
 - **Deine Kamerafotos bleiben beisammen.** Nach dem Update auf 1.2 landeten neue Fotos in einem neuen Ordner; jetzt
@@ -10,6 +8,11 @@
 - **Mehr Simple OS auf Deutsch:** die WLAN-Signalstärke, die Taskleisten-Einstellungen, „Stumm“ und die Meldung beim
   Problembericht.
 - **„Im Software-Center öffnen“** zeigt die richtige App auch, wenn das Software-Center schon offen ist.
+## Wichtiges Sicherheits-Update (1.2.1)
+- **Der Sperrbildschirm ist wieder sicher.** Strg+Alt+F7 am Sperrbildschirm (oder nach „Benutzer wechseln“) führte
+  ohne Passwort zurück auf den entsperrten Desktop. Starte deinen Computer nach diesem Update einmal neu.
+- **Die Sicherheitsupdates von Debian kommen immer an.** Auf Systemen in einer anderen Sprache als Englisch blieben sie
+  hängen, sobald der Update-Server von Simple OS nicht erreichbar war.
 ## Neu in 1.2
 - **Simple OS spricht Deutsch und Französisch.** Alle Fenster, Menüs und Meldungen von Simple OS folgen der Sprache,
   die du unter Einstellungen → Sprache & Region wählst.

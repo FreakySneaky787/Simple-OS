@@ -1,10 +1,31 @@
-# Simple OS 1.2
+# Simple OS 1.2.1
 
 **SOS – Simple Operating System. Keep it Simple.**
 
 Simple OS is a fast, quiet desktop built on Debian 12 "bookworm". It boots straight into a calm dark desktop
 (Openbox, Catppuccin colors), sets itself up with a short wizard and keeps itself up to date. You don't
 need a terminal.
+
+## What's new in 1.2.1
+
+**An important security update – please install it.** We found these two problems ourselves, in a full code review
+of Simple OS after the 1.2 release. Nobody has reported that they were used against anyone. If you run Simple OS 1.0
+to 1.2, you get 1.2.1 through **Software Updates** – no need to reinstall. **Restart your computer once afterwards:**
+Software Updates asks you to, and the lock screen fix only takes effect after the restart.
+
+### Security
+
+- **The lock screen could be left without a password.** At the lock screen, Ctrl+Alt+F7 switched back to the
+  desktop behind it – unlocked, without asking for the password. This affected every way the screen locks: Super+L,
+  locking after some time without use, locking before sleep, and "Switch user". Anyone with access to the keyboard of
+  a locked computer could use the account that was signed in. Simple OS 1.0.4 to 1.2 are affected. The screens of
+  Simple OS no longer switch with Ctrl+Alt+F1 … F12 at all; unlocking, signing in and "Switch user" work as before
+  and always ask for the password.
+- **Debian's security updates always arrive.** On systems in another language than English, Software Updates stopped
+  with "package lists could not be downloaded" whenever only the Simple OS update server (GitHub) could not be
+  reached – and with it Debian's own security updates. Now Debian's updates go on, as it was always meant to be.
+
+Everything else the code review found (14 smaller bugs, none of them a security problem) comes in 1.2.2.
 
 ## What's new in 1.2
 
@@ -206,7 +227,7 @@ The live system needs no password – not for the installer either. Only if some
 `simple` and the password is `live`.
 To install, use **Install Simple OS** on the desktop.
 
-The other files attached here (`simpleos_1.2_all.deb`, `rofi_…deb`, `Packages`, `InRelease` …) are the signed update
+The other files attached here (`simpleos_1.2.1_all.deb`, `rofi_…deb`, `Packages`, `InRelease` …) are the signed update
 repository that installed systems use. You don't need to download them yourself.
 
 ## System requirements
@@ -253,7 +274,7 @@ repository that installed systems use. You don't need to download them yourself.
   for privacy), so an English installation gets German number and date formats. Change them in Control Center →
   Language & Region.
 - **Installer:** a few texts of the installer itself stay English in a German installation (the summary's "Erase
-  disk … and install Simple OS 1.2"), and it suggests a computer name made of your name and the model number
+  disk … and install Simple OS 1.2.1"), and it suggests a computer name made of your name and the model number
   (e.g. "lena-21tf…") – change it on the "Users" page if you like. Both come from the installer (Calamares 3.2).
 - **The network icon's right-click menu** (next to the network display in the taskbar) closes again if you hold the
   mouse button for more than half a second – a limit of that GTK menu, it has no setting. Click quickly, or use the

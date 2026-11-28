@@ -1,7 +1,5 @@
-# Simple OS 1.2.1
-## Fixed in 1.2.1
-- **The lock screen is safe again.** Ctrl+Alt+F7 at the lock screen (or after "Switch user") led back to the unlocked
-  desktop without a password. Restart your computer once after this update.
+# Simple OS 1.2.2
+## Fixed in 1.2.2
 - **Check boxes and switches keep their look** in open windows after you switch between light and dark.
 - **The calculator** in the search understands "round(1.125,2)" and "max(1,5; 2)" in German and French too.
 - **Your camera photos stay together.** After the update to 1.2, German and French systems saved new photos in a
@@ -9,6 +7,11 @@
 - **Deleting an account works right after that person signed out** – no restart needed any more.
 - **More of Simple OS in your language:** the Wi-Fi signal, the taskbar setup, "Muted" and the report message.
 - **"Open in the Software Center"** shows the right app also when the Software Center is already open.
+## Important security update (1.2.1)
+- **The lock screen is safe again.** Ctrl+Alt+F7 at the lock screen (or after "Switch user") led back to the unlocked
+  desktop without a password. Restart your computer once after this update.
+- **Debian's security updates always arrive.** On systems in another language than English they were held up
+  whenever the Simple OS update server could not be reached.
 ## New in 1.2
 - **Simple OS speaks German and French.** Every Simple OS window, menu and message follows the language you pick in
   Control Center → Language & Region – German and French for now, other languages fall back to English.

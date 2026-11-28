@@ -215,3 +215,15 @@ Before publishing (Sunday 2026-11-15), with the new ISO (built 2026-11-11 from f
       1.2, simpleos 1.2+20261125211355, rofi +simpleos1, apparmor (15 profiles enforced) + accountsservice, user
       migrations 150/160, /home/aaron gone, 0 failed units, `dpkg --audit` clean, nothing upgradable, search
       "display settings" → Display page. Also 2026-11-24 with RC a37be5c5 (local repo).
+
+## 9. What changed in 1.2.1 (security hotfix)
+
+- [ ] **Lock screen** (Xorg `DontVTSwitch`): lock with Super+L, then Ctrl+Alt+F7 and Ctrl+Alt+F1 → nothing happens,
+      the lock screen stays; the password unlocks. "Switch user" → the login screen; Ctrl+Alt+F7 does not lead back to
+      the first account; signing in again as it needs the password. Also after the idle lock and after sleep.
+      `grep DontVTSwitch /var/log/Xorg.*.log` lists the option for every X server.
+- [ ] **Update from 1.2** through Software Updates: "Simple OS 1.2.1 is installed" with the restart offer
+      (migration 130); after the restart the lock screen test above passes, What's New shows 1.2.1.
+- [ ] **Debian updates without the Simple OS server** (German system): with `simpleos.sources` pointing to an
+      address that does not answer, Software Updates still installs Debian updates (log: "Simple OS updates could
+      not be checked … Debian updates go on").

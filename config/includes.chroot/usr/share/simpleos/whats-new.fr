@@ -1,8 +1,5 @@
-# Simple OS 1.2.1
-## Corrigé dans 1.2.1
-- **L’écran de verrouillage est de nouveau sûr.** Ctrl+Alt+F7 sur l’écran de verrouillage (ou après « Changer
-  d’utilisateur ») ramenait au bureau déverrouillé sans mot de passe. Redémarrez votre ordinateur une fois après cette
-  mise à jour.
+# Simple OS 1.2.2
+## Corrigé dans 1.2.2
 - **Les cases à cocher et les interrupteurs gardent leur aspect** dans les fenêtres ouvertes quand vous passez du
   mode clair au mode sombre.
 - **La calculatrice** de la recherche comprend aussi « round(1.125,2) » et « max(1,5; 2) ».
@@ -12,6 +9,12 @@
 - **Plus de Simple OS en français :** la force du signal Wi-Fi, les réglages de la barre des tâches, « Son coupé » et
   le message du rapport de problème.
 - **« Ouvrir dans le Centre de logiciels »** montre la bonne application même si le Centre de logiciels est déjà ouvert.
+## Mise à jour de sécurité importante (1.2.1)
+- **L’écran de verrouillage est de nouveau sûr.** Ctrl+Alt+F7 sur l’écran de verrouillage (ou après « Changer
+  d’utilisateur ») ramenait au bureau déverrouillé sans mot de passe. Redémarrez votre ordinateur une fois après cette
+  mise à jour.
+- **Les mises à jour de sécurité de Debian arrivent toujours.** Sur les systèmes dans une autre langue que l’anglais,
+  elles restaient bloquées dès que le serveur de mises à jour de Simple OS était injoignable.
 ## Nouveau dans 1.2
 - **Simple OS parle français et allemand.** Toutes les fenêtres, menus et messages de Simple OS suivent la langue
   choisie dans Centre de contrôle → Langue et région.

@@ -107,7 +107,7 @@ Installed systems follow the newest Simple OS on their own – through **Softwar
 - **`main` is the published edition, pushed with a release.** Between releases nothing new goes to `main` on GitHub,
   so it always matches what installed systems run. The release tags (`v1.0.3` …) always match exactly what was
   published. Release day: `git push`, then build, test, `sign`, `publish`.
-- **`next` is the branch for the next release** – at the moment the fixes for **1.2.1**.
+- **`next` is the branch for the next release** – at the moment the fixes for **1.2.2**.
   It is pushed as the work goes on; on release day `next` is merged into `main` and released from there.
   Details: [`docs/MAINTAINING.md`](MAINTAINING.md#7-branches).
 - **Website** (freakysneaky787.github.io, its own repository): updated after every release – version, download, roadmap.
