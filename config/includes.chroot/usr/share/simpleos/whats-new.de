@@ -8,6 +8,10 @@
 - **Mehr Simple OS auf Deutsch:** die WLAN-Signalstärke, die Taskleisten-Einstellungen, „Stumm“ und die Meldung beim
   Problembericht.
 - **„Im Software-Center öffnen“** zeigt die richtige App auch, wenn das Software-Center schon offen ist.
+- **Die Software-Aktualisierung sagt, was los ist:** Sie meldet Updates, die andere Software entfernen würden,
+  repariert eine beschädigte Software-Installation statt „aktuell“ zu melden und bietet den Neustart auch dann an,
+  wenn eine App aus dem Software-Store nicht aktualisiert werden konnte.
+- **Standardbenutzer können nach Updates suchen**, ohne das Passwort eines Administrators.
 ## Wichtiges Sicherheits-Update (1.2.1)
 - **Der Sperrbildschirm ist wieder sicher.** Strg+Alt+F7 am Sperrbildschirm (oder nach „Benutzer wechseln“) führte
   ohne Passwort zurück auf den entsperrten Desktop. Starte deinen Computer nach diesem Update einmal neu.

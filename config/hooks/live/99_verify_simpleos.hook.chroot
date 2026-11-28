@@ -1065,7 +1065,9 @@ done < /etc/modprobe.d/simpleos-wifi.conf
 check "Wi-Fi: iw missing (Report a Problem shows no Wi-Fi rate/power saving mode)" "command -v iw >/dev/null"
 check "polkit: checking for updates needs a password (rule missing)" \
       "grep -q 'action.lookup(\"command_line\") == \"/usr/local/sbin/simpleos-system-setup --refresh\"' $RR &&
-       grep -q 'subject.isInGroup(\"sudo\")' $RR && grep -q 'subject.active' $RR && [ \"\$(stat -c %a $RR)\" = 644 ]"
+       grep -q 'subject.active && subject.local' $RR && [ \"\$(stat -c %a $RR)\" = 644 ]"
+check "polkit: a standard user is asked for an administrator's password when Software Updates checks" \
+      "! grep -q 'isInGroup' $RR"
 check "polkit: the update rule allows more than --refresh" "! grep -qE 'upgrade|drivers|indexOf|startsWith' $RR"
 check "simpleos-update: checking not with exactly the allowed command line" \
       "grep -q 'pkexec \"\$HELPER\" --refresh' /usr/local/bin/simpleos-update && grep -qx 'HELPER=/usr/local/sbin/simpleos-system-setup' /usr/local/bin/simpleos-update"
@@ -1074,6 +1076,15 @@ check "helper: restart marker also after a failed update" \
 check "helper: --refresh missing or can be mixed" \
       "grep -q -- '--refresh)' /usr/local/sbin/simpleos-system-setup && ! /usr/local/sbin/simpleos-system-setup --refresh --gaming >/dev/null 2>&1"
 rm -rf "${uw:?}"
+SSU0=/usr/local/sbin/simpleos-system-setup
+check "helper: dpkg --configure -a does not wait for a background apt run" \
+      "grep -B1 '^ *dpkg --configure -a >&2' $SSU0 | grep -q '^ *apt_wait\$'"
+check "helper: a failing Flatpak update makes the whole update fail (no restart offer)" \
+      "grep -q 'echo \"APPS: failed\"' $SSU0 && ! grep -q 'fail \"\$(_t .Flatpak apps could not be updated.)\"' $SSU0"
+check "helper: a failing apt simulation counts as 'Already up to date' (no repair)" \
+      "grep -q 'aptget --no-remove -f install' $SSU0 && grep -q 'if ! upgrade_sim \"\$mode\" >/dev/null; then' $SSU0"
+check "simpleos-update: firmware offered in a VM (the helper never installs it there)" \
+      "sed -n '/^firmware() {/,/^}/p' /usr/local/bin/simpleos-update | grep -q 'systemd-detect-virt -q --vm'"
 check "helper: --upgrade runs completely with a progress bar even without pending updates" \
       "grep -q 'flatpak remote-ls --updates --system' /usr/local/sbin/simpleos-system-setup && grep -qF 'echo \"DONE: \$(_t '\\''Already up to date'\\'')\"' /usr/local/sbin/simpleos-system-setup"
 check "simpleos-progress: a new STEP keeps the old description (#129)" \
@@ -1253,6 +1264,7 @@ printf '#!/bin/sh\necho "xdg-open $*" > "$WT/opened"\n' > "$wt/mock/xdg-open"
 cat > "$wt/mock/apt-get" <<'MOCK'
 #!/bin/sh
 case "$*" in "-s full-upgrade"|"-s upgrade --with-new-pkgs") ;; *) exit 0 ;; esac
+[ "$APTFAIL" = 1 ] && { echo "E: Unmet dependencies. Try 'apt --fix-broken install'" >&2; exit 100; }
 i=0
 for p in firefox-esr libc6 openssl tzdata linux-image-amd64 curl; do
     [ "$i" -lt "${UPDATES:-0}" ] || break
@@ -1341,6 +1353,17 @@ hcase "$U" "an update that would only work by removing does not count" "" "UPDAT
     'grep -q "<b>2 updates available</b>" $S/rofi.args && ! grep -q "firmware-misc-nonfree\|linux-image-6" $S/rofi.args'
 hcase "$U" "held-back updates -> an honest notification instead of 'up to date'" "" "UPDATES=1 PKEXEC_OUT=HELD:_2" "0" \
     'grep -q "2 updates could not be installed automatically" $S/notify && ! grep -qs "up to date" $S/notify'
+hcase "$U" "only held-back updates: the window says so instead of 'up to date'" "" "UPDATES=0 NEEDREMOVE=1" "" \
+    'grep -q "1 update could not be installed automatically" $S/notify && ! grep -qs "up to date" $S/notify && [ ! -e $S/rofi.0 ]'
+hcase "$U" "apt cannot simulate (broken dependencies): repair offered instead of 'up to date'" "" "APTFAIL=1" "-" \
+    'grep -q "<b>1 update available</b>" $S/rofi.args && grep -q "Repair the software installation" $S/rofi.args && ! grep -qs "up to date" $S/notify'
+touch "$wt/reboot-required"
+hcase "$U" "apps fail: system updates installed, restart still offered" "" \
+    "UPDATES=1 PKEXEC_OUT=APPS:_failed SIMPLEOS_REBOOT_FLAG=$wt/reboot-required" "0" \
+    'grep -q "Some apps from the Software Store could not be updated" $S/notify && grep -q "Restart…" $S/notify'
+rm -f "$wt/reboot-required"
+hcase "$U" "apps fail, nothing else: no 'up to date'" "" "UPDATES=1 PKEXEC_OUT=APPS:_failed" "0" \
+    'grep -q "Some apps from the Software Store could not be updated" $S/notify && ! grep -qs "up to date" $S/notify'
 # Restart: never directly from the notification, only after asking ("Restart now" / "Later")
 touch "$wt/reboot-required"
 hcase "$U" "restart: notification clicked, then Later -> no restart" "" \

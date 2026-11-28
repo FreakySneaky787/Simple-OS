@@ -17,15 +17,16 @@
 #                                    firmware/BIOS from LVFS (fwupd; not in VMs). Before that a restore point,
 #                                    if switched on in simpleos-backup. Firmware result as the line
 #                                    "FIRMWARE: installed|needs-power|failed" – a firmware error does not make the
-#                                    system update invalid (the exit code stays 0). Updates that would only work by
+#                                    system update invalid (the exit code stays 0); neither do Flatpak apps that fail
+#                                    (line "APPS: failed"). Updates that would only work by
 #                                    removing other packages are left alone: line "HELD: <count>". Not enough free
 #                                    space for them: line "NOSPACE: <path> <needed MB> <free MB>", nothing changed, exit 1.
 #                                    kernel, microcode, firmware, libc, systemd updated -> /run/reboot-required
 #                                    A new Simple OS edition (package "simpleos") comes with the other updates; the
 #                                    packages it adds to Simple OS are installed once afterwards (edition --todo-packages)
 #   pkexec simpleos-system-setup --refresh   only check (simpleos-update when opening): download package lists and
-#                                    firmware metadata, install nothing. Without a password for active
-#                                    administrators (polkit rule 50-simpleos-update-refresh.rules, hook 14)
+#                                    firmware metadata, install nothing. Without a password for everyone in the
+#                                    active local session (polkit rule 50-simpleos-update-refresh.rules, hook 14)
 #   pkexec simpleos-system-setup --firewall on|off   switch the firewall (ufw) on/off (Control Center → Password & Security)
 #   pkexec simpleos-system-setup --locale LOCALE [--formats LOCALE]   system language (Control Center → Language &
 #                                    Region, #42): generate the locales (locale-gen only if missing), write
@@ -567,13 +568,29 @@ if [ "$upgrade" -eq 1 ]; then
     # BIOS systems from before 1.0.4: grub-pc did not know its disk and stopped every GRUB update (and with it this
     # repair) – answer that first (/usr/local/lib/simpleos/grub-pc-devices)
     /usr/local/lib/simpleos/grub-pc-devices || echo "GRUB install device could not be set" >&2
-    # dpkg's "Setting up …" lines go to the log only, never into the progress window (#120)
+    # dpkg's "Setting up …" lines go to the log only, never into the progress window (#120). Wait for a background apt
+    # run first: "dpkg --configure -a" does not wait for the dpkg lock – it failed right away, and the whole update
+    # ended with "Some updates could not be installed" although everything else went through.
+    apt_wait
     dpkg --configure -a >&2 || fail "$(_t 'an interrupted installation could not be repaired')"
     apt_get_update || { fail "$(_t 'package lists could not be downloaded')"; exit 1; }
     # Check first what is pending: without system and app updates done right away ("UPTODATE: 1", the progress window
     # shows "Already up to date") – before, everything still ran with a progress bar ("Nothing to do").
     # If Flatpak cannot check (network), rather update normally.
     mode=$(upgrade_mode)
+    # apt cannot even simulate (broken dependencies): repair first without removing anything (apt-get -f install
+    # --no-remove), otherwise stop with the error. Before, the failing simulation looked like "nothing to do" and
+    # the window said "Already up to date".
+    if ! upgrade_sim "$mode" >/dev/null; then
+        step "$(_t 'Repairing the software installation')"
+        aptget --no-remove -f install || true
+        mode=$(upgrade_mode)
+        if ! upgrade_sim "$mode" >/dev/null; then
+            LC_ALL=C ${APT_GET:-apt-get} -s full-upgrade 2>&1 | grep '^E: ' >&2
+            fail "$(_t 'the software installation is damaged and could not be repaired')"
+            exit 1
+        fi
+    fi
     planned=$(upgrade_sim "$mode" | sim_pkgs)
     apt_pending=0
     [ -n "$planned" ] && apt_pending=1
@@ -639,7 +656,12 @@ if [ "$upgrade" -eq 1 ]; then
         _rcf=$(mktemp)
         { LANGUAGE= LC_ALL=C.UTF-8 flatpak update --system -y </dev/null 2>&1; echo $? > "$_rcf"; } | if [ -x "$FP_PROGRESS" ]; then "$FP_PROGRESS"; else cat; fi
         _rc=$(cat "$_rcf" 2>/dev/null); rm -f "$_rcf"
-        [ "${_rc:-1}" -eq 0 ] || fail "$(_t 'Flatpak apps could not be updated')"
+        # Not an error of the whole update: the system updates are in, and a restart they need must still be offered
+        # (simpleos-update reports "APPS: failed" on its own). Before, exit 1 here hid the restart offer.
+        if [ "${_rc:-1}" -ne 0 ]; then
+            echo "ERROR: $(_t 'Flatpak apps could not be updated')" >&2
+            echo "APPS: failed"
+        fi
     fi
     # Last: firmware often needs a restart, and a failed BIOS update should not hold up the others
     if [ "$fw" -eq 1 ]; then

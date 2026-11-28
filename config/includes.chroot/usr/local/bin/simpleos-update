@@ -95,12 +95,27 @@ APT_STAMPS=${SIMPLEOS_APT_STAMPS-/var/lib/simpleos/apt-refreshed /var/lib/apt/pe
 # (new …)" = new version; new packages without "[old]" (e.g. the kernel package behind linux-image-amd64) do not count.
 # apt-get -s needs no root. The edition package comes first as "Simple OS <new version>" (without the build time
 # "+YYYYMMDDHHMMSS" of the package version, #102).
+# If apt cannot even simulate (broken dependencies, "E: Unmet dependencies"), one line asks for the repair instead –
+# before, the empty simulation meant "Your system is up to date" while nothing could be updated at all; "Install now"
+# lets the helper repair it (apt-get -f install, never removing) or name the error.
 upgradable() {
-    sim=$(LC_ALL=C apt-get -s full-upgrade 2>/dev/null) || sim=
+    if ! sim=$(LC_ALL=C apt-get -s full-upgrade 2>/dev/null); then
+        _t 'Repair the software installation'; echo
+        return 0
+    fi
     printf '%s\n' "$sim" | grep -q '^Remv ' && sim=$(LC_ALL=C apt-get -s upgrade --with-new-pkgs 2>/dev/null)
     printf '%s\n' "$sim" | awk '$1 == "Inst" && $3 ~ /^\[/ {
         if ($2 == "simpleos") { v = $4; sub(/^\(/, "", v); sub(/\+[0-9]+$/, "", v); print "Simple OS " v } else rest = rest $2 "\n" }
         END { printf "%s", rest }'
+}
+# Updates the helper leaves alone because they would remove other packages (one name per line). They are not in the
+# list above; if nothing else is pending, the window says so instead of "up to date" (before, only installing told).
+held_updates() {
+    full=$(LC_ALL=C apt-get -s full-upgrade 2>/dev/null) || return 0
+    printf '%s\n' "$full" | grep -q '^Remv ' || return 0
+    { LC_ALL=C apt-get -s upgrade --with-new-pkgs 2>/dev/null | awk '$1 == "Inst" && $3 ~ /^\[/ { print "S", $2 }'
+      printf '%s\n' "$full" | awk '$1 == "Inst" && $3 ~ /^\[/ { print "F", $2 }'; } |
+        awk '$1 == "S" { s[$2] = 1; next } !($2 in s) { print $2 }'
 }
 # Packages of the installed edition that are still missing (an earlier installation of them failed)
 EDITION=/usr/local/lib/simpleos/edition
@@ -109,6 +124,8 @@ edition_todo() { [ -x "$EDITION" ] && "$EDITION" --todo-packages 2>/dev/null; }
 # just for checking. In the JSON output the device name comes before "Releases" (release names only follow after it).
 firmware() {
     command -v fwupdmgr >/dev/null || return 0
+    # like the helper (fw_pending): nothing is installed in a VM – listed there, it was offered after every update
+    systemd-detect-virt -q --vm 2>/dev/null && return 0
     timeout 30 fwupdmgr get-updates --json --no-authenticate --no-unreported-check --no-metadata-check \
         --no-remote-check 2>/dev/null |
         awk '/"Name" *:/ { n = $0; sub(/^[^:]*: *"/, "", n); sub(/",? *$/, "", n) }
@@ -209,6 +226,13 @@ install_updates() {
                     fwnote=$(_t 'The firmware update could not be installed. Details: ~/.cache/simpleos-update.log') ;;
             esac
             [ -n "$fwnote" ] && sos_notify "$fwnote" critical
+            # Apps from the Software Store (Flatpak) failed: the system updates are installed all the same – say it,
+            # then go on (restart offer, new edition). Before, the whole update counted as failed.
+            appnote=
+            if printf '%s\n' "$log" | grep -qx 'APPS: failed'; then
+                appnote=1
+                sos_notify "$(_t 'Some apps from the Software Store could not be updated. Try again later from Menu → Tools → Software Updates. Details: ~/.cache/simpleos-update.log')" critical
+            fi
             # Updates that would only work by removing other software – never skip them silently
             held=$(printf '%s\n' "$log" | sed -n 's/^HELD: *\([0-9][0-9]*\)$/\1/p' | head -n 1)
             if [ -n "$held" ]; then
@@ -230,7 +254,7 @@ install_updates() {
                 offer_restart "$restart"
             elif [ -n "$edition" ]; then
                 sos_notify "$(printf "$(_t 'Simple OS %s is installed. Sign out and back in to see everything that is new.')" "$edition")"
-            elif [ -n "$fwnote$held" ]; then
+            elif [ -n "$fwnote$held$appnote" ]; then
                 :
             elif printf '%s\n' "$log" | grep -qx 'UPTODATE: 1'; then
                 sos_notify "$(_t 'Your system is up to date – there was nothing to install.')"
@@ -318,7 +342,16 @@ pkgs=$(pending)
 count=$(printf '%s\n' "$pkgs" | grep -c . || true)
 sos_is_num "$count" || count=0
 if [ "$count" -eq 0 ]; then
-    if [ "$online" = 1 ]; then
+    held=$(held_updates | grep -c . || true)
+    sos_is_num "$held" || held=0
+    if [ "$held" -gt 0 ]; then
+        sos_log "held back (would remove other packages): $(held_updates | tr '\n' ' ')"
+        if [ "$held" -eq 1 ]; then
+            sos_notify "$(_t '1 update could not be installed automatically: it would remove other software. Details: ~/.cache/simpleos-update.log')" critical
+        else
+            sos_notify "$(printf "$(_t '%s updates could not be installed automatically: they would remove other software. Details: ~/.cache/simpleos-update.log')" "$held")" critical
+        fi
+    elif [ "$online" = 1 ]; then
         sos_notify "$(_t 'Your system is up to date.')"
     else
         sos_notify "$(_t 'Updates could not be checked right now – are you connected to the internet? Details: ~/.cache/simpleos-update.log')" critical

@@ -7,6 +7,10 @@
 - **Deleting an account works right after that person signed out** – no restart needed any more.
 - **More of Simple OS in your language:** the Wi-Fi signal, the taskbar setup, "Muted" and the report message.
 - **"Open in the Software Center"** shows the right app also when the Software Center is already open.
+- **Software Updates tells the truth:** it says so when updates wait because they would remove other software,
+  repairs a damaged software installation instead of saying "up to date", and still offers the restart when an app
+  from the Software Store could not be updated.
+- **Standard users can check for updates** without an administrator's password.
 ## Important security update (1.2.1)
 - **The lock screen is safe again.** Ctrl+Alt+F7 at the lock screen (or after "Switch user") led back to the unlocked
   desktop without a password. Restart your computer once after this update.

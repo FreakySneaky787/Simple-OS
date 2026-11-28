@@ -9,6 +9,10 @@
 - **Plus de Simple OS en français :** la force du signal Wi-Fi, les réglages de la barre des tâches, « Son coupé » et
   le message du rapport de problème.
 - **« Ouvrir dans le Centre de logiciels »** montre la bonne application même si le Centre de logiciels est déjà ouvert.
+- **Les mises à jour logicielles disent ce qui se passe :** elles signalent les mises à jour qui supprimeraient
+  d’autres logiciels, réparent une installation endommagée au lieu d’annoncer « à jour » et proposent toujours le
+  redémarrage quand une application de la Boutique de logiciels n’a pas pu être mise à jour.
+- **Les utilisateurs standard peuvent chercher des mises à jour** sans le mot de passe d’un administrateur.
 ## Mise à jour de sécurité importante (1.2.1)
 - **L’écran de verrouillage est de nouveau sûr.** Ctrl+Alt+F7 sur l’écran de verrouillage (ou après « Changer
   d’utilisateur ») ramenait au bureau déverrouillé sans mot de passe. Redémarrez votre ordinateur une fois après cette

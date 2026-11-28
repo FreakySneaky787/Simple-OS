@@ -2,9 +2,10 @@
 set -e
 # Re-run on Simple OS updates (package simpleos, edition --system): must stay idempotent.
 # Software Updates may look for updates without a password: "pkexec simpleos-system-setup --refresh" only downloads
-# package lists and firmware metadata, it installs nothing. Allowed for the active, local session of an
-# administrator (group sudo) – exactly this command line, everything else (installing, --upgrade, drivers …) still
-# asks for the password. The file comes from a hook instead of includes.chroot: rules.d belongs to polkitd (0700),
+# package lists and firmware metadata, it installs nothing. Allowed for the active, local session of every account –
+# exactly this command line, everything else (installing, --upgrade, drivers …) still asks for the password. Up to 1.2
+# only administrators (group sudo): a standard user who opened Software Updates was asked for an administrator's
+# password just to look, and cancelling it said "could not check online". The file comes from a hook instead of includes.chroot: rules.d belongs to polkitd (0700),
 # copying the includes would change the folder's permissions.
 RULES=/etc/polkit-1/rules.d/50-simpleos-update-refresh.rules
 cat > "$RULES" <<'RULE'
@@ -12,7 +13,7 @@ cat > "$RULES" <<'RULE'
 polkit.addRule(function(action, subject) {
     if (action.id == "org.simpleos.system-setup" &&
         action.lookup("command_line") == "/usr/local/sbin/simpleos-system-setup --refresh" &&
-        subject.active && subject.local && subject.isInGroup("sudo")) {
+        subject.active && subject.local) {
         return polkit.Result.YES;
     }
 });
