@@ -215,7 +215,6 @@ def main(argv):
     from gi.repository import Gio, GLib, Gtk
 
     selftest = os.environ.get("SIMPLEOS_SC_SELFTEST") in ("1", "close")
-    initial_search = ""
     errors = []
     if selftest:
         def hook(etype, value, tb):
@@ -478,16 +477,25 @@ def main(argv):
 
     class App(Gtk.Application):
         def __init__(self):
+            # HANDLES_COMMAND_LINE: "--search X" of a second start reaches the window that is already open – the
+            # Windows-installer window's "Open in the Software Center" only raised it, without the search (#175)
+            flags = Gio.ApplicationFlags.HANDLES_COMMAND_LINE
             super().__init__(application_id="org.simpleos.SoftwareCenter",
-                             flags=Gio.ApplicationFlags.NON_UNIQUE if selftest else Gio.ApplicationFlags(0))
+                             flags=flags | Gio.ApplicationFlags.NON_UNIQUE if selftest else flags)
             self.win = None
+
+        def do_command_line(self, command_line):
+            args = command_line.get_arguments()
+            search = args[args.index("--search") + 1] if "--search" in args[1:-1] else ""
+            self.activate()
+            if search and self.win:
+                self.win.search.set_text(search)
+            return 0
 
         def do_activate(self):
             if self.win:
                 return self.win.present()   # started again: the same window (also when hidden during an installation)
             self.win = win = Store(self)
-            if initial_search:
-                win.search.set_text(initial_search)
             if os.environ.get("SIMPLEOS_SC_SELFTEST") == "close":
                 steam = next(a for a in CATALOG if a[0] == "steam")
                 GLib.timeout_add(500, lambda: (win.install(steam), False)[1])
@@ -504,9 +512,7 @@ def main(argv):
                     return False
                 GLib.timeout_add(500, step)
 
-    if "--search" in argv[1:-1]:
-        initial_search = argv[argv.index("--search") + 1]
-    rc = App().run(argv[:1])
+    rc = App().run(argv)
     if errors:
         print(f"simpleos-software-center: {len(errors)} error(s) in self-test", file=sys.stderr)
         return 1

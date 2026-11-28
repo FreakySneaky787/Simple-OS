@@ -2709,6 +2709,8 @@ keys = [k for k, _t, _i in c.PAGES]
 assert len(set(keys)) == len(keys) and all(v in keys for v in c.ALIASES.values()) and c.GROUP_STARTS <= set(keys)
 \""
 rm -rf "$ap"
+check "Software Center: '--search' of a second start does not reach the open window (#175)" \
+      "grep -q 'HANDLES_COMMAND_LINE' /usr/local/bin/simpleos-software-center && grep -q 'def do_command_line' /usr/local/bin/simpleos-software-center"
 # #175: our own login helpers are not "startup apps" – switching one off broke it (SOS Bridge menu sync)
 check "Control Center → Startup apps lists an internal Simple OS login helper (AUTOSTART_OWN, #175)" \
       "(for f in /etc/xdg/autostart/simpleos-*.desktop; do grep -q \"\\\"\${f##*/}\\\"\" /usr/local/bin/simpleos-control-center || { echo \$f >&2; exit 1; }; done)"
